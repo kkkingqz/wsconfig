@@ -16,4 +16,4 @@ com.anydesk.Anydesk talk org.kde.StatusNotifierWatcher
 com.notesnook.Notesnook filesystem home:rw
 
 io.github.rulin132.ChatGPT filesystem host
-io.github.rulin132.ChatGPT talk io.github.rulin132.ChatGPT
+io.github.rulin132.ChatGPT talk org.freedesktop.Flatpak
