@@ -5,7 +5,7 @@ uuid() { [[ "$1" =~ ^[[:xdigit:]]{8}(-[[:xdigit:]]{4}){3}-[[:xdigit:]]{12}$ ]] |
 scope_check() { [[ "$1" == home || "$1" == vms ]] || die 'invalid scope'; }
 safe_path() {
     [[ "$1" =~ ^/[A-Za-z0-9_./-]+$ && "$1" != / && "$1" != */../* && "$1" != */.. ]] || die 'unsafe path'
-    [[ "$1" != *//* && "$1" != */./* && "$1" != */. ]] || die 'unsafe path'
+    [[ "$1" != *//* && "$1" != */./* && "$1" != */. && "$1" != */ ]] || die 'unsafe path'
     local p="$1"
     while [[ "$p" != / ]]; do
         [[ ! -L "$p" ]] || die "symlink path: $p"

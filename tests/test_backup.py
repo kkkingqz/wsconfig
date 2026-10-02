@@ -8,6 +8,9 @@ import sys
 import fcntl
 import signal
 import time
+import pty
+import select
+import errno
 from backup_fixture import Boundary, U
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'lib'))
 import backup
@@ -16,6 +19,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_noncanonical_paths_rejected_during_config_check(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / 'c.json'
+            for field in ('source_snapshot_root', 'remote_root'):
+                for value in ('/var//backup', '/var/./backup', '/var/backup/.', '/var/backup/'):
+                    with self.subTest(field=field, value=value):
+                        p.write_text(json.dumps({'schema_version': 1, field: value}))
+                        with self.assertRaisesRegex(ValueError, 'unsafe path'):
+                            backup.load_config(p)
+
     def test_boolean_schema_version_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / 'c.json'
@@ -50,7 +63,7 @@ class TransferTests(unittest.TestCase):
         self.rcfg.chmod(0o600)
         # Substitute only sudo/SSH privilege and network boundaries. Actual
         # source/receiver scripts, subprocess pipelines, files and state run.
-        (self.b.bin / 'sudo').write_text('#!/bin/sh\nexec "$@"\n')
+        (self.b.bin / 'sudo').write_text('#!/bin/sh\n[ "$1" != -v ] || exit 0\n[ "$1" != -n ] || shift\nexec "$@"\n')
         (self.b.bin / 'sudo').chmod(0o755)
         ssh = self.b.bin / 'ssh'
         ssh.write_text('#!/usr/bin/env python3\nimport os,sys\nos.environ["SSH_ORIGINAL_COMMAND"]=sys.argv[-1]\nos.execv("/bin/bash",["bash",' + repr(str(ROOT / 'backup/unraid/wsbackup-receiver')) + ',' + repr(str(self.rcfg)) + '])\n')
@@ -68,6 +81,79 @@ class TransferTests(unittest.TestCase):
     def cli(self, *args):
         return subprocess.run([str(ROOT / 'bin/wsbackup'), *args], env=self.env,
                               text=True, capture_output=True)
+
+    def test_sudo_authenticates_on_terminal_before_streaming(self):
+        # Fake only the privilege boundary; controlling terminal and pipeline
+        # remain real. No system sudo credentials or password are used.
+        marker = self.b.root / 'authorized'
+        sudo = self.b.bin / 'sudo'
+        sudo.write_text('''#!/usr/bin/env python3
+import os, pathlib, sys
+a = sys.argv[1:]
+marker = pathlib.Path(''' + repr(str(marker)) + ''')
+try:
+    with open('/dev/tty', 'r') as terminal, open('/dev/tty', 'w') as prompt:
+        if a == ['-v']:
+            prompt.write('AUTHORIZE\\n'); prompt.flush()
+            if terminal.readline().strip() != 'approved': sys.exit(1)
+            marker.write_text('authorized')
+            sys.exit(0)
+        if not marker.exists() or a[0] != '-n':
+            print('no separate authorization', file=sys.stderr); sys.exit(1)
+except OSError:
+    print('missing controlling terminal', file=sys.stderr); sys.exit(1)
+os.execvp(a[1], a[1:])
+''')
+        pid, fd = pty.fork()
+        if pid == 0:
+            program = (
+                'import json,sys; from pathlib import Path; '
+                f'sys.path.insert(0,{str(ROOT / "lib")!r}); import backup; '
+                'backup.main(["send","home"]); '
+                'id=json.loads((backup.state_path()/"last-success.json").read_text())["home"]["id"]; '
+                f'target=Path({str(self.b.root / "restore")!r}); target.mkdir(); '
+                'backup.main(["restore-test","home",id,str(target),"--verify","payload"])'
+            )
+            os.execve(sys.executable, [sys.executable, '-c', program], self.env)
+        output = b''
+        deadline = time.monotonic() + 20
+        try:
+            while time.monotonic() < deadline:
+                if not select.select([fd], [], [], .2)[0]:
+                    continue
+                try:
+                    data = os.read(fd, 65536)
+                except OSError as e:
+                    if e.errno == errno.EIO:
+                        break
+                    raise
+                if not data:
+                    break
+                output += data
+                for _ in range(data.count(b'AUTHORIZE')):
+                    os.write(fd, b'approved\n')
+            else:
+                self.fail('terminal backup timed out: ' + output.decode(errors='replace'))
+            _, status = os.waitpid(pid, 0)
+            pid = None
+            self.assertEqual(os.waitstatus_to_exitcode(status), 0, output.decode(errors='replace'))
+            self.assertTrue(marker.exists())
+            last = json.loads((self.b.root / 'state/workstation/backup/last-success.json').read_text())
+            self.assertEqual((self.remote / 'mbp16/home' / last['home']['id'] / 'payload').read_text(), 'preserved data')
+            self.assertEqual((self.b.root / 'restore' / last['home']['id'] / 'payload').read_text(), 'preserved data')
+        finally:
+            os.close(fd)
+            if pid is not None:
+                os.kill(pid, signal.SIGKILL)
+                os.waitpid(pid, 0)
+
+    def test_failed_authorization_never_starts_snapshot(self):
+        (self.b.bin / 'sudo').write_text('#!/bin/sh\nexit 1\n')
+        p = self.cli('send', 'home')
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('sudo authorization failed', p.stderr)
+        self.assertEqual(list(self.snapshots.iterdir()), [])
+        self.assertFalse((self.remote / 'mbp16').exists())
 
     def test_successful_send_records_verified_parent_and_payload(self):
         p = self.cli('send', 'home')
@@ -92,10 +178,16 @@ class TransferTests(unittest.TestCase):
         first = self.cli('send', 'home')
         self.assertEqual(first.returncode, 0, first.stderr)
         id = json.loads(first.stdout)['home']['id']
+        first_uuid = json.loads(first.stdout)['home']['source_uuid']
+        self.b.update(payload='changed data', require_incremental=True)
         second = self.cli('send', 'home')
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertEqual(json.loads(second.stdout)['home']['parent'], id)
         self.assertEqual(json.loads(second.stdout)['home']['mode'], 'incremental')
+        next_id = json.loads(second.stdout)['home']['id']
+        received = self.remote / 'mbp16/home' / next_id
+        self.assertEqual((received / 'payload').read_text(), 'changed data')
+        self.assertEqual(json.loads((received / '.fixture-meta').read_text())['stream_parent'], first_uuid)
 
     def test_concurrent_backup_refused_before_snapshot(self):
         state = self.b.root / 'state/workstation/backup'

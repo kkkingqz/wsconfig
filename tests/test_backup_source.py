@@ -56,7 +56,9 @@ class SourceTests(unittest.TestCase):
         q = self.source('inspect')
         self.assertEqual(q.returncode, 0, q.stderr)
         import json
-        self.assertEqual(json.loads(q.stdout)['uuid'], U)
+        import uuid
+        self.assertNotEqual(json.loads(q.stdout)['uuid'], U)
+        uuid.UUID(json.loads(q.stdout)['uuid'])
         self.assertTrue(json.loads(q.stdout)['ro'])
 
     def test_path_in_home_refused_before_snapshot(self):

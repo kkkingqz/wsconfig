@@ -28,7 +28,8 @@ REPO = Path(__file__).resolve().parents[1]
 def safe_path(value):
     if not isinstance(value, str) or not value.startswith('/'):
         raise ValueError('path must be absolute')
-    if value == '/' or '..' in value.split('/') or not re.fullmatch(r'/[A-Za-z0-9_./-]+', value):
+    if (value.endswith('/') or any(p in {'.', '..'} for p in value.split('/')) or
+            '//' in value or not re.fullmatch(r'/[A-Za-z0-9_./-]+', value)):
         raise ValueError('unsafe path')
     return Path(value)
 
@@ -132,10 +133,13 @@ def operation(state, name):
             write_json(path, record)
 
 
-def stop_process(p):
+def stop_process(p, private_session=True):
     if p.poll() is None:
         try:
-            os.killpg(p.pid, signal.SIGTERM)
+            if private_session:
+                os.killpg(p.pid, signal.SIGTERM)
+            else:
+                p.terminate()
         except ProcessLookupError:
             p.wait()
             return
@@ -143,20 +147,36 @@ def stop_process(p):
             p.wait(timeout=5)
         except subprocess.TimeoutExpired:
             try:
-                os.killpg(p.pid, signal.SIGKILL)
+                if private_session:
+                    os.killpg(p.pid, signal.SIGKILL)
+                else:
+                    p.kill()
             except ProcessLookupError:
                 pass
             p.wait()
 
 
+def authorize(args):
+    if args[0] != 'sudo':
+        return args
+    # Keep the controlling tty and display the prompt before redirecting any
+    # streams. -n prevents credentials being requested through Btrfs stdin.
+    result = subprocess.run(['sudo', '-v'])
+    if result.returncode:
+        raise ValueError('sudo authorization failed; run backup from a terminal')
+    return ['sudo', '-n', *args[1:]]
+
+
 def run_result(args):
+    args = authorize(args)
+    private_session = args[0] != 'sudo'
     p = subprocess.Popen(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                         start_new_session=True)
+                         start_new_session=private_session)
     try:
         stdout, stderr = p.communicate()
         return subprocess.CompletedProcess(args, p.returncode, stdout, stderr)
     finally:
-        stop_process(p)
+        stop_process(p, private_session)
 
 
 def command(args):
@@ -213,12 +233,17 @@ def validate_snapshot(meta, expected, received):
 
 
 def stream(sender, receiver):
+    # Authorize both ends before starting either process or consuming data.
+    sender = authorize(sender)
+    receiver = authorize(receiver)
+    sender_session = sender[0] != 'sudo'
+    receiver_session = receiver[0] != 'sudo'
     # File-backed stderr avoids a deadlock if either child prints many errors.
     with tempfile.TemporaryFile() as se, tempfile.TemporaryFile() as re_, tempfile.TemporaryFile() as out:
-        a = subprocess.Popen(sender, stdout=subprocess.PIPE, stderr=se, start_new_session=True)
+        a = subprocess.Popen(sender, stdout=subprocess.PIPE, stderr=se, start_new_session=sender_session)
         b = None
         try:
-            b = subprocess.Popen(receiver, stdin=a.stdout, stdout=out, stderr=re_, start_new_session=True)
+            b = subprocess.Popen(receiver, stdin=a.stdout, stdout=out, stderr=re_, start_new_session=receiver_session)
             a.stdout.close()
             br = b.wait()
             ar = a.wait()
@@ -231,9 +256,9 @@ def stream(sender, receiver):
         finally:
             if a.stdout and not a.stdout.closed:
                 a.stdout.close()
-            for p in (b, a):
+            for p, private_session in ((b, receiver_session), (a, sender_session)):
                 if p is not None:
-                    stop_process(p)
+                    stop_process(p, private_session)
 
 
 def send(c, scope, state):

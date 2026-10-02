@@ -9,7 +9,7 @@ import tempfile
 U = '11111111-1111-1111-1111-111111111111'
 
 PROGRAM = r'''#!/usr/bin/env python3
-import json, os, pathlib, sys
+import json, os, pathlib, sys, uuid
 name = pathlib.Path(sys.argv[0]).name
 a = sys.argv[1:]
 c = json.loads(pathlib.Path(os.environ['BACKUP_FIXTURE']).read_text())
@@ -39,8 +39,8 @@ elif name == 'btrfs':
         print('ro=' + ('true' if m.get('ro', True) else 'false'))
     elif op == ['subvolume', 'snapshot']:
         p.mkdir()
-        (p / '.fixture-meta').write_text(json.dumps({'uuid': c['uuid'], 'received_uuid': '-', 'ro': True}))
-        (p / 'payload').write_text('preserved data')
+        (p / '.fixture-meta').write_text(json.dumps({'uuid': str(uuid.uuid4()), 'received_uuid': '-', 'ro': True}))
+        (p / 'payload').write_text(c.get('payload', 'preserved data'))
     elif op == ['subvolume', 'create']:
         p.mkdir()
     elif a[0] == 'send':
@@ -49,13 +49,38 @@ elif name == 'btrfs':
         # Linux send_subvol_begin preserves received_uuid when re-sending.
         stream_uuid = m.get('received_uuid')
         if not stream_uuid or stream_uuid == '-': stream_uuid = m['uuid']
-        print(json.dumps({'name': p.name, 'uuid': stream_uuid, 'payload': (p / 'payload').read_text()}))
+        packet = {'name': p.name, 'uuid': stream_uuid}
+        if '-p' in a:
+            parent = pathlib.Path(a[a.index('-p') + 1])
+            pm = json.loads((parent / '.fixture-meta').read_text())
+            if not pm['ro']: sys.exit(1)
+            packet['parent_uuid'] = pm['uuid']
+            packet['changes'] = {}
+            if (p / 'payload').read_text() != (parent / 'payload').read_text():
+                packet['changes']['payload'] = (p / 'payload').read_text()
+        else:
+            if c.get('require_incremental'): sys.exit(1)
+            packet['payload'] = (p / 'payload').read_text()
+        print(json.dumps(packet))
     elif a[0] == 'receive':
         if c.get('receive_error'): sys.exit(1)
         m = json.load(sys.stdin)
+        parent_uuid = m.get('parent_uuid')
+        payload = m.get('payload')
+        if parent_uuid:
+            # Resolve the previously received readonly parent, then apply the
+            # synthetic delta. A wrong/missing parent makes receive fail.
+            matches = []
+            for meta in p.parent.glob('*/.fixture-meta'):
+                pm = json.loads(meta.read_text())
+                if pm.get('received_uuid') == parent_uuid and pm.get('ro'):
+                    matches.append(meta.parent)
+            if len(matches) != 1: sys.exit(1)
+            payload = (matches[0] / 'payload').read_text()
+            payload = m['changes'].get('payload', payload)
         dest = p / m['name']; dest.mkdir()
-        (dest / '.fixture-meta').write_text(json.dumps({'uuid': '22222222-2222-2222-2222-222222222222', 'received_uuid': m['uuid'], 'ro': True}))
-        (dest / 'payload').write_text(m['payload'])
+        (dest / '.fixture-meta').write_text(json.dumps({'uuid': str(uuid.uuid4()), 'received_uuid': m['uuid'], 'ro': True, 'stream_parent': parent_uuid}))
+        (dest / 'payload').write_text(payload)
     else:
         print('unexpected btrfs args: ' + repr(a), file=sys.stderr); sys.exit(1)
 else:
