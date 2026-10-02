@@ -14,3 +14,6 @@ com.anydesk.Anydesk env GDK_SCALE=2
 com.anydesk.Anydesk talk org.kde.StatusNotifierWatcher
 
 com.notesnook.Notesnook filesystem home:rw
+
+io.github.rulin132.ChatGPT filesystem host
+io.github.rulin132.ChatGPT talk io.github.rulin132.ChatGPT
