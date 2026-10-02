@@ -66,4 +66,9 @@ ws check                        проверки всех владельцев �
 ws checkpoint create NAME       какой коммит соответствует рабочему состоянию
 ws baseline capture NAME        функциональный снимок для сравнения
 ws collect                      архив машины перед переустановкой (sudo)
+ws backup plan                  план backup HOME/VM на Unraid, без SSH и изменений
 ```
+
+Backup: `helpws backup`. Механизм Btrfs send/receive подготовлен; адрес Unraid,
+первый реальный перенос и restore test ещё нужны. Конфигурация — локальная,
+таймер и автоматическая очистка snapshots не включены.

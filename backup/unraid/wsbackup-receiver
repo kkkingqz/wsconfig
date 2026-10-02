@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Forced SSH command. Deploy this directory and ../btrfs-common.bash as root.
+set -euo pipefail
+export LC_ALL=C
+umask 077
+here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+. "$here/../btrfs-common.bash"
+[[ $# == 1 ]] || die 'receiver config path required'
+cfg="$1"; safe_path "$cfg"
+[[ -f "$cfg" && "$(stat -c %u "$cfg")" == "$EUID" ]] || die 'config must belong to receiver user'
+mode="$(stat -c %a "$cfg")"
+(( (8#$mode & 8#022) == 0 )) || die 'config is group/world writable'
+declare -A seen=()
+while IFS='=' read -r key value || [[ -n "$key" ]]; do
+    [[ -z "$key" || "$key" == \#* ]] && continue
+    [[ -z "${seen[$key]:-}" ]] || die 'duplicate config key'
+    seen[$key]=yes
+    case "$key" in ROOT) root="$value" ;; FS_UUID) fs_uuid="$value" ;; HOST_ID) host_id="$value" ;; *) die 'unknown config key' ;; esac
+done < "$cfg"
+[[ -n "${root:-}" && -n "${fs_uuid:-}" && -n "${host_id:-}" ]] || die 'incomplete receiver config'
+uuid "$fs_uuid"; token "$host_id"; safe_path "$root"
+cmd="${SSH_ORIGINAL_COMMAND:-}"
+[[ "$cmd" =~ ^[A-Za-z0-9_-]+(\ [A-Za-z0-9_-]+)*$ ]] || die 'invalid command'
+read -r -a words <<<"$cmd"
+action="${words[0]}"; host="${words[1]:-}"
+[[ "$host" == "$host_id" ]] || die 'host not permitted'
+case "$action" in
+    probe) [[ ${#words[@]} == 2 ]] || die 'invalid command' ;;
+    inspect|send) [[ ${#words[@]} == 4 ]] || die 'invalid command' ;;
+    receive) [[ ${#words[@]} == 5 ]] || die 'invalid command'; uuid "${words[4]}" ;;
+    *) die 'invalid command' ;;
+esac
+filesystem_check "$root"
+[[ "$(stat -c %u "$root")" == "$EUID" ]] || die 'receiver root has wrong owner'
+mode="$(stat -c %a "$root")"
+(( (8#$mode & 8#022) == 0 )) || die 'receiver root is group/world writable'
+safe_path "$root/.receiver.lock"
+exec 9>"$root/.receiver.lock"
+flock -n 9 || die 'receiver busy'
+if [[ "$action" == probe ]]; then
+    version="$(btrfs --version)"
+    [[ "$version" =~ ^[A-Za-z0-9._+\ -]+$ ]] || die 'unexpected btrfs version'
+    available="$(df -B1 --output=avail "$root" | tail -n 1 | tr -d ' ')"
+    [[ "$available" =~ ^[0-9]+$ ]] || die 'cannot determine free space'
+    printf '{"protocol_version":1,"btrfs_progs_version":"%s","filesystem_uuid":"%s","host_id":"%s","root":"%s","available_bytes":%s}\n' "$version" "$fs_uuid" "$host_id" "$root" "$available"
+    exit 0
+fi
+scope="${words[2]}"; id="${words[3]}"
+scope_check "$scope"; token "$id"
+dir="$root/$host/$scope"; dest="$dir/$id"
+safe_path "$dir"; safe_path "$dest"
+case "$action" in
+    inspect|send)
+        [[ -d "$dest" ]] || { printf 'snapshot missing\n' >&2; exit 3; }
+        inspect_snapshot "$dest"
+        [[ -n "$received_uuid" ]] || die 'not a received snapshot'
+        if [[ "$action" == inspect ]]; then snapshot_json; else exec btrfs send --proto 1 "$dest"; fi
+        ;;
+    receive)
+        [[ ! -e "$dest" ]] || die 'snapshot already exists'
+        stage="$dir/.partial-$id"; safe_path "$stage"
+        [[ ! -e "$stage" ]] || die 'partial receive already exists; inspect it manually'
+        mkdir -p -m0700 "$dir"
+        mkdir -m0700 "$stage"
+        btrfs receive "$stage" >&2
+        # A valid sender creates exactly the requested snapshot in staging.
+        shopt -s dotglob nullglob
+        entries=("$stage"/*)
+        [[ ${#entries[@]} == 1 && "${entries[0]}" == "$stage/$id" ]] || die 'unexpected received entries'
+        inspect_snapshot "$stage/$id"
+        [[ "$received_uuid" == "${words[4]}" ]] || die 'received UUID mismatch'
+        mv -- "$stage/$id" "$dest"
+        rmdir "$stage"
+        snapshot_json
+        ;;
+esac

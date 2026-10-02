@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Run through interactive sudo. No NOPASSWD rule is installed.
+set -euo pipefail
+export LC_ALL=C
+here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+. "$here/btrfs-common.bash"
+[[ $# -ge 5 && "$1" == --uuid && "$3" == --root ]] || die 'usage: --uuid UUID --root PATH init|snapshot|inspect|send ...'
+fs_uuid="$2"; root="$4"; action="$5"; shift 5
+uuid "$fs_uuid"; safe_path "$root"
+case "$root/" in /home/*|/var/lib/vms/*) die 'snapshot root must be outside sources' ;; esac
+
+if [[ "$action" == init ]]; then
+    [[ $# == 0 ]] || die 'init takes no arguments'
+    if [[ -e "$root" ]]; then
+        filesystem_check "$root"
+        btrfs subvolume show "$root" >/dev/null
+    else
+        filesystem_check "$(dirname "$root")"
+        btrfs subvolume create "$root" >&2
+        chmod 0700 "$root"
+    fi
+    exit 0
+fi
+[[ $# -ge 2 ]] || die 'scope and snapshot ID required'
+scope="$1"; id="$2"; shift 2
+scope_check "$scope"; token "$id"
+[[ "$action" == send && $# -le 1 || "$action" == hash && $# == 1 || "$action" != send && "$action" != hash && $# == 0 ]] || die 'unexpected arguments'
+filesystem_check "$root"
+btrfs subvolume show "$root" >/dev/null
+src=/home; expected=@home
+[[ "$scope" == home ]] || { src=/var/lib/vms; expected=@vms; }
+dest="$root/$scope/$id"
+
+vms_stopped() {
+    local active
+    active="$(virsh -c qemu:///system list --name)" || die 'cannot query libvirt'
+    [[ -z "${active//[[:space:]]/}" ]] || die 'running VMs; shut them down before backup'
+}
+source_check() {
+    safe_path "$src"; filesystem_check "$src"
+    local options nested mounts
+    options="$(findmnt -nro OPTIONS -T "$src")"
+    [[ ",$options," == *",subvol=/$expected,"* ]] || die "wrong source subvolume: $src"
+    nested="$(btrfs subvolume list -o "$src")"
+    [[ -z "$nested" ]] || die 'nested subvolumes require an explicit backup decision'
+    mounts="$(findmnt -rn -o TARGET -R "$src")"
+    [[ "$mounts" == "$src" ]] || die 'nested mounts require an explicit backup decision'
+}
+case "$action" in
+    snapshot)
+        source_check
+        [[ "$scope" != vms ]] || vms_stopped
+        safe_path "$root/$scope"
+        mkdir -p "$root/$scope"
+        [[ ! -e "$dest" ]] || die 'snapshot already exists'
+        btrfs subvolume snapshot -r "$src" "$dest" >&2
+        [[ "$scope" != vms ]] || vms_stopped
+        inspect_snapshot "$dest"; snapshot_json
+        ;;
+    inspect) inspect_snapshot "$dest"; snapshot_json ;;
+    hash)
+        inspect_snapshot "$dest"
+        [[ "$1" != /* ]] || die 'relative verification path required'
+        safe_path "$dest/$1"
+        [[ -f "$dest/$1" ]] || die 'verification file missing'
+        sha256sum -- "$dest/$1"
+        ;;
+    send)
+        inspect_snapshot "$dest"
+        args=(--proto 1)
+        if [[ $# == 1 ]]; then
+            token "$1"; parent="$root/$scope/$1"
+            inspect_snapshot "$parent"
+            args+=(-p "$parent")
+        fi
+        exec btrfs send "${args[@]}" "$dest"
+        ;;
+    *) die 'unknown source action' ;;
+esac

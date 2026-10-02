@@ -47,8 +47,10 @@ volume: User Commands
 2. `helpws plan-final`
    Сделано 2026-10-02: инвентарь (`ws collect`), граница установки (apt,
    `purge:snapd`), snapshots и откат — Timeshift с входом из GRUB
-   (проверено), чистка машины. Осталось: backup HOME и `@vms` (носитель —
-   позже, решение пользователя) и финальный smoke-test.
+   (проверено), чистка машины. Backup-механизм HOME и `@vms` подготовлен
+   (`helpws backup`), цель — Unraid/Btrfs; осталось задать SSH-конфигурацию,
+   выполнить первый реальный перенос и restore test. Финальный smoke-test
+   также остаётся.
 
 Отложено:
 
