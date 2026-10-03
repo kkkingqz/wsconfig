@@ -1,0 +1,3 @@
+# apple-gmux is on the PNP bus: path_id fails in the standard systemd rule.
+# Start the standard save/restore service without requiring path_id.
+SUBSYSTEM=="backlight", KERNEL=="gmux_backlight", TAG+="systemd", ENV{SYSTEMD_WANTS}+="systemd-backlight@backlight:gmux_backlight.service"

@@ -55,6 +55,11 @@ volume: User Commands
 
 Отложено:
 
+- `helpws plan-hyprland` — предложение Hyprland + Caelestia рядом с GNOME,
+  адаптировано к текущему host/wsconfig 2026-10-02; установка не начата.
+  Отдельный desktop lock/profile, session lifecycle и portals, собственный
+  keyboard backend, проверяемая delta к upstream startup; GNOME baseline
+  сохраняется. Начинать с compatibility/GPU gate и baseline capture.
 - `helpws plan-dgpu` — AMD через t2gmux (KaiT2en), отложен 2026-10-01
   (решение пользователя): у 16,1 включение карты выключает машину. Сейчас
   `apple-gmux` + `ws-dgpu-park` (PC7 с выключенной картой); вернуться, когда

@@ -3,6 +3,9 @@
 { file, ... }:
 {
   files = [
+    # Screen brightness: the standard udev rule fails on gmux's PNP parent.
+    (file "/etc/udev/rules.d/99-z-gmux-backlight.rules" "system/files/udev/99-z-gmux-backlight.rules" "0644")
+
     # Touch Bar (ws-keyboard-system-apply)
     (file "/etc/udev/rules.d/90-touchbar-native.rules" "system/files/udev/90-touchbar-native.rules" "0644")
     (file "/etc/modprobe.d/tb.conf" "system/files/modprobe/tb.conf" "0644")
@@ -59,6 +62,7 @@
   ];
 
   units = {
+    "systemd-backlight@backlight:gmux_backlight.service" = "static";
     "ws-touchbar-fn.service" = "enabled";
     "get-apple-firmware.service" = "enabled";
     "ws-dgpu-off.service" = "enabled";
@@ -67,5 +71,9 @@
   };
 
   # Restarted by every `ws system apply`, as ws-keyboard-system-apply did.
-  restart = [ "ws-touchbar-fn.service" ];
+  restart = [
+    "ws-touchbar-fn.service"
+    # Also start save/restore in the current boot; apply only triggers input udev events.
+    "systemd-backlight@backlight:gmux_backlight.service"
+  ];
 }

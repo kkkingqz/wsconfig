@@ -317,6 +317,19 @@ Intel используется для desktop: `apple-gmux force_igd=y` пере
 («Ubuntu (AMD)»), она доступна через GPU offload (`switcherooctl launch`,
 «Запустить с дискретной видеокартой»).
 
+Яркость встроенного экрана сохраняет штатная служба
+`systemd-backlight@backlight:gmux_backlight.service`. У `gmux_backlight`
+родитель на шине PNP: `path_id` не определяет его путь, и стандартное
+правило `99-systemd.rules` пропускает запуск службы. Правило
+`system/files/udev/99-z-gmux-backlight.rules` запускает её без `path_id`;
+оно устанавливается профилем `t2-mbp16` через `ws system apply`.
+При apply служба также перезапускается для текущего сеанса. Уровень
+сохраняется при выключении в
+`/var/lib/systemd/backlight/backlight:gmux_backlight` и восстанавливается
+при загрузке. Проверка: `ws system check`, затем изменить яркость и
+перезагрузиться; статус службы —
+`systemctl status systemd-backlight@backlight:gmux_backlight.service`.
+
 Runtime PM у amdgpu на этом Mac нет (`Runtime PM not available`: ни ATPX, ни
 ACPI `_PR3`, ни BACO), поэтому включённая AMD постоянно в D0. Выключают её
 при загрузке: в пункте «Ubuntu» `amdgpu` не загружается вовсе
