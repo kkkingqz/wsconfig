@@ -55,7 +55,26 @@ Review fix pass, verified separately on the same date:
 - Native effect injection and reactive picking were checked against Shell and
   Mutter 50.1 sources. Their integrated GUI behavior remains pending below.
 
-Pending after loading the extension in a new GNOME session:
+Subsequent native-session evidence during delivery:
+
+- After the user returned, the new GNOME session already had the extension
+  ACTIVE. The managed runtime PID is 3890; adapter lease is ready, NRestarts=0.
+- Both production IDs complete the real GNOME placement handshake and remain
+  open; the adapter acknowledges only after verifying the compositor frame.
+  Panel sizes are 420×580 and 320×240. Explicit hide completes, and restoring
+  focus to the previous application closes compact through the native adapter.
+- WindowControl lists NORMAL windows only; widgets disappear from that list
+  after the adapter changes their native type. It cannot inspect their final
+  frame/focus properties. This is not evidence for every Dock/Alt-Tab behavior.
+- Live Qt IPC rejects __proto__ and constructor. Production check now reports
+  five passes, zero warnings and zero failures; both widgets are left closed.
+- Screenshot D-Bus denies access. No screenshot or visual animation/button
+  verdict was obtained, and no unsafe Shell evaluation was enabled.
+- Fixes are committed on wsconfig (c0498c7), rebased onto the existing 36e7773
+  user commit. main remains at 36e7773; original user file hashes are preserved.
+  ws switch and extension-owner delivery succeed; installed sources match.
+
+Remaining native GUI matrix:
 
 - Both buttons; anchoring gap, focus, no center flash, no decorations and no
   duplicate compositor animation; actual panel coverage at scale 1.5.
@@ -66,6 +85,6 @@ Pending after loading the extension in a new GNOME session:
 - Ubuntu Dock, Alt-Tab and Tiling Assistant exclusion; monitor/workarea changes.
 - Additional scales and a second monitor: unavailable in this run; not passed.
 
-Reason: the new UUID is installed on disk, but `gnome-extensions info
-workstation-widgets@local` says it does not exist in the running Shell.
-The session was not restarted and the user was not logged out automatically.
+Earlier installation evidence predates the new session; the extension is now
+ACTIVE. The remaining matrix needs direct GUI observation and input. This agent
+did not restart the session or log the user out.

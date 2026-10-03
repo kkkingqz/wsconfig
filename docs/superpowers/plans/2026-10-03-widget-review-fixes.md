@@ -28,8 +28,8 @@
 - [x] RED→GREEN: pointer outside preparing cancels; stale PLACED cannot reopen it; focus preparation suppression preserved.
 - [x] RED→GREEN: mask-aware actor ancestry differentiates visible family/transient from background, gutter and hidden region. Wire stage reactive picking, keep event propagation.
 - [x] RED→GREEN: scoped map-effect predicate delegates foreign windows, tracks runtime replacement, respects removal; real QML surface remains unmapped without lease and maps after lease.
-- [x] Run GJS all suites, Python all tests, Nix manifest/qml/tests/runtime/home hosts/man and Wayland runtime smoke. Native adapter checks stay pending until UUID is loaded.
-- [ ] Commit isolated changes, fast-forward wsconfig, apply Home Manager/extensions, verify managed service and original user changes.
+- [x] Run GJS all suites, Python all tests, Nix manifest/qml/tests/runtime/home hosts/man and Wayland runtime smoke. Native adapter subsequently loaded: handshake, steady open, sizes, hide and focus-dismissal pass; visual/button/input-mask matrix still pending.
+- [x] Commit isolated changes, fast-forward wsconfig, apply Home Manager/extensions, verify managed service and original user changes.
 
 Delivery update: during the fix pass another session committed the existing user changes and fast-forwarded main/wsconfig to 36e7773. Rebase the isolated fix commit onto that state, then update wsconfig; preserve the new main commit.
 
