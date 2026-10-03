@@ -9,7 +9,7 @@ export function rejects(fn) {
     assert(failed, 'invalid input accepted');
 }
 let count = 0;
-const suites = ARGV.length ? ARGV : ['manifest'];
+const suites = ARGV.length ? ARGV : ['manifest', 'model'];
 for (const suite of suites) {
     const module = await import(`./test-${suite}.js`);
     for (const [name, test] of Object.entries(module.tests)) {

@@ -56,6 +56,13 @@
         inherit man;
         widgets-manifest = assert import ./widgets/test-manifest.nix { inherit lib; };
           pkgs.writeText "widgets-manifest.json" (builtins.toJSON widgetsManifest);
+        widgets-qml = pkgs.runCommand "widgets-qml" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+          export HOME="$TMPDIR/home" XDG_RUNTIME_DIR="$TMPDIR/runtime"
+          mkdir -p "$HOME" "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+          python ${./.}/tests/widgets/check-qml.py ${widgetsRuntime}/bin/qs-widgets
+          touch "$out"
+        '';
       };
 
       # Tools `ws` runs, pinned by flake.lock.
