@@ -2,7 +2,7 @@
 die() { printf 'wsbackup: %s\n' "$*" >&2; exit 1; }
 token() { [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$ ]] || die "invalid ID: $1"; }
 uuid() { [[ "$1" =~ ^[[:xdigit:]]{8}(-[[:xdigit:]]{4}){3}-[[:xdigit:]]{12}$ ]] || die 'invalid UUID'; }
-scope_check() { [[ "$1" == home || "$1" == vms ]] || die 'invalid scope'; }
+scope_check() { [[ "$1" == home || "$1" == vms || "$1" == system ]] || die 'invalid scope'; }
 safe_path() {
     [[ "$1" =~ ^/[A-Za-z0-9_./-]+$ && "$1" != / && "$1" != */../* && "$1" != */.. ]] || die 'unsafe path'
     [[ "$1" != *//* && "$1" != */./* && "$1" != */. && "$1" != */ ]] || die 'unsafe path'

@@ -56,6 +56,9 @@ elif name == 'btrfs':
     elif op == ['filesystem', 'sync']:
         pass
     elif a[0] == 'send':
+        if c.get('pending_record_path'):
+            record = json.loads(pathlib.Path(c['pending_record_path']).read_text())
+            if record['status'] != 'pending': sys.exit(1)
         if c.get('send_error'): sys.exit(1)
         m = json.loads((p / '.fixture-meta').read_text())
         # Linux send_subvol_begin preserves received_uuid when re-sending.

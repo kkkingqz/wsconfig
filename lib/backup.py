@@ -101,6 +101,14 @@ def write_json(path, data):
             out.flush()
             os.fsync(out.fileno())
         os.replace(temp, path)
+        # Persist rename and newly-created journal directory links before any
+        # dependent deletion. A synced file alone does not persist its name.
+        for directory in [path.parent, *path.parent.parents]:
+            dirfd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(dirfd)
+            finally:
+                os.close(dirfd)
     finally:
         if os.path.exists(temp):
             os.unlink(temp)

@@ -24,6 +24,7 @@ fi
 [[ $# -ge 2 ]] || die 'scope and snapshot ID required'
 scope="$1"; id="$2"; shift 2
 scope_check "$scope"; token "$id"
+[[ "$scope" != system || "$action" != snapshot ]] || die 'system copies must come from Timeshift'
 [[ "$action" == send && $# -le 1 || "$action" == hash && $# == 1 || "$action" != send && "$action" != hash && $# == 0 ]] || die 'unexpected arguments'
 filesystem_check "$root"
 btrfs subvolume show "$root" >/dev/null
