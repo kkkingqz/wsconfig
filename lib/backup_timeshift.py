@@ -83,7 +83,7 @@ def read_records(c, state):
         if (r.get('owner') != 'timeshift' or r.get('scope') not in {'system', 'home'} or
                 not api.TOKEN.fullmatch(str(r.get('id', ''))) or path.stem != r['id'] or
                 not api.UUID.fullmatch(str(r.get('origin_uuid', ''))) or
-                r.get('status') not in {'importing', 'pending', 'success', 'superseded'}):
+                r.get('status') not in {'importing', 'pending', 'success', 'superseded', 'abandoned'}):
             raise ValueError('invalid Timeshift journal record')
         records.append(r)
     return records
@@ -96,7 +96,7 @@ def new_record(c, state, row, previous=None):
     if previous:
         r.update(retry_of=previous['id'], clone_uuid=previous['source_uuid'])
     save_record(state, r)
-    if previous:
+    if previous and previous['status'] != 'success':
         previous['status'] = 'superseded'
         save_record(state, previous)
     return r
@@ -191,8 +191,9 @@ def run_batch(c, state):
         api.write_json(state / 'timeshift/inventory.json', inventory)
         records = read_records(c, state)
         parents = select_retained(c, records)
-        result = dict(inventory, transferred=[], skipped=[], retained=parents)
+        result = dict(inventory, transferred=[], skipped=[], abandoned=[], retained=parents)
         superseded = {r['retry_of'] for r in records if r.get('retry_of')}
+        available = {(r['scope'], r['timeshift_name'], r['origin_uuid']) for r in inventory['snapshots']}
 
         def finish(r):
             stage(r['scope'] + ': import/confirm ' + r['id'])
@@ -207,6 +208,16 @@ def run_batch(c, state):
         # Resume frozen copies even if their Timeshift source disappeared.
         for r in sorted(records, key=lambda r: (r['timestamp'], r['timeshift_name'], r['scope'])):
             if r['status'] not in {'importing', 'pending'} or r['id'] in superseded:
+                continue
+            if (r['status'] == 'importing' and not r.get('retry_of') and
+                    (r['scope'], r['timeshift_name'], r['origin_uuid']) not in available and
+                    inspect_copy(c, r['scope'], r['id']) is None):
+                # Nothing was frozen; preserve the failed attempt as history,
+                # rather than indefinitely blocking every later inventory.
+                r.update(status='abandoned', local_present=False, finished=api.now(),
+                         error='source disappeared or is no longer importable before copy creation')
+                save_record(state, r)
+                result['abandoned'].append(r)
                 continue
             if r['status'] == 'pending' and not confirm_pending(c, r):
                 local = inspect_copy(c, r['scope'], r['id'])
@@ -224,7 +235,16 @@ def run_batch(c, state):
             if confirmed:
                 result['skipped'].append(confirmed)
                 continue
-            r = new_record(c, state, row)
+            frozen = None
+            for old in reversed(matches):
+                local = inspect_copy(c, old['scope'], old['id'])
+                if local is not None:
+                    api.validate_snapshot(local, old['source_uuid'], False)
+                    frozen = old
+                    break
+            # Preserve first-import contents of writable Timeshift snapshots
+            # whenever a verified frozen copy survives the remote loss.
+            r = new_record(c, state, row, frozen)
             records.append(r)
             finish(r)
         result['retained'] = select_retained(c, records)

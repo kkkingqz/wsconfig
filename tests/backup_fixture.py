@@ -21,6 +21,11 @@ if name == 'findmnt':
 elif name == 'blkid':
     print('/dev/fixture')
 elif name == 'mount':
+    if c.get('remove_source_on_mount'):
+        counter = pathlib.Path(os.environ['BACKUP_FIXTURE']).with_suffix('.mount-count')
+        count = int(counter.read_text()) + 1 if counter.exists() else 1
+        counter.write_text(str(count))
+        if count == c['remove_source_on_mount']: shutil.rmtree(c['remove_source'])
     shutil.copytree(c['timeshift_top'], a[-1], dirs_exist_ok=True)
 elif name == 'umount':
     for entry in pathlib.Path(a[-1]).iterdir():
