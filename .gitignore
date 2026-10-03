@@ -12,3 +12,6 @@ man/
 # nix build output links (build with --no-link)
 result
 result-*
+
+# Isolated feature worktrees
+.worktrees/
