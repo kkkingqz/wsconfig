@@ -11,6 +11,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install fish
         run: sudo apt-get update && sudo apt-get install -y fish
+      - name: wsflatpak unit, help and completion tests
+        run: python3 -m unittest discover -s tests -v
       - name: Syntax of scripts by shebang
         run: |
           status=0

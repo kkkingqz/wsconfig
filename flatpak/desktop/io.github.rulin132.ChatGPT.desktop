@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=ChatGPT
+GenericName=AI Assistant
+Comment=ChatGPT, Work and Codex desktop app
+# Chromium Wayland UI factor multiplies the monitor scale: 1.5 * 4/3 = 2.
+Exec=/usr/bin/flatpak run --branch=master --arch=x86_64 --command=chatgpt-launcher --file-forwarding io.github.rulin132.ChatGPT --ozone-platform=wayland --force-device-scale-factor=1.333333 @@u %U @@
+Icon=io.github.rulin132.ChatGPT
+Terminal=false
+StartupNotify=true
+StartupWMClass=ChatGPT
+Categories=Network;Development;Utility;
+Keywords=chatgpt;openai;codex;ai;assistant;
+MimeType=x-scheme-handler/codex;
+X-Flatpak=io.github.rulin132.ChatGPT

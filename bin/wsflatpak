@@ -392,15 +392,16 @@ def is_managed(app):
 
 def installed_user(app):
     need_flatpak()
-    return run(
-        ["flatpak", "info", "--user", app],
-        check=False,
-        capture=True,
-    ).returncode == 0
+    return any(ref == app or ref.split("/")[1] == app for ref in user_app_refs())
 
 
 def installed_origin(app):
     need_flatpak()
+
+    if "/" not in app:
+        refs = [ref for ref in user_app_refs() if ref.split("/")[1] == app]
+        origins = {installed_origin(ref) for ref in refs}
+        return origins.pop() if len(origins) == 1 else None
 
     p = run(
         ["flatpak", "info", "--user", "--show-origin", app],
@@ -413,6 +414,50 @@ def installed_origin(app):
 
     origin = p.stdout.strip()
     return origin or None
+
+
+def ensure_user_runtime(app, install_args=()):
+    # --user install may reuse a system runtime. Install the exact runtime
+    # ref explicitly so the application also has its dependency in home.
+    runtime = run(
+        ["flatpak", "info", "--user", "--show-runtime", app],
+        capture=True,
+    ).stdout.strip()
+    if not runtime:
+        raise SystemExit(f"wsflatpak: could not determine runtime for {app}")
+
+    ref = f"runtime/{runtime}"
+    if run(
+        ["flatpak", "info", "--user", ref], check=False, capture=True,
+    ).returncode == 0:
+        return
+
+    # Prefer the app's origin, then search other user remotes. Supplying the
+    # remote avoids Flatpak's selection prompt when several provide the ref.
+    remotes = run(
+        ["flatpak", "remotes", "--user", "--columns=name"], capture=True,
+    ).stdout.splitlines()
+    origin = installed_origin(app)
+    candidates = sorted({r.strip() for r in remotes if r.strip()})
+    if origin in candidates:
+        candidates.remove(origin)
+        candidates.insert(0, origin)
+    for remote in candidates:
+        if run(
+            ["flatpak", "remote-info", "--user", remote, ref],
+            check=False, capture=True,
+        ).returncode == 0:
+            break
+    else:
+        raise SystemExit(
+            f"wsflatpak: no user remote provides runtime {runtime} for {app}"
+        )
+
+    print(f"Installing user runtime for {app}: {remote} {runtime}")
+    run(["flatpak", "install", "--user", "--no-auto-pin"]
+        + list(install_args) + [remote, ref])
+    run(["flatpak", "info", "--user", ref], capture=True)
+
 
 def override_file(app):
     return OVERRIDES / f"{app}.conf"
@@ -576,7 +621,7 @@ def cmd_install(ns):
             f"wsflatpak: user remote not configured: {ns.remote}"
         )
 
-    before = set(user_apps())
+    before = set(user_app_refs())
 
     cmd = [
         "flatpak",
@@ -588,21 +633,45 @@ def cmd_install(ns):
 
     run(cmd)
 
-    after = set(user_apps())
+    after = set(user_app_refs())
     added = sorted(after - before)
 
-    if len(added) == 1:
-        app = added[0]
+    # Preserve branch and architecture for runtime queries. Additional refs
+    # can be installed through extra; include every newly installed ref.
+    query = ns.app.removeprefix("app/").split("/", 1)[0]
+    installed_ids = {ref.split("/")[1] for ref in after}
+    added_ids = {ref.split("/")[1] for ref in added}
+    if query in installed_ids:
+        app = query
+    elif len(added_ids) == 1:
+        app = next(iter(added_ids))
     else:
-        app = resolve_user_app(ns.app)
+        app = resolve_user_app(query)
+    targets = set(added)
+    requested_ids = {
+        arg.removeprefix("app/").split("/", 1)[0]
+        for arg in ns.extra if not arg.startswith("-")
+    }
+    for ref in after:
+        app_id = ref.split("/")[1]
+        if app_id == app or app_id in requested_ids:
+            targets.add(ref)
 
-    if is_managed(app):
-        apply_override(app)
-    elif ns.unmanaged:
-        print(f"\nNot managed (--unmanaged): {app}")
-    else:
-        print()
-        list_add(app, ns.remote)
+    install_args = [
+        arg for arg in ns.extra
+        if arg in ("-y", "--assumeyes", "--noninteractive")
+    ]
+    for ref in sorted(targets):
+        ensure_user_runtime(ref, install_args)
+
+    for app in sorted({ref.split("/")[1] for ref in targets}):
+        if is_managed(app):
+            apply_override(app)
+        elif ns.unmanaged:
+            print(f"\nNot managed (--unmanaged): {app}")
+        else:
+            print()
+            list_add(app, ns.remote)
 
 def cmd_remove(ns):
     need_flatpak()
@@ -693,6 +762,15 @@ def user_apps():
         capture=True,
     )
     return [x.strip() for x in p.stdout.splitlines() if x.strip()]
+
+
+def user_app_refs():
+    # Flatpak's ref column is ID/ARCH/BRANCH; add the kind explicitly.
+    output = run(
+        ["flatpak", "list", "--user", "--app", "--columns=ref"],
+        capture=True,
+    ).stdout.splitlines()
+    return [f"app/{ref.strip()}" for ref in output if ref.strip()]
 
 
 def cmd_run(ns):
@@ -1127,6 +1205,9 @@ def cmd_apply():
                 ]
             )
 
+        for ref in user_app_refs():
+            if ref.split("/")[1] == app:
+                ensure_user_runtime(ref, ["-y"])
         apply_override(app)
 
     for path in OVERRIDES.glob("*.conf"):
@@ -1154,84 +1235,213 @@ def cmd_declare(cmd, args):
     declare_hint(action, snippet.format(*args))
 
 
+COMMAND_HELP = {
+    "install": "Установить приложения и их runtimes в пользовательскую установку.",
+    "manage": "Добавить установленное приложение в flatpak/apps.txt.",
+    "unmanage": "Убрать приложение из flatpak/apps.txt, оставив его установленным.",
+    "remove": "Удалить пользовательское приложение; по умолчанию также удалить данные.",
+    "permissions": "Показать права приложения, текущие и объявленные overrides.",
+    "reset-permissions": "Сбросить overrides и права порталов приложения.",
+    "info": "Показать сведения об установленном пользовательском приложении.",
+    "filesystem": "Объявить доступ приложения к каталогу в overrides.txt.",
+    "unfilesystem": "Убрать объявленный доступ к каталогу из overrides.txt.",
+    "host": "Объявить filesystem=host для приложения.",
+    "unhost": "Убрать объявленный filesystem=host для приложения.",
+    "env": "Объявить или заменить переменную окружения приложения.",
+    "unenv": "Убрать объявленную переменную окружения приложения.",
+    "talk": "Объявить доступ приложения к имени D-Bus session bus.",
+    "untalk": "Убрать объявленный доступ к имени D-Bus session bus.",
+    "remote-add": "Показать декларацию нового remote для flatpak/flatpak.nix.",
+    "update": "Обновить пользовательские приложения и runtimes.",
+    "cleanup": "Удалить неиспользуемые пользовательские runtimes.",
+    "list": "Показать пользовательские приложения и runtimes.",
+    "search": "Найти приложения в настроенных Flatpak remotes.",
+    "run": "Запустить приложение через .desktop или flatpak run.",
+    "check": "Проверить приложения, remotes, overrides и desktop-файлы.",
+    "status": "Показать пользовательскую, системную и объявленную конфигурацию Flatpak.",
+    "test": "Проверить порталы, PipeWire и конфигурацию; вывести ручной чеклист.",
+    "apply": "Установить объявленные приложения, их runtimes и применить overrides.",
+    "help": "Показать общую справку или справку по команде.",
+}
+
+OVERRIDE_HELP = """APP — ID, имя или однозначная часть имени установленного приложения.
+Команды un… также принимают ID приложения из overrides.txt после его удаления.
+Значение должно быть одним словом без пробелов и #.
+
+Изменение записывается в flatpak/overrides.txt; чтобы применить его:
+  ws switch && wsflatpak apply
+При apply текущие overrides управляемого приложения сбрасываются и заменяются
+объявленными. Ручные изменения через Flatseal при этом исчезают.
+"""
+
+COMMAND_DETAILS = {
+    "install": """Приложения и runtimes устанавливаются с --user, обычно в ~/.local/share/flatpak.
+Runtime устанавливается для пользователя, даже если уже доступен системно.
+Дополнительная установка зависимости не создаёт автоматический pin.
+
+Флаги --remote и --unmanaged указывайте перед APP.
+После APP можно указать другие приложения, ветку или аргументы flatpak install.
+Новые приложения добавляются в flatpak/apps.txt; затем выполните ws switch.
+Объявленные overrides нового приложения применяются через wsflatpak apply.
+
+Примеры:
+  wsflatpak install org.videolan.VLC
+  wsflatpak install org.gimp.GIMP org.videolan.VLC -y
+  wsflatpak install --remote flatpark com.anthropic.ClaudeDesktop
+  wsflatpak install --unmanaged app/org.mozilla.firefox/x86_64/beta
+""",
+    "manage": """APP — ID, имя или однозначная часть имени установленного приложения.
+Без REMOTE используется origin приложения, затем flathub как запасной вариант.
+Изменение записывается в flatpak/apps.txt; выполните ws switch.
+
+Пример: wsflatpak manage org.videolan.VLC
+""",
+    "unmanage": """Укажите точный App ID из flatpak/apps.txt. Приложение не удаляется.
+Выполните ws switch, чтобы обновить собранный список управляемых приложений.
+
+Пример: wsflatpak unmanage org.videolan.VLC
+""",
+    "remove": """По умолчанию используется flatpak uninstall --user --delete-data.
+--keep-data сохраняет данные приложения.
+Управляемое приложение сначала исключите из конфигурации:
+  wsflatpak unmanage org.videolan.VLC
+  ws switch
+  wsflatpak remove org.videolan.VLC
+""",
+    "reset-permissions": """Объявленные overrides остаются в конфигурации и восстанавливаются при apply.
+Для постоянного изменения используйте unfilesystem, unhost, unenv или untalk.
+""",
+    "remote-add": """Команда печатает строку NAME = "URL"; для remotes в flatpak/flatpak.nix.
+После правки файла выполните ws switch && wsflatpak apply.
+
+Пример: wsflatpak remote-add example https://example.org/repo.flatpakrepo
+""",
+    "run": """Без аргументов приложения используется gtk-launch, если экспортирован .desktop.
+--direct или аргументы приложения переключают запуск на flatpak run.
+Укажите --direct перед APP; аргументы приложения — после APP.
+
+Примеры:
+  wsflatpak run org.videolan.VLC
+  wsflatpak run --direct org.videolan.VLC /home/user/video.mkv
+""",
+    "apply": """Добавляет объявленные user remotes, устанавливает отсутствующие приложения
+и обеспечивает user runtime для всех установленных веток управляемых приложений.
+Затем сбрасывает их overrides, применяет объявленные значения и запускает check.
+Перед apply выполните ws switch, чтобы собрать изменения конфигурации.
+Ссылки на свои .desktop устанавливаются через ws switch.
+""",
+    "check": """Код возврата 1 означает ошибки, 0 — отсутствие ошибок; предупреждения допустимы.
+--json выводит объект с status, passes, warnings, failures и messages.
+Системные remotes и системные приложения/runtimes считаются ошибкой политики.
+""",
+    "cleanup": """Передаёт аргументы в flatpak uninstall --user --unused.
+Runtimes с ручным pin сохраняются.
+
+Пример: wsflatpak cleanup -y
+""",
+}
+
+
 def build_parser():
-    p = argparse.ArgumentParser(prog="wsflatpak")
-    sp = p.add_subparsers(dest="cmd", required=True)
+    p = argparse.ArgumentParser(
+        prog="wsflatpak",
+        description="Пользовательские Flatpak-приложения и их конфигурация в wsconfig.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""Установка в домашний каталог:
+  wsflatpak install org.videolan.VLC
+  wsflatpak install --unmanaged org.gimp.GIMP
+  wsflatpak install --remote flatpark com.anthropic.ClaudeDesktop
+  ws switch && wsflatpak apply
 
-    q = sp.add_parser("install")
-    q.add_argument(
-        "--remote",
-        default="flathub",
-        help="Flatpak remote to install from (default: flathub)",
+Приложения и runtimes — обычно ~/.local/share/flatpak, данные — ~/.var/app/APP_ID.
+Доступ к домашним файлам задаётся отдельно через filesystem/host.
+install/manage/unmanage редактируют flatpak/apps.txt.
+filesystem/host/env/talk и un… редактируют flatpak/overrides.txt.
+ws switch собирает эти списки; apply применяет собранную конфигурацию.
+
+Справка по команде: wsflatpak help install или wsflatpak install --help.
+Подробное руководство: helpws flatpak / man ws-flatpak.
+""",
     )
-    q.add_argument(
-        "--unmanaged",
-        action="store_true",
-        help=f"do not add the app to {APPS_LIST.name}",
-    )
-    q.add_argument("app")
-    q.add_argument("extra", nargs=argparse.REMAINDER)
+    sp = p.add_subparsers(dest="cmd", required=True, title="Команды", metavar="COMMAND")
 
-    q = sp.add_parser("manage")
-    q.add_argument("app")
-    q.add_argument("remote", nargs="?")
+    def command(name, **kwargs):
+        detail = COMMAND_DETAILS.get(name)
+        if name.removeprefix("un") in ("filesystem", "host", "env", "talk"):
+            detail = OVERRIDE_HELP
+        return sp.add_parser(
+            name, help=COMMAND_HELP[name], description=COMMAND_HELP[name],
+            epilog=detail, formatter_class=argparse.RawDescriptionHelpFormatter,
+            **kwargs,
+        )
 
-    q = sp.add_parser("unmanage")
-    q.add_argument("app")
+    q = command("install")
+    q.add_argument("--remote", default="flathub",
+                   help="пользовательский remote (по умолчанию flathub)")
+    q.add_argument("--unmanaged", action="store_true",
+                   help="не добавлять приложение в flatpak/apps.txt")
+    q.add_argument("app", metavar="APP", help="App ID, запрос Flatpak или полный ref")
+    q.add_argument("extra", nargs=argparse.REMAINDER, metavar="ARG",
+                   help="другие приложения, ветка или аргументы flatpak install")
 
-    q = sp.add_parser("remove", aliases=["uninstall"])
-    q.add_argument("--keep-data", action="store_true")
-    q.add_argument("app")
+    q = command("manage")
+    q.add_argument("app", metavar="APP", help="установленное приложение")
+    q.add_argument("remote", nargs="?", metavar="REMOTE", help="remote для apps.txt")
+
+    q = command("unmanage")
+    q.add_argument("app", metavar="APP", help="точный App ID из apps.txt")
+
+    q = command("remove", aliases=["uninstall"])
+    q.add_argument("--keep-data", action="store_true", help="сохранить данные приложения")
+    q.add_argument("app", metavar="APP", help="установленное приложение")
 
     for name in ("permissions", "reset-permissions", "info"):
-        q = sp.add_parser(name)
-        q.add_argument("app")
+        q = command(name)
+        q.add_argument("app", metavar="APP", help="ID, имя или часть имени приложения")
 
-    # Lines of flatpak/overrides.txt.
-    for name, arg in (
-        ("filesystem", "spec"),
-        ("talk", "bus"),
+    for name, arg, detail in (
+        ("filesystem", "SPEC", "каталог и режим: host, home:ro, xdg-download, /path:rw"),
+        ("talk", "BUS", "имя D-Bus session bus, например org.freedesktop.Flatpak"),
     ):
         for cmd in (name, "un" + name):
-            q = sp.add_parser(cmd)
-            q.add_argument("app")
-            q.add_argument("value", metavar=arg.upper())
+            q = command(cmd)
+            q.add_argument("app", metavar="APP", help="приложение")
+            q.add_argument("value", metavar=arg, help=detail)
     for cmd in ("host", "unhost"):
-        q = sp.add_parser(cmd)
-        q.add_argument("app")
-    q = sp.add_parser("env")
-    q.add_argument("app")
-    q.add_argument("key", metavar="KEY[=VALUE]")
-    q.add_argument("value", nargs="?")
-    q = sp.add_parser("unenv")
-    q.add_argument("app")
-    q.add_argument("key", metavar="KEY")
+        q = command(cmd)
+        q.add_argument("app", metavar="APP", help="приложение")
+    q = command("env")
+    q.add_argument("app", metavar="APP", help="приложение")
+    q.add_argument("key", metavar="KEY[=VALUE]", help="переменная или KEY=VALUE")
+    q.add_argument("value", nargs="?", metavar="VALUE", help="значение переменной")
+    q = command("unenv")
+    q.add_argument("app", metavar="APP", help="приложение")
+    q.add_argument("key", metavar="KEY", help="имя объявленной переменной")
 
-    # Remotes are declared in flatpak.nix: print what to declare.
     for name in DECLARE:
-        q = sp.add_parser(name)
-        q.add_argument("args", nargs="*")
+        q = command(name)
+        q.add_argument("args", nargs="*", metavar="NAME URL", help="имя и URL remote")
 
     for name in ("update", "cleanup", "list", "search"):
-        q = sp.add_parser(name)
-        q.add_argument("args", nargs=argparse.REMAINDER)
+        q = command(name)
+        q.add_argument("args", nargs=argparse.REMAINDER, metavar="ARG",
+                       help="аргументы соответствующей команды Flatpak")
 
-    q = sp.add_parser("run")
-    q.add_argument(
-        "--direct",
-        action="store_true",
-        help="use flatpak run directly instead of desktop launcher",
-    )
-    q.add_argument("app")
-    q.add_argument("args", nargs=argparse.REMAINDER)
+    q = command("run")
+    q.add_argument("--direct", action="store_true", help="запускать напрямую через flatpak run")
+    q.add_argument("app", metavar="APP", help="установленное приложение")
+    q.add_argument("args", nargs=argparse.REMAINDER, metavar="ARG", help="аргументы приложения")
 
-    q = sp.add_parser("check")
-    q.add_argument("--json", action="store_true",
-                   help="one result object for ws check")
+    q = command("check")
+    q.add_argument("--json", action="store_true", help="вывести результат в JSON")
 
     for name in ("status", "test", "apply"):
-        sp.add_parser(name)
+        command(name)
 
+    q = command("help")
+    q.add_argument("command", nargs="?", choices=tuple(sp.choices), metavar="COMMAND",
+                   help="команда, для которой показать справку")
+    q.set_defaults(help_parsers=sp.choices)
     return p
 
 
@@ -1248,7 +1458,10 @@ def main():
     elif hasattr(ns, "args"):
         ns.args += unknown
 
-    if ns.cmd == "install":
+    if ns.cmd == "help":
+        target = ns.help_parsers.get(ns.command, parser)
+        target.print_help()
+    elif ns.cmd == "install":
         cmd_install(ns)
     elif ns.cmd == "manage":
         need_flatpak()

@@ -17,6 +17,7 @@ let
   remotes = {
     flathub = "https://dl.flathub.org/repo/flathub.flatpakrepo";
     flatpark = "https://dl.flatpark.org/flatpark.flatpakrepo";
+    chatgpt = "https://rulin132.github.io/chatgpt-flatpak/chatgpt.flatpakrepo";
   };
 
   # REMOTE APP lines of apps.txt, in order; wsflatpak edits that file.
@@ -65,6 +66,7 @@ let
   desktop = [
     ./desktop/com.anthropic.ClaudeDesktop.desktop
     ./desktop/com.valvesoftware.Steam.desktop
+    ./desktop/io.github.rulin132.ChatGPT.desktop
   ];
 
   toIni = lib.generators.toINI {
