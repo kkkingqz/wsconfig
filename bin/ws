@@ -19,7 +19,7 @@ Usage:
   ws baseline capture|diff|list ...
   ws checkpoint create|list|show|diff|remove ...
   ws collect [--no-firmware] [ARCHIVE]
-  ws backup plan|status|check|send|restore-test ...
+  ws backup [plan|status|check|send|restore-test ...]
   ws host
   ws fact NAME
   ws news
@@ -87,7 +87,8 @@ baseline  functional baseline, see ws-baseline --help
 collect   archive of the machine state a rebuild needs and the repository
           does not hold (baseline, boot and disks, apt, Apple firmware,
           ~/.local/state/workstation), see ws-collect --help; asks sudo
-backup    native Btrfs backup to Unraid; plan/status work before SSH is configured;
+backup    Timeshift snapshots to Unraid, then retain final local ro parents;
+          plan/status work before SSH is configured;
           see wsbackup --help and helpws backup
 checkpoint  which commit matched which working state (home-manager
           generation, system tree, kernel, baseline), see ws-checkpoint --help

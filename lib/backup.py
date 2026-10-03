@@ -72,6 +72,15 @@ def build_plan(config, scope):
             'vm_policy': 'refuse running VMs', 'automatic_prune': False}
 
 
+def build_batch_plan(config):
+    plan = build_plan(config, 'all')
+    plan.update(workflow='timeshift-batch', sources={'system': 'Timeshift @', 'home': 'Timeshift @home when present'},
+                coverage='inventory at batch start; missing @home reported explicitly',
+                automatic_prune=True, local_retention='one verified parent per scope after whole batch succeeds',
+                remote_retention=False, vms='separate: ws backup send vms')
+    return plan
+
+
 def config_path():
     return Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'workstation/backup.json'
 
@@ -320,8 +329,15 @@ def restore_test(c, scope, id, target, paths, state):
         if not re.fullmatch(r'[A-Za-z0-9_./-]+', rel) or rel.startswith('/') or '..' in rel.split('/'):
             raise ValueError('unsafe verification path')
     record = read_json(state / 'snapshots' / scope / (id + '.json'), None)
+    if record is None:
+        record = read_json(state / 'timeshift/records' / (id + '.json'), None)
+        if record and (record.get('owner') != 'timeshift' or record.get('status') != 'success' or
+                       record.get('scope') != scope):
+            record = None
     if not record or record.get('identity') != identity(c):
         raise ValueError('snapshot has no successful record for this configuration')
+    if record.get('local_present') is False:
+        raise ValueError('local baseline removed; checksum comparison unavailable for this snapshot')
     with operation(state, 'restore-test ' + scope) as (_, stage):
         stage('receiver probe'); probe(c)
         remote_meta = remote(c, ['inspect', c['remote_host_id'], scope, id])
@@ -351,33 +367,45 @@ def main(argv=None):
         raise InterruptedError('terminated; see operation record')
     signal.signal(signal.SIGTERM, terminated)
     parser = argparse.ArgumentParser(description=__doc__)
-    sub = parser.add_subparsers(dest='command', required=True)
+    sub = parser.add_subparsers(dest='command')
     p = sub.add_parser('plan')
-    p.add_argument('scope', choices=[*SOURCES, 'all'], nargs='?', default='all')
+    p.add_argument('scope', choices=[*SOURCES, 'all'], nargs='?')
     sub.add_parser('status')
     p = sub.add_parser('check')
     p.add_argument('--remote', action='store_true')
     p = sub.add_parser('send')
     p.add_argument('scope', choices=[*SOURCES, 'all'])
     p = sub.add_parser('restore-test')
-    p.add_argument('scope', choices=list(SOURCES))
+    p.add_argument('scope', choices=['system', *SOURCES])
     p.add_argument('id')
     p.add_argument('target', type=Path)
     p.add_argument('--verify', action='append', required=True, metavar='RELATIVE_FILE')
     args = parser.parse_args(argv)
     c = load_config(config_path())
-    plan = build_plan(c, getattr(args, 'scope', 'all'))
+    scope = getattr(args, 'scope', None)
+    plan = build_plan(c, scope) if args.command in {'plan', 'send'} and scope else build_batch_plan(c)
     if args.command == 'plan':
         print(json.dumps(plan, indent=2))
     elif args.command == 'status':
+        from backup_timeshift import read_records
+        records = read_records(c, state_path())
         print(json.dumps({'configured': plan['configured'], 'missing': plan['missing'],
                           'state_directory': str(state_path()),
                           'last_success': read_json(state_path() / 'last-success.json', {}),
-                          'restore_tests': [read_json(p, {}) for p in sorted((state_path() / 'restore-tests').glob('*.json'))]}, indent=2))
+                          'restore_tests': [read_json(p, {}) for p in sorted((state_path() / 'restore-tests').glob('*.json'))],
+                          'timeshift': {'records': records,
+                                        'pending': [r for r in records if r['status'] in {'importing', 'pending'}],
+                                        'inventory': read_json(state_path() / 'timeshift/inventory.json', {}),
+                                        'retained': read_json(state_path() / 'timeshift/parents.json', {}),
+                                        'last_batch': read_json(state_path() / 'timeshift/last-batch.json', {}),
+                                        'cleanup': read_json(state_path() / 'timeshift/cleanup.json', {})}}, indent=2))
     else:
         if plan['missing']:
             raise ValueError('configuration incomplete: ' + ', '.join(plan['missing']))
-        if args.command == 'check':
+        if args.command is None:
+            from backup_timeshift import run_batch
+            print(json.dumps(run_batch(c, state_path()), indent=2))
+        elif args.command == 'check':
             result = probe(c) if args.remote else plan
             print(json.dumps(result, indent=2))
         elif args.command == 'send':
@@ -387,6 +415,8 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
+    # Lazy batch imports share the coordinator primitives when invoked as a script.
+    sys.modules['backup'] = sys.modules[__name__]
     try:
         main()
     except (ValueError, OSError) as e:

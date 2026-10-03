@@ -37,7 +37,7 @@ complete -c ws -n __ws_needs_command -a collect -d 'Machine state archive for a 
 complete -c ws -n __ws_needs_command -a backup -d 'Native Btrfs backup to Unraid'
 complete -c ws -n '__ws_at backup' -a 'plan status check send restore-test'
 complete -c ws -n '__ws_at backup plan; or __ws_at backup send' -a 'home vms all'
-complete -c ws -n '__ws_at backup restore-test' -a 'home vms'
+complete -c ws -n '__ws_at backup restore-test' -a 'system home vms'
 complete -c ws -n '__ws_at backup check' -l remote -d 'Check configured receiver over SSH'
 complete -c ws -n __ws_needs_command -a host -d 'Flake host of this machine'
 complete -c ws -n __ws_needs_command -a fact -d 'String fact of this host'

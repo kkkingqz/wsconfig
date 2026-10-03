@@ -1,41 +1,63 @@
 title: ws-backup
 section: 1
-date: 2026-10-02
+date: 2026-10-03
 source: Workstation
 volume: User Commands
 
 # BACKUP — BTRFS / UNRAID
 
-Механизм подготовлен для @home и @vms. SSH-адрес пока не задан, реальный
+Механизм подготовлен для снимков Timeshift (@ и @home) и отдельного @vms.
+SSH-адрес пока не задан, реальный
 сервер не проверен. Backup считается работающим только после передачи и
 проверки восстановления. Подготовка NAS — также `docs/plans/unraid-backup-preparation.md`.
 
 ## Команды
 
 ```console
-ws backup plan [home|vms|all]          # без сети, sudo и создания snapshots
+ws backup                             # все существующие снимки Timeshift, затем очистка ro-копий
+ws backup plan                        # Timeshift workflow без сети, sudo и snapshots
+ws backup plan home|vms|all            # план отдельного backup текущих live sources
 ws backup status                      # конфигурация, успешные передачи, restore tests
 ws backup check                       # проверка полноты локальной конфигурации
 ws backup check --remote              # проверка receiver по SSH
 ws backup send home|vms|all
-ws backup restore-test home|vms ID TARGET --verify RELATIVE_FILE
+ws backup restore-test system|home|vms ID TARGET --verify RELATIVE_FILE
 ```
 
 `plan/status` работают без адреса. `check` без `--remote` проверяет формат и
 полноту config, а не фактическое состояние Btrfs. Источники проверяются root
-helper перед snapshot. Без полной конфигурации send/restore отказывают до
-sudo и сети. `all` сохраняет каждый scope отдельно: успешный HOME не отменяется
+helper перед snapshot. Без полной конфигурации backup/send/restore отказывают до
+sudo и сети. `send all` сохраняет каждый scope отдельно: успешный HOME не отменяется
 при отказе VM. Запись последнего успешного parent меняется только после
 успешных процессов и проверки received_uuid/ro на NAS.
 
 ## Что попадает в копию
 
-@home целиком: все пользователи /home, проекты, настройки, .var/app,
+По умолчанию читаются завершённые Btrfs-снимки Timeshift из
+`timeshift-btrfs/snapshots` на source filesystem. Helper создаёт собственный
+read-only mount top-level subvolid=5 в закрытом временном каталоге `/run`,
+проверяет UUID и размонтирует только свой mount. Порядок — от старых к новым
+по metadata Timeshift; inventory фиксируется на начало запуска.
+
+`@` передаётся как system, `@home` — как home, каждый через отдельную ro-копию.
+Отсутствующий @home виден в `missing_home`; текущий HOME вместо него не
+снимается. Повреждённые/неполные metadata перечислены в `excluded` с причиной.
+Coverage определяется составом Timeshift: содержимое вложенных subvolumes и
+отдельных mounts Btrfs send рекурсивно не переносит. @vms сюда не входит.
+Команда не создаёт новые Timeshift-снимки и не меняет их ro-флаги или retention.
+
+Повторно подтверждённый origin UUID пропускается после проверки снимка на NAS.
+Writable Timeshift-снимок фиксируется при первом импорте. Изменения после
+загрузки в тот же снимок из GRUB не версионируются повторным запуском backup;
+для новой версии нужен новый Timeshift-снимок. Совпадение имени при другом UUID
+считается новым источником.
+
+Отдельный `send home` снимает текущий @home целиком: все пользователи /home, проекты, настройки, .var/app,
 HOME Distrobox/Wine и caches. Нативный btrfs send не исключает файлы.
 Вложенные subvolumes и отдельные mounts не копируются рекурсивно;
 при их обнаружении snapshot отказывает до явного решения о дополнительном scope.
 
-@vms целиком: диски, XML, NVRAM, TPM из `/var/lib/vms`. VM должны быть
+`send vms` снимает @vms целиком: диски, XML, NVRAM, TPM из `/var/lib/vms`. VM должны быть
 выключены и не запускаться во время snapshot; активные VM или ошибка libvirt
 останавливают операцию. Автоматического shutdown/freeze нет. Состояние
 проверяется до и после snapshot; администратор обеспечивает окно без запуска VM.
@@ -62,8 +84,9 @@ HOME snapshot согласован на уровне filesystem; для важн
 ```
 
 Это пример, не готовая конфигурация. Получить настоящий source UUID:
-`findmnt -nro UUID -T /home`, отдельно сверить /var/lib/vms. Оба scope
-первой версии ожидаются на одном source filesystem, subvolumes @home/@vms.
+`findmnt -nro UUID -T /`, сверить Timeshift storage, /home и /var/lib/vms.
+Поддерживается Timeshift Btrfs layout @/@home на source filesystem;
+отдельный @vms ожидается на том же filesystem для `send vms`.
 Paths и IDs ограничены ASCII без пробелов, `..`, управляющих символов.
 
 В `~/.ssh/config` создать alias wsbackup-unraid с HostName, User root,
@@ -83,7 +106,7 @@ Helper не устанавливается в /usr/local и не получае�
 Перед каждым требующим root действием координатор выполняет `sudo -v`
 с видимым запросом в терминале. Затем helper запускается через `sudo -n`
 с сохранением управляющего терминала. Пароль не читается из Btrfs stream.
-Запускать send/restore-test из терминала; при отсутствии авторизации операция
+Запускать backup/send/restore-test из терминала; при отсутствии авторизации операция
 отказывает до запуска передачи. Скрипты запускаются
 на Ubuntu host; из Flatpak сначала использовать `flatpak-spawn --host`.
 
@@ -123,7 +146,9 @@ restrict,command="/bin/bash /usr/local/libexec/wsbackup/unraid/wsbackup-receiver
 перезагрузки средствами именно установленной версии Unraid.
 
 Receiver поддерживает только probe, inspect, receive и send для одного HOST_ID,
-scope home/vms и безопасного snapshot ID. SSH_ORIGINAL_COMMAND не исполняется.
+scope system/home/vms и безопасного snapshot ID. SSH_ORIGINAL_COMMAND не исполняется.
+Перед первым Timeshift batch обновить receiver и общий Btrfs helper на Unraid:
+старый receiver не поддерживает system. Probe должен вернуть scopes с system/home.
 Серверные права и directory UUID проверяются перед работой. Приём сериализован
 flock. Пример ручного probe после настройки alias:
 
@@ -138,24 +163,44 @@ Free space в probe — текущая оценка filesystem. Она не га
 
 ## Состояние, ошибки и retention
 
-Локальные snapshots: SOURCE_ROOT/home/ID и SOURCE_ROOT/vms/ID.
+Локальные snapshots: SOURCE_ROOT/system/ID, SOURCE_ROOT/home/ID и SOURCE_ROOT/vms/ID.
 На NAS: REMOTE_ROOT/HOST_ID/SCOPE/ID. Полученные snapshots остаются ro.
 Изменение ro-флага общего parent нарушает условия инкрементальной передачи.
 
 Во время receive используется `.partial-ID`. Отказ оставляет его для
 диагностики и не публикует snapshot. Клиент не считает копию успешной даже
-если сервер успел опубликовать её, но связь потерялась до подтверждения:
-проверить inspect и журнал, а следующий send создаёт новый ID.
+если сервер успел опубликовать её, но связь потерялась до подтверждения.
+Timeshift batch сначала проверяет pending ID: совпадающий remote received_uuid/ro
+позволяет записать успех без повторной передачи. Если публикации нет, создаётся
+новый ID и клон сохранённой ro-копии; старый partial не заменяется и не удаляется.
+Legacy `send` создаёт новый ID при повторном запуске.
 
 `~/.local/state/workstation/backup/` содержит last-success.json, записи
 snapshots, журналы operations и restore-tests. Ошибка/SIGINT/SIGTERM записывают
 отказ; SIGKILL/потеря питания могут оставить статус running. Такой запуск
 следует считать незавершённым до проверки, не успешным.
 
-Нет автоматического удаления partial, prune или расписания. Локальные
-snapshots удерживают старые данные и расходуют место по мере изменений:
-контролировать свободное место и назначить retention после первых измерений.
-Оставлять общий parent на обеих сторонах. Если remote parent отсутствует,
+Timeshift хранит отдельные inventory, records, parents, last-batch и cleanup
+в `state/timeshift/`. `status` показывает coverage, pending, retained IDs и
+`local_present`; история остаётся после удаления копий.
+
+После успешной обработки всего inventory удаляются зарегистрированные старые
+Timeshift ro-копии. Остаётся одна последняя подтверждённая копия system и одна
+home; следующая передача использует её как parent, следующие снимки batch —
+предыдущую успешно переданную копию того же scope. Перед очисткой журнал
+parents сохраняется через fsync; retained проверяются локально и на NAS.
+Удаление — только конкретного Btrfs subvolume с совпадающим UUID и ro=true.
+Неизвестная/writable копия или UUID mismatch останавливают очистку.
+
+При ошибке передачи очистки этого запуска нет. Ошибка удаления даёт nonzero
+exit и запись cleanup.error; следующий успешный запуск, даже без новых снимков,
+завершает очистку, сохраняя parents. Если старый remote снимок исчез, ещё
+существующий Timeshift origin импортируется и передаётся с новым ID.
+
+Исходные Timeshift-снимки, legacy `send home`, VM, NAS snapshots и partials
+автоматически не удаляются. Расписания нет. Контролировать свободное место
+локально и на NAS; remote retention настраивается отдельно и должен сохранять
+общий parent. Если remote parent отсутствует,
 следующая передача становится явно обозначенным full. Writable или
 несовпадающий parent вызывает отказ.
 
@@ -164,11 +209,15 @@ snapshots удерживают старые данные и расходуют �
 Первый тест — в отдельный пустой каталог Btrfs вне /home и /var/lib/vms.
 TARGET должен находиться на source filesystem UUID, указанном в config.
 Исходный local snapshot сохраняется для сравнения контрольных сумм.
+Для Timeshift нужен retained ID из status. Очищенный ID даёт отказ
+`local baseline removed` до восстановления: без локального оригинала
+restore-test не может подтвердить SHA-256 относительно исходника.
 
 Пример (ID взять из status, создать TARGET отдельно):
 
 ```console
 ws backup restore-test home ID /var/tmp/wsbackup-restore --verify king/wsconfig/README.md
+ws backup restore-test system ID /var/tmp/wsbackup-restore --verify etc/hostname
 ```
 
 Можно повторить `--verify` для нескольких реальных обычных файлов. Symlink
@@ -188,8 +237,9 @@ vm_boot_verified остаётся false; автоматического запу
 Restore-test требует локальную successful snapshot record и сохранённый local
 snapshot. При потере SSD этот интерфейс не заменяет disaster recovery:
 использовать receiver inspect/send и локальный wsbackup-restore из восстановленного
-checkout для получения remote snapshot в пустую отдельную Btrfs директорию;
-затем возвращать данные по rebuild/virt инструкции. Проверку такого сценария
+checkout для получения remote snapshot в пустую отдельную Btrfs директорию,
+затем возвращать данные по rebuild/virt инструкции. Этот путь позволяет
+получить и старый NAS snapshot без локального baseline. Проверку такого сценария
 нужно выполнить на реальном NAS до объявления системы восстановления готовой.
 
 ## Проверка кода
