@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Timeshift input is always from our private, read-only top-level mount.
+set -euo pipefail
+export LC_ALL=C
+umask 077
+here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+. "$here/btrfs-common.bash"
+[[ $# -ge 5 && "$1" == --uuid && "$3" == --root ]] || die 'usage: --uuid UUID --root PATH inventory|import ...'
+fs_uuid="$2"; root="$4"; action="$5"; shift 5
+uuid "$fs_uuid"; safe_path "$root"
+case "$root/" in /home/*|/var/lib/vms/*|/etc/libvirt/*|/var/lib/libvirt/*) die 'root must be outside live sources' ;; esac
+filesystem_check "$root"
+btrfs subvolume show "$root" >/dev/null
+case "$action" in
+    inventory) [[ $# == 0 ]] || die 'unexpected arguments' ;;
+    import)
+        [[ $# == 4 ]] || die 'import requires scope, copy ID, Timeshift name and origin UUID'
+        scope="$1"; id="$2"; name="$3"; expected="$4"
+        [[ "$scope" == system || "$scope" == home ]] || die 'invalid Timeshift scope'
+        token "$id"; uuid "$expected"
+        [[ "$name" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}$ ]] || die 'invalid Timeshift name'
+        ;;
+    *) die 'unknown Timeshift action' ;;
+esac
+top="$(mktemp -d "${TMPDIR:-/run}/wsbackup.XXXXXXXX")"
+mounted=false
+cleanup() {
+    local code=$?
+    trap - EXIT
+    if [[ "$mounted" == true ]]; then
+        umount "$top" || { printf 'wsbackup: private mount remains at %s\n' "$top" >&2; exit 1; }
+    fi
+    rmdir "$top" || exit 1
+    exit "$code"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+device="$(blkid -U "$fs_uuid")"
+[[ -n "$device" ]] || die 'source device not found'
+mount -o ro,subvolid=5 -- "$device" "$top"
+mounted=true
+filesystem_check "$top"
+[[ "$(findmnt -nro FSROOT -T "$top")" == / ]] || die 'expected top-level Btrfs mount'
+store="$top/timeshift-btrfs/snapshots"
+if [[ "$action" == inventory ]]; then
+    python3 "$here/../lib/timeshift_inventory.py" "$store"
+else
+    python3 "$here/../lib/timeshift_inventory.py" "$store" --select "$scope" "$name" "$expected" >/dev/null
+    subvol=@; [[ "$scope" == system ]] || subvol=@home
+    src="$store/$name/$subvol"
+    safe_path "$root/$scope/$id"
+    [[ ! -e "$root/$scope/$id" ]] || die 'copy already exists'
+    mkdir -p -m0700 "$root/$scope"
+    btrfs subvolume snapshot -r "$src" "$root/$scope/$id" >&2
+    btrfs filesystem sync "$root" >&2
+    inspect_snapshot "$root/$scope/$id"
+    snapshot_json
+fi

@@ -9,7 +9,7 @@ import tempfile
 U = '11111111-1111-1111-1111-111111111111'
 
 PROGRAM = r'''#!/usr/bin/env python3
-import json, os, pathlib, sys, uuid
+import json, os, pathlib, sys, uuid, shutil
 name = pathlib.Path(sys.argv[0]).name
 a = sys.argv[1:]
 c = json.loads(pathlib.Path(os.environ['BACKUP_FIXTURE']).read_text())
@@ -17,7 +17,15 @@ if name == 'findmnt':
     field = a[a.index('-nro') + 1] if '-nro' in a else 'TARGET'
     print({'FSTYPE': c.get('fstype', 'btrfs'), 'UUID': c.get('uuid'),
            'OPTIONS': 'rw,subvol=/@home' if a[-1] == '/home' else 'rw,subvol=/@vms',
-           'TARGET': a[-1]}[field])
+           'TARGET': a[-1], 'FSROOT': '/'}[field])
+elif name == 'blkid':
+    print('/dev/fixture')
+elif name == 'mount':
+    shutil.copytree(c['timeshift_top'], a[-1], dirs_exist_ok=True)
+elif name == 'umount':
+    for entry in pathlib.Path(a[-1]).iterdir():
+        if entry.is_dir(): shutil.rmtree(entry)
+        else: entry.unlink()
 elif name == 'virsh':
     if c.get('virsh_error'): sys.exit(1)
     print(c.get('active_vm', ''), end='')
@@ -40,9 +48,13 @@ elif name == 'btrfs':
     elif op == ['subvolume', 'snapshot']:
         p.mkdir()
         (p / '.fixture-meta').write_text(json.dumps({'uuid': str(uuid.uuid4()), 'received_uuid': '-', 'ro': True}))
-        (p / 'payload').write_text(c.get('payload', 'preserved data'))
+        src = pathlib.Path(a[-2])
+        payload = (src / 'payload').read_text() if (src / 'payload').exists() else c.get('payload', 'preserved data')
+        (p / 'payload').write_text(payload)
     elif op == ['subvolume', 'create']:
         p.mkdir()
+    elif op == ['filesystem', 'sync']:
+        pass
     elif a[0] == 'send':
         if c.get('send_error'): sys.exit(1)
         m = json.loads((p / '.fixture-meta').read_text())
@@ -96,7 +108,7 @@ class Boundary:
         self.bin.mkdir()
         self.config = self.root / 'fixture.json'
         self.update()
-        for name in ('btrfs', 'findmnt', 'virsh'):
+        for name in ('btrfs', 'findmnt', 'virsh', 'blkid', 'mount', 'umount'):
             f = self.bin / name
             f.write_text(PROGRAM)
             f.chmod(0o755)
