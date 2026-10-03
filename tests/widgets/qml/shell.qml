@@ -22,12 +22,21 @@ ShellRoot {
     WidgetHost { definition: panels.entries[2]; controller: panels }
     Timer {
         property int stage: 0
-        interval: 250; repeat: true; running: Quickshell.env("WIDGETS_IPC_TEST") !== "1"
+        property int ticks: 0
+        interval: 100; repeat: true; running: Quickshell.env("WIDGETS_IPC_TEST") !== "1"
         onTriggered: {
             function check(value, message) { if (!value) { console.error(message); Qt.exit(1); } }
+            check(++ticks < 100, "QML lifecycle timed out");
+            if (stage === 1 && panels.state.widgets.small.phase === "opening") return;
+            if (stage === 2 && panels.state.widgets.small.phase === "closing") return;
+            if (stage === 3 && panels.state.widgets.large.phase === "opening") return;
+            if (stage === 4 && panels.state.widgets.large.phase === "closing") return;
             if (stage === 0) {
-                check(large.loaded && small.loaded, "both components loaded");
-                check(!panels.state.widgets.broken.available, "broken isolated");
+                check(!large.loaded && !small.loaded, "components lazy until first open");
+                check(panels.state.widgets.broken.available, "unopened broken component not loaded");
+                panels.command("show", "broken");
+                panels.command("show", "large");
+                panels.command("hide", "large");
                 check(large.widgetContext.contentWidth === 388 && small.widgetContext.contentHeight === 208, "logical context sizes");
                 panels.command("show", "small");
                 check(small.surface.visible && small.progress === 0, "transparent preparing");
@@ -35,7 +44,9 @@ ShellRoot {
                 check(small.widgetContext.contentWidth === 128 && small.widgetContext.contentHeight === 88, "clamped logical context");
                 panels.dispatch({type: "PLACED", id: "small", requestId: panels.state.widgets.small.requestId});
             } else if (stage === 1) {
-                check(panels.state.widgets.small.phase === "open", "animation completed");
+                check(panels.state.widgets.small.phase === "open", "animation completed: " + JSON.stringify(panels.state) + " progress=" + small.progress);
+                check(large.loaded && small.loaded, "components load on first open and persist");
+                check(!panels.state.widgets.broken.available, "broken isolated on first open");
                 check(small.surface.width === 184 && small.surface.height === 144, "clamped fixed surface");
                 check(small.scrollRequired, "clamped content remains scrollable");
                 small.widgetContext.requestClose();

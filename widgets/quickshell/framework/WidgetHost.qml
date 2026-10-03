@@ -11,6 +11,12 @@ Scope {
     readonly property bool loaded: loader.status === Loader.Ready
     readonly property real progress: frame.progress
     readonly property bool scrollRequired: frame.scrollRequired
+    property bool loadRequested: false
+    onWidgetStateChanged: { if (widgetState && widgetState.phase === "preparing") loadRequested = true; }
+    onLoadRequestedChanged: { if (loadRequested) Qt.callLater(loadContent); }
+    function loadContent() {
+        if (loader.status === Loader.Null) loader.setSource(Qt.resolvedUrl("../" + definition.component), {context});
+    }
     QtObject {
         id: context
         readonly property string widgetId: root.definition.id
@@ -41,7 +47,6 @@ Scope {
             onStatusChanged: {
                 if (status === Loader.Error) root.controller.dispatch({type: "AVAILABLE", id: root.definition.id, value: false, reason: "QML component failed"});
             }
-            Component.onCompleted: setSource(Qt.resolvedUrl("../" + root.definition.component), {context})
         }
     }
 }

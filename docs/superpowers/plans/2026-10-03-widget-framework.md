@@ -255,3 +255,35 @@ assert(timedOut.state.lastError !== null);
 - [QML импорт ES modules](https://doc.qt.io/qt-6/qtqml-javascript-imports.html).
 - Window API и Shell события проверяются по установленной версии GNOME 50
   и исходникам её пакетов; GNOME 51 documentation не подменяет эту проверку.
+
+## Фактическое исполнение — ветка wsconfig
+
+Задачи 1–7 реализованы отдельными коммитами; задача 8 — runtime/live smoke,
+runbook и независимое ревью. Автоматические шаги выполнены. Чекбоксы live
+матрицы не означают PASS: GNOME ещё не знает новый UUID, кнопки требуют
+обычного нового входа. Интеграция в main отложена по последнему запросу
+пользователя работать в отдельной ветке.
+
+Проверено: Python 44/44, GJS 37/37; Nix widgets-manifest, widgets-qml,
+widgets-tests, widgets-runtime, home-mbp16, home-wsvm, man. Runtime probe DPR
+1.5; production поверхности 444×604 и 344×264. Реальный GJS listener проверен
+с разрывом во время открытия, reconnect и lease expiry. QML tests проверяют
+clamp/scroll, lazy loading, broken component isolation и отключённые анимации.
+
+Независимое ревью нашло три Important: центрирование под кнопкой, сообщение
+об ошибке компонента через кнопку и lazy loading. Все воспроизведены RED и
+исправлены с GREEN tests. Дополнительных minor findings нет.
+
+Решения исполнителя:
+
+- Native worktree tool не получил repository context; использован Git
+  worktree. Цена: worktree не прикреплён в UI приложения, Git/файлы доступны.
+- Реализация остаётся в отдельной wsconfig; main с пользовательскими
+  изменениями не активируется. Цена: нужна отдельная интеграция и ws switch.
+- Scoped launcher использует свой Mesa EGL vendor после отказа discovery.
+  Цена: переносимость на другой GPU ещё требует проверки; настройки сессии
+  не изменены.
+- Реальный GNOME adapter, прочие scale и внешний монитор остаются live pending.
+  Цена: возможные дефекты native placement/input/focus ещё не исключены.
+- Hyprland adapter и содержательные системные виджеты остаются вне первого
+  этапа. Цена: для них нужны следующие реализации поверх этого framework.

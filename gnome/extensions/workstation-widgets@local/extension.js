@@ -9,6 +9,7 @@ import {IpcClient} from './lib/ipcClient.js';
 import {WindowPlacement} from './lib/windowPlacement.js';
 import {validateManifest} from './lib/manifest.mjs';
 import {shouldDismiss} from './lib/dismissal.mjs';
+import {buttonPresentation} from './lib/buttons.mjs';
 
 function readJson(path) {
     const [ok, bytes] = Gio.File.new_for_path(path).load_contents(null);
@@ -22,6 +23,7 @@ export default class WorkstationWidgets extends Extension {
         this.suppressedUntil = 0;
         this.instanceId = null;
         this.reloadTimer = 0;
+        this.errorSignature = '';
         try {
             const root = GLib.build_filenamev([GLib.get_user_config_dir(), 'workstation', 'widgets']);
             const config = readJson(`${root}/runtime.json`);
@@ -38,12 +40,17 @@ export default class WorkstationWidgets extends Extension {
             });
             this.client = new IpcClient(config, snapshot => {
                 this.buttons.update(snapshot); this.placement.update(snapshot);
+                const signature = JSON.stringify(snapshot.lastError);
+                if (snapshot.lastError && signature !== this.errorSignature) Main.notifyError('Workstation Widgets', `${snapshot.lastError.id || 'Runtime'}: ${snapshot.lastError.reason}`);
+                this.errorSignature = signature;
                 if (this.instanceId !== snapshot.instanceId && snapshot.adapter.ready) { this.instanceId = snapshot.instanceId; this.sendAnimations?.(); }
             }, () => { this.buttons.update(null); this.placement.destroy(); });
             this.buttons = new PanelButtons(entries, (id, timestamp) => {
                 this.suppressedUntil = GLib.get_monotonic_time() + 250000;
                 this.placement.timestamp = timestamp;
-                this.client.call('widgets', 'toggle', [id]).catch(error => console.error(`Workstation Widgets: ${error}`));
+                this.client.call('widgets', 'toggle', [id]).then(result => {
+                    if (result !== 'true') Main.notifyError('Виджет не открылся', buttonPresentation(this.client?.snapshot, id, id).error || `Недоступный ID: ${id}`);
+                }).catch(error => Main.notifyError('Workstation Widgets', String(error)));
             });
             this.placement = new WindowPlacement(this.client, this.buttons);
             this.settings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});

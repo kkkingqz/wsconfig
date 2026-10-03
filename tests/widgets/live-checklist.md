@@ -8,6 +8,8 @@ Verified:
 - Runtime probe: Qt DPR 1.5, transparent Wayland window, 420×580 logical.
 - Production manifest loads both components; real GJS client receives
   stateChanged and snapshot, obtains/renews lease and addresses both IDs.
+- Forced listener loss during opening reconnects to the same runtime instance
+  and request; status remains authoritative. No stale request is restored.
 - Manual placement acknowledgement starts animation, hide waits for animation.
 - Real compositor frames including gutters: example 444×604, compact 344×264.
   Observed positions (802,319) and (852,489) are compositor default placements
@@ -16,6 +18,8 @@ Verified:
   lease expiry. All temporary runtime/client processes are terminated by tests.
 - Headless clamp: compact panel 160×120, fixed surface 184×144, context 128×88,
   overflowing content remains scrollable. Broken QML is isolated.
+  Contents load on first open, remain instantiated after close; disabled
+  animations finish correctly. Pure button policy reports component errors.
 
 Pending after loading the extension in a new GNOME session:
 

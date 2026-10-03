@@ -17,6 +17,13 @@ try {
         await wait(() => client.snapshot.widgets[id].phase === 'preparing');
         const requestId = client.snapshot.widgets[id].requestId;
         assert(await client.call('widgetAdapter', 'placed', [id, requestId]) === 'true', 'placement accepted');
+        if (id === 'example') {
+            await wait(() => client.snapshot.widgets[id].phase === 'opening');
+            const generation = client.generation, instance = client.snapshot.instanceId;
+            client.listener.force_exit();
+            await wait(() => client.generation > generation && client.snapshot?.adapter.ready);
+            assert(client.snapshot.instanceId === instance && client.snapshot.widgets[id].requestId === requestId, 'reconnect preserves authoritative instance and request');
+        }
         await wait(() => client.snapshot.widgets[id].phase === 'open');
         await delay(300);
         assert(await client.call('widgets', 'hide', [id]) === 'true', 'hide accepted');
