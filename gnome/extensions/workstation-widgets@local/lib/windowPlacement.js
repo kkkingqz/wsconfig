@@ -13,19 +13,31 @@ export class WindowPlacement {
         this.snapshot = snapshot;
         for (const [key, job] of this.jobs) {
             const state = snapshot.widgets[job.id];
-            if (snapshot.instanceId !== job.instance || state?.requestId !== job.requestId || state?.phase !== 'preparing') { GLib.source_remove(job.timer); this.jobs.delete(key); }
+            const phases = job.reposition ? ['opening', 'open'] : ['preparing'];
+            if (snapshot.instanceId !== job.instance || state?.requestId !== job.requestId || !phases.includes(state?.phase)) { GLib.source_remove(job.timer); this.jobs.delete(key); }
         }
         for (const [id, state] of Object.entries(snapshot.widgets)) {
             const key = `${snapshot.instanceId}:${id}:${state.requestId}`;
             if (state.phase !== 'preparing' || this.jobs.has(key)) continue;
-            const job = {id, instance: snapshot.instanceId, requestId: state.requestId, start: GLib.get_monotonic_time(), busy: false, geometry: null};
+            this.queueJob(id, state, snapshot);
+        }
+    }
+    reposition() {
+        const snapshot = this.snapshot;
+        if (!snapshot?.selectedId) return;
+        const state = snapshot.widgets[snapshot.selectedId];
+        if (['opening', 'open'].includes(state.phase)) this.queueJob(snapshot.selectedId, state, snapshot, true);
+    }
+    queueJob(id, state, snapshot, reposition = false) {
+            const key = `${snapshot.instanceId}:${id}:${state.requestId}`;
+            if (this.jobs.has(key)) return;
+            const job = {id, instance: snapshot.instanceId, requestId: state.requestId, start: GLib.get_monotonic_time(), busy: false, geometry: null, reposition};
             this.jobs.set(key, job);
             job.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 25, () => {
                 if (GLib.get_monotonic_time() - job.start > 1900000) { this.jobs.delete(key); this.fail(job, 'GNOME placement timed out'); return GLib.SOURCE_REMOVE; }
                 if (!job.busy) this.place(job, snapshot).catch(error => { this.fail(job, String(error)); });
                 return GLib.SOURCE_CONTINUE;
             });
-        }
     }
     async place(job, snapshot) {
         const window = this.find(snapshot, job.id);
@@ -57,8 +69,13 @@ export class WindowPlacement {
             window.move_resize_frame(false, position.x, position.y, position.width, position.height);
             const actual = window.get_frame_rect();
             if (['x', 'y', 'width', 'height'].some(k => Math.abs(actual[k] - position[k]) > 1)) return;
-            window.activate(this.timestamp || global.get_current_time());
-            await this.client.call('widgetAdapter', 'placed', [job.id, job.requestId]);
+            if (job.reposition) {
+                GLib.source_remove(job.timer);
+                this.jobs.delete(`${job.instance}:${job.id}:${job.requestId}`);
+            } else {
+                window.activate(this.timestamp || global.get_current_time());
+                await this.client.call('widgetAdapter', 'placed', [job.id, job.requestId]);
+            }
         } finally { job.busy = false; }
     }
     fail(job, reason) { this.client.call('widgetAdapter', 'placementFailed', [job.id, job.requestId, reason]).catch(() => {}); }
