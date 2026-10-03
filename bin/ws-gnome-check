@@ -189,6 +189,12 @@ if have gnome-extensions; then
 fi
 
 for uuid in $(ext_list local); do
+    if mismatches="$(python3 "$repo/lib/gnome_extension_files.py" verify \
+        "$repo/gnome/extensions/$uuid" "$HOME/.local/share/gnome-shell/extensions/$uuid")"; then
+        pass "$uuid source modules/assets match runtime"
+    else
+        fail "$uuid runtime modules/assets differ: $mismatches (ws apply extensions)"
+    fi
     for file in metadata.json extension.js; do
         src="$repo/gnome/extensions/$uuid/$file"
         dst="$HOME/.local/share/gnome-shell/extensions/$uuid/$file"

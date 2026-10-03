@@ -33,6 +33,11 @@
       # Man pages from docs/ with lowdown from nixpkgs.
       man = pkgs.callPackage ./nix/pkgs/man.nix { };
       widgetsRuntime = import ./widgets/runtime { inherit pkgs; };
+      widgetsManifest = import ./widgets/manifest.nix {
+        inherit lib;
+        registry = import ./widgets/registry.nix;
+        qmlRoot = ./widgets/quickshell;
+      };
 
       # System file tree of the host; `ws system diff|check` compares it.
       mkSystem = host: pkgs.callPackage ./system { facts = factsOf host; };
@@ -47,7 +52,11 @@
       checks.${system} = perHost (host: [
         { name = "home-${host}"; value = (mkHome host).activationPackage; }
         { name = "system-${host}"; value = mkSystem host; }
-      ]) // { inherit man; };
+      ]) // {
+        inherit man;
+        widgets-manifest = assert import ./widgets/test-manifest.nix { inherit lib; };
+          pkgs.writeText "widgets-manifest.json" (builtins.toJSON widgetsManifest);
+      };
 
       # Tools `ws` runs, pinned by flake.lock.
       packages.${system} = perHost (host: [

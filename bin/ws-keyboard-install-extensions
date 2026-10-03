@@ -38,26 +38,16 @@ PY
 
     mkdir -p "$dst"
 
-    install -m0644 "$src/metadata.json" "$dst/metadata.json"
-    install -m0644 "$src/extension.js" "$dst/extension.js"
+    python3 "$repo/lib/gnome_extension_files.py" install "$src" "$dst"
 
     if [[ "$has_schema" == true ]]; then
         mkdir -p "$dst/schemas"
-
-        find "$dst/schemas" -maxdepth 1 -type f \
-            \( -name '*.gschema.xml' -o -name 'gschemas.compiled' \) \
-            -delete
-
-        local schema
-        for schema in "$schema_dir"/*.gschema.xml; do
-            install -m0644 "$schema" "$dst/schemas/${schema##*/}"
-        done
 
         glib-compile-schemas "$dst/schemas"
         [[ -f "$dst/schemas/gschemas.compiled" ]] \
             || die "schema compilation did not create $dst/schemas/gschemas.compiled"
     else
-        rm -rf -- "$dst/schemas"
+        rm -f -- "$dst/schemas/gschemas.compiled"
     fi
 
     cmp -s "$src/metadata.json" "$dst/metadata.json" \
