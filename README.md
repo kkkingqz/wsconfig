@@ -68,4 +68,11 @@ ws check                        проверки всех владельцев �
 ws checkpoint create NAME       какой коммит соответствует рабочему состоянию
 ws baseline capture NAME        функциональный снимок для сравнения
 ws collect                      архив машины перед переустановкой (sudo)
+ws backup                       снимки Timeshift на Unraid и очистка старых ro-копий
+ws backup plan                  план Timeshift backup, без SSH и изменений
 ```
+
+Backup: `helpws backup`. Механизм Btrfs send/receive подготовлен; адрес Unraid,
+первый реальный перенос и restore test ещё нужны. Конфигурация — локальная,
+таймера нет. После успешного batch остаётся по одному ro-parent system/home;
+оригиналы Timeshift и копии на NAS не удаляются. VM передаются через `ws backup send vms`.

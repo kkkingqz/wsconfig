@@ -61,6 +61,12 @@ T2-specific config files
 
 # 2a. Backup VM — @vms (обязательно)
 
+Механизм подготовлен: `ws backup plan|send|restore-test`, `helpws backup`.
+Цель выбрана — Unraid с Btrfs. SSH-адрес и рабочая конфигурация пока не заданы;
+первый реальный перенос HOME/@vms и восстановление ещё не выполнены.
+Native backup копирует subvolumes целиком, включая caches HOME. Нет расписания
+и автоматической retention. Детали подготовки NAS — `helpws backup`.
+
 Всё состояние VM — на subvolume `@vms` (`/var/lib/vms`, `helpws virt`):
 диски, NVRAM, TPM, описания. Root snapshots его не содержат, `ws collect`
 дисков не содержит. Без отдельного backup потеря диска или переустановка —

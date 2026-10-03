@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Receive only into an explicitly empty, separate Btrfs target; no live restore.
+set -euo pipefail
+export LC_ALL=C
+here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+. "$here/btrfs-common.bash"
+[[ $# == 7 && "$1" == --uuid && "$3" == --target ]] || die 'usage: --uuid UUID --target PATH receive|hash ID UUID|RELATIVE_FILE'
+fs_uuid="$2"; target="$4"; action="$5"; id="$6"; extra="$7"
+uuid "$fs_uuid"; token "$id"; safe_path "$target"
+case "$target/" in /home/*|/var/lib/vms/*|/var/lib/libvirt/*|/etc/libvirt/*) die 'target must be outside live sources' ;; esac
+filesystem_check "$target"
+case "$action" in
+    receive)
+        uuid "$extra"
+        [[ -z "$(find "$target" -mindepth 1 -maxdepth 1 -print -quit)" ]] || die 'restore target is not empty'
+        btrfs receive "$target" >&2
+        shopt -s dotglob nullglob
+        entries=("$target"/*)
+        [[ ${#entries[@]} == 1 && "${entries[0]}" == "$target/$id" ]] || die 'unexpected received entries'
+        inspect_snapshot "$target/$id"
+        [[ "$received_uuid" == "$extra" ]] || die 'received UUID mismatch'
+        snapshot_json
+        ;;
+    hash)
+        inspect_snapshot "$target/$id"
+        [[ "$extra" != /* ]] || die 'relative verification path required'
+        safe_path "$target/$id/$extra"
+        [[ -f "$target/$id/$extra" ]] || die 'verification file missing'
+        sha256sum -- "$target/$id/$extra"
+        ;;
+    *) die 'unknown restore action' ;;
+esac

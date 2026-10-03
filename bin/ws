@@ -19,6 +19,7 @@ Usage:
   ws baseline capture|diff|list ...
   ws checkpoint create|list|show|diff|remove ...
   ws collect [--no-firmware] [ARCHIVE]
+  ws backup [plan|status|check|send|restore-test ...]
   ws host
   ws fact NAME
   ws news
@@ -86,6 +87,9 @@ baseline  functional baseline, see ws-baseline --help
 collect   archive of the machine state a rebuild needs and the repository
           does not hold (baseline, boot and disks, apt, Apple firmware,
           ~/.local/state/workstation), see ws-collect --help; asks sudo
+backup    Timeshift snapshots to Unraid, then retain final local ro parents;
+          plan/status work before SSH is configured;
+          see wsbackup --help and helpws backup
 checkpoint  which commit matched which working state (home-manager
           generation, system tree, kernel, baseline), see ws-checkpoint --help
 host      print the flake host name used for this machine: WS_HOST, else
@@ -939,6 +943,7 @@ case "${1:-}" in
     baseline) shift; exec "$repo/bin/ws-baseline" "$@" ;;
     checkpoint) shift; exec "$repo/bin/ws-checkpoint" "$@" ;;
     collect) shift; exec "$repo/bin/ws-collect" "$@" ;;
+    backup) shift; exec "$repo/bin/wsbackup" "$@" ;;
     host) host ;;
     fact) shift; cmd_fact "$@" ;;
     # Step names of apply, update and check, one per line: the fish

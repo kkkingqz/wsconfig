@@ -10,6 +10,13 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-02-wsconfig-maintenance-design.md`, раздел 3, и уточнения пользователя: Unraid с Btrfs, адрес позже, механизм подготовить сейчас.
 
+**Execution status:** Механизм Tasks 1–4 подготовлен в `wsconfig-backup`.
+Связанные source/receiver/client и документация фиксируются одним коммитом,
+чтобы история не содержала несовместимые промежуточные версии протокола.
+Ниже сохранён исходный checklist; детальный журнал исполнения — локальный
+`.superpowers/sdd/2026-10-02-unraid-backup/progress.md`. Реальная передача,
+проверка восстановления HOME/VM и deployment на Unraid ожидают адреса сервера.
+
 ## Global Constraints
 
 - Существующие изменения ChatGPT launcher/remote не включать в коммиты backup.
