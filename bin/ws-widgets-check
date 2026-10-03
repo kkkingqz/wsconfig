@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -u
+set -o pipefail
+repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+. "$repo/lib/check.bash"
+case "${1:-}" in
+    --json) check_json_mode ;;
+    "") ;;
+    -h|--help) echo 'Usage: ws-widgets-check [--json]'; exit 0 ;;
+    *) echo 'Usage: ws-widgets-check [--json]' >&2; exit 64 ;;
+esac
+if (($# > 1)); then echo 'too many arguments' >&2; exit 64; fi
+while IFS=$'\t' read -r level message; do
+    case "$level" in pass|warn|fail|info) "$level" "$message" ;; *) fail "invalid diagnostic: $message" ;; esac
+done < <(python3 "$repo/lib/widgets_check.py")
+check_finish

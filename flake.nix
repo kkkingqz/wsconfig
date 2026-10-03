@@ -63,6 +63,17 @@
           python ${./.}/tests/widgets/check-qml.py ${widgetsRuntime}/bin/qs-widgets
           touch "$out"
         '';
+        widgets-tests = assert builtins.readFile ./widgets/quickshell/framework/manifest.mjs == builtins.readFile (./gnome/extensions + "/workstation-widgets@local/lib/manifest.mjs");
+          pkgs.runCommand "widgets-tests" { nativeBuildInputs = [ pkgs.python3 pkgs.gjs ]; } ''
+            cp -r ${./.} source
+            chmod -R u+w source
+            cd source
+            patchShebangs bin/ws-widgets bin/ws-widgets-check
+            python -m unittest discover -s tests -p test_gnome_extension_files.py
+            python -m unittest discover -s tests -p test_ws_widgets.py
+            gjs -m tests/widgets/run-tests.js
+            touch "$out"
+          '';
       };
 
       # Tools `ws` runs, pinned by flake.lock.

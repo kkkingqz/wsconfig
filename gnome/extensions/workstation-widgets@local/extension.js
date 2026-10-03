@@ -69,8 +69,7 @@ export default class WorkstationWidgets extends Extension {
         this.focusTimer = 0;
         for (const [object, id] of this.signals || []) object.disconnect(id);
         this.signals = [];
-        this.client?.call('widgets', 'hideAll').catch(() => {});
-        this.placement?.destroy(); this.buttons?.destroy(); this.client?.destroy();
+        this.placement?.destroy(); this.buttons?.destroy(); this.client?.shutdown();
         this.client = null; this.buttons = null; this.placement = null;
         this.settings = null;
     }

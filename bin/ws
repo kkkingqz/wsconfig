@@ -791,6 +791,7 @@ check_steps=(
     "home ws-check-home"
     "keyboard ws-keyboard check"
     "gnome ws-gnome check"
+    "widgets ws-widgets check"
     "flatpak wsflatpak check"
     "distrobox wsbox check"
     "windows wswin check"
@@ -876,6 +877,7 @@ cmd_check() {
         repo) shift; exec "$repo/bin/ws-check-repo" "$@" ;;
         home) shift; exec "$repo/bin/ws-check-home" "$@" ;;
         virt|vm) shift; exec "$repo/bin/ws-check-virt" "$@" ;;
+        widgets) shift; exec "$repo/bin/ws-widgets-check" "$@" ;;
         -v|--verbose) verbose=true ;;
         "") ;;
         *) die "unknown check option: $1" ;;

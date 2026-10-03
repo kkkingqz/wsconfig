@@ -43,6 +43,7 @@ let
     { uuid = "workstation-dock-spring@local"; source = "local"; }
     # Hibernate in the power menu where logind allows it (helpws suspend).
     { uuid = "workstation-hibernate@local"; source = "local"; }
+    { uuid = "workstation-widgets@local"; source = "local"; }
   ];
 
   # Extensions of the Ubuntu session mode that stay off: the mode enables

@@ -19,6 +19,7 @@
     ../../distrobox/distrobox.nix
     ../../windows/apps.nix
     ../../virt/virt.nix
+    ../../widgets/widgets.nix
   ]
   # Pinned sources of the patched t2bce modules (helpws suspend) and of
   # t2gmux (helpws plan-dgpu).

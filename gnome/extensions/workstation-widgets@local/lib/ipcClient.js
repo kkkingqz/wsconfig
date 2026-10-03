@@ -78,4 +78,9 @@ export class IpcClient {
         for (const record of this.calls) { if (record.timer) GLib.source_remove(record.timer); record.timer = 0; record.cancellable.cancel(); record.process.force_exit(); }
     }
     destroy() { this.stopped = true; this.generation++; this.cleanup(); this.snapshot = null; }
+    shutdown() {
+        // Detach subscription and cancel queued work before the bounded final hide.
+        this.cleanup(); this.generation++; this.queue = Promise.resolve();
+        this.call('widgets', 'hideAll').catch(() => {}).finally(() => this.destroy());
+    }
 }

@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -eu
+repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+exec python3 "$repo/lib/widgets_cli.py" "$@"
