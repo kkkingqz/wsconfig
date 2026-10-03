@@ -1,0 +1,10 @@
+[32m  INFO[0m: Launching config: "/home/king/wsconfig/.worktrees/widget-framework/tests/widgets/probe/shell.qml"
+[32m  INFO[0m: Shell ID: "685debd0ab57804d9b74f2bcff593193" Path ID "685debd0ab57804d9b74f2bcff593193"
+[32m  INFO[0m: Saving logs to "/run/user/1000/quickshell/by-id/55k7cyrbmt/log.qslog"
+[33m  WARN[0m: --- WARNING ---
+[33m  WARN[0m: WAYLAND_DISPLAY is present but QT_QPA_PLATFORM is "offscreen"
+[33m  WARN[0m: If you are actually running wayland, set QT_QPA_PLATFORM to "wayland" or most functionality will be broken.
+[32m  INFO[0m: Configuration Loaded
+[34m DEBUG[97m qml[0m: PROBE before false
+[34m DEBUG[97m qml[0m: PROBE after true
+[33m  WARN[0m: This plugin does not support setting window masks

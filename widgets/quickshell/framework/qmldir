@@ -1,2 +1,6 @@
 WidgetController WidgetController.qml
 WidgetIpc WidgetIpc.qml
+singleton Style Style.qml
+WidgetRegistry WidgetRegistry.qml
+WidgetHost WidgetHost.qml
+PopupFrame PopupFrame.qml

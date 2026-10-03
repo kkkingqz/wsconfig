@@ -9,6 +9,41 @@ ShellRoot {
         testNow: 0
     }
     WidgetIpc { controller: controller }
+    WidgetController {
+        id: panels
+        entries: [
+            {id: "large", enabled: true, width: 420, height: 580, component: "widgets/example/Widget.qml"},
+            {id: "small", enabled: true, width: 320, height: 240, component: "widgets/compact/Widget.qml"},
+            {id: "broken", enabled: true, width: 100, height: 100, component: "broken/Widget.qml"}]
+        testNow: 0
+    }
+    WidgetHost { id: large; definition: panels.entries[0]; controller: panels }
+    WidgetHost { id: small; definition: panels.entries[1]; controller: panels }
+    WidgetHost { definition: panels.entries[2]; controller: panels }
+    Timer {
+        property int stage: 0
+        interval: 250; repeat: true; running: Quickshell.env("WIDGETS_IPC_TEST") !== "1"
+        onTriggered: {
+            function check(value, message) { if (!value) { console.error(message); Qt.exit(1); } }
+            if (stage === 0) {
+                check(large.loaded && small.loaded, "both components loaded");
+                check(!panels.state.widgets.broken.available, "broken isolated");
+                check(large.widgetContext.contentWidth === 388 && small.widgetContext.contentHeight === 208, "logical context sizes");
+                panels.command("show", "small");
+                check(small.surface.visible && small.progress === 0, "transparent preparing");
+                panels.dispatch({type: "PLACED", id: "small", requestId: panels.state.widgets.small.requestId});
+            } else if (stage === 1) {
+                check(panels.state.widgets.small.phase === "open", "animation completed");
+                small.widgetContext.requestClose();
+                check(small.surface.visible && panels.state.widgets.small.phase === "closing", "closing remains mapped");
+            } else {
+                check(!small.surface.visible && panels.state.widgets.small.phase === "closed", "closed unmapped");
+                console.log("QML components, failure isolation, context and animation passed");
+                Qt.exit(0);
+            }
+            stage++;
+        }
+    }
     Timer {
         interval: 50; running: Quickshell.env("WIDGETS_IPC_TEST") !== "1"
         onTriggered: {
@@ -18,7 +53,6 @@ ShellRoot {
             if (!controller.dispatch({type: "PLACED", id: "example", requestId: id})) Qt.exit(1);
             if (controller.state.widgets.example.phase !== "opening") Qt.exit(1);
             console.log("QML controller/IPC smoke passed");
-            Qt.exit(0);
         }
     }
 }

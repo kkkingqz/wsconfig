@@ -17,6 +17,8 @@ with tempfile.TemporaryDirectory(prefix="widgets-qml-") as temporary:
     config.chmod(0o755)
     (config / "shell.qml").unlink(missing_ok=True)
     shutil.copy(root / "tests/widgets/qml/shell.qml", config / "shell.qml")
+    if (root / "tests/widgets/qml/broken").exists():
+        shutil.copytree(root / "tests/widgets/qml/broken", config / "broken")
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen", QT_QUICK_BACKEND="software")
     env.pop("WAYLAND_DISPLAY", None)
     result = subprocess.run([sys.argv[1], "-p", str(config)], env=env, timeout=15)
