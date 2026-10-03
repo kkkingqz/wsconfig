@@ -35,7 +35,7 @@ Item {
         id: animation
         property int requestId
         property string phase
-        target: root; property: "progress"; easing.type: Easing.OutCubic
+        target: root; property: "progress"; easing.type: Easing.InOutCubic
         onFinished: root.finish(requestId, phase)
     }
     Item {

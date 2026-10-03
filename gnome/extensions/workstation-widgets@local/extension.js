@@ -7,7 +7,7 @@ import {PanelButtons} from './lib/panelButtons.js';
 import {IpcClient} from './lib/ipcClient.js';
 import {WindowPlacement} from './lib/windowPlacement.js';
 import {validateManifest} from './lib/manifest.mjs';
-import {shouldDismiss} from './lib/dismissal.mjs';
+import {shouldDismiss, pointerDecision} from './lib/dismissal.mjs';
 import {buttonPresentation} from './lib/buttons.mjs';
 import {withoutWidgetEffects} from './lib/windowEffects.mjs';
 
@@ -66,14 +66,14 @@ export default class WorkstationWidgets extends Extension {
             this.connectSignal(global.display, 'notify::focus-window', () => this.scheduleFocusCheck());
             this.connectSignal(global.stage, 'captured-event', (_actor, event) => {
                 if (event.type() !== Clutter.EventType.BUTTON_PRESS && event.type() !== Clutter.EventType.TOUCH_BEGIN) return Clutter.EVENT_PROPAGATE;
-                const ownButton = this.buttons.contains(event.get_source());
-                if (ownButton) this.suppressedUntil = GLib.get_monotonic_time() + 250000;
-                const [x, y] = event.get_coords();
                 // Mutter picking respects the surface input region, including
                 // the still-hidden part, gutter and rounded corners.
-                const source = global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, x, y);
-                const familyActors = this.family().map(window => window.get_compositor_private());
-                if (shouldDismiss({type: 'pointer', ownButton, source, familyActors}, this.active())) this.hideAll();
+                const context = {...this.active(), familyActors: this.family().map(window => window.get_compositor_private())};
+                const decision = pointerDecision(event,
+                    (x, y) => global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, x, y),
+                    actor => this.buttons.contains(actor), context);
+                if (decision.ownButton) this.suppressedUntil = GLib.get_monotonic_time() + 250000;
+                if (decision.dismiss) this.hideAll();
                 return Clutter.EVENT_PROPAGATE;
             });
             this.connectSignal(Main.overview, 'showing', () => this.hideAll());
