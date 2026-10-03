@@ -264,7 +264,8 @@ runbook и независимое ревью. Автоматические ша�
 обычного нового входа. Интеграция в main отложена по последнему запросу
 пользователя работать в отдельной ветке.
 
-Проверено: Python 44/44, GJS 37/37; Nix widgets-manifest, widgets-qml,
+Первый прогон: Python 44/44; после синхронизации с main общий прогон
+Python 122/122, GJS 37/37. Nix widgets-manifest, widgets-qml,
 widgets-tests, widgets-runtime, home-mbp16, home-wsvm, man. Runtime probe DPR
 1.5; production поверхности 444×604 и 344×264. Реальный GJS listener проверен
 с разрывом во время открытия, reconnect и lease expiry. QML tests проверяют
@@ -279,7 +280,11 @@ clamp/scroll, lazy loading, broken component isolation и отключённые
 - Native worktree tool не получил repository context; использован Git
   worktree. Цена: worktree не прикреплён в UI приложения, Git/файлы доступны.
 - Реализация остаётся в отдельной wsconfig; main с пользовательскими
-  изменениями не активируется. Цена: нужна отдельная интеграция и ws switch.
+  изменениями не получает merge framework. После команды «продолжай» текущая
+  main слита в wsconfig, ветка перенесена в основной checkout и применены
+  ws switch / ws apply extensions. Пользовательские файлы, staged/unstaged
+  diff сохранены побайтно. Цена: checkout должен содержать framework, пока
+  активна production-ссылка на QML.
 - Scoped launcher использует свой Mesa EGL vendor после отказа discovery.
   Цена: переносимость на другой GPU ещё требует проверки; настройки сессии
   не изменены.

@@ -26,8 +26,10 @@ Home Manager создаёт manifest/runtime JSON в
 `~/.config/workstation/widgets/`, ссылку
 `~/.config/quickshell/workstation-widgets` на QML в checkout и user service
 `workstation-widgets.service`. Расширение устанавливается существующим
-владельцем extensions. При работе в отдельном worktree сначала интегрировать
+владельцем extensions. При работе в отдельном worktree сначала перенести
 ветку в основной checkout: production-ссылка адресует checkout из facts.nix.
+Основной checkout может оставаться на ветке `wsconfig`; merge в `main`
+для установки не требуется.
 Не активировать generation, ссылающуюся на основной checkout без этих файлов.
 
 Runtime запускается вместе с graphical-session.target только в GNOME Wayland,
@@ -99,7 +101,11 @@ Item {
 
 Применить `ws switch`: новый manifest меняет unit и перезапускает runtime,
 а extension перечитывает кнопки после изменения runtime/manifest JSON.
-При изменениях кода самого extension нужна доставка и его перезагрузка.
+При изменениях кода самого extension нужна доставка и новый вход в GNOME.
+В GNOME 50 `ReloadExtension` через D-Bus не работает, а disable/enable
+использует уже импортированный JS-модуль. Это следует из
+[реализации Shell D-Bus](https://github.com/GNOME/gnome-shell/blob/50.1/js/ui/shellDBus.js)
+и [менеджера расширений](https://github.com/GNOME/gnome-shell/blob/50.1/js/ui/extensionSystem.js).
 Для нового содержимого extension менять не требуется.
 Реестр проверяет уникальные ID, положительные целые размеры и безопасный
 относительный путь существующего компонента. `enabled = false` убирает кнопку.
@@ -138,6 +144,8 @@ Adapter продлевает lease каждые 2 секунды; потеря �
 Постоянное удаление: убрать импорт widgets.nix и UUID из списка extensions,
 применить ws switch. Исходники и чужие файлы расширений автоматически не
 удаляются. Установщик удаляет только устаревшие файлы из своего owner manifest.
+Перед возвратом основного checkout на ветку без framework остановить runtime,
+переключить ветку и применить `ws switch`: QML-ссылка ведёт в живой checkout.
 
 ## Проверки разработки
 

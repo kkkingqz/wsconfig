@@ -24,6 +24,22 @@ Verified:
   overflowing content remains scrollable. Broken QML is isolated.
   Contents load on first open, remain instantiated after close; disabled
   animations finish correctly. Pure button policy reports component errors.
+- Deployment: current `main` history merged into `wsconfig`; primary checkout
+  switched to `wsconfig`, with existing staged/unstaged files and untracked
+  user document preserved byte for byte. No merge into `main` was performed.
+- After synchronization: all 122 Python tests and 37 GJS tests pass; Nix
+  widgets-manifest/qml/tests/runtime, both Home Manager hosts and man build.
+- `ws switch` and `ws apply extensions` completed. Production QML link resolves
+  to `/home/king/wsconfig/widgets/quickshell`; runtime/manifest and CLI delivered.
+  Managed service is enabled and active; restart creates a new runtime PID,
+  IPC PID agrees with systemd, both widget IDs start closed, NRestarts is zero.
+- Production owner check: three passes, two warnings, zero failures. Warnings
+  are the unloaded GNOME adapter and absent lease; native window checks remain
+  pending. Shell EnableExtension returns false for the new UUID;
+  ReloadExtension returns UnknownMethod in the running GNOME 50.1.
+- Managed runtime without adapter: valid `show` enters preparing, never enters
+  opening/open, then closes with placement timeout after two seconds. Unknown
+  ID is rejected; neither command creates another runtime process.
 
 Pending after loading the extension in a new GNOME session:
 
