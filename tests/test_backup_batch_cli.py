@@ -74,6 +74,26 @@ class BatchCLI(TransferFixture, unittest.TestCase):
         self.assertEqual((target / r['id'] / 'payload').read_text(), 'first@')
         self.assertTrue((self.state / 'restore-tests' / ('system-' + r['id'] + '.json')).exists())
 
+    def test_restore_deleted_baseline_with_stale_journal_refuses_before_network(self):
+        from backup_timeshift import run_batch
+        self.snapshot(); self.snapshot('2026-10-02_12-00-00')
+        result = run_batch(self.c, self.state)
+        old = result['transferred'][0]
+        path = self.state / 'timeshift/records' / (old['id'] + '.json')
+        record = json.loads(path.read_text())
+        # Crash window: deletion succeeded, but its journal update did not.
+        record['local_present'] = True
+        path.write_text(json.dumps(record))
+        marker = self.b.root / 'network-called'
+        (self.b.bin / 'ssh').write_text('#!/bin/sh\ntouch ' + str(marker) + '\nexit 255\n')
+        target = self.b.root / 'restore'; target.mkdir()
+        p = self.cli('restore-test', old['scope'], old['id'], str(target), '--verify', 'payload')
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('local baseline removed', p.stderr)
+        self.assertFalse(marker.exists())
+        self.assertEqual(list(target.iterdir()), [])
+        self.assertFalse((self.state / 'restore-tests').exists())
+
     def test_legacy_vm_command_preserved(self):
         p = self.cli('send', 'vms')
         self.assertEqual(p.returncode, 0, p.stderr)

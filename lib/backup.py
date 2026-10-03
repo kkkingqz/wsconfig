@@ -243,6 +243,15 @@ def source(c, action, scope, id, *extra):
     return json.loads(command(source_command(c, action, scope, id, *extra)))
 
 
+def inspect_copy(c, scope, id):
+    p = run_result(source_command(c, 'inspect', scope, id))
+    if p.returncode == 3:
+        return None
+    if p.returncode:
+        raise ValueError('local copy inspection failed: ' + p.stderr.strip())
+    return json.loads(p.stdout)
+
+
 def validate_snapshot(meta, expected, received):
     field = 'received_uuid' if received else 'uuid'
     if meta.get('ro') is not True or meta.get(field) != expected:
@@ -339,12 +348,16 @@ def restore_test(c, scope, id, target, paths, state):
     if record.get('local_present') is False:
         raise ValueError('local baseline removed; checksum comparison unavailable for this snapshot')
     with operation(state, 'restore-test ' + scope) as (_, stage):
+        stage('local baseline check')
+        local_meta = inspect_copy(c, scope, id)
+        if local_meta is None:
+            raise ValueError('local baseline removed; checksum comparison unavailable for this snapshot')
+        validate_snapshot(local_meta, record['source_uuid'], False)
         stage('receiver probe'); probe(c)
         remote_meta = remote(c, ['inspect', c['remote_host_id'], scope, id])
         validate_snapshot(remote_meta, record['source_uuid'], True)
         if not UUID.fullmatch(remote_meta.get('uuid', '')):
             raise ValueError('receiver snapshot UUID invalid')
-        validate_snapshot(source(c, 'inspect', scope, id), record['source_uuid'], False)
         helper = ['sudo', '/bin/bash', str(REPO / 'backup/wsbackup-restore'),
                   '--uuid', c['source_fs_uuid'], '--target', str(target)]
         stage('restore receive')

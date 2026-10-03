@@ -27,6 +27,20 @@ class RetentionTests(TransferFixture, unittest.TestCase):
         self.assertFalse(self.b.config.with_suffix('.delete-count').exists())
         self.assertEqual(len(list(self.managed.glob('*/*'))), 3)
 
+    def test_batch_result_and_saved_status_reflect_deleted_copies(self):
+        self.snapshot(); self.snapshot('2026-10-02_12-00-00')
+        result = self.batch()
+        self.assertTrue(result['cleanup']['deleted'])
+        saved = json.loads((self.state / 'timeshift/last-batch.json').read_text())
+        for output in (result, saved):
+            for record in [*output['transferred'], *output['skipped'], *output['retained'].values()]:
+                actual = (self.managed / record['scope'] / record['id']).exists()
+                self.assertEqual(record['local_present'], actual, record['id'])
+        # A later batch skips previously published, locally pruned copies too.
+        again = self.batch()
+        self.assertEqual(again['transferred'], [])
+        self.assertTrue(any(not r['local_present'] for r in again['skipped']))
+
     def test_interrupted_cleanup_resumes_without_parent_loss(self):
         from backup_timeshift import cleanup_copies
         self.snapshot(); self.snapshot('2026-10-02_12-00-00')

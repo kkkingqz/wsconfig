@@ -19,12 +19,7 @@ def confirm_pending(c, record):
 
 
 def inspect_copy(c, scope, id):
-    p = api.run_result(api.source_command(c, 'inspect', scope, id))
-    if p.returncode == 3:
-        return None
-    if p.returncode:
-        raise ValueError('local copy inspection failed: ' + p.stderr.strip())
-    return json.loads(p.stdout)
+    return api.inspect_copy(c, scope, id)
 
 
 def send_copy(c, scope, copy_id, copy_uuid, parent):
@@ -251,5 +246,8 @@ def run_batch(c, state):
         api.write_json(state / 'timeshift/parents.json', result['retained'])
         stage('cleanup verified local copies')
         result['cleanup'] = cleanup_copies(c, state, result['retained'])
+        current = {r['id']: r for r in read_records(c, state)}
+        for r in [*result['transferred'], *result['skipped'], *result['retained'].values()]:
+            r['local_present'] = current[r['id']]['local_present']
         api.write_json(state / 'timeshift/last-batch.json', result)
         return result
