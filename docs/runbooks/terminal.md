@@ -203,6 +203,33 @@ Ctrl+Enter  → Alt+Enter
 - Emacs-style line editing;
 - shell integration с Ghostty.
 
+## Цвета SSH-сессий
+
+При запуске `ssh` из Fish в Ghostty обычный текст сессии меняет цвет:
+`tower.local` и `192.168.113.113` — жёлтый, остальные серверы — бледно-красный.
+После выхода, ошибки подключения или Ctrl+C возвращается цвет темы Ghostty.
+Алиасы из `~/.ssh/config` определяются по итоговому `HostName` (`ssh -G`).
+Цвета задаются в `terminal/ssh-colors.nix`, изменения применяются через `ws switch`.
+Home Manager генерирует `~/.config/fish/functions/ssh.fish`; Fish загружает его
+при первом вызове `ssh`, в том числе в уже открытом shell.
+Вывод в файлы и pipes проходит без управляющих команд цвета. Явные ANSI-цвета
+удалённого prompt и программ сохраняются; `command ssh` обходит обёртку.
+
+## Цвета Distrobox-сессий
+
+`distrobox enter NAME`, `distrobox-enter -n NAME` и `wsbox enter NAME`
+меняют обычный цвет текста Ghostty на время сессии. Цвет каждого контейнера
+и fallback для остальных задаются в `terminal/distrobox-colors.nix`;
+после правки — `ws switch`. Имя определяется из аргументов или
+`DBX_CONTAINER_NAME`; без явного имени применяется fallback.
+
+Восстановлением цветов SSH и Distrobox управляет `terminal/session-colors.nix`.
+После выхода или Ctrl+C возвращается предыдущий цвет. Переменная
+`WS_TERMINAL_FOREGROUND` передаётся Distrobox во вложенные shells, поэтому
+вложенный вызов этих обёрток восстанавливает цвет внешней сессии.
+Явные ANSI-цвета программ сохраняются. `list`, `status`, `--help`, `--dry-run`,
+`--no-tty`, вывод в файлы и pipes не меняют цвет терминала.
+
 ## Autosuggestions
 
 Пример:

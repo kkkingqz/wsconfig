@@ -68,6 +68,12 @@ wsbox export NAME APP | unexport NAME APP
 `apply` не трогает существующий контейнер. `recreate` и `remove` меняют
 только rootfs; описание в `distrobox.nix` и HOME остаются.
 
+В Fish + Ghostty `wsbox enter NAME`, `distrobox enter NAME` и
+`distrobox-enter -n NAME` меняют обычный цвет текста до выхода из контейнера.
+Цвета контейнеров и fallback задаются в `terminal/distrobox-colors.nix`
+и применяются через `ws switch`. Подробнее: `helpws terminal`,
+раздел «Цвета Distrobox-сессий».
+
 ## Изменить контейнер
 
 1. Правка `distrobox/distrobox.nix`, `ws switch`.

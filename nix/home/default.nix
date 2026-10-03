@@ -7,6 +7,9 @@
   imports = [
     ./links.nix
     ./cli.nix
+    ../../terminal/session-colors.nix
+    ../../terminal/ssh-colors.nix
+    ../../terminal/distrobox-colors.nix
     ../../keyboard/xremap.nix
     ./man.nix
     ../../gnome/gnome-extensions.nix
