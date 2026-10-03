@@ -12,6 +12,7 @@ const client = new IpcClient(config, () => {}, () => {});
 try {
     client.start();
     await wait(() => client.snapshot?.adapter.ready);
+    assert(client.snapshot.pid === Number(GLib.getenv('WIDGETS_TEST_PID')), 'IPC addresses the launched runtime PID');
     for (const id of ['example', 'compact']) {
         assert(await client.call('widgets', 'show', [id]) === 'true', 'show accepted');
         await wait(() => client.snapshot.widgets[id].phase === 'preparing');
@@ -25,6 +26,11 @@ try {
             assert(client.snapshot.instanceId === instance && client.snapshot.widgets[id].requestId === requestId, 'reconnect preserves authoritative instance and request');
         }
         await wait(() => client.snapshot.widgets[id].phase === 'open');
+        const surfaces = JSON.parse(await client.call('testSurfaces', 'status'));
+        const surface = surfaces.find(s => s.id === id);
+        assert(surface?.visible && surface.mapped && surface.loaded, 'actual surface mapped: ' + JSON.stringify(surfaces));
+        assert(surface.width === client.snapshot.widgets[id].panelWidth + 24 && surface.height === client.snapshot.widgets[id].panelHeight + 24, 'actual surface dimensions');
+        print('Actual surface: ' + JSON.stringify(surface));
         await delay(300);
         assert(await client.call('widgets', 'hide', [id]) === 'true', 'hide accepted');
         await wait(() => client.snapshot.widgets[id].phase === 'closed');

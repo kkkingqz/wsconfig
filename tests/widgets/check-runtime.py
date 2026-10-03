@@ -21,6 +21,13 @@ with tempfile.TemporaryDirectory(prefix='widgets-runtime-') as tmp:
     config_root = Path(tmp) / 'config'
     qml = config_root / 'quickshell/workstation-widgets'
     shutil.copytree(root / 'widgets/quickshell', qml)
+    qml.chmod(0o755)
+    entrypoint = qml / 'shell.qml'
+    entrypoint.chmod(0o644)
+    content = entrypoint.read_text().replace('Variants {', 'Variants {\n        id: inspectedHosts')
+    content = content.rsplit('}', 1)[0] + 'RuntimeInspector { hosts: inspectedHosts }\n}\n'
+    entrypoint.write_text(content)
+    shutil.copy(root / 'tests/widgets/RuntimeInspector.qml', qml / 'RuntimeInspector.qml')
     manifest = Path(tmp) / 'manifest.json'
     shutil.copy(args.manifest, manifest)
     config = dict(schemaVersion=1, qsPath=runtime, configName='workstation-widgets', manifestPath=str(manifest), adapter='gnome')
@@ -30,23 +37,30 @@ with tempfile.TemporaryDirectory(prefix='widgets-runtime-') as tmp:
         env.update(QT_QPA_PLATFORM='offscreen', QT_QUICK_BACKEND='software')
     with tempfile.TemporaryFile(mode='w+') as log:
         process = subprocess.Popen([runtime, '-c', config['configName']], env=env, stdout=log, stderr=log)
+        env['WIDGETS_TEST_PID'] = str(process.pid)
         driver = None
         try:
             driver = subprocess.Popen(['gjs', '-m', str(root / 'tests/widgets/runtime-client.js')], env=env)
             deadline = time.monotonic() + 15
             frames = {}
+            inspect_frames = args.wayland
             while driver.poll() is None:
                 assert process.poll() is None, 'production runtime exited'
                 assert time.monotonic() < deadline, 'runtime integration timeout'
-                if args.wayland:
+                if inspect_frames:
                     result = subprocess.run(['gdbus', 'call', '--session', '--dest', 'org.gnome.Shell', '--object-path', '/org/gnome/Shell/Extensions/WindowControl', '--method', 'org.gnome.Shell.Extensions.WindowControl.ListDetailed'], text=True, capture_output=True, timeout=3)
                     if result.returncode == 0:
                         for window in json.loads(ast.literal_eval(result.stdout)[0]):
                             if window['pid'] == process.pid and window['title'].startswith('workstation-widgets:'):
                                 frames[window['title'].split(':')[1]] = window['frame_rect']
+                    else:
+                        print('Compositor frame inspection unavailable: ' + result.stderr.strip())
+                        inspect_frames = False
                 time.sleep(.04)
             assert driver.returncode == 0, 'GJS integration failed'
-            if args.wayland:
+            log.seek(0)
+            assert 'TypeError' not in log.read(), 'production QML initialization error'
+            if inspect_frames:
                 for entry in json.loads(manifest.read_text())['widgets']:
                     if entry.get('enabled', True):
                         frame = frames[entry['id']]

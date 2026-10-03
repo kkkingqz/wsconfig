@@ -14,6 +14,10 @@ Verified:
 - Real compositor frames including gutters: example 444×604, compact 344×264.
   Observed positions (802,319) and (852,489) are compositor default placements
   in the temporary test; anchoring under a panel button has **not** been verified.
+- After the lazy-loading changes, both actual Qt surfaces again report mapped,
+  visible, expected dimensions and DPR 1.5 through a test-only inspector.
+  Repeating compositor frame inspection was unavailable: the existing
+  WindowControl D-Bus object no longer exists. This is reported explicitly.
 - After destroying the real GJS client, runtime unmaps the open window after
   lease expiry. All temporary runtime/client processes are terminated by tests.
 - Headless clamp: compact panel 160×120, fixed surface 184×144, context 128×88,
