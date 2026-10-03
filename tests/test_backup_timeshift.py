@@ -203,7 +203,7 @@ class BatchTests(TransferFixture, unittest.TestCase):
     def test_confirmed_copies_skipped_after_local_prune(self):
         self.snapshot(); self.snapshot('2026-10-02_12-00-00'); result = self.batch()
         for r in result['transferred'][:2]:
-            (self.managed / r['scope'] / r['id']).rename(self.b.root / r['id'])
+            self.assertFalse((self.managed / r['scope'] / r['id']).exists())
         again = self.batch()
         self.assertEqual(again['transferred'], [])
         self.assertEqual(len(again['skipped']), 4)

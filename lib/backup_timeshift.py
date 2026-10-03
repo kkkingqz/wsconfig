@@ -130,6 +130,56 @@ def select_retained(c, records):
     return retained
 
 
+def cleanup_copies(c, state, retained):
+    result = {'deleted': [], 'skipped': [], 'error': None}
+    output = state / 'timeshift/cleanup.json'
+    try:
+        records = read_records(c, state)
+        # Discovery is only an exclusion guard, never authority to delete.
+        known = set()
+        for path in [*(state / 'timeshift/records').glob('*.json'),
+                     *(state / 'snapshots').glob('*/*.json')]:
+            r = api.read_json(path, {})
+            if isinstance(r, dict):
+                known.add((r.get('scope'), r.get('id')))
+        physical = json.loads(api.command(helper_command(c, 'list')))
+        if any((r['scope'], r['id']) not in known for r in physical):
+            raise ValueError('unknown managed copy; cleanup refused')
+        for scope, parent in retained.items():
+            local = inspect_copy(c, scope, parent['id'])
+            if local is None or not confirm_pending(c, parent):
+                raise ValueError('retained parent missing locally or remotely')
+            api.validate_snapshot(local, parent['source_uuid'], False)
+        candidates = []
+        for r in records:
+            parent = retained.get(r['scope'])
+            if parent and r['id'] == parent['id']:
+                result['skipped'].append(r['id']); continue
+            local = inspect_copy(c, r['scope'], r['id'])
+            if local is None:
+                r['local_present'] = False; save_record(state, r); continue
+            if not parent:
+                raise ValueError('retained parent missing for cleanup')
+            api.validate_snapshot(local, r['source_uuid'], False)
+            candidates.append(r)
+        # Preflight every candidate before the first destructive operation.
+        api.write_json(state / 'timeshift/parents.json', retained)
+        for r in candidates:
+            parent = retained[r['scope']]
+            api.command(helper_command(c, 'delete', r['scope'], r['id'], r['source_uuid'],
+                                       parent['id'], parent['source_uuid']))
+            r['local_present'] = False
+            save_record(state, r)
+            result['deleted'].append(r['id'])
+            api.write_json(output, result)
+    except BaseException as error:
+        result['error'] = str(error)
+        api.write_json(output, result)
+        raise
+    api.write_json(output, result)
+    return result
+
+
 def run_batch(c, state):
     with api.operation(state, 'Timeshift batch') as (_, stage):
         stage('receiver probe')
@@ -179,6 +229,7 @@ def run_batch(c, state):
             finish(r)
         result['retained'] = select_retained(c, records)
         api.write_json(state / 'timeshift/parents.json', result['retained'])
-        # Task4 adds cleanup here only after this entire successful traversal.
+        stage('cleanup verified local copies')
+        result['cleanup'] = cleanup_copies(c, state, result['retained'])
         api.write_json(state / 'timeshift/last-batch.json', result)
         return result

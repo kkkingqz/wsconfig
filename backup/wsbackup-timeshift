@@ -11,6 +11,37 @@ uuid "$fs_uuid"; safe_path "$root"
 case "$root/" in /home/*|/var/lib/vms/*|/etc/libvirt/*|/var/lib/libvirt/*) die 'root must be outside live sources' ;; esac
 filesystem_check "$root"
 btrfs subvolume show "$root" >/dev/null
+if [[ "$action" == list ]]; then
+    [[ $# == 0 ]] || die 'unexpected arguments'
+    shopt -s nullglob dotglob
+    printf '['; sep=''
+    for scope in system home; do
+        safe_path "$root/$scope"
+        for copy in "$root/$scope/"*; do
+            safe_path "$copy"; id="${copy##*/}"; token "$id"
+            printf '%s{"scope":"%s","id":"%s"}' "$sep" "$scope" "$id"; sep=,
+        done
+    done
+    printf ']\n'; exit 0
+fi
+if [[ "$action" == delete ]]; then
+    [[ $# == 5 ]] || die 'delete requires scope, ID, UUID, retained ID and UUID'
+    scope="$1"; id="$2"; expected="$3"; retained="$4"; retained_uuid="$5"
+    [[ "$scope" == system || "$scope" == home ]] || die 'invalid Timeshift scope'
+    token "$id"; token "$retained"; uuid "$expected"; uuid "$retained_uuid"
+    [[ "$id" != "$retained" ]] || die 'cannot delete retained copy'
+    inspect_snapshot "$root/$scope/$retained"
+    [[ "$snapshot_uuid" == "$retained_uuid" ]] || die 'retained UUID mismatch'
+    safe_path "$root/$scope/$id"
+    if [[ ! -e "$root/$scope/$id" ]]; then
+        printf '{"deleted":false}\n'; exit 0
+    fi
+    inspect_snapshot "$root/$scope/$id"
+    [[ "$snapshot_uuid" == "$expected" ]] || die 'copy UUID mismatch'
+    btrfs subvolume delete "$root/$scope/$id" >&2
+    btrfs filesystem sync "$root" >&2
+    printf '{"deleted":true}\n'; exit 0
+fi
 if [[ "$action" == clone ]]; then
     [[ $# == 4 ]] || die 'clone requires scope, new ID, old ID and expected UUID'
     scope="$1"; id="$2"; old="$3"; expected="$4"

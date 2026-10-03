@@ -54,6 +54,12 @@ elif name == 'btrfs':
         (p / 'payload').write_text(payload)
     elif op == ['subvolume', 'create']:
         p.mkdir()
+    elif op == ['subvolume', 'delete']:
+        counter = pathlib.Path(os.environ['BACKUP_FIXTURE']).with_suffix('.delete-count')
+        count = int(counter.read_text()) + 1 if counter.exists() else 1
+        counter.write_text(str(count))
+        if count == c.get('delete_fail_at'): sys.exit(1)
+        shutil.rmtree(p)
     elif op == ['filesystem', 'sync']:
         pass
     elif a[0] == 'send':
