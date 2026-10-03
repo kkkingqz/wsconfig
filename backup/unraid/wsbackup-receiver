@@ -71,6 +71,7 @@ case "$action" in
         [[ "$received_uuid" == "${words[4]}" ]] || die 'received UUID mismatch'
         mv -- "$stage/$id" "$dest"
         rmdir "$stage"
+        btrfs filesystem sync "$root" >&2
         snapshot_json
         ;;
 esac

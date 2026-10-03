@@ -40,15 +40,16 @@ elif name == 'btrfs':
         print(c.get('nested', ''), end='')
     elif op == ['subvolume', 'show']:
         m = json.loads((p / '.fixture-meta').read_text()) if (p / '.fixture-meta').exists() else {'uuid': c['uuid'], 'received_uuid': '-'}
-        print('UUID: ' + m['uuid'] + '\nReceived UUID: ' + m.get('received_uuid', '-'))
+        print('UUID: ' + m['uuid'] + '\nReceived UUID: ' + m.get('received_uuid', '-') + '\nParent UUID: ' + m.get('parent_uuid', '-'))
     elif a[:2] == ['property', 'get']:
         p = pathlib.Path(a[-2])
         m = json.loads((p / '.fixture-meta').read_text())
         print('ro=' + ('true' if m.get('ro', True) else 'false'))
     elif op == ['subvolume', 'snapshot']:
         p.mkdir()
-        (p / '.fixture-meta').write_text(json.dumps({'uuid': str(uuid.uuid4()), 'received_uuid': '-', 'ro': True}))
         src = pathlib.Path(a[-2])
+        parent_uuid = json.loads((src / '.fixture-meta').read_text())['uuid'] if (src / '.fixture-meta').exists() else '-'
+        (p / '.fixture-meta').write_text(json.dumps({'uuid': str(uuid.uuid4()), 'received_uuid': '-', 'ro': True, 'parent_uuid': parent_uuid}))
         payload = (src / 'payload').read_text() if (src / 'payload').exists() else c.get('payload', 'preserved data')
         (p / 'payload').write_text(payload)
     elif op == ['subvolume', 'create']:
@@ -56,6 +57,14 @@ elif name == 'btrfs':
     elif op == ['filesystem', 'sync']:
         pass
     elif a[0] == 'send':
+        if c.get('add_snapshot'):
+            dest = pathlib.Path(c['timeshift_top']) / 'timeshift-btrfs/snapshots/2026-10-02_12-00-00'
+            if not dest.exists(): shutil.copytree(c['add_snapshot'], dest)
+        if c.get('send_fail_at'):
+            counter = pathlib.Path(os.environ['BACKUP_FIXTURE']).with_suffix('.send-count')
+            count = int(counter.read_text()) + 1 if counter.exists() else 1
+            counter.write_text(str(count))
+            if count == c['send_fail_at']: sys.exit(1)
         if c.get('pending_record_path'):
             record = json.loads(pathlib.Path(c['pending_record_path']).read_text())
             if record['status'] != 'pending': sys.exit(1)

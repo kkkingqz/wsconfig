@@ -11,6 +11,20 @@ uuid "$fs_uuid"; safe_path "$root"
 case "$root/" in /home/*|/var/lib/vms/*|/etc/libvirt/*|/var/lib/libvirt/*) die 'root must be outside live sources' ;; esac
 filesystem_check "$root"
 btrfs subvolume show "$root" >/dev/null
+if [[ "$action" == clone ]]; then
+    [[ $# == 4 ]] || die 'clone requires scope, new ID, old ID and expected UUID'
+    scope="$1"; id="$2"; old="$3"; expected="$4"
+    [[ "$scope" == system || "$scope" == home ]] || die 'invalid Timeshift scope'
+    token "$id"; token "$old"; uuid "$expected"
+    inspect_snapshot "$root/$scope/$old"
+    [[ "$snapshot_uuid" == "$expected" ]] || die 'clone source UUID mismatch'
+    safe_path "$root/$scope/$id"
+    [[ ! -e "$root/$scope/$id" ]] || die 'copy already exists'
+    btrfs subvolume snapshot -r "$root/$scope/$old" "$root/$scope/$id" >&2
+    btrfs filesystem sync "$root" >&2
+    inspect_snapshot "$root/$scope/$id"; snapshot_json
+    exit 0
+fi
 case "$action" in
     inventory) [[ $# == 0 ]] || die 'unexpected arguments' ;;
     import)

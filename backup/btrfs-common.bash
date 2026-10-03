@@ -23,12 +23,15 @@ inspect_snapshot() {
     local show
     show="$(btrfs subvolume show "$1")"
     snapshot_uuid="$(awk '$1 == "UUID:" {print $2}' <<<"$show")"
+    parent_uuid="$(awk '$1 == "Parent" && $2 == "UUID:" {print $3}' <<<"$show")"
     received_uuid="$(awk '$1 == "Received" && $2 == "UUID:" {print $3}' <<<"$show")"
     uuid "$snapshot_uuid"
     [[ "$(btrfs property get -ts "$1" ro)" == 'ro=true' ]] || die 'snapshot is not read-only'
     [[ "$received_uuid" == - ]] && received_uuid=""
+    [[ "$parent_uuid" == - ]] && parent_uuid=""
+    [[ -z "$parent_uuid" ]] || uuid "$parent_uuid"
     [[ -z "$received_uuid" ]] || uuid "$received_uuid"
 }
 snapshot_json() {
-    printf '{"uuid":"%s","received_uuid":"%s","ro":true}\n' "$snapshot_uuid" "$received_uuid"
+    printf '{"uuid":"%s","received_uuid":"%s","parent_uuid":"%s","ro":true}\n' "$snapshot_uuid" "$received_uuid" "$parent_uuid"
 }

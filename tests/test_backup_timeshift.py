@@ -102,7 +102,7 @@ class TimeshiftBoundary(TimeshiftFixture, unittest.TestCase):
         self.assertEqual((self.managed / 'system/copy1/payload').read_text(), 'first@')
 
 
-class ImportedTransfer(TimeshiftFixture, unittest.TestCase):
+class TransferFixture(TimeshiftFixture):
     def setUp(self):
         super().setUp()
         self.remote_root = self.b.root / 'remote'
@@ -129,6 +129,9 @@ class ImportedTransfer(TimeshiftFixture, unittest.TestCase):
         p = self.helper('import', 'system', 'copy1', row['timeshift_name'], row['origin_uuid'])
         self.assertEqual(p.returncode, 0, p.stderr)
         return json.loads(p.stdout)['uuid']
+
+
+class ImportedTransfer(TransferFixture, unittest.TestCase):
 
     def test_system_receiver_accepts_only_fixed_scope(self):
         from backup_timeshift import send_copy
@@ -167,3 +170,107 @@ class ImportedTransfer(TimeshiftFixture, unittest.TestCase):
         shutil.rmtree(self.store)
         send_copy(self.c, 'system', 'copy1', u, None)
         self.assertTrue((self.remote_root / 'mbp16/system/copy1').exists())
+
+
+class BatchTests(TransferFixture, unittest.TestCase):
+    def batch(self):
+        from backup_timeshift import run_batch
+        return run_batch(self.c, self.state)
+
+    def records(self):
+        return [json.loads(p.read_text()) for p in (self.state / 'timeshift/records').glob('*.json')]
+
+    def test_all_existing_sent_oldest_first(self):
+        self.snapshot()
+        self.snapshot('2026-10-02_12-00-00', payload='next')
+        result = self.batch()
+        self.assertEqual(len(result['transferred']), 4)
+        self.assertEqual([r['mode'] for r in result['transferred']], ['full', 'full', 'incremental', 'incremental'])
+        for scope in ('system', 'home'):
+            parent = result['retained'][scope]
+            self.assertEqual((self.remote_root / 'mbp16' / scope / parent['id'] / 'payload').read_text(), 'next' + ('@' if scope == 'system' else '@home'))
+
+    def test_next_run_only_new_snapshots_incremental(self):
+        self.snapshot(); first = self.batch()
+        self.snapshot('2026-10-02_12-00-00', payload='next')
+        result = self.batch()
+        self.assertEqual(len(result['skipped']), 2)
+        self.assertEqual(len(result['transferred']), 2)
+        for r in result['transferred']:
+            self.assertEqual(r['mode'], 'incremental')
+            self.assertEqual(r['parent'], first['retained'][r['scope']]['id'])
+
+    def test_confirmed_copies_skipped_after_local_prune(self):
+        self.snapshot(); self.snapshot('2026-10-02_12-00-00'); result = self.batch()
+        for r in result['transferred'][:2]:
+            (self.managed / r['scope'] / r['id']).rename(self.b.root / r['id'])
+        again = self.batch()
+        self.assertEqual(again['transferred'], [])
+        self.assertEqual(len(again['skipped']), 4)
+
+    def test_inventory_frozen_during_run(self):
+        self.snapshot()
+        late = self.snapshot('2026-10-02_12-00-00')
+        template = self.b.root / 'late'; late.rename(template)
+        self.b.update(timeshift_top=str(self.top), add_snapshot=str(template))
+        result = self.batch()
+        self.assertEqual(len(result['transferred']), 2)
+        self.assertTrue((self.store / '2026-10-02_12-00-00').exists())
+
+    def test_multiple_new_snapshots_chain_in_one_batch(self):
+        self.snapshot(); self.batch()
+        self.snapshot('2026-10-02_12-00-00', payload='next')
+        self.snapshot('2026-10-03_12-00-00', payload='newest')
+        result = self.batch()
+        self.assertEqual(len(result['transferred']), 4)
+        for scope in ('system', 'home'):
+            chain = [r for r in result['transferred'] if r['scope'] == scope]
+            self.assertEqual(chain[1]['parent'], chain[0]['id'])
+
+    def test_system_home_chains_independent(self):
+        self.snapshot(home=False); first = self.batch()
+        self.snapshot('2026-10-02_12-00-00', payload='next'); result = self.batch()
+        by_scope = {r['scope']: r for r in result['transferred']}
+        self.assertEqual(by_scope['home']['mode'], 'full')
+        self.assertEqual(by_scope['system']['parent'], first['retained']['system']['id'])
+
+    def test_same_name_new_origin_uuid_not_skipped(self):
+        original = self.snapshot(); self.batch()
+        meta = original / '@/.fixture-meta'
+        data = json.loads(meta.read_text()); data['uuid'] = str(uuid.uuid4()); meta.write_text(json.dumps(data))
+        result = self.batch()
+        self.assertEqual(len(result['transferred']), 1)
+        self.assertEqual(result['transferred'][0]['scope'], 'system')
+
+    def test_missing_remote_old_snapshot_reimported(self):
+        import shutil
+        self.snapshot(); first = self.batch()
+        old = first['retained']['home']
+        shutil.rmtree(self.remote_root / 'mbp16/home' / old['id'])
+        result = self.batch()
+        self.assertEqual(len(result['transferred']), 1)
+        self.assertNotEqual(result['transferred'][0]['id'], old['id'])
+        self.assertEqual(result['transferred'][0]['mode'], 'full')
+
+    def test_failure_mid_batch_preserves_progress_and_all_local_copies(self):
+        self.snapshot(); self.snapshot('2026-10-02_12-00-00')
+        self.b.update(timeshift_top=str(self.top), send_fail_at=3)
+        with self.assertRaisesRegex(ValueError, 'stream failed'):
+            self.batch()
+        self.assertEqual(sum(r['status'] == 'success' for r in self.records()), 2)
+        self.assertEqual(len(list(self.managed.glob('*/*'))), 3)
+        self.b.update(timeshift_top=str(self.top))
+        result = self.batch()
+        self.assertTrue(all(r['status'] == 'success' for r in result['retained'].values()))
+
+    def test_disconnect_after_publish_resumes_without_duplicate(self):
+        self.snapshot(home=False)
+        os.environ['FIXTURE_DISCONNECT_ONCE'] = str(self.b.root / 'disconnected')
+        ssh = self.b.bin / 'ssh'
+        cfg = self.b.root / 'receiver.conf'
+        ssh.write_text('#!/usr/bin/env python3\nimport os,sys,subprocess,pathlib\nos.environ["SSH_ORIGINAL_COMMAND"]=sys.argv[-1]\np=subprocess.run(["bash",' + repr(str(ROOT / 'backup/unraid/wsbackup-receiver')) + ',' + repr(str(cfg)) + '])\nmark=pathlib.Path(os.environ["FIXTURE_DISCONNECT_ONCE"])\nif sys.argv[-1].startswith("receive ") and p.returncode==0 and not mark.exists():\n mark.touch();sys.exit(255)\nsys.exit(p.returncode)\n')
+        with self.assertRaisesRegex(ValueError, 'stream failed'):
+            self.batch()
+        result = self.batch()
+        self.assertEqual(len(list((self.remote_root / 'mbp16/system').glob('ts-*'))), 1)
+        self.assertEqual(result['retained']['system']['status'], 'success')

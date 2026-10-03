@@ -58,7 +58,10 @@ case "$action" in
         [[ "$scope" != vms ]] || vms_stopped
         inspect_snapshot "$dest"; snapshot_json
         ;;
-    inspect) inspect_snapshot "$dest"; snapshot_json ;;
+    inspect)
+        safe_path "$dest"
+        [[ -e "$dest" ]] || exit 3
+        inspect_snapshot "$dest"; snapshot_json ;;
     hash)
         inspect_snapshot "$dest"
         [[ "$1" != /* ]] || die 'relative verification path required'
