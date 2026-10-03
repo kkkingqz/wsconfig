@@ -10,12 +10,14 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-02-wsconfig-maintenance-design.md`, раздел 3, и уточнения пользователя: Unraid с Btrfs, адрес позже, механизм подготовить сейчас.
 
-**Execution status:** Механизм Tasks 1–4 подготовлен в `wsconfig-backup`.
-Связанные source/receiver/client и документация фиксируются одним коммитом,
-чтобы история не содержала несовместимые промежуточные версии протокола.
-Ниже сохранён исходный checklist; детальный журнал исполнения — локальный
-`.superpowers/sdd/2026-10-02-unraid-backup/progress.md`. Реальная передача,
-проверка восстановления HOME/VM и deployment на Unraid ожидают адреса сервера.
+**Execution status (2026-10-03):** Механизм реализован, проверен локально и
+перенесён в `main` вместе с расширением Timeshift batch. Актуальная инструкция
+— `docs/runbooks/backup.md`; последующий план —
+`docs/superpowers/plans/2026-10-03-timeshift-batch-backup.md`.
+Ниже сохранён исходный исторический checklist и ограничения первой версии:
+в частности, расширение добавило очистку управляемых локальных копий Timeshift
+и сделало batch режимом по умолчанию. Реальная передача, проверка восстановления
+system/HOME/VM и deployment на Unraid ожидают настройки сервера.
 
 ## Global Constraints
 

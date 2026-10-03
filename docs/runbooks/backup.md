@@ -180,7 +180,7 @@ snapshots, журналы operations и restore-tests. Ошибка/SIGINT/SIGTE
 отказ; SIGKILL/потеря питания могут оставить статус running. Такой запуск
 следует считать незавершённым до проверки, не успешным.
 
-Timeshift хранит отдельные inventory, records, parents, last-batch и cleanup
+`ws backup` хранит отдельные inventory, records, parents, last-batch и cleanup
 в `state/timeshift/`. `status` показывает coverage, pending, retained IDs и
 `local_present`; история остаётся после удаления копий.
 

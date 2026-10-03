@@ -10,6 +10,12 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-03-timeshift-batch-backup-design.md` — одобрена пользователем 2026-10-03.
 
+**Execution status (2026-10-03):** Реализация и исправления review перенесены
+в `main`. Локальные проверки выполнены; исходный checklist ниже сохранён как
+история плана. Deployment на Unraid, реальные полная/инкрементальная передачи
+и восстановление ещё не выполнены: конфигурация сервера не задана.
+Актуальная инструкция — `docs/runbooks/backup.md`.
+
 ## Global Constraints
 
 - Работать в существующем `/home/king/wsconfig-backup`, ветка `wsconfig-backup`; primary checkout и его сторонние изменения не трогать.
