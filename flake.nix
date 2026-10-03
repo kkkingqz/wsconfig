@@ -32,6 +32,7 @@
 
       # Man pages from docs/ with lowdown from nixpkgs.
       man = pkgs.callPackage ./nix/pkgs/man.nix { };
+      widgetsRuntime = import ./widgets/runtime { inherit pkgs; };
 
       # System file tree of the host; `ws system diff|check` compares it.
       mkSystem = host: pkgs.callPackage ./system { facts = factsOf host; };
@@ -56,6 +57,7 @@
         nvd = pkgs.nvd;
         xremap = pkgs.callPackage ./nix/pkgs/xremap.nix { };
         man = man;
+        widgets-runtime = widgetsRuntime;
       };
     };
 }
