@@ -8,6 +8,7 @@ Item {
     property alias body: body
     property real progress: 0
     readonly property real revealedHeight: height * progress
+    readonly property bool scrollRequired: scroll.contentHeight > scroll.availableHeight
     function reconcile() {
         animation.stop();
         const phase = widgetState.phase;
@@ -48,6 +49,7 @@ Item {
                 anchors.fill: parent; anchors.margins: Style.padding
                 clip: true
                 contentWidth: availableWidth
+                contentHeight: body.height
                 Item { id: body; width: scroll.availableWidth; height: Math.max(scroll.availableHeight, childrenRect.height) }
             }
         }

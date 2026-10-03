@@ -3,14 +3,14 @@ import Quickshell
 import "framework"
 ShellRoot {
     WidgetRegistry { id: registry }
-    WidgetController { id: controller; entries: registry.entries }
-    WidgetIpc { controller: controller }
+    WidgetController { id: widgetController; entries: registry.entries }
+    WidgetIpc { controller: widgetController }
     Variants {
         model: registry.entries.filter(entry => entry.enabled)
         WidgetHost {
             required property var modelData
             definition: modelData
-            controller: controller
+            controller: widgetController
         }
     }
 }

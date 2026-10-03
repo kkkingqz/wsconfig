@@ -74,6 +74,14 @@
             gjs -m tests/widgets/run-tests.js
             touch "$out"
           '';
+        widgets-runtime = pkgs.runCommand "widgets-runtime-integration" { nativeBuildInputs = [ pkgs.python3 pkgs.gjs ]; } ''
+          export HOME="$TMPDIR/home" XDG_RUNTIME_DIR="$TMPDIR/runtime"
+          mkdir -p "$HOME" "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+          python ${./.}/tests/widgets/check-runtime.py --runtime ${widgetsRuntime}/bin/qs-widgets \
+            --manifest ${pkgs.writeText "widget-test-manifest.json" (builtins.toJSON widgetsManifest)}
+          touch "$out"
+        '';
       };
 
       # Tools `ws` runs, pinned by flake.lock.

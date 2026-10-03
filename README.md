@@ -32,6 +32,7 @@ nix/            flake-хосты (facts.nix, apt.txt), home-manager, пакет�
 system/         системные файлы в /etc, /boot, /usr/local, ядро t2bce (ws system)
 keyboard/       macOS-клавиатура: xremap, сочетания GNOME и Tiling Assistant
 gnome/          профиль GNOME, расширения (свои — gnome/extensions/)
+widgets/        общий Quickshell framework, реестр виджетов и GNOME adapter
 terminal/       Ghostty, fish, micro, xdg-terminal-exec
 flatpak/        приложения (apps.txt), remotes и overrides (wsflatpak)
 distrobox/      контейнеры Distrobox и их hooks (wsbox)
@@ -55,6 +56,7 @@ docs/           документация, из неё собираются man-�
 docs/architecture/   layers (слои и правила), checks, workstation (подробно)
 docs/runbooks/       rebuild, keyboard, gnome, terminal, suspend, touchbar,
                      flatpak, distrobox, windows, virt
+                     widgets (ws-widgets: сервис, проверка и добавление Item)
 docs/plans/          roadmap и незавершённые планы
 docs/history/        как строились завершённые слои
 ```

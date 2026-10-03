@@ -10,6 +10,7 @@ Scope {
     property alias widgetContext: context
     readonly property bool loaded: loader.status === Loader.Ready
     readonly property real progress: frame.progress
+    readonly property bool scrollRequired: frame.scrollRequired
     QtObject {
         id: context
         readonly property string widgetId: root.definition.id

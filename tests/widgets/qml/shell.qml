@@ -31,13 +31,25 @@ ShellRoot {
                 check(large.widgetContext.contentWidth === 388 && small.widgetContext.contentHeight === 208, "logical context sizes");
                 panels.command("show", "small");
                 check(small.surface.visible && small.progress === 0, "transparent preparing");
+                panels.dispatch({type: "GEOMETRY", id: "small", requestId: panels.state.widgets.small.requestId, width: 160, height: 120});
+                check(small.widgetContext.contentWidth === 128 && small.widgetContext.contentHeight === 88, "clamped logical context");
                 panels.dispatch({type: "PLACED", id: "small", requestId: panels.state.widgets.small.requestId});
             } else if (stage === 1) {
                 check(panels.state.widgets.small.phase === "open", "animation completed");
+                check(small.surface.width === 184 && small.surface.height === 144, "clamped fixed surface");
+                check(small.scrollRequired, "clamped content remains scrollable");
                 small.widgetContext.requestClose();
                 check(small.surface.visible && panels.state.widgets.small.phase === "closing", "closing remains mapped");
-            } else {
+            } else if (stage === 2) {
                 check(!small.surface.visible && panels.state.widgets.small.phase === "closed", "closed unmapped");
+                panels.animationsEnabled = false;
+                panels.command("show", "large");
+                panels.dispatch({type: "PLACED", id: "large", requestId: panels.state.widgets.large.requestId});
+            } else if (stage === 3) {
+                check(panels.state.widgets.large.phase === "open" && large.progress === 1, "animations disabled opens");
+                large.widgetContext.requestClose();
+            } else {
+                check(!large.surface.visible && panels.state.widgets.large.phase === "closed", "animations disabled closes");
                 console.log("QML components, failure isolation, context and animation passed");
                 Qt.exit(0);
             }

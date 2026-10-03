@@ -21,12 +21,21 @@ export default class WorkstationWidgets extends Extension {
         this.focusTimer = 0;
         this.suppressedUntil = 0;
         this.instanceId = null;
+        this.reloadTimer = 0;
         try {
             const root = GLib.build_filenamev([GLib.get_user_config_dir(), 'workstation', 'widgets']);
             const config = readJson(`${root}/runtime.json`);
             if (config.schemaVersion !== 1 || config.adapter !== 'gnome' || config.configName !== 'workstation-widgets'
                 || typeof config.qsPath !== 'string' || !GLib.path_is_absolute(config.qsPath)) throw new Error('Invalid widget runtime config');
             const entries = validateManifest(readJson(config.manifestPath));
+            this.monitor = Gio.File.new_for_path(root).monitor_directory(Gio.FileMonitorFlags.NONE, null);
+            this.connectSignal(this.monitor, 'changed', (_monitor, file, other) => {
+                if (![file?.get_basename(), other?.get_basename()].some(name => ['manifest.json', 'runtime.json'].includes(name))) return;
+                if (this.reloadTimer) GLib.source_remove(this.reloadTimer);
+                this.reloadTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
+                    this.reloadTimer = 0; this.disable(); this.enable(); return GLib.SOURCE_REMOVE;
+                });
+            });
             this.client = new IpcClient(config, snapshot => {
                 this.buttons.update(snapshot); this.placement.update(snapshot);
                 if (this.instanceId !== snapshot.instanceId && snapshot.adapter.ready) { this.instanceId = snapshot.instanceId; this.sendAnimations?.(); }
@@ -65,6 +74,9 @@ export default class WorkstationWidgets extends Extension {
         } catch (error) { console.error(`Workstation Widgets: ${error}`); this.disable(); }
     }
     disable() {
+        if (this.reloadTimer) GLib.source_remove(this.reloadTimer);
+        this.reloadTimer = 0;
+        this.monitor?.cancel(); this.monitor = null;
         if (this.focusTimer) GLib.source_remove(this.focusTimer);
         this.focusTimer = 0;
         for (const [object, id] of this.signals || []) object.disconnect(id);

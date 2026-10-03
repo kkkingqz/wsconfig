@@ -3,7 +3,7 @@ export function validateManifest(value) {
         throw new Error('unsupported widget manifest');
     const ids = new Set();
     return value.widgets.map(raw => {
-        const entry = {enabled: true, panelPosition: 'right', panelOrder: 0, ...raw};
+        const entry = Object.assign({enabled: true, panelPosition: 'right', panelOrder: 0}, raw);
         if (typeof entry.id !== 'string' || !/^[a-z][a-z0-9-]*$/.test(entry.id) || ids.has(entry.id))
             throw new Error('invalid or duplicate widget ID');
         ids.add(entry.id);

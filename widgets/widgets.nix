@@ -2,6 +2,7 @@
 let
   runtime = import ./runtime { inherit pkgs; };
   manifest = import ./manifest.nix { inherit lib; registry = import ./registry.nix; qmlRoot = ./quickshell; };
+  manifestFile = pkgs.writeText "widget-manifest.json" (builtins.toJSON manifest);
   repo = "${config.home.homeDirectory}/${facts.wsconfig}";
   sessionGuard = pkgs.writeShellScript "widgets-session-guard" ''
     case ":''${XDG_CURRENT_DESKTOP:-}:" in *:GNOME:*) ;; *) exit 1 ;; esac
@@ -9,7 +10,7 @@ let
   '';
 in {
   xdg.configFile."quickshell/workstation-widgets".source = config.lib.file.mkOutOfStoreSymlink "${repo}/widgets/quickshell";
-  xdg.configFile."workstation/widgets/manifest.json".text = builtins.toJSON manifest;
+  xdg.configFile."workstation/widgets/manifest.json".source = manifestFile;
   xdg.configFile."workstation/widgets/runtime.json".text = builtins.toJSON {
     schemaVersion = 1;
     qsPath = "${runtime}/bin/qs-widgets";
@@ -26,6 +27,8 @@ in {
       StartLimitBurst = 5;
     };
     Service = {
+      # A registry change changes the unit, so Home Manager restarts the runtime.
+      Environment = [ "WIDGETS_MANIFEST=${manifestFile}" ];
       ExecCondition = sessionGuard;
       ExecStart = "${runtime}/bin/qs-widgets --session -n -c workstation-widgets";
       Restart = "on-failure";
