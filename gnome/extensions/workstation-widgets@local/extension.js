@@ -1,15 +1,15 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
-import Mtk from 'gi://Mtk';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {Extension, InjectionManager} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {PanelButtons} from './lib/panelButtons.js';
 import {IpcClient} from './lib/ipcClient.js';
 import {WindowPlacement} from './lib/windowPlacement.js';
 import {validateManifest} from './lib/manifest.mjs';
 import {shouldDismiss} from './lib/dismissal.mjs';
 import {buttonPresentation} from './lib/buttons.mjs';
+import {withoutWidgetEffects} from './lib/windowEffects.mjs';
 
 function readJson(path) {
     const [ok, bytes] = Gio.File.new_for_path(path).load_contents(null);
@@ -24,6 +24,7 @@ export default class WorkstationWidgets extends Extension {
         this.instanceId = null;
         this.reloadTimer = 0;
         this.errorSignature = '';
+        this.effectSnapshot = null;
         try {
             const root = GLib.build_filenamev([GLib.get_user_config_dir(), 'workstation', 'widgets']);
             const config = readJson(`${root}/runtime.json`);
@@ -39,6 +40,9 @@ export default class WorkstationWidgets extends Extension {
                 });
             });
             this.client = new IpcClient(config, snapshot => {
+                // Retain the verified identity during listener reconnect so
+                // a still-valid runtime lease cannot map with a Shell effect.
+                this.effectSnapshot = snapshot;
                 this.buttons.update(snapshot); this.placement.update(snapshot);
                 const signature = JSON.stringify(snapshot.lastError);
                 if (snapshot.lastError && signature !== this.errorSignature) Main.notifyError('Workstation Widgets', `${snapshot.lastError.id || 'Runtime'}: ${snapshot.lastError.reason}`);
@@ -53,6 +57,9 @@ export default class WorkstationWidgets extends Extension {
                 }).catch(error => Main.notifyError('Workstation Widgets', String(error)));
             });
             this.placement = new WindowPlacement(this.client, this.buttons);
+            this.injections = new InjectionManager();
+            this.injections.overrideMethod(Main.wm, '_shouldAnimateActor',
+                original => withoutWidgetEffects(original, () => this.effectSnapshot));
             this.settings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
             const animations = () => this.client.call('widgetAdapter', 'setAnimationsEnabled', [this.settings.get_boolean('enable-animations')]).catch(() => {});
             this.connectSignal(this.settings, 'changed::enable-animations', animations);
@@ -62,13 +69,11 @@ export default class WorkstationWidgets extends Extension {
                 const ownButton = this.buttons.contains(event.get_source());
                 if (ownButton) this.suppressedUntil = GLib.get_monotonic_time() + 250000;
                 const [x, y] = event.get_coords();
-                const active = this.active();
-                const inFamily = this.family().some(window => {
-                    const r = window.get_frame_rect();
-                    const gutter = window === active.window ? window.protocol_to_stage_rect(new Mtk.Rectangle({x: 0, y: 0, width: 12, height: 12})).width : 0;
-                    return x >= r.x + gutter && x < r.x + r.width - gutter && y >= r.y + gutter && y < r.y + r.height - gutter;
-                });
-                if (shouldDismiss({type: 'pointer', ownButton, inFamily}, active)) this.hideAll();
+                // Mutter picking respects the surface input region, including
+                // the still-hidden part, gutter and rounded corners.
+                const source = global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, x, y);
+                const familyActors = this.family().map(window => window.get_compositor_private());
+                if (shouldDismiss({type: 'pointer', ownButton, source, familyActors}, this.active())) this.hideAll();
                 return Clutter.EVENT_PROPAGATE;
             });
             this.connectSignal(Main.overview, 'showing', () => this.hideAll());
@@ -88,6 +93,7 @@ export default class WorkstationWidgets extends Extension {
         this.focusTimer = 0;
         for (const [object, id] of this.signals || []) object.disconnect(id);
         this.signals = [];
+        this.injections?.clear(); this.injections = null; this.effectSnapshot = null;
         this.placement?.destroy(); this.buttons?.destroy(); this.client?.shutdown();
         this.client = null; this.buttons = null; this.placement = null;
         this.settings = null;

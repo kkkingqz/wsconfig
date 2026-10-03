@@ -41,6 +41,20 @@ Verified:
   opening/open, then closes with placement timeout after two seconds. Unknown
   ID is rejected; neither command creates another runtime process.
 
+Review fix pass, verified separately on the same date:
+
+- 46 GJS cases pass, including inherited ID rejection, cancellation during
+  preparing, masked-area pointer policy and scoped Shell effect suppression.
+  The QML/typed IPC checks also reject prototype keys in the actual Qt engine.
+- The Wayland smoke confirms that surfaces remain unmapped before adapter
+  readiness, then map with the expected dimensions and DPR 1.5. Compositor
+  inspection is available again: example frame (802,319,444,604), compact
+  (852,489,344,264). These are temporary test placements, not button anchoring.
+- All 122 Python tests pass (701.694s). Nix widgets-manifest/qml/tests/runtime,
+  both Home Manager hosts and man pass.
+- Native effect injection and reactive picking were checked against Shell and
+  Mutter 50.1 sources. Their integrated GUI behavior remains pending below.
+
 Pending after loading the extension in a new GNOME session:
 
 - Both buttons; anchoring gap, focus, no center flash, no decorations and no

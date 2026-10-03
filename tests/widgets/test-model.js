@@ -6,6 +6,35 @@ function event(s, type, args = {}, time = 0) { return reduce(s, {type, ...args},
 function show(s, id = 'example') { return event(s, 'COMMAND', {action: 'show', id}).state; }
 function placed(s) { return event(s, 'PLACED', {id: 'example', requestId: s.widgets.example.requestId}).state; }
 export const tests = {
+    inheritedIdsRejected: () => {
+        const targets = [Object.prototype, Object, Object.prototype.toString];
+        const keys = ['phase', 'requestId', 'desiredOpen', 'available'];
+        const saved = targets.map(target => keys.map(key => Object.getOwnPropertyDescriptor(target, key)));
+        try {
+            for (const id of ['__proto__', 'constructor', 'toString']) {
+                for (const input of [
+                    {type: 'COMMAND', action: 'hide', id},
+                    {type: 'COMMAND', action: 'show', id},
+                    {type: 'COMMAND', action: 'toggle', id},
+                    {type: 'AVAILABLE', id, value: false},
+                    {type: 'FAILED', id, requestId: 0, reason: 'test'}]) {
+                    const state = initial(), result = reduce(state, input, 0);
+                    assert(!result.accepted && result.state === state && result.effects.length === 0, `inherited ID accepted: ${id}/${input.type}`);
+                }
+            }
+            assert(!Object.hasOwn(Object.prototype, 'phase'), 'prototype changed');
+        } finally {
+            targets.forEach((target, i) => keys.forEach((key, j) => {
+                if (saved[i][j]) Object.defineProperty(target, key, saved[i][j]);
+                else delete target[key];
+            }));
+        }
+    },
+    explicitConstructorId: () => {
+        const state = createState([{id: 'constructor', enabled: true, width: 320, height: 240}], 'one', 42);
+        const result = event(state, 'COMMAND', {action: 'show', id: 'constructor'});
+        assert(result.accepted && result.state.widgets.constructor.phase === 'preparing');
+    },
     switchBackClearsPendingIntent: () => { let s = show(placed(show(initial())), 'compact'); s = show(s); assert(s.pendingId === null && !s.widgets.compact.desiredOpen); },
     prepareAndAck: () => { let s = show(initial()); assert(s.widgets.example.phase === 'preparing'); s = placed(s); assert(s.widgets.example.phase === 'opening'); },
     placementTimeout: () => { const s = show(initial()); assert(event(s, 'TICK', {}, 1999).state.widgets.example.phase === 'preparing'); const r = event(s, 'TICK', {}, 2000); assert(r.state.widgets.example.phase === 'closed'); assert(r.state.lastError !== null); },

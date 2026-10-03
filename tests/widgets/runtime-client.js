@@ -10,6 +10,23 @@ async function wait(test, timeout = 3000) {
 }
 const client = new IpcClient(config, () => {}, () => {});
 try {
+    // A public command may arrive before the adapter. No native surface may
+    // map until the adapter has the verified PID and its effect guard installed.
+    let initial;
+    const bootDeadline = GLib.get_monotonic_time() + 3000000;
+    while (!initial) {
+        try { initial = JSON.parse(await client.call('widgets', 'status')); }
+        catch (error) { if (GLib.get_monotonic_time() > bootDeadline) throw error; await delay(25); }
+    }
+    assert(!initial.adapter.ready, 'fresh runtime has no adapter');
+    assert(await client.call('widgets', 'show', ['example']) === 'true', 'pre-adapter show accepted');
+    await delay(100);
+    const waiting = JSON.parse(await client.call('testSurfaces', 'status'));
+    assert(waiting.every(surface => !surface.visible && !surface.mapped), 'no surface maps before adapter lease');
+    await client.call('widgets', 'hideAll');
+    for (const id of ['__proto__', 'constructor']) {
+        assert(await client.call('widgets', 'hide', [id]) === 'false', 'inherited ID rejected in Qt runtime');
+    }
     client.start();
     await wait(() => client.snapshot?.adapter.ready);
     assert(client.snapshot.pid === Number(GLib.getenv('WIDGETS_TEST_PID')), 'IPC addresses the launched runtime PID');

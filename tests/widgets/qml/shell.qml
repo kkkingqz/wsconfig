@@ -34,6 +34,10 @@ ShellRoot {
             if (stage === 0) {
                 check(!large.loaded && !small.loaded, "components lazy until first open");
                 check(panels.state.widgets.broken.available, "unopened broken component not loaded");
+                panels.command("show", "small");
+                check(!small.surface.visible, "surface must stay unmapped until adapter has verified runtime PID");
+                panels.command("hide", "small");
+                panels.dispatch({type: "LEASE", instanceId: panels.instanceId});
                 panels.command("show", "broken");
                 panels.command("show", "large");
                 panels.command("hide", "large");
@@ -71,6 +75,9 @@ ShellRoot {
         interval: 50; running: Quickshell.env("WIDGETS_IPC_TEST") !== "1"
         onTriggered: {
             if (controller.command("show", "missing")) Qt.exit(1);
+            if (controller.command("hide", "__proto__") || controller.command("hide", "constructor")) Qt.exit(1);
+            if (controller.dispatch({type: "AVAILABLE", id: "__proto__", value: false})) Qt.exit(1);
+            if (({}).phase !== undefined) Qt.exit(1);
             if (!controller.command("show", "example")) Qt.exit(1);
             const id = controller.state.widgets.example.requestId;
             if (!controller.dispatch({type: "PLACED", id: "example", requestId: id})) Qt.exit(1);

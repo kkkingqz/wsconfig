@@ -30,6 +30,7 @@ Scope {
         id: window
         widgetId: root.definition.id
         widgetState: root.widgetState
+        adapterReady: root.controller.state.adapter.ready
         mask: Region { x: Style.gutter; y: Style.gutter; width: frame.width; height: Math.floor(frame.revealedHeight); radius: Style.radius }
         onClosed: context.requestClose()
         PopupFrame {

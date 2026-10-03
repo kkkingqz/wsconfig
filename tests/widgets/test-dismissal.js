@@ -1,12 +1,32 @@
 import {shouldDismiss} from '../../gnome/extensions/workstation-widgets@local/lib/dismissal.mjs';
 import {createState, reduce} from '../../widgets/quickshell/framework/model.mjs';
 function assert(v) { if (!v) throw new Error('dismissal policy'); }
+const panelActor = {get_parent: () => null};
+const panelSurface = {get_parent: () => panelActor};
+const background = {get_parent: () => null};
 export const tests = {
+    maskedAreaFallsThrough: () => assert(shouldDismiss({type: 'pointer', source: background, familyActors: [panelActor], inFamily: true}, {phase: 'opening'})),
+    transientPointer: () => {
+        const popupActor = {get_parent: () => null};
+        const popupSurface = {get_parent: () => popupActor};
+        assert(!shouldDismiss({type: 'pointer', source: popupSurface, familyActors: [panelActor, popupActor]}, {phase: 'open'}));
+    },
+    outsideWhilePreparingCancelsPlacement: () => {
+        let state = createState([{id: 'example', enabled: true, width: 420, height: 580}], 'instance', 42);
+        state = reduce(state, {type: 'COMMAND', action: 'show', id: 'example'}, 0).state;
+        const requestId = state.widgets.example.requestId;
+        if (shouldDismiss({type: 'pointer', ownButton: false, inFamily: false}, {phase: 'preparing', ownButtonSuppressed: true})) {
+            state = reduce(state, {type: 'COMMAND', action: 'hideAll'}, 0).state;
+        }
+        assert(state.widgets.example.phase === 'closed' && state.selectedId === null);
+        assert(!reduce(state, {type: 'PLACED', id: 'example', requestId}, 0).accepted);
+    },
+    ownButtonWhilePreparing: () => assert(!shouldDismiss({type: 'pointer', ownButton: true, inFamily: false}, {phase: 'preparing'})),
     ownButton: () => assert(!shouldDismiss({type: 'pointer', ownButton: true}, {phase: 'open'})),
     unrelatedFocus: () => assert(shouldDismiss({type: 'focus', inFamily: false}, {phase: 'open'})),
     transient: () => assert(!shouldDismiss({type: 'focus', inFamily: true}, {phase: 'open'})),
     outside: () => assert(shouldDismiss({type: 'pointer', inFamily: false}, {phase: 'open'})),
-    inside: () => assert(!shouldDismiss({type: 'pointer', inFamily: true}, {phase: 'open'})),
+    inside: () => assert(!shouldDismiss({type: 'pointer', source: panelSurface, familyActors: [panelActor]}, {phase: 'open'})),
     ownButtonFocusRace: () => {
         for (const order of [['pointer', 'focus'], ['focus', 'pointer']]) {
             let state = createState([{id: 'example', enabled: true, width: 420, height: 580}], 'instance', 42);

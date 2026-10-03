@@ -13,7 +13,7 @@ export function reduce(previous, event, nowMs) {
     const state = JSON.parse(JSON.stringify(previous));
     const effects = [];
     let accepted = true;
-    const widget = state.widgets[event.id];
+    const widget = Object.prototype.hasOwnProperty.call(state.widgets, event.id) ? state.widgets[event.id] : null;
     function begin(id) {
         const w = state.widgets[id];
         state.selectedId = id;
