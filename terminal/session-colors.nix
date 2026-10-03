@@ -2,6 +2,14 @@
 { ... }:
 {
   home.file.".config/fish/functions/__ws_session_color.fish".text = ''
+    function __ws_session_color_run
+        if test "$argv[1]" = --function
+            $argv[2..-1]
+        else
+            command $argv
+        end
+    end
+
     # Restore at the next prompt too: Ctrl+C can abort a Fish function.
     function __ws_session_color_reset --on-event fish_prompt
         if not set -q __ws_session_color_active
@@ -18,9 +26,9 @@
     end
 
     function __ws_session_color
-        # Arguments: color, executable, then its original arguments.
+        # Arguments: color, optional --function, executable, original arguments.
         if test "$TERM_PROGRAM" != ghostty; or not isatty stdin; or not isatty stdout
-            command $argv[2..-1]
+            __ws_session_color_run $argv[2..-1]
             return $status
         end
 
@@ -33,7 +41,7 @@
         set -gx WS_TERMINAL_FOREGROUND "$argv[1]"
         set -g __ws_session_color_active 1
         printf '\x1b]10;%s\x1b\x5c' "$argv[1]"
-        command $argv[2..-1]
+        __ws_session_color_run $argv[2..-1]
         set -l session_status $status
         __ws_session_color_reset
         return $session_status

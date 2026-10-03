@@ -212,6 +212,11 @@ Ctrl+Enter  → Alt+Enter
 Цвета задаются в `terminal/ssh-colors.nix`, изменения применяются через `ws switch`.
 Home Manager генерирует `~/.config/fish/functions/ssh.fish`; Fish загружает его
 при первом вызове `ssh`, в том числе в уже открытом shell.
+Если Ghostty включает `ssh-env` или `ssh-terminfo`, его функция `ssh`
+сохраняется как транспорт и вызывается внутри цветовой обёртки. Hook в
+`~/.config/fish/conf.d/ssh-colors.fish` учитывает настройку интеграции
+после первого приглашения. После добавления этого hook откройте новую вкладку
+или выполните `source ~/.config/fish/conf.d/ssh-colors.fish` в локальном Fish.
 Вывод в файлы и pipes проходит без управляющих команд цвета. Явные ANSI-цвета
 удалённого prompt и программ сохраняются; `command ssh` обходит обёртку.
 
