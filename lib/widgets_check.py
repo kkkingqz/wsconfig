@@ -37,7 +37,7 @@ def check():
     try:
         assert result.returncode == 0, result.stderr.strip() or 'no IPC response'
         state = json.loads(result.stdout)
-        assert state['protocolVersion'] == 1 and isinstance(state['instanceId'], str), 'invalid protocol'
+        assert state['protocolVersion'] == 2 and isinstance(state['instanceId'], str), 'invalid protocol'
         assert isinstance(state['pid'], int) and state['pid'] > 0, 'invalid PID'
         pid = run(['systemctl', '--user', 'show', '--property=MainPID', '--value', UNIT])
         assert int(pid.stdout.strip()) == state['pid'], 'service and IPC PIDs differ'
@@ -45,7 +45,7 @@ def check():
         report('pass', f'IPC protocol and runtime instance agree (PID {state["pid"]})')
         for widget_id, widget in state['widgets'].items():
             if not widget['available']: report('fail', f'QML component unavailable: {widget_id}')
-        report('pass' if state['adapter']['ready'] else 'warn', 'adapter lease ready' if state['adapter']['ready'] else 'adapter lease unavailable; window checks pending')
+        report('pass' if state['adapter']['connected'] else 'warn', 'adapter connected' if state['adapter']['connected'] else 'adapter disconnected; window checks pending')
         if state.get('lastError'): report('warn', f'last runtime error: {state["lastError"]}')
     except Exception as error: report('fail', f'IPC: {error}')
 

@@ -10,12 +10,12 @@ let
   '';
 in {
   xdg.configFile."quickshell/workstation-widgets".source = config.lib.file.mkOutOfStoreSymlink "${repo}/widgets/quickshell";
-  xdg.configFile."workstation/widgets/manifest.json".source = manifestFile;
-  xdg.configFile."workstation/widgets/runtime.json".text = builtins.toJSON {
-    schemaVersion = 1;
+  xdg.dataFile."workstation/widgets/manifest.json".source = manifestFile;
+  xdg.dataFile."workstation/widgets/runtime.json".text = builtins.toJSON {
+    schemaVersion = 2;
     qsPath = "${runtime}/bin/qs-widgets";
-    configName = "workstation-widgets";
-    manifestPath = "${config.xdg.configHome}/workstation/widgets/manifest.json";
+    socketPath = "$XDG_RUNTIME_DIR/workstation-widgets/control.sock";
+    manifestPath = "${config.xdg.dataHome}/workstation/widgets/manifest.json";
     adapter = "gnome";
   };
   systemd.user.services.workstation-widgets = {
@@ -28,7 +28,10 @@ in {
     };
     Service = {
       # A registry change changes the unit, so Home Manager restarts the runtime.
-      Environment = [ "WIDGETS_MANIFEST=${manifestFile}" ];
+      Environment = [ "WIDGETS_MANIFEST=${manifestFile}" "WIDGETS_SOCKET=%t/workstation-widgets/control.sock" "WIDGETS_CHMOD=${pkgs.coreutils}/bin/chmod" ];
+      RuntimeDirectory = "workstation-widgets";
+      RuntimeDirectoryMode = "0700";
+      UMask = "0077";
       ExecCondition = sessionGuard;
       ExecStart = "${runtime}/bin/qs-widgets --session -n -c workstation-widgets";
       Restart = "on-failure";
