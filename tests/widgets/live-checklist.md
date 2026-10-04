@@ -34,7 +34,7 @@ Verified:
 - After synchronization: all 122 Python tests and 37 GJS tests pass; Nix
   widgets-manifest/qml/tests/runtime, both Home Manager hosts and man build.
 - `ws switch` and `ws apply extensions` completed. Production QML link resolves
-  to `/home/king/wsconfig/widgets/quickshell`; runtime/manifest and CLI delivered.
+  to `~/wsconfig/widgets/quickshell`; runtime/manifest and CLI delivered.
   Managed service is enabled and active; restart creates a new runtime PID,
   IPC PID agrees with systemd, both widget IDs start closed, NRestarts is zero.
 - Production owner check: three passes, two warnings, zero failures. Warnings
