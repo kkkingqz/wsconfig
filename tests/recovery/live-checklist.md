@@ -40,3 +40,27 @@ rEFInd и отдельным SSH receiver отсутствует. Автотес
 настоящий forced key, snapshot A после полного и incremental backup; затем
 загрузка конкретного MacBook через его rEFInd. VM не подтверждает T2 hardware
 или восстановление настоящего NAS. Данные host/NAS не использовать в тестах.
+
+## Автоматическая проверка реализации — 2026-10-04
+
+- Проверенный результат после интеграции актуального main: `9c8334093542f28b210246b0796aab7d0ef343d7`.
+- `python3 -m unittest discover -s tests -v`: **221 passed**, 1146.573 s.
+- Исправлены все 8 замечаний независимого read-only review: настоящий TTY,
+  foreign default до mutations, boot recheck при resume, привязка journal к
+  filesystem UUID, root/initrd references, обязательный HOME fstab, EFI source,
+  bind mounts в выбранном HOME. Новые regressions сначала воспроизвели ошибки.
+- Recovery focused suite после исправлений: 64 passed; TTY проверяется настоящим
+  controlling PTY, kernel Btrfs и SSH transport остаются test boundaries.
+- Реальный syntax script CI (Bash/Python/fish): exit 0.
+- `nix flake check --print-build-logs`: all checks passed, включая man ws-recovery.
+- `ws check repo --json`: 151 passes, 0 failures; ожидаемые предупреждения:
+  feature branch, ранее существовавший HOME path в widget checklist, старый
+  локальный config workstation. Файлы recovery secrets не содержат.
+- Autonomous export: whitelist/пустой HOME/help/version/corruption/receive-refusal
+  tests passed. Подготовленный artifact проверен SHA-256 и `--version`.
+
+Эти результаты подтверждают реализацию и regression checks. Пункты реальной
+VM/Unraid/power-loss/boot приёмки выше по-прежнему **не выполнены**. Первая
+загрузка поддерживается обычной rEFInd entry с восстановленными
+vmlinuz/initrd/refind_linux.conf; альтернативные EFI/AMD/GRUB paths требуют
+отдельной приёмки. Production restore на этом компьютере не запускался.
