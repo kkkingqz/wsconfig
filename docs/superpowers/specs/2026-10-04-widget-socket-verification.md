@@ -9,7 +9,7 @@ Worktree: `/home/king/wsconfig/.worktrees/widget-framework`, original base053d0d
 - QML:300ms gentle reveal and continuous reversal preserved; lazy default retains contents; unloadOnClose unloads and reloads; clamped panel/context/scroll and component error isolation preserved.
 - Wayland test with real Gio adapter: example444×604, compact344×264, DPR1.5; both transitions, runtime kill/restart/reconnect, immediate EOF closure. Placement acknowledgement is manual in this isolated test; this does not replace native button observation.
 - Idle test uses production QML without test observer and a GLib main loop adapter.60.01s: runtime0.00CPU seconds,0.05 context switches/sec; adapter0.00CPU seconds,0.117 context switches/sec. Context switches are a wakeup proxy, not a kernel wakeup trace. No recurring IPC request/process. The temporary pair has one Quickshell runtime, one standalone GJS test adapter.
-- Full Python suite:142 cases; completion tests may be skipped if fish is unavailable in the execution environment. GJS51 cases. Nix widget manifest/QML/tests/runtime, both Home Manager hosts and man are checked before delivery.
+- Full Python suite:142 cases at the original base; all8 completion cases rerun successfully on the host with fish. Current main recovery work was subsequently merged into wsconfig; final full suite223Python cases passes, including fish completions. GJS51 cases. Nix widget manifest/QML/tests/runtime, both Home Manager hosts and man are checked before delivery.
 
 Decisions recorded during execution:
 
@@ -20,3 +20,9 @@ Decisions recorded during execution:
 5. Use SplitParser's newline byte buffering to preserve partial UTF-8. Complete frames are limited64KiB; incomplete buffering belongs to upstream parser. Same-UID clients are trusted regarding unfinished-frame memory use.
 
 Installed-code GUI matrix remains separate: panel toggle/Esc/outside click/switch, runtime restart with window open, disable/enable, and ws check without new warnings after a normal GNOME login loads the rewritten module. Native session is never forcibly terminated.
+
+Independent whole-branch review: one Important framing issue, no Critical or
+Minor findings. It was reproduced before fixing: rejected JSON/role/oversized
+frames followed by valid hello/toggle/placed in one packet left ghost ownership.
+A permanent closed/rejected flag now prevents all subsequent callbacks from
+processing frames. The real QML regression passes for all three prefixes.

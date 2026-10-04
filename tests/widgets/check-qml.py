@@ -75,7 +75,20 @@ with tempfile.TemporaryDirectory(prefix="widgets-qml-") as temporary:
             adapter.socket.sendall(frame[:split]); time.sleep(.05); adapter.socket.sendall(frame[split:])
             while adapter.read().get('seq') != 99: pass
             assert cli('status')['result']['lastError']['reason'] == reason, 'fragmented UTF-8 corrupted'
-            print("Socket snapshots, concurrent CLI, roles, takeover, EOF, placement deadline and fragmented UTF-8 passed")
+            adapter.close(); peers.remove(adapter); time.sleep(.05)
+            import socket
+            follow = ''.join(json.dumps(frame)+'\n' for frame in [
+                {'protocolVersion':2,'type':'hello','role':'adapter'},
+                {'protocolVersion':2,'type':'command','seq':1,'method':'toggle','args':{'id':'example'}},
+                {'protocolVersion':2,'type':'command','seq':2,'method':'placed','args':{'id':'example','requestId':state['widgets']['example']['requestId']+2}}])
+            for bad in ['broken JSON', json.dumps({'protocolVersion':2,'type':'hello','role':'invalid'}), 'x'*65537]:
+                with socket.socket(socket.AF_UNIX) as rejected:
+                    rejected.connect(str(endpoint)); rejected.sendall((bad+'\n'+follow).encode()); time.sleep(.05)
+                time.sleep(.05)
+                result=cli('status')['result']
+                assert not result['adapter']['connected'], 'rejected peer became ghost adapter'
+                assert all(w['phase']=='closed' for w in result['widgets'].values()), 'rejected peer dispatched command'
+            print("Socket snapshots, CLI, takeover, EOF, deadlines, UTF-8 and permanent rejection passed")
         except Exception:
             log.seek(0); print(log.read()); raise
         finally:

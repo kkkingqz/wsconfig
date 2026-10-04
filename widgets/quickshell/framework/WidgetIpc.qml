@@ -42,25 +42,29 @@ Scope {
             id: peer
             property string role: ""
             property bool used: false
+            property bool rejected: false
+            function closePeer() { rejected = true; connected = false; }
             function send(frame) { write(JSON.stringify(Object.assign({protocolVersion: 2}, frame)) + "\n"); flush(); }
             function snapshot() { send({type: "snapshot", state: root.controller.state}); }
             onConnectedChanged: {
+                if (!connected) rejected = true;
                 if (!connected && root.adapter === peer) {
                     root.adapter = null;
                     root.controller.dispatch({type: "ADAPTER_DISCONNECTED"});
                 }
             }
             function receive(line) {
+                if (rejected) return;
                 let frame;
-                try { frame = JSON.parse(line); } catch (_) { connected = false; return; }
+                try { frame = JSON.parse(line); } catch (_) { closePeer(); return; }
                 if (!role) {
                     const next = Wire.validateHello(frame);
-                    if (!next || !root.secured) { connected = false; return; }
+                    if (!next || !root.secured) { closePeer(); return; }
                     role = next;
                     if (role === "adapter") {
                         const old = root.adapter;
                         root.adapter = peer;
-                        if (old) old.connected = false;
+                        if (old) old.closePeer();
                         // Dispatch broadcasts the initial snapshot on first connection.
                         const revision = root.controller.state.revision;
                         root.controller.dispatch({type: "ADAPTER_CONNECTED"});
@@ -68,21 +72,22 @@ Scope {
                     } else send({type: "hello", pid: root.controller.state.pid, instanceId: root.controller.state.instanceId});
                     return;
                 }
-                if ((role === "adapter" && root.adapter !== peer) || (role === "cli" && used)) { connected = false; return; }
+                if ((role === "adapter" && root.adapter !== peer) || (role === "cli" && used)) { closePeer(); return; }
                 used = true;
                 if (!Wire.validateCommand(frame, role)) {
                     send({type: "reply", seq: frame?.seq || 0, ok: false, error: "invalid or unauthorized command"});
-                    if (role === "cli") connected = false;
+                    if (role === "cli") closePeer();
                     return;
                 }
                 send({type: "reply", seq: frame.seq, ok: true, result: root.execute(frame.method, frame.args)});
-                if (role === "cli") connected = false;
+                if (role === "cli") closePeer();
             }
             // Split complete byte lines before decoding UTF-8. Decoding each
             // arbitrary chunk loses code points split across socket reads.
             parser: SplitParser {
                 onRead: line => {
-                    if (line.length > 65536) { peer.connected = false; return; }
+                    if (peer.rejected) return;
+                    if (line.length > 65536) { peer.closePeer(); return; }
                     peer.receive(line);
                 }
             }
