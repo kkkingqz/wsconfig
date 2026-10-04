@@ -109,8 +109,37 @@ EFI и bootloader не переустанавливаются. При неизв
 
 После успешного переключения default subvolume устанавливается на новый `@`.
 Скрипт размонтирует собственный mount при выходе. Перезагрузить вручную;
-автоматической перезагрузки нет. После загрузки проверить файлы, services,
-Nix generation и `ws check`.
+автоматической перезагрузки нет.
+
+## После первой загрузки
+
+Восстановленная система загружается с `noresume` и без `resume=`/`resume_offset`:
+гибернация в ней не работает. Образ, записанный при гибернации, следующая загрузка
+проигнорирует, и сессия пропадёт. Это касается и закрытия крышки
+(suspend-then-hibernate через 24 часа). Поэтому до шага 2 не уходить в гибернацию
+и не оставлять ноутбук надолго с закрытой крышкой.
+
+1. Проверить файлы, services и Nix generation.
+2. Вернуть управляемые параметры загрузки. `ws system apply` заменяет
+   `/boot/refind_linux.conf` (и остальные изменённые системные файлы) версией
+   из репозитория, с `resume=` и `resume_offset`:
+
+   ```console
+   ws system apply
+   ```
+
+3. Перезагрузиться: новая командная строка ядра действует со следующей загрузки.
+   Проверить, что `noresume` больше нет, а `resume=` есть:
+
+   ```console
+   cat /proc/cmdline
+   ```
+
+4. Выполнить `ws check`.
+
+Резервные копии исходных boot-файлов остаются рядом с ними:
+`/etc/fstab.before-ws-recovery-ID` и `/boot/refind_linux.conf.before-ws-recovery-ID`.
+После шага 3 их можно удалить.
 
 ## Прерывание, status, resume, rollback
 
@@ -150,8 +179,45 @@ sudo bash /media/ubuntu/USB/ws-restore rollback --transaction restore-TRANSACTIO
 original default. Восстановленные копии, включая изменения после загрузки,
 сохраняются под отдельными именами. Повторный rollback безопасен. Скрипт
 не удаляет старые системы, readonly baselines, partials или журналы; место
-освобождать вручную после проверки восстановления. Чужой UUID, занятый путь
-или противоречивый журнал приводят к отказу без слепого overwrite/rollback.
+освобождается вручную после проверки восстановления (следующий раздел). Чужой UUID,
+занятый путь или противоречивый журнал приводят к отказу без слепого overwrite/rollback.
+
+## Освобождение места после восстановления
+
+Делать только когда восстановленная система проверена. После удаления копий
+`rollback` этой transaction невозможен. Поэтому журнал удаляется вместе с ними:
+`status` для него иначе сообщит о пропавших подтомах.
+
+Имена для transaction `restore-ID` (ID берётся из `ws-recovery/transactions`):
+
+| Подтом | Что это |
+|---|---|
+| `@before-restore-ID`, `@homebefore-restore-ID` | старые root/HOME после успешного switch |
+| `@after-restore-ID`, `@homeafter-restore-ID` | восстановленные копии после rollback |
+| `@restore-ID`, `@home-restore-ID` | подготовленные копии, если switch не начинался |
+| `ws-recovery/receives/restore-ID/*/*` | readonly baselines, принятые с NAS, и partial неудачного приёма |
+
+Из работающей системы смонтировать top-level Btrfs и посмотреть, что осталось:
+
+```console
+sudo mount -o subvolid=5 /dev/disk/by-uuid/(findmnt -no UUID /) /mnt
+sudo btrfs subvolume list /mnt | grep -E 'restore-|ws-recovery/'
+ls /mnt/ws-recovery/transactions
+```
+
+Удалить подтомы этой transaction, затем каталог приёма и журнал. Подставить ID
+и удалять только пути, которые показал список:
+
+```console
+sudo btrfs subvolume delete /mnt/@before-restore-ID /mnt/@homebefore-restore-ID
+sudo btrfs subvolume delete /mnt/ws-recovery/receives/restore-ID/*/*
+sudo rm -r /mnt/ws-recovery/receives/restore-ID
+sudo rm /mnt/ws-recovery/transactions/restore-ID.json
+sudo umount /mnt
+```
+
+Текущие `@` и `@home` не трогать. Удалённые подтомы освобождают место после
+фоновой очистки Btrfs (`sudo btrfs subvolume sync /mnt` перед umount дождётся её).
 
 ## Если даты NAS не видны
 
