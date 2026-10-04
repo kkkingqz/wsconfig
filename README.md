@@ -70,9 +70,13 @@ ws baseline capture NAME        функциональный снимок для
 ws collect                      архив машины перед переустановкой (sudo)
 ws backup                       снимки Timeshift на Unraid и очистка старых ro-копий
 ws backup plan                  план Timeshift backup, без SSH и изменений
+ws backup recovery-export PATH  автономный ws-restore для Live USB
 ```
 
 Backup: `helpws backup`. Механизм Btrfs send/receive подготовлен; адрес Unraid,
 первый реальный перенос и restore test ещё нужны. Конфигурация — локальная,
 таймера нет. После успешного batch остаётся по одному ro-parent system/home;
 оригиналы Timeshift и копии на NAS не удаляются. VM передаются через `ws backup send vms`.
+
+Восстановление выбранной даты с NAS на существующий SSD: `helpws recovery`.
+Export не включает ключи и config; реальные NAS/boot acceptance checks пока не выполнены.

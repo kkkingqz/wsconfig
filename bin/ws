@@ -19,7 +19,7 @@ Usage:
   ws baseline capture|diff|list ...
   ws checkpoint create|list|show|diff|remove ...
   ws collect [--no-firmware] [ARCHIVE]
-  ws backup [plan|status|check|send|restore-test ...]
+  ws backup [plan|status|check|send|restore-test|recovery-export ...]
   ws host
   ws fact NAME
   ws news
@@ -89,7 +89,8 @@ collect   archive of the machine state a rebuild needs and the repository
           ~/.local/state/workstation), see ws-collect --help; asks sudo
 backup    Timeshift snapshots to Unraid, then retain final local ro parents;
           plan/status work before SSH is configured;
-          see wsbackup --help and helpws backup
+          recovery-export OUTPUT writes autonomous Live USB ws-restore;
+          see wsbackup --help and helpws backup / helpws recovery
 checkpoint  which commit matched which working state (home-manager
           generation, system tree, kernel, baseline), see ws-checkpoint --help
 host      print the flake host name used for this machine: WS_HOST, else

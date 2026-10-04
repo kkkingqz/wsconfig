@@ -22,6 +22,7 @@ ws backup check                       # проверка полноты лока
 ws backup check --remote              # проверка receiver по SSH
 ws backup send home|vms|all
 ws backup restore-test system|home|vms ID TARGET --verify RELATIVE_FILE
+ws backup recovery-export OUTPUT      # один автономный ws-restore для Live USB
 ```
 
 `plan/status` работают без адреса. `check` без `--remote` проверяет формат и
@@ -122,15 +123,16 @@ Helper не устанавливается в /usr/local и не получае�
 2. Создать root-owned каталог приёма с mode 0700. Он не должен быть доступен
    на запись через SMB/NFS, Docker volumes или mover. Если pool не смонтирован
    или UUID поменялся, helper должен отказать.
-3. Скопировать `backup/unraid/wsbackup-receiver` и
+3. Скопировать `backup/unraid/wsbackup-receiver`, `backup/unraid/catalog.bash` и
    `backup/btrfs-common.bash`, сохранив относительную структуру. Например,
-   `/boot/config/wsbackup/unraid/wsbackup-receiver` и
+   `/boot/config/wsbackup/unraid/wsbackup-receiver`,
+   `/boot/config/wsbackup/unraid/catalog.bash` и
    `/boot/config/wsbackup/btrfs-common.bash`. Config:
    `/boot/config/wsbackup/receiver.conf`, по `receiver.conf.example`.
 4. На Unraid boot flash может не поддерживать POSIX-права как Btrfs. Поэтому
    хранить исходные файлы на flash, а при boot запуском локального admin script
    устанавливать их в `/usr/local/libexec/wsbackup/` с root ownership:
-   helper/common 0755/0644, config 0600, директории 0755. Перед SSH проверить
+   receiver 0755, common/catalog 0644, config 0600, директории 0755. Перед SSH проверить
    это после reboot. Не изменять общие SSH настройки сервера автоматически.
 5. Добавить выделенный public key в root authorized keys через поддерживаемую
    текущей версией Unraid настройку. Prefix строки ключа:
@@ -145,10 +147,14 @@ restrict,command="/bin/bash /usr/local/libexec/wsbackup/unraid/wsbackup-receiver
 от записи другими пользователями. Проверить persistence authorized key после
 перезагрузки средствами именно установленной версии Unraid.
 
-Receiver поддерживает только probe, inspect, receive и send для одного HOST_ID,
+Receiver поддерживает probe, inspect, receive, send, catalog-put и catalog-list для одного HOST_ID,
 scope system/home/vms и безопасного snapshot ID. SSH_ORIGINAL_COMMAND не исполняется.
 Перед первым Timeshift batch обновить receiver и общий Btrfs helper на Unraid:
-старый receiver не поддерживает system. Probe должен вернуть scopes с system/home.
+старый receiver не поддерживает каталог восстановления. Probe должен вернуть
+scopes с system/home и capability recovery-catalog-v1. Metadata сохраняются
+в ROOT/HOST_ID/.catalog; Python/jq на NAS не требуются. Перед cleanup
+каждый batch подтверждает metadata, включая backfill успешных старых records.
+При ошибке публикации локальная очистка не выполняется.
 Серверные права и directory UUID проверяются перед работой. Приём сериализован
 flock. Пример ручного probe после настройки alias:
 
@@ -240,12 +246,10 @@ NAS отдельно проверить qemu-img, XML/NVRAM/TPM и загруз�
 vm_boot_verified остаётся false; автоматического запуска нет.
 
 Restore-test требует локальную successful snapshot record и сохранённый local
-snapshot. При потере SSD этот интерфейс не заменяет disaster recovery:
-использовать receiver inspect/send и локальный wsbackup-restore из восстановленного
-checkout для получения remote snapshot в пустую отдельную Btrfs директорию,
-затем возвращать данные по rebuild/virt инструкции. Этот путь позволяет
-получить и старый NAS snapshot без локального baseline. Проверку такого сценария
-нужно выполнить на реальном NAS до объявления системы восстановления готовой.
+snapshot. Восстановление старой даты, доступной только на NAS, выполняется
+автономным `ws-restore` из Live USB: export, SSH preparation, выбор SYSTEM/HOME,
+status/resume/rollback — `helpws recovery`. Checkout и локальный backup journal
+для этого не нужны. Реальная приёмка NAS/boot ещё предстоит.
 
 ## Проверка кода
 
