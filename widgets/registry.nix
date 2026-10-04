@@ -1,3 +1,4 @@
+# unloadOnClose defaults to false; set true for content that should release memory.
 # One definition per widget; shared by Quickshell and the GNOME adapter.
 [
   { id = "example"; label = "Workstation widgets"; iconName = "view-grid-symbolic";

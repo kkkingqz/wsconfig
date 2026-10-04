@@ -1,6 +1,6 @@
 title: ws-widgets
 section: 1
-date: 2026-10-03
+date: 2026-10-04
 source: Workstation
 volume: User Commands
 
@@ -23,7 +23,7 @@ ws-widgets check
 ```
 
 Home Manager создаёт manifest/runtime JSON в
-`~/.config/workstation/widgets/`, ссылку
+`~/.local/share/workstation/widgets/`, ссылку
 `~/.config/quickshell/workstation-widgets` на QML в checkout и user service
 `workstation-widgets.service`. Расширение устанавливается существующим
 владельцем extensions. При работе в отдельном worktree сначала перенести
@@ -55,13 +55,14 @@ journalctl --user -u workstation-widgets.service -b
 ```
 
 status и check читают состояние. show/toggle/hide обращаются к уже запущенному
-runtime и возвращают отказ для неизвестного, выключенного или сломанного ID.
+runtime и возвращают отказ без подключённого adapter, а также для неизвестного,
+выключенного или сломанного ID.
 Принятый show означает начало handshake, а не завершение анимации. Повторное
 нажатие, Esc, кнопка «Закрыть», внешний клик, потеря фокуса, overview, смена
 workspace и блокировка закрывают окно.
 
 check проверяет доставку, активность сервиса, protocol/PID, доступность
-компонентов, активность extension и adapter lease. Отсутствие активной
+компонентов, активность extension и соединение adapter. Отсутствие активной
 GUI-сессии или ещё не загруженный adapter отмечаются явно. Проверка не
 подтверждает визуальное размещение; для него существует live checklist.
 
@@ -92,6 +93,7 @@ Item {
   label = "Мой виджет";
   iconName = "starred-symbolic";
   component = "widgets/my-widget/Widget.qml";
+  unloadOnClose = false;
   width = 360;
   height = 240;
   panelPosition = "right";
@@ -113,6 +115,8 @@ Item {
 Widget — Item с обязательным context. Контекст содержит widgetId,
 contentWidth/contentHeight, devicePixelRatio, phase и requestClose().
 Компонент загружается при первом открытии и сохраняется после закрытия.
+`unloadOnClose = true` в registry выгружает содержимое после закрытия; следующее
+открытие загрузит его заново. По умолчанию false, чтобы повторное открытие было быстрым.
 Ошибка компонента меняет значок кнопки на предупреждение и сообщает причину
 через GNOME notification; другие виджеты продолжают работать.
 Содержимое задаёт implicitHeight для прокрутки и не создаёт собственное окно.
@@ -132,7 +136,7 @@ ScrollView сохраняет доступ к содержимому. Разме
 GNOME adapter определяет внешние клики через reactive picking Mutter: скрытая
 область, прозрачные поля и округлённые углы пропускают клик и закрывают виджет.
 Внешний клик во время preparing отменяет запрос размещения.
-До adapter lease поверхность не отображается. Adapter через InjectionManager
+До подключения adapter поверхность не отображается. Adapter через InjectionManager
 подавляет `_shouldAnimateActor` только для проверенного PID runtime и
 зарегистрированного ID окна; это исключает наложение анимации Shell на QML.
 При отключении adapter восстанавливает метод. Этот внутренний API проверен
@@ -140,16 +144,30 @@ GNOME adapter определяет внешние клики через reactive
 
 ## Контракт и восстановление
 
-Public IPC target `widgets`: toggle/show/hide(string) → bool, hideAll(),
-status() → JSON, stateChanged(string). Target `widgetAdapter` содержит
-handshake, geometry, animation setting и lease. CLI вызывает IPC с `--`
-перед target: иначе Quickshell трактует имя show как служебную команду.
+Runtime слушает `$XDG_RUNTIME_DIR/workstation-widgets/control.sock`.
+Systemd создаёт каталог с правами 0700, runtime меняет права сокета на 0600
+одним вызовом chmod при старте. До этого приветствия не принимаются.
+Сокет доступен только текущему UID. CLI и Gio дополнительно проверяют права
+и UID сервера (SO_PEERCRED/Gio credentials); PID snapshot должен совпадать с
+PID peer. Quickshell сам пересоздаёт сокет, оставшийся после падения.
+
+Протокол — JSON-строки с protocolVersion 2. Первое сообщение: hello с ролью
+adapter или cli. Единственный adapter получает snapshot при подключении и
+после изменения состояния. Новый adapter вытесняет старый. Команды adapter:
+toggle, hideAll, placed, placementFailed, setGeometry, setAnimations.
+CLI отправляет одну команду status/show/hide/toggle/hideAll и получает ответ;
+Quickshell процессы для команд и подписки больше не запускаются.
+Ответы связаны с запросами через seq; requestId относится к размещению окна.
 
 Фазы: closed → preparing → opening → open → closing → closed.
-requestId отсекает устаревшие ответы. Подписка подключается до status;
-revision упорядочивает события одного instance. Placement timeout 2 секунды.
-Adapter продлевает lease каждые 2 секунды; потеря связи закрывает окна за
-6 секунд. После рестарта runtime все окна закрыты, adapter принимает новый PID.
+requestId отсекает устаревшие ответы, revision упорядочивает события instance.
+На размещение даётся 2 секунды: одноразовый таймер ближайшего дедлайна.
+В штатном простое нет периодических таймеров ни для IPC, ни для модели.
+Обрыв adapter немедленно закрывает окна и записывает lastError. Повторное
+подключение очищает эту ошибку. Без adapter show/toggle отклоняются.
+После рестарта runtime все окна закрыты; adapter подключается с паузами
+250/500/1000/2000 мс, проверяет новый PID. Отключение extension закрывает
+соединение и отменяет чтение, запись, запросы и переподключение.
 
 Отключение: `ws-widgets stop` и отключить extension через GNOME Extensions.
 Постоянное удаление: убрать импорт widgets.nix и UUID из списка extensions,

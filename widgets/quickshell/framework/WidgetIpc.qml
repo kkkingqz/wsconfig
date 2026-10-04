@@ -42,7 +42,6 @@ Scope {
             id: peer
             property string role: ""
             property bool used: false
-            property string buffer: ""
             function send(frame) { write(JSON.stringify(Object.assign({protocolVersion: 2}, frame)) + "\n"); flush(); }
             function snapshot() { send({type: "snapshot", state: root.controller.state}); }
             onConnectedChanged: {
@@ -79,20 +78,12 @@ Scope {
                 send({type: "reply", seq: frame.seq, ok: true, result: root.execute(frame.method, frame.args)});
                 if (role === "cli") connected = false;
             }
-            // Bound unfinished lines too, rather than buffering arbitrarily in SplitParser.
+            // Split complete byte lines before decoding UTF-8. Decoding each
+            // arbitrary chunk loses code points split across socket reads.
             parser: SplitParser {
-                splitMarker: ""
-                onRead: chunk => {
-                    peer.buffer += chunk;
-                    let newline;
-                    while ((newline = peer.buffer.indexOf("\n")) >= 0) {
-                        if (newline > 65536) { peer.connected = false; return; }
-                        const line = peer.buffer.slice(0, newline);
-                        peer.buffer = peer.buffer.slice(newline + 1);
-                        peer.receive(line);
-                        if (!peer.connected) return;
-                    }
-                    if (peer.buffer.length > 65536) peer.connected = false;
+                onRead: line => {
+                    if (line.length > 65536) { peer.connected = false; return; }
+                    peer.receive(line);
                 }
             }
         }

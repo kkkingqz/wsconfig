@@ -1,6 +1,6 @@
 { lib, registry, qmlRoot }:
 let
-  entries = map (raw: { enabled = true; panelPosition = "right"; panelOrder = 0; } // raw) registry;
+  entries = map (raw: { enabled = true; unloadOnClose = false; panelPosition = "right"; panelOrder = 0; } // raw) registry;
   safeFile = value:
     let
       parts = lib.splitString "/" value;
@@ -13,7 +13,7 @@ let
        && lib.all (p: p != "" && p != "." && p != "..") parts && walk qmlRoot parts;
   valid = e:
     builtins.isString e.id && builtins.match "[a-z][a-z0-9-]*" e.id != null
-    && builtins.isBool e.enabled
+    && builtins.isBool e.enabled && builtins.isBool e.unloadOnClose
     && lib.all (x: builtins.isInt x && x > 0) [ e.width e.height ]
     && lib.elem e.panelPosition [ "left" "center" "right" ] && builtins.isInt e.panelOrder
     && lib.all (x: builtins.isString x && x != "") [ e.label e.iconName ]

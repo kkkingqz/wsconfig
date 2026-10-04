@@ -13,7 +13,7 @@ ShellRoot {
         id: panels
         entries: [
             {id: "large", enabled: true, width: 420, height: 580, component: "widgets/example/Widget.qml"},
-            {id: "small", enabled: true, width: 320, height: 240, component: "widgets/compact/Widget.qml"},
+            {id: "small", enabled: true, width: 320, height: 240, component: "widgets/compact/Widget.qml", unloadOnClose: true},
             {id: "broken", enabled: true, width: 100, height: 100, component: "broken/Widget.qml"}]
         testNow: 0
     }
@@ -75,9 +75,16 @@ ShellRoot {
                 check(small.surface.visible && panels.state.widgets.small.phase === "closing", "closing remains mapped");
             } else if (stage === 2) {
                 check(!small.surface.visible && panels.state.widgets.small.phase === "closed", "closed unmapped");
+                check(!small.loaded, "unloadOnClose releases content");
+                panels.command("show", "small");
+                stage = 20; return;
+            } else if (stage === 20) {
+                check(small.loaded, "unloaded content loads again on reopen");
+                panels.command("hide", "small");
                 panels.animationsEnabled = false;
                 panels.command("show", "large");
                 panels.dispatch({type: "PLACED", id: "large", requestId: panels.state.widgets.large.requestId});
+                stage = 3; return;
             } else if (stage === 3) {
                 check(panels.state.widgets.large.phase === "open" && large.progress === 1, "animations disabled opens");
                 large.widgetContext.requestClose();

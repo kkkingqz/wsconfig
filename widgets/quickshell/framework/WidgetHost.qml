@@ -12,10 +12,17 @@ Scope {
     readonly property real progress: frame.progress
     readonly property bool scrollRequired: frame.scrollRequired
     property bool loadRequested: false
-    onWidgetStateChanged: { if (widgetState && widgetState.phase === "preparing") loadRequested = true; }
+    onWidgetStateChanged: {
+        if (!widgetState) return;
+        if (widgetState.phase === "preparing") loadRequested = true;
+        else if (widgetState.phase === "closed" && definition.unloadOnClose === true) {
+            loadRequested = false;
+            loader.source = "";
+        }
+    }
     onLoadRequestedChanged: { if (loadRequested) Qt.callLater(loadContent); }
     function loadContent() {
-        if (loader.status === Loader.Null) loader.setSource(Qt.resolvedUrl("../" + definition.component), {context});
+        if (loadRequested && loader.status === Loader.Null) loader.setSource(Qt.resolvedUrl("../" + definition.component), {context});
     }
     QtObject {
         id: context

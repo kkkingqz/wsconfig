@@ -200,14 +200,11 @@ GNOME и Qt не перемножаются вслепую: преобразов
 Контекстные меню/дочерние поверхности относятся к виджету и не закрывают его.
 
 При переходе в overview, блокировке и смене workspace окно скрывается.
-При disable extension закрывает панели best-effort и удаляет свои кнопки,
-сигналы, таймеры и subprocess subscription. Adapter каждые 2 секунды продлевает
-lease своего подключения; через 6 секунд без продления runtime закрывает
-GNOME-поверхности. lease привязан к instanceId runtime, истечение отменяет
-ожидающие placement ack. Это контроль связи, а не polling состояния UI;
-runtime не предполагает, что IPC сообщает о разрыве внешнего listener.
-Не используется глобальный
-modal grab, меняющий работу рабочего стола.
+При disable extension закрывает соединение и удаляет свои кнопки,
+сигналы, таймеры и асинхронные операции. Постоянный Unix-сокет заменяет lease и CLI IPC. Обрыв adapter немедленно
+закрывает GNOME-поверхности. Протокол и конфигурация версии 2 определены в
+`2026-10-04-widget-socket-design.md`; этот документ задаёт актуальный транспорт.
+
 
 Поведение в Alt-Tab, Ubuntu Dock, поверх обычных окон и с Tiling Assistant
 проверяется отдельно. Для window lists используется доступный Meta API;
@@ -298,7 +295,7 @@ hot installation, произвольные сторонние компонент
 ## Источники API
 
 - [Quickshell FloatingWindow](https://quickshell.org/docs/v0.3.1/types/Quickshell/FloatingWindow/)
-- [Quickshell IpcHandler и IPC signals](https://quickshell.org/docs/v0.3.1/types/Quickshell.Io/IpcHandler/)
+- [Quickshell SocketServer](https://quickshell.org/docs/v0.3.0/types/Quickshell.Io/SocketServer/)
 - [QsWindow: прозрачность, размеры, DPR, input mask](https://quickshell.org/docs/v0.3.1/types/Quickshell/QsWindow/)
 - [Qt High DPI](https://doc.qt.io/qt-6/highdpi.html)
 - [GNOME panel button](https://gjs.guide/extensions/topics/st-widgets.html)

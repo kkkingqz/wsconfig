@@ -66,7 +66,16 @@ with tempfile.TemporaryDirectory(prefix="widgets-qml-") as temporary:
             time.sleep(2.1)
             state = cli('status')['result']
             assert state['widgets']['example']['phase'] == 'closed' and 'timed out' in state['lastError']['reason']
-            print("Socket snapshots, concurrent CLI, roles, takeover, EOF and placement deadline passed")
+            assert cli('show', id='example')['result']
+            state = cli('status')['result']
+            reason = 'Пример ошибки'
+            frame = json.dumps({'protocolVersion':2, 'type':'command', 'seq':99, 'method':'placementFailed',
+                                'args':{'id':'example', 'requestId':state['widgets']['example']['requestId'], 'reason':reason}}, ensure_ascii=False).encode()+b'\n'
+            split = frame.index('П'.encode())+1
+            adapter.socket.sendall(frame[:split]); time.sleep(.05); adapter.socket.sendall(frame[split:])
+            while adapter.read().get('seq') != 99: pass
+            assert cli('status')['result']['lastError']['reason'] == reason, 'fragmented UTF-8 corrupted'
+            print("Socket snapshots, concurrent CLI, roles, takeover, EOF, placement deadline and fragmented UTF-8 passed")
         except Exception:
             log.seek(0); print(log.read()); raise
         finally:

@@ -6,6 +6,11 @@ const entry = {id: 'example', enabled: true, label: 'Example', iconName: 'view-g
     component: 'widgets/example/Widget.qml', width: 420, height: 580, panelPosition: 'right', panelOrder: 0};
 function manifest(changes = {}) { return {schemaVersion: 1, widgets: [{...entry, ...changes}]}; }
 export const tests = {
+    unloadPolicy: () => {
+        assert(validateManifest(manifest())[0].unloadOnClose === false);
+        assert(validateManifest(manifest({unloadOnClose:true}))[0].unloadOnClose === true);
+        rejects(() => validateManifest(manifest({unloadOnClose:'yes'})));
+    },
     disabled: () => assert(validateManifest(manifest({enabled: false}))[0].enabled === false),
     duplicate: () => rejects(() => validateManifest({schemaVersion: 1, widgets: [entry, entry]})),
     dimensions: () => { for (const width of [0, -1, 1.5, '420', Infinity]) rejects(() => validateManifest(manifest({width}))); },

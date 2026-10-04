@@ -112,3 +112,20 @@ Remaining native GUI matrix:
 Earlier installation evidence predates the new session; the extension is now
 ACTIVE. The remaining matrix needs direct GUI observation and input. This agent
 did not restart the session or log the user out.
+
+Socket rewrite — 2026-10-04:
+
+- User confirmed previous animation and physical repeat-click fixes work.
+- New isolated socket runtime: no adapter rejects opening; takeover preserves
+  the active request; old EOF cannot affect the new adapter; current EOF closes
+  immediately. CLI role cannot issue placement commands. Partial Cyrillic
+  UTF-8 survives socket fragmentation. Placement deadline is single-shot.
+- Production QML with real rewritten Gio transport on Wayland:444×604 and
+  344×264 actual Qt surfaces, DPR1.5. Runtime SIGKILL/restart reconnects to a
+  new instance with both widgets closed. No test IpcHandler/qs ipc is used.
+- unloadOnClose defaultfalse retains content; true unloads/reloads correctly.
+- Idle60.01s: runtime0.00CPU seconds/0.05 context switches per second; standalone
+  adapter0.00CPU seconds/0.117 context switches per second. Normal GLib main
+  loop, production QML without test polling. This is an isolated pair, not a
+  claim about the still-loaded old native extension.
+- Native activation and GUI matrix require a normal login after delivery.

@@ -3,12 +3,12 @@ export function validateManifest(value) {
         throw new Error('unsupported widget manifest');
     const ids = new Set();
     return value.widgets.map(raw => {
-        const entry = Object.assign({enabled: true, panelPosition: 'right', panelOrder: 0}, raw);
+        const entry = Object.assign({enabled: true, unloadOnClose: false, panelPosition: 'right', panelOrder: 0}, raw);
         if (typeof entry.id !== 'string' || !/^[a-z][a-z0-9-]*$/.test(entry.id) || ids.has(entry.id))
             throw new Error('invalid or duplicate widget ID');
         ids.add(entry.id);
         if (![entry.width, entry.height].every(x => Number.isInteger(x) && x > 0)
-            || typeof entry.enabled !== 'boolean' || !Number.isInteger(entry.panelOrder)
+            || typeof entry.enabled !== 'boolean' || typeof entry.unloadOnClose !== 'boolean' || !Number.isInteger(entry.panelOrder)
             || !['left', 'center', 'right'].includes(entry.panelPosition))
             throw new Error(`invalid widget dimensions/placement: ${entry.id}`);
         if (![entry.label, entry.iconName].every(x => typeof x === 'string' && x.length > 0))

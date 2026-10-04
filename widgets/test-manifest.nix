@@ -6,6 +6,8 @@ let
   accepts = registry: (builtins.tryEval (builtins.deepSeq (make registry) true)).success;
 in
 assert accepts [ entry ];
+assert accepts [ (entry // { unloadOnClose = true; }) ];
+assert !(accepts [ (entry // { unloadOnClose = "yes"; }) ]);
 assert !(accepts [ entry entry ]);
 assert !(accepts [ (entry // { width = 0; }) ]);
 assert !(accepts [ (entry // { width = 1.5; }) ]);
