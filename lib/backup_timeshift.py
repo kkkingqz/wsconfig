@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import uuid
 import backup as api
+from recovery_catalog import validate_record
 
 
 def helper_command(c, action, *args):
@@ -65,6 +66,39 @@ def record_path(state, record):
 
 def save_record(state, record):
     api.write_json(record_path(state, record), record)
+
+
+def catalog_record(c, record):
+    return validate_record({key: record[key] for key in
+                            ('scope', 'id', 'source_uuid', 'origin_uuid',
+                             'timeshift_name', 'timestamp')} |
+                           {'schema_version': 1, 'host_id': c['remote_host_id'],
+                            'source_fs_uuid': c['source_fs_uuid']})
+
+
+def publish_catalog(c, state, records):
+    result = {'published': [], 'missing': []}
+    for record in records:
+        if record['status'] != 'success':
+            continue
+        if not confirm_pending(c, record):
+            record.update(catalog_published=False)
+            save_record(state, record)
+            result['missing'].append(record['id'])
+            continue
+        expected = catalog_record(c, record)
+        record.update(catalog_published=False)
+        save_record(state, record)
+        words = ['catalog-put', c['remote_host_id'], record['scope'], record['id'],
+                 record['source_uuid'], record['origin_uuid'], c['source_fs_uuid'],
+                 str(record['timestamp']), record['timeshift_name']]
+        acknowledged = validate_record(api.remote(c, words))
+        if acknowledged != expected:
+            raise ValueError('catalog acknowledgement identity mismatch')
+        record.update(catalog_published=True)
+        save_record(state, record)
+        result['published'].append(record['id'])
+    return result
 
 
 def read_records(c, state):
@@ -181,6 +215,8 @@ def run_batch(c, state):
         probe = api.probe(c)
         if not {'system', 'home'} <= set(probe.get('scopes', [])):
             raise ValueError('receiver needs Timeshift system/home support')
+        if 'recovery-catalog-v1' not in probe.get('capabilities', []):
+            raise ValueError('receiver needs recovery catalog support; update receiver and catalog.bash')
         stage('Timeshift inventory')
         inventory = json.loads(api.command(helper_command(c, 'inventory')))
         api.write_json(state / 'timeshift/inventory.json', inventory)
@@ -244,6 +280,8 @@ def run_batch(c, state):
             finish(r)
         result['retained'] = select_retained(c, records)
         api.write_json(state / 'timeshift/parents.json', result['retained'])
+        stage('publish recovery catalog')
+        result['catalog'] = publish_catalog(c, state, read_records(c, state))
         stage('cleanup verified local copies')
         result['cleanup'] = cleanup_copies(c, state, result['retained'])
         current = {r['id']: r for r in read_records(c, state)}
