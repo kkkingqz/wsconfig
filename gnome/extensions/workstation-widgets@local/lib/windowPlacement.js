@@ -21,6 +21,9 @@ export class WindowPlacement {
             if (state.phase !== 'preparing' || this.jobs.has(key)) continue;
             this.queueJob(id, state, snapshot);
         }
+        // Only a queued switch can still need the panel gesture later. Closing
+        // or cancelling a popup must not leave an old activation timestamp.
+        if (!snapshot.pendingId) this.timestamp = 0;
     }
     reposition() {
         const snapshot = this.snapshot;
@@ -31,7 +34,8 @@ export class WindowPlacement {
     queueJob(id, state, snapshot, reposition = false) {
             const key = `${snapshot.instanceId}:${id}:${state.requestId}`;
             if (this.jobs.has(key)) return;
-            const job = {id, instance: snapshot.instanceId, requestId: state.requestId, start: GLib.get_monotonic_time(), busy: false, geometry: null, reposition};
+            const job = {id, instance: snapshot.instanceId, requestId: state.requestId, start: GLib.get_monotonic_time(), busy: false, geometry: null, reposition, timestamp: reposition ? 0 : this.timestamp};
+            if (!reposition) this.timestamp = 0;
             this.jobs.set(key, job);
             job.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 25, () => {
                 if (GLib.get_monotonic_time() - job.start > 1900000) { this.jobs.delete(key); this.fail(job, 'GNOME placement timed out'); return GLib.SOURCE_REMOVE; }
@@ -73,7 +77,11 @@ export class WindowPlacement {
                 GLib.source_remove(job.timer);
                 this.jobs.delete(`${job.instance}:${job.id}:${job.requestId}`);
             } else {
-                window.activate(this.timestamp || global.get_current_time());
+                window.activate(job.timestamp || global.get_current_time());
+                // Activation is asynchronous. Stay in preparing until Mutter
+                // gives us focus, so the old window's focus loss cannot close
+                // the new popup before its opening animation starts.
+                if (global.display.focus_window !== window) return;
                 await this.client.call('placed', {id:job.id, requestId:job.requestId});
             }
         } finally { job.busy = false; }
