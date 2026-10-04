@@ -5,8 +5,8 @@ export function createState(entries, instanceId, pid) {
             available: true, width: entry.width, height: entry.height,
             panelWidth: entry.width, panelHeight: entry.height, deadline: 0};
     }
-    return {protocolVersion: 1, instanceId, pid, revision: 0, selectedId: null,
-        pendingId: null, widgets, lastError: null, adapter: {ready: false, leaseExpiresAt: 0}};
+    return {protocolVersion: 2, instanceId, pid, revision: 0, selectedId: null,
+        pendingId: null, widgets, lastError: null, adapter: {connected: false}};
 }
 
 export function reduce(previous, event, nowMs) {
@@ -70,7 +70,7 @@ export function reduce(previous, event, nowMs) {
         } else if (!widget || !['show', 'hide', 'toggle'].includes(event.action)) accepted = false;
         else {
             const wants = event.action === 'show' || (event.action === 'toggle' && !widget.desiredOpen);
-            if (wants && !widget.available) accepted = false;
+            if (wants && (!widget.available || !state.adapter.connected)) accepted = false;
             else if (wants) open(event.id);
             else {
                 if (state.pendingId === event.id) state.pendingId = null;
@@ -104,17 +104,17 @@ export function reduce(previous, event, nowMs) {
             || event.width > widget.width || event.height > widget.height) accepted = false;
         else { widget.panelWidth = event.width; widget.panelHeight = event.height; }
         break;
-    case 'LEASE':
-        if (event.instanceId !== state.instanceId) accepted = false;
-        else { state.adapter = {ready: true, leaseExpiresAt: nowMs + 6000}; }
+    case 'ADAPTER_CONNECTED':
+        state.adapter.connected = true;
+        if (state.lastError?.reason === 'desktop adapter disconnected') state.lastError = null;
         break;
-    case 'TICK':
-        if (state.adapter.ready && nowMs >= state.adapter.leaseExpiresAt) {
-            state.adapter.ready = false;
-            state.pendingId = null;
-            for (const id of Object.keys(state.widgets)) shut(id, true);
-            state.lastError = {id: null, reason: 'desktop adapter disconnected'};
-        }
+    case 'ADAPTER_DISCONNECTED':
+        state.adapter.connected = false;
+        state.pendingId = null;
+        for (const id of Object.keys(state.widgets)) shut(id, true);
+        state.lastError = {id: null, reason: 'desktop adapter disconnected'};
+        break;
+    case 'TIMEOUT':
         for (const [id, w] of Object.entries(state.widgets)) {
             if (w.phase === 'preparing' && nowMs >= w.deadline) {
                 shut(id, true);
@@ -128,4 +128,9 @@ export function reduce(previous, event, nowMs) {
     if (JSON.stringify(state) === JSON.stringify(previous)) return {state: previous, accepted, effects};
     state.revision++;
     return {state, accepted, effects};
+}
+
+export function nextDeadline(state) {
+    const deadlines = Object.values(state.widgets).filter(w => w.phase === 'preparing').map(w => w.deadline);
+    return deadlines.length ? Math.min(...deadlines) : null;
 }

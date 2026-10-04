@@ -1,31 +1,100 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "wire.mjs" as Wire
 
 Scope {
-    required property WidgetController controller
     id: root
-    IpcHandler {
-        id: publicIpc
-        target: "widgets"
-        function toggle(id: string): bool { return root.controller.command("toggle", id); }
-        function show(id: string): bool { return root.controller.command("show", id); }
-        function hide(id: string): bool { return root.controller.command("hide", id); }
-        function hideAll(): void { root.controller.command("hideAll", ""); }
-        function status(): string { return root.controller.snapshotJson; }
-        signal stateChanged(snapshot: string)
+    required property WidgetController controller
+    property var adapter: null
+    property bool secured: false
+    readonly property string socketPath: Quickshell.env("WIDGETS_SOCKET") || Quickshell.env("XDG_RUNTIME_DIR") + "/workstation-widgets/control.sock"
+    // Qt creates its own runtime directories. UMask=0177 would make these
+    // unsearchable, so retain 0077 and remove socket execute bits once at startup.
+    Process {
+        id: permissions
+        command: [Quickshell.env("WIDGETS_CHMOD") || "chmod", "0600", root.socketPath]
+        onExited: (code, status) => {
+            if (code === 0) root.secured = true;
+            else { console.error("Cannot secure widget socket"); Qt.exit(1); }
+        }
+    }
+    Component.onCompleted: Qt.callLater(() => { permissions.running = true; })
+    function execute(method, args) {
+        switch (method) {
+        case "status": return controller.state;
+        case "show": case "hide": case "toggle": case "hideAll": return controller.command(method, args.id || "");
+        case "placed": return controller.dispatch({type: "PLACED", id: args.id, requestId: args.requestId});
+        case "placementFailed": return controller.dispatch({type: "FAILED", id: args.id, requestId: args.requestId, reason: args.reason});
+        case "setGeometry": return controller.dispatch({type: "GEOMETRY", id: args.id, requestId: args.requestId, width: args.width, height: args.height});
+        case "setAnimations": controller.animationsEnabled = args.enabled; return true;
+        }
     }
     Connections {
         target: root.controller
-        function onSnapshotJsonChanged() { publicIpc.stateChanged(root.controller.snapshotJson); }
+        function onSnapshotJsonChanged() { if (root.adapter) root.adapter.snapshot(); }
     }
-    IpcHandler {
-        target: "widgetAdapter"
-        function adapterReady(instanceId: string): bool { return root.controller.dispatch({type: "LEASE", instanceId}); }
-        function renewAdapterLease(instanceId: string): bool { return root.controller.dispatch({type: "LEASE", instanceId}); }
-        function placed(id: string, requestId: int): bool { return root.controller.dispatch({type: "PLACED", id, requestId}); }
-        function placementFailed(id: string, requestId: int, reason: string): bool { return root.controller.dispatch({type: "FAILED", id, requestId, reason}); }
-        function setGeometry(id: string, requestId: int, width: int, height: int): bool { return root.controller.dispatch({type: "GEOMETRY", id, requestId, width, height}); }
-        function setAnimationsEnabled(enabled: bool): void { root.controller.animationsEnabled = enabled; }
+    SocketServer {
+        id: server
+        path: root.socketPath
+        active: true
+        handler: Socket {
+            id: peer
+            property string role: ""
+            property bool used: false
+            property string buffer: ""
+            function send(frame) { write(JSON.stringify(Object.assign({protocolVersion: 2}, frame)) + "\n"); flush(); }
+            function snapshot() { send({type: "snapshot", state: root.controller.state}); }
+            onConnectedChanged: {
+                if (!connected && root.adapter === peer) {
+                    root.adapter = null;
+                    root.controller.dispatch({type: "ADAPTER_DISCONNECTED"});
+                }
+            }
+            function receive(line) {
+                let frame;
+                try { frame = JSON.parse(line); } catch (_) { connected = false; return; }
+                if (!role) {
+                    const next = Wire.validateHello(frame);
+                    if (!next || !root.secured) { connected = false; return; }
+                    role = next;
+                    if (role === "adapter") {
+                        const old = root.adapter;
+                        root.adapter = peer;
+                        if (old) old.connected = false;
+                        // Dispatch broadcasts the initial snapshot on first connection.
+                        const revision = root.controller.state.revision;
+                        root.controller.dispatch({type: "ADAPTER_CONNECTED"});
+                        if (root.controller.state.revision === revision) snapshot();
+                    } else send({type: "hello", pid: root.controller.state.pid, instanceId: root.controller.state.instanceId});
+                    return;
+                }
+                if ((role === "adapter" && root.adapter !== peer) || (role === "cli" && used)) { connected = false; return; }
+                used = true;
+                if (!Wire.validateCommand(frame, role)) {
+                    send({type: "reply", seq: frame?.seq || 0, ok: false, error: "invalid or unauthorized command"});
+                    if (role === "cli") connected = false;
+                    return;
+                }
+                send({type: "reply", seq: frame.seq, ok: true, result: root.execute(frame.method, frame.args)});
+                if (role === "cli") connected = false;
+            }
+            // Bound unfinished lines too, rather than buffering arbitrarily in SplitParser.
+            parser: SplitParser {
+                splitMarker: ""
+                onRead: chunk => {
+                    peer.buffer += chunk;
+                    let newline;
+                    while ((newline = peer.buffer.indexOf("\n")) >= 0) {
+                        if (newline > 65536) { peer.connected = false; return; }
+                        const line = peer.buffer.slice(0, newline);
+                        peer.buffer = peer.buffer.slice(newline + 1);
+                        peer.receive(line);
+                        if (!peer.connected) return;
+                    }
+                    if (peer.buffer.length > 65536) peer.connected = false;
+                }
+            }
+        }
     }
 }

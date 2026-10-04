@@ -24,10 +24,17 @@ Scope {
     function command(action: string, id: string): bool {
         return dispatch({type: "COMMAND", action, id});
     }
+    readonly property var deadline: Model.nextDeadline(state)
+    onDeadlineChanged: scheduleDeadline()
+    function scheduleDeadline() {
+        timeout.stop();
+        if (testNow >= 0 || deadline === null) return;
+        timeout.interval = Math.max(1, deadline - clock.elapsedMs());
+        timeout.start();
+    }
     Timer {
-        interval: 50
-        repeat: true
-        running: root.testNow < 0 && (root.state.selectedId !== null || root.state.adapter.ready)
-        onTriggered: root.dispatch({type: "TICK"})
+        id: timeout
+        repeat: false
+        onTriggered: { root.dispatch({type: "TIMEOUT"}); root.scheduleDeadline(); }
     }
 }
