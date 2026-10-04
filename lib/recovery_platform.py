@@ -177,6 +177,12 @@ class RecoveryPlatform:
     def sync_filesystem(self, top):
         self.run(['btrfs', 'filesystem', 'sync', top])
 
+    def rename(self, source, destination):
+        source = safe_path(source); destination = safe_path(destination)
+        if source.parent != destination.parent or destination.exists():
+            raise ValueError('unsafe or occupied recovery rename destination')
+        source.rename(destination)
+
     def save_json(self, path, value):
         path = safe_path(path)
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
