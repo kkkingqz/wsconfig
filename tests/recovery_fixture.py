@@ -31,6 +31,7 @@ def point(home=True):
 class FakePlatform(RecoveryPlatform):
     def __init__(self, top):
         self.top = Path(top)
+        self.target_uuid = U
         self.calls = []
         self.mounts = []
         self.swaps = 'Filename\tType\tSize\tUsed\tPriority\n'
@@ -59,7 +60,8 @@ class FakePlatform(RecoveryPlatform):
         (root / 'etc').mkdir(exist_ok=True)
         (root / 'etc/fstab').write_text(f'UUID={U} / btrfs subvol=@ 0 0\n'
                                       f'UUID={U} /home btrfs subvol=@home 0 0\n'
-                                      f'UUID={U} /nix btrfs subvol=@nix 0 0\n')
+                                      f'UUID={U} /nix btrfs subvol=@nix 0 0\n'
+                                      'UUID=ABCD-1234 /boot/efi vfat defaults 0 1\n')
         boot = root / 'boot'; boot.mkdir()
         (boot / 'vmlinuz-6.8-t2').write_text('kernel')
         (boot / 'initrd.img-6.8-t2').write_text('initrd')
@@ -86,7 +88,11 @@ class FakePlatform(RecoveryPlatform):
         if a[0] == 'findmnt':
             return json.dumps({'filesystems': self.mounts}).encode()
         if a[0] == 'blkid':
-            return (U if '-s' in a else '/dev/fixture').encode()
+            if '-U' in a:
+                if a[-1] != 'ABCD-1234': raise ValueError('EFI device missing')
+                return b'/dev/fixture-efi'
+            if 'TYPE' in a: return b'vfat' if a[-1]=='/dev/fixture-efi' else b'btrfs'
+            return ('ABCD-1234' if a[-1]=='/dev/fixture-efi' else U).encode()
         if a[:3] == ['btrfs', 'subvolume', 'show']:
             m = self.info(a[-1])
             return (f'UUID: {m["uuid"]}\nParent UUID: {m["parent_uuid"] or "-"}\n'

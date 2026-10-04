@@ -1,4 +1,7 @@
 import io
+import os
+import pty
+import select
 from contextlib import contextmanager
 import json
 from pathlib import Path
@@ -102,6 +105,30 @@ class CLITests(unittest.TestCase):
             self.assertEqual(recovery.main(['--device','/dev/fixture']),0)
         self.assertIn('unfinished transaction',tty.getvalue())
         self.assertFalse(hasattr(p,'remote_calls'))
+
+    def test_real_controlling_pty_round_trip(self):
+        pid,master=pty.fork()
+        if pid==0:
+            try:
+                with recovery.open_tty() as tty:
+                    tty.write('READY\n');tty.flush()
+                    text=tty.readline().strip()
+                    tty.write('ANSWER='+text+'\n');tty.flush()
+                os._exit(0)
+            except BaseException as error:
+                os.write(2,str(error).encode());os._exit(1)
+        output=b''
+        try:
+            os.write(master,b'hello\n')
+            while select.select([master],[],[],5)[0]:
+                try: data=os.read(master,4096)
+                except OSError: break
+                if not data: break
+                output+=data
+            waited,status=os.waitpid(pid,0)
+            self.assertEqual(os.waitstatus_to_exitcode(status),0,output.decode(errors='replace'))
+            self.assertIn(b'ANSWER=hello',output)
+        finally: os.close(master)
 
     def test_non_tty_refuses_before_mount(self):
         with patch('recovery.os.geteuid',return_value=0), patch('recovery.open_tty',side_effect=ValueError('TTY required')):

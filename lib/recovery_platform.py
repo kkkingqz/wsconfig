@@ -158,6 +158,19 @@ class RecoveryPlatform:
         if hasattr(self, 'target_device'):
             self.verify_target(self.target_device, self.target_uuid, top)
 
+    def verify_efi_source(self, source):
+        if not isinstance(source, str) or not re.fullmatch(r'UUID=[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}', source):
+            raise ValueError('unsupported EFI filesystem source')
+        expected = source[5:]
+        device = self.run(['blkid', '-U', expected]).decode().strip()
+        if not device.startswith('/dev/') or not stat.S_ISBLK(self.stat_device(device).st_mode):
+            raise ValueError('EFI block device missing')
+        actual = self.run(['blkid', '-s', 'UUID', '-o', 'value', device]).decode().strip()
+        kind = self.run(['blkid', '-s', 'TYPE', '-o', 'value', device]).decode().strip()
+        if actual.upper() != expected.upper() or kind != 'vfat':
+            raise ValueError('EFI filesystem identity/type mismatch')
+        return device
+
     def inspect_snapshot(self, path):
         path = safe_path(path)
         if not path.is_dir():

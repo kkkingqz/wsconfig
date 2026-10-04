@@ -152,6 +152,7 @@ def show_plan(tx, output):
     output.write(json.dumps({'transaction':tx['id'],'target':tx.get('target'), 'selection':tx['selection'],
                             'old':tx['old'],'backups':tx['backups'], 'candidates':tx.get('candidates'),
                             'preserved':['@nix','@vms','@cache','@tmp','@log','@swap','EFI'],
+                            'first_boot':'Choose the standard rEFInd entry using restored refind_linux.conf; alternate EFI/AMD/GRUB entries require separate validation.',
                             'warning':'HOME replaces current files when selected. Switching is not atomic. No automatic reboot. Nix generations may need rebuilding.'},indent=2)+'\n')
     output.flush()
 
@@ -180,12 +181,29 @@ def finish_restore(top,tx,options,platform,reader,output):
     return done
 
 
+class Terminal:
+    def __init__(self, reader, writer):
+        self.reader = reader; self.writer = writer
+    def readline(self): return self.reader.readline()
+    def write(self, value): return self.writer.write(value)
+    def flush(self): self.writer.flush()
+
+
+@contextmanager
 def open_tty():
+    reader = writer = None
     try:
-        tty=open('/dev/tty','r+',buffering=1)
-        if not tty.isatty(): tty.close(); raise ValueError('controlling TTY required')
-        return tty
-    except OSError as error: raise ValueError('controlling TTY required') from error
+        reader = open('/dev/tty', 'r')
+        writer = open('/dev/tty', 'w', buffering=1)
+    except OSError as error:
+        if reader is not None: reader.close()
+        raise ValueError('controlling TTY required') from error
+    try:
+        if not reader.isatty() or not writer.isatty():
+            raise ValueError('controlling TTY required')
+        yield Terminal(reader, writer)
+    finally:
+        reader.close(); writer.close()
 
 
 def choose(values,reader,output,label):

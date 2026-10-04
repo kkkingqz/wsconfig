@@ -23,12 +23,13 @@ def build_plan(selection, target, include_home):
             'warning': 'Nix generations removed by GC may need rebuilding; no automatic reboot'}
 
 
-def boot_preflight(top, root, fs_uuid):
+def boot_preflight(top, root, fs_uuid, home=None, platform=None):
     fstab_path = tree_path(root, 'etc/fstab')
     boot_path = tree_path(root, 'boot/refind_linux.conf')
     if not fstab_path.is_file() or not boot_path.is_file():
         raise ValueError('fstab/rEFInd configuration missing')
-    lines = []; mountpoints = []; has_root = False; auxiliary = []
+    lines = []; mountpoints = []; has_root = False; has_home = False; auxiliary = []
+    seen_mounts = set()
     mounted_trees = {'/': root}
     for line in fstab_path.read_text().splitlines():
         if not line.strip() or line.lstrip().startswith('#'):
@@ -37,6 +38,10 @@ def boot_preflight(top, root, fs_uuid):
         if len(fields) != 6:
             raise ValueError('unsupported fstab format')
         source, destination, kind, options = fields[:4]
+        if kind != 'swap':
+            if not destination.startswith('/') or '..' in Path(destination).parts or destination in seen_mounts:
+                raise ValueError('unsafe or duplicate fstab mountpoint')
+            seen_mounts.add(destination)
         if kind == 'btrfs':
             if source != 'UUID=' + fs_uuid:
                 raise ValueError('fstab filesystem UUID mismatch')
@@ -57,7 +62,8 @@ def boot_preflight(top, root, fs_uuid):
             if not safe_path(top / name).is_dir():
                 raise ValueError('fstab subvolume missing: ' + name)
             if destination == '/': has_root = True
-            mounted_trees[destination] = root if destination == '/' else top / name
+            if destination == '/home': has_home = True
+            mounted_trees[destination] = root if destination == '/' else (home or top / name) if destination == '/home' else top / name
             if not destination.startswith('/') or '..' in Path(destination).parts:
                 raise ValueError('unsafe fstab mountpoint')
             mountpoints.append(destination)
@@ -67,18 +73,23 @@ def boot_preflight(top, root, fs_uuid):
             if kind == 'none' and 'bind' not in options.split(','):
                 raise ValueError('unsupported fstab none mount')
             auxiliary.append((source, destination, kind))
-        elif kind != 'vfat':
+        elif kind == 'vfat':
+            if destination != '/boot/efi' or platform is None:
+                raise ValueError('unsupported EFI mount')
+            platform.verify_efi_source(source)
+            mountpoints.append(destination)
+        else:
             raise ValueError('unsupported fstab filesystem')
         lines.append(line)
-    if not has_root:
-        raise ValueError('fstab root mount missing')
+    if not has_root or not has_home:
+        raise ValueError('fstab root/HOME mount missing')
     for source, destination, kind in auxiliary:
         if not source.startswith('/') or '..' in Path(source).parts:
             raise ValueError('unsupported fstab auxiliary source')
         mounts = [m for m in mounted_trees if source == m or source.startswith(m.rstrip('/') + '/')]
         mount = max(mounts, key=len)
         path = tree_path(mounted_trees[mount], source[len(mount):])
-        if not path.exists() or (kind == 'swap' and not path.is_file()):
+        if not path.exists() or (kind == 'swap' and not path.is_file()) or (kind == 'none' and not path.is_dir()):
             raise ValueError('fstab bind/swap source missing')
         if kind == 'none':
             if not destination.startswith('/') or '..' in Path(destination).parts:
@@ -89,11 +100,13 @@ def boot_preflight(top, root, fs_uuid):
         if not line.strip() or line.lstrip().startswith('#'):
             boot_lines.append(line); continue
         fields = shlex.split(line)
-        if len(fields) not in (2, 3):
+        if len(fields) != 2:
             raise ValueError('unsupported rEFInd Linux configuration')
         args = shlex.split(fields[1])
-        if args.count('root=UUID=' + fs_uuid) != 1:
+        if [a for a in args if a.startswith('root=')] != ['root=UUID=' + fs_uuid]:
             raise ValueError('rEFInd root UUID mismatch')
+        if any(a.startswith(('initrd=', 'linux=', 'BOOT_IMAGE=')) for a in args):
+            raise ValueError('unsupported alternate boot image')
         rootflags = [a for a in args if a.startswith('rootflags=')]
         if len(rootflags) != 1:
             raise ValueError('rEFInd rootflags missing')
@@ -125,6 +138,8 @@ def boot_preflight(top, root, fs_uuid):
 def preflight(top, selection, received, platform):
     top = safe_path(top); selection = validate_selection(selection)
     platform.assert_offline(top)
+    if getattr(platform, 'target_uuid', None) != selection['source_fs_uuid']:
+        raise ValueError('target filesystem identity mismatch')
     old = {}; copies = {}
     for scope, name in [('system', '@'), ('home', '@home')]:
         if scope == 'home' and selection['home'] is None:
@@ -139,7 +154,8 @@ def preflight(top, selection, received, platform):
         if not copy['readonly'] or copy['received_uuid'] != selection[scope]['source_uuid']:
             raise ValueError('received snapshot identity/readonly mismatch')
         copies[scope] = {'path': str(path.relative_to(top)), **copy}
-    boot = boot_preflight(top, top / copies['system']['path'], selection['source_fs_uuid'])
+    future_home = top / copies['home']['path'] if 'home' in copies else top / '@home'
+    boot = boot_preflight(top, top / copies['system']['path'], selection['source_fs_uuid'], future_home, platform)
     default = platform.run(['btrfs', 'subvolume', 'get-default', top]).decode().split()
     if len(default) < 2 or default[0] != 'ID' or not default[1].isdigit():
         raise ValueError('invalid original default subvolume')
@@ -227,6 +243,8 @@ def validate_transaction(tx):
     if not isinstance(tx.get('id'), str) or not ID_PATTERN.fullmatch(tx['id']):
         raise ValueError('invalid recovery transaction ID')
     selection = validate_selection(tx['selection'])
+    if not isinstance(tx.get('target'), dict) or tx['target'].get('uuid') != selection['source_fs_uuid']:
+        raise ValueError('journal target filesystem identity mismatch')
     phases = {'selected', 'received', 'preparing', 'prepared', 'switching',
               'root-saved', 'root-installed', 'home-saved', 'home-installed',
               'boot-selected', 'complete', 'rolled-back', 'rollback',
@@ -335,6 +353,8 @@ def default_id(top, platform):
 def create_transaction(top, plan, platform):
     top = safe_path(top); platform.assert_offline(top)
     selection = validate_selection(plan['selection'])
+    if getattr(platform, 'target_uuid', None) != selection['source_fs_uuid']:
+        raise ValueError('target filesystem identity mismatch')
     tx_id = plan.get('id', 'restore-' + uuid.uuid4().hex)
     if journal_path(top, tx_id).exists():
         raise ValueError('recovery transaction already exists')
@@ -347,7 +367,7 @@ def create_transaction(top, plan, platform):
                       for scope, live in SCOPES.items() if old[scope] is not None}}
     if 'received' in plan:
         tx.update(received=plan['received'], boot=plan['boot'], phase='received')
-    if 'target' in plan: tx['target'] = plan['target']
+    tx['target'] = plan.get('target', {'uuid': selection['source_fs_uuid']})
     for entry in tx['backups'].values():
         if safe_path(top / entry['path']).exists():
             raise ValueError('backup path occupied')
@@ -361,6 +381,8 @@ def create_transaction(top, plan, platform):
 
 def observe_transaction(top, tx, platform):
     top = safe_path(top); validate_transaction(tx); platform.assert_offline(top)
+    if getattr(platform, 'target_uuid', None) != tx['target']['uuid']:
+        raise ValueError('journal differs from opened filesystem')
     locations = {}
     for scope, live in SCOPES.items():
         old = tx['old'].get(scope)
@@ -396,6 +418,11 @@ def observe_transaction(top, tx, platform):
             raise ValueError('candidate snapshot disappeared')
         locations[scope] = found
     current_default = default_id(top, platform)
+    allowed_defaults = {tx['original_default']}
+    if tx.get('candidates', {}).get('system'):
+        allowed_defaults.add(tx['candidates']['system']['subvolume_id'])
+    if current_default not in allowed_defaults:
+        raise ValueError('unexpected default subvolume')
     if tx['phase'] == 'complete':
         for scope, live in SCOPES.items():
             if scope in locations and locations[scope].get(tx['candidates'][scope]['uuid']) != live:
@@ -495,6 +522,7 @@ def resume_transaction(top, tx, platform, confirmed):
     if tx['phase'] in ('complete', 'rolled-back'): return tx
     if confirmed is not True: raise ValueError('explicit resume confirmation required')
     if tx.get('direction'):
+        if tx['direction'] == 'switch': verify_candidate_boot(top, tx, platform)
         return execute_operations(top, tx, platform)
     if 'received' not in tx:
         raise ValueError('receive is incomplete; reconnect to NAS first')

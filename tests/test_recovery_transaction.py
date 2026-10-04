@@ -150,6 +150,27 @@ class TransactionTests(unittest.TestCase):
                 transaction.switch_transaction(top,tx,p,True)
             self.assertEqual(p.info(top/'@')['uuid'],p.old_root['uuid'])
 
+    def test_resume_rechecks_candidate_boot_after_interrupted_switch(self):
+        top,p,tx=self.make();p.arm(2,False)
+        with self.assertRaises(PowerLoss): transaction.switch_transaction(top,tx,p,True)
+        tx=self.load(top,tx);del p.trip_index
+        (top/tx['candidates']['system']['path']/'boot/refind_linux.conf').write_text('damaged')
+        with self.assertRaises(ValueError): transaction.resume_transaction(top,tx,p,True)
+        self.assertFalse((top/'@').exists())
+
+    def test_foreign_default_refuses_before_first_rename(self):
+        top,p,tx=self.make();p.default=999999
+        with self.assertRaises(ValueError): transaction.switch_transaction(top,tx,p,True)
+        self.assertEqual(p.info(top/'@')['uuid'],p.old_root['uuid'])
+        self.assertEqual(p.info(top/'@home')['uuid'],p.old_home['uuid'])
+
+    def test_cloned_filesystem_uuid_refused_before_mutation(self):
+        top,p,tx=self.make();p.target_uuid='99999999-9999-9999-9999-999999999999'
+        with self.assertRaises(ValueError): transaction.switch_transaction(top,tx,p,True)
+        self.assertEqual(p.info(top/'@')['uuid'],p.old_root['uuid'])
+        tx['target']={'uuid':p.target_uuid}
+        with self.assertRaises(ValueError): transaction.validate_transaction(tx)
+
     def test_rollback_after_unpublished_candidate_retains_copy(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
         top=Path(temp.name);p=CrashPlatform(top)

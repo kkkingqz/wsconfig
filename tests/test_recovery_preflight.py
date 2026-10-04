@@ -124,6 +124,27 @@ class PreflightTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.preflight()
 
+    def test_conflicting_boot_root_and_unchecked_initrd_refuse(self):
+        path=self.top/'received/system/ts-system/boot/refind_linux.conf';original=path.read_text()
+        for arg in ('root=UUID='+V,'initrd=/boot/unknown.img'):
+            path.write_text(original.replace(' rw ', ' rw '+arg+' '))
+            with self.subTest(arg=arg),self.assertRaises(ValueError): self.preflight()
+
+    def test_fstab_requires_home_and_verified_efi_source(self):
+        path=self.top/'received/system/ts-system/etc/fstab';original=path.read_text()
+        for text in ('\n'.join(line for line in original.splitlines() if '/home' not in line)+'\n',
+                     original+'UUID=DEAD-BEEF /boot/efi vfat defaults 0 1\n'):
+            with self.subTest(text=text):
+                path.write_text(text)
+                with self.assertRaises(ValueError): self.preflight()
+
+    def test_bind_source_checked_in_selected_home(self):
+        (self.top/'@home/bind-source').mkdir()
+        path=self.top/'received/system/ts-system/etc/fstab'
+        path.write_text(path.read_text()+'/home/bind-source /bind none bind 0 0\n')
+        with self.assertRaises(ValueError): self.preflight()
+        self.preflight(home=False)
+
     def test_missing_bind_and_swap_sources_refuse(self):
         path=self.top/'received/system/ts-system/etc/fstab';original=path.read_text()
         for extra in ('/var/lib/vms/missing /etc/libvirt/qemu none bind 0 0\n','/swap/missing none swap sw 0 0\n'):
