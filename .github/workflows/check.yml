@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install fish
         run: sudo apt-get update && sudo apt-get install -y fish
-      - name: wsflatpak unit, help and completion tests
+      - name: Unit, help and completion tests
         run: python3 -m unittest discover -s tests -v
       - name: Syntax of scripts by shebang
         run: |
@@ -25,13 +25,12 @@ jobs:
             esac
           done < <(git ls-files -z bin system backup bootstrap.sh)
           bash -n backup/btrfs-common.bash || status=1
+          bash -n backup/unraid/catalog.bash || status=1
           python3 -m compileall -q lib tests || status=1
           while IFS= read -r -d '' f; do
             fish -n "$f" || status=1
           done < <(git ls-files -z '*.fish')
           exit $status
-      - name: Backup regression tests
-        run: python3 -m unittest discover -s tests -v
 
   nix:
     runs-on: ubuntu-latest

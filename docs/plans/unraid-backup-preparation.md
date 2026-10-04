@@ -50,7 +50,10 @@ Btrfs read-only snapshot → `btrfs send` → SSH → `btrfs receive`.
    используется Btrfs stream protocol 1; новые stream options включаются
    только после проверки обеих сторон.
 7. Установить актуальный receiver с разрешёнными scopes `system`, `home`,
-   `vms`. После настройки выполнить `ws backup check --remote`, затем первый
+   `vms` и capability `recovery-catalog-v1`. Установить вместе receiver,
+   common и `catalog.bash` с сохранением относительной структуры. Metadata
+   `.catalog` хранить на том же постоянном Btrfs, без writable SMB/NFS.
+   Проверить их сохранение после reboot. Python/jq на сервере не нужны. После настройки выполнить `ws backup check --remote`, затем первый
    Timeshift batch и восстановление `system`/`home` в отдельные пустые
    Btrfs-каталоги с проверкой файлов. Создать следующий снимок Timeshift,
    повторить `ws backup` и проверить инкрементальную передачу и сохранение
@@ -90,8 +93,10 @@ Snapshot VM делается только при выключенных VM.
 После очистки старой локальной копии `restore-test` не может сравнить
 содержимое этого backup с исходником. Для проверки SHA-256 выбирать сохранённый
 parent и явно указанные файлы. Аварийное восстановление старых копий с NAS
-требует отдельной проверки данных; автоматического восстановления поверх
-работающей системы нет. Процедура описана в `helpws backup`.
+выполняется автономным `ws-restore` из Live USB (`helpws recovery`), без
+локального backup journal. До очистки batch публикует metadata/backfill;
+при ошибке публикации cleanup не происходит. Реальную приёмку выполнить
+по `tests/recovery/live-checklist.md`; recovery не запускается на live root.
 
 ## Первичные источники
 
