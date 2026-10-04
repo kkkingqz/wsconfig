@@ -74,6 +74,30 @@ Subsequent native-session evidence during delivery:
   user commit. main remains at 36e7773; original user file hashes are preserved.
   ws switch and extension-owner delivery succeed; installed sources match.
 
+Popup animation and repeat-click update — 2026-10-04:
+
+- Commit ad62245 on wsconfig changes the transition to 300ms InOutCubic.
+  The QML test first failed with the old reveal at progress 0.704 after 60ms;
+  the new transition passes the gentle-start and continuous-reversal checks.
+- The captured-event routing reproduced the second-click regression with a
+  null event source: outside dismissal ran before toggle and reopened the
+  panel. Panel ownership now uses the same reactive pick as the input mask.
+  The regression test drives both capture and toggle through the real reducer.
+- All 48 GJS cases, QML/typed IPC, seven Nix checks and the Wayland smoke pass.
+  Surface sizes remain 444×604 and 344×264, DPR 1.5.
+- All 122 Python cases at ad62245 pass in four isolated processes (140.006s).
+  Persistent worker logs and the aggregate report are under
+  ~/.cache/wsconfig-execution/widget-toggle-tests/. This excludes concurrent
+  uncommitted changes belonging to other tasks in the primary checkout.
+- ws switch, extension-owner delivery and installed-source verification pass.
+  Runtime PID 120887 is active, NRestarts=0. Both production IDs open and close
+  with IPC toggle; both are left closed. The owner check reports five passes,
+  zero warnings and zero failures.
+- The running Shell PID remains 3511, which predates this JS update. The
+  animation is active in the restarted runtime; the panel-pointer correction
+  still requires a normal logout/login to load the new extension module.
+  A physical repeat-click verdict is therefore still pending that new session.
+
 Remaining native GUI matrix:
 
 - Both buttons; anchoring gap, focus, no center flash, no decorations and no
