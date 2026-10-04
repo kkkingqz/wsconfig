@@ -5,6 +5,7 @@ export LC_ALL=C
 umask 077
 here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 . "$here/../btrfs-common.bash"
+. "$here/catalog.bash"
 [[ $# == 1 ]] || die 'receiver config path required'
 cfg="$1"; safe_path "$cfg"
 [[ -f "$cfg" && "$(stat -c %u "$cfg")" == "$EUID" ]] || die 'config must belong to receiver user'
@@ -28,6 +29,8 @@ case "$action" in
     probe) [[ ${#words[@]} == 2 ]] || die 'invalid command' ;;
     inspect|send) [[ ${#words[@]} == 4 ]] || die 'invalid command' ;;
     receive) [[ ${#words[@]} == 5 ]] || die 'invalid command'; uuid "${words[4]}" ;;
+    catalog-put) [[ ${#words[@]} == 9 ]] || die 'invalid command' ;;
+    catalog-list) [[ ${#words[@]} == 2 ]] || die 'invalid command' ;;
     *) die 'invalid command' ;;
 esac
 filesystem_check "$root"
@@ -42,9 +45,11 @@ if [[ "$action" == probe ]]; then
     [[ "$version" =~ ^[A-Za-z0-9._+\ -]+$ ]] || die 'unexpected btrfs version'
     available="$(df -B1 --output=avail "$root" | tail -n 1 | tr -d ' ')"
     [[ "$available" =~ ^[0-9]+$ ]] || die 'cannot determine free space'
-    printf '{"protocol_version":1,"scopes":["system","home","vms"],"btrfs_progs_version":"%s","filesystem_uuid":"%s","host_id":"%s","root":"%s","available_bytes":%s}\n' "$version" "$fs_uuid" "$host_id" "$root" "$available"
+    printf '{"protocol_version":1,"capabilities":["recovery-catalog-v1"],"scopes":["system","home","vms"],"btrfs_progs_version":"%s","filesystem_uuid":"%s","host_id":"%s","root":"%s","available_bytes":%s}\n' "$version" "$fs_uuid" "$host_id" "$root" "$available"
     exit 0
 fi
+if [[ "$action" == catalog-put ]]; then catalog_put; exit 0; fi
+if [[ "$action" == catalog-list ]]; then catalog_list; exit 0; fi
 scope="${words[2]}"; id="${words[3]}"
 scope_check "$scope"; token "$id"
 dir="$root/$host/$scope"; dest="$dir/$id"
