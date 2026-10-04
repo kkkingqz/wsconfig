@@ -67,9 +67,9 @@ class TransferTests(unittest.TestCase):
         ssh = self.b.bin / 'ssh'
         ssh.write_text('#!/usr/bin/env python3\nimport os,sys\nos.environ["SSH_ORIGINAL_COMMAND"]=sys.argv[-1]\nos.execv("/bin/bash",["bash",' + repr(str(ROOT / 'backup/unraid/wsbackup-receiver')) + ',' + repr(str(self.rcfg)) + '])\n')
         ssh.chmod(0o755)
-        self.config_dir = self.b.root / 'config/workstation'
+        self.config_dir = self.b.root / 'state/workstation/backup'
         self.config_dir.mkdir(parents=True)
-        self.config_dir.joinpath('backup.json').write_text(json.dumps({
+        self.config_dir.joinpath('config.json').write_text(json.dumps({
             'schema_version': 1, 'ssh_host': 'backup-nas', 'remote_host_id': 'mbp16',
             'source_fs_uuid': U, 'receiver_fs_uuid': U,
             'source_snapshot_root': str(self.snapshots), 'remote_root': str(self.remote)}))

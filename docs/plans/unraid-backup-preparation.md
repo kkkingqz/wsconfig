@@ -1,9 +1,21 @@
 # Подготовка Unraid для backup workstation
 
 Механизм реализован и перенесён в `main`; инструкция запуска — `helpws backup`.
-Ниже — подготовка к первому реальному использованию. Сервер ещё не обследован;
-адрес, версия Unraid, имя pool/disk и UUID будут подставлены после подключения.
-Команды установки пока не выполнялись.
+Ниже — подготовка к первому реальному использованию. Команды установки на сервере
+пока не выполнялись.
+
+## Сервер (обследован 2026-10-04, только чтение)
+
+- `tower.local` (192.168.113.113), Unraid 7.3.2, ядро 6.18.38, btrfs-progs 7.0,
+  OpenSSH 10.4, sudo 1.9.17; bash 5.3, flock и findmnt есть.
+- Приёмник: `/mnt/disk6/wsbackup`. disk6 — Btrfs на массиве под parity,
+  UUID `66f9196f-99fd-403b-a20f-35671c5b62fe`, 5,5 ТБ, свободно 4,5 ТБ. Соседний
+  `/mnt/disk6/btrfs-backup` принадлежит другому механизму и не трогается.
+  Подкаталог станции: `HOST_ID=mbp16`.
+- SMB/NFS shares не экспортируются; share `Backups` исключает disk6.
+- `/boot` на ZFS (права сохраняются), `/root/.ssh` → `/boot/config/ssh/root`.
+  `sshd_config`: `AllowUsers root`, `rc.sshd` правит в нём только адреса и порт.
+- Docker работает (для Kopia).
 
 ## Выбранный транспорт
 
@@ -43,8 +55,9 @@ Btrfs read-only snapshot → `btrfs send` → SSH → `btrfs receive`.
    На Unraid проверить persistence команды и SSH authorized key после reboot;
    хранение временной копии только в RAM-файловой системе не достаточно.
 5. Выделить SSH-ключ только для backup. Стандартные share users не имеют SSH;
-   штатный root SSH использовать с forced-command helper и ограничениями
-   forwarding/PTY. Helper допускает только заранее определённый host, scopes
+   подключение идёт под системным пользователем `wsbackup` с ForceCommand,
+   приём — через sudo, разрешающий одну команду (`backup/unraid/boot.sh`,
+   `helpws backup`). Без PTY и forwarding. Helper допускает только заранее определённый host, scopes
    и snapshot IDs. Он не исполняет произвольную строку SSH_ORIGINAL_COMMAND.
 6. Проверить Bash, btrfs-progs, flock и findmnt. Для начальной совместимости
    используется Btrfs stream protocol 1; новые stream options включаются

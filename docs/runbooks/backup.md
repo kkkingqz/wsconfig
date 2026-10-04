@@ -68,7 +68,8 @@ HOME snapshot согласован на уровне filesystem; для важн
 ## Локальная конфигурация
 
 Пример-шаблон: `backup/config.example.json`. Рабочий файл:
-`~/.config/workstation/backup.json` (не хранить machine-local адреса и ключи в Git).
+`~/.local/state/workstation/backup/config.json`, рядом с состоянием backup
+(не хранить machine-local адреса и ключи в Git).
 
 Пример после настройки NAS — заменить все значения:
 
@@ -80,7 +81,7 @@ HOME snapshot согласован на уровне filesystem; для важн
   "source_fs_uuid": "00000000-0000-0000-0000-000000000000",
   "receiver_fs_uuid": "00000000-0000-0000-0000-000000000000",
   "source_snapshot_root": "/var/lib/workstation-backup",
-  "remote_root": "/mnt/backup/workstation"
+  "remote_root": "/mnt/disk6/wsbackup"
 }
 ```
 
@@ -90,7 +91,7 @@ HOME snapshot согласован на уровне filesystem; для важн
 отдельный @vms ожидается на том же filesystem для `send vms`.
 Paths и IDs ограничены ASCII без пробелов, `..`, управляющих символов.
 
-В `~/.ssh/config` создать alias wsbackup-unraid с HostName, User root,
+В `~/.ssh/config` создать alias wsbackup-unraid с HostName, User wsbackup,
 IdentityFile для выделенного backup key и IdentitiesOnly yes. Проверить
 серверный host key обычным SSH по доверенному fingerprint до автоматического
 запуска: клиент использует BatchMode и StrictHostKeyChecking=yes.
@@ -113,39 +114,63 @@ Helper не устанавливается в /usr/local и не получае�
 
 ## Unraid: подготовка приёмника
 
-Обычные share users в Unraid не имеют SSH. Используется отдельный root key
-с forced command. Это ключ только для доверенного workstation: btrfs receive
+Обычные share users Unraid не имеют SSH, а `btrfs receive` требует root.
+Поэтому подключение идёт под отдельным системным пользователем `wsbackup`, а приём
+выполняется от root через sudo. sudo разрешает ему одну команду без пароля:
+приёмник с его config. Ключ ноутбука не попадает в authorized keys root. Обход
+ограничений ключа в OpenSSH дал бы только непривилегированного `wsbackup`. Сам
+приём остаётся root: это ключ только для доверенного workstation, btrfs receive
 не является sandbox для недоверенного Btrfs stream.
 
-1. Выбрать прямой путь на физическом Btrfs pool/disk, например
-   `/mnt/backup/workstation`, не `/mnt/user/...`. Проверить `findmnt -T PATH`
-   и `btrfs filesystem show`; зафиксировать настоящий UUID.
-2. Создать root-owned каталог приёма с mode 0700. Он не должен быть доступен
-   на запись через SMB/NFS, Docker volumes или mover. Если pool не смонтирован
-   или UUID поменялся, helper должен отказать.
-3. Скопировать `backup/unraid/wsbackup-receiver`, `backup/unraid/catalog.bash` и
-   `backup/btrfs-common.bash`, сохранив относительную структуру. Например,
-   `/boot/config/wsbackup/unraid/wsbackup-receiver`,
-   `/boot/config/wsbackup/unraid/catalog.bash` и
-   `/boot/config/wsbackup/btrfs-common.bash`. Config:
-   `/boot/config/wsbackup/receiver.conf`, по `receiver.conf.example`.
-4. На Unraid boot flash может не поддерживать POSIX-права как Btrfs. Поэтому
-   хранить исходные файлы на flash, а при boot запуском локального admin script
-   устанавливать их в `/usr/local/libexec/wsbackup/` с root ownership:
-   receiver 0755, common/catalog 0644, config 0600, директории 0755. Перед SSH проверить
-   это после reboot. Не изменять общие SSH настройки сервера автоматически.
-5. Добавить выделенный public key в root authorized keys через поддерживаемую
-   текущей версией Unraid настройку. Prefix строки ключа:
+Unraid при загрузке восстанавливает `/etc`, `/usr/local` и пользователей из образа.
+Поэтому всё ставит `backup/unraid/boot.sh` при каждой загрузке из копии на flash.
+Повторный запуск ничего не меняет. Скрипт:
+
+- создаёт `wsbackup` (оболочка bash для ForceCommand, пароль `*`, своя группа);
+- ставит receiver, common и config в `/usr/local/libexec/wsbackup/` с владельцем root;
+- кладёт ключи в `/etc/ssh/wsbackup_authorized_keys` и правило в `/etc/sudoers.d/wsbackup`.
+  sudo сохраняет только `SSH_ORIGINAL_COMMAND`;
+- добавляет `wsbackup` в существующий `AllowUsers` и блок `Match User wsbackup`:
+  свой файл ключей, `ForceCommand`, без PTY, forwarding и паролей. Конфиг
+  проверяется `sshd -t` до записи; listener перезапускается, открытые сессии
+  остаются. `rc.sshd` правит в конфиге только адреса и порт, поэтому блок
+  переживает его reload.
+
+Если в веб-интерфейсе изменить настройки SSH (Management Access) или обновить
+Unraid, конфиг может вернуться к исходному. Тогда `ws backup` сообщит об ошибке
+подключения. Исправление: `bash /boot/config/wsbackup/boot.sh` или перезагрузка.
+После обновления Unraid выполнить `ws backup check --remote`.
+
+Установка, один раз, от root на Unraid:
+
+1. Выбрать прямой путь на физическом Btrfs pool/disk, не `/mnt/user/...`.
+   Проверить `findmnt -T PATH` и `btrfs filesystem show`, записать UUID. Здесь:
+   `/mnt/disk6/wsbackup` (Btrfs на массиве, под parity). Каталог создаётся root
+   с mode 0700. Он не должен быть доступен на запись через SMB/NFS, Docker volumes
+   или mover. Unraid показывает его как share; проверить, что она не экспортируется.
+   Подкаталоги `HOST_ID/system|home|vms` и `.catalog` создаёт receiver.
+
+   ```console
+   mkdir -m 0700 /mnt/disk6/wsbackup
+   ```
+
+2. Скопировать на flash с сохранением структуры:
+   - `backup/unraid/boot.sh`, `backup/unraid/wsbackup-receiver`,
+     `backup/unraid/catalog.bash` и `backup/btrfs-common.bash` в
+     `/boot/config/wsbackup/` (`unraid/` для двух файлов receiver);
+   - `receiver.conf` по `receiver.conf.example`, mode 0600;
+   - `authorized_keys` с одной строкой выделенного ключа:
 
 ```text
-restrict,command="/bin/bash /usr/local/libexec/wsbackup/unraid/wsbackup-receiver /usr/local/libexec/wsbackup/receiver.conf" ssh-ed25519 PUBLIC_KEY workstation-backup
+restrict,command="sudo -n /usr/local/libexec/wsbackup/unraid/wsbackup-receiver /usr/local/libexec/wsbackup/receiver.conf" ssh-ed25519 PUBLIC_KEY workstation-backup
 ```
 
-`PUBLIC_KEY` — действительный public key. При невозможности использовать
-`restrict` на выбранном OpenSSH явно отключить PTY, forwarding и user rc.
-Ограничение ключа не отменяет необходимость защищать каталоги helper/config
-от записи другими пользователями. Проверить persistence authorized key после
-перезагрузки средствами именно установленной версии Unraid.
+   Команда в ключе дублирует ForceCommand sshd.
+3. Запустить `bash /boot/config/wsbackup/boot.sh` и добавить эту же строку в конец
+   `/boot/config/go`. Проверить после перезагрузки Unraid.
+
+После обновления файлов в репозитории скопировать их на flash заново и повторить
+`boot.sh`.
 
 Receiver поддерживает probe, inspect, receive, send, catalog-put и catalog-list для одного HOST_ID,
 scope system/home/vms и безопасного snapshot ID. SSH_ORIGINAL_COMMAND не исполняется.

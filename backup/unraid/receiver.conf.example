@@ -1,5 +1,5 @@
 # Copy to persistent root-owned config, permissions 0600. Never source it.
 # ROOT must be a direct path on the actual Btrfs pool/disk, outside SMB writers.
-ROOT=/mnt/backup/workstation
+ROOT=/mnt/disk6/wsbackup
 FS_UUID=00000000-0000-0000-0000-000000000000
 HOST_ID=mbp16

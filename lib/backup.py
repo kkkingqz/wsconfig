@@ -81,12 +81,13 @@ def build_batch_plan(config):
     return plan
 
 
-def config_path():
-    return Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / 'workstation/backup.json'
-
-
 def state_path():
     return Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state'))) / 'workstation/backup'
+
+
+def config_path():
+    # Machine-local (addresses, UUIDs), next to the backup state it describes.
+    return state_path() / 'config.json'
 
 
 def now():

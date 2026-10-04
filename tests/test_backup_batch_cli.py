@@ -8,9 +8,9 @@ from test_backup_timeshift import TransferFixture, ROOT
 class BatchCLI(TransferFixture, unittest.TestCase):
     def setUp(self):
         super().setUp()
-        self.config_dir = self.b.root / 'config/workstation'
+        self.config_dir = self.b.root / 'state/workstation/backup'
         self.config_dir.mkdir(parents=True)
-        self.config_file = self.config_dir / 'backup.json'
+        self.config_file = self.config_dir / 'config.json'
         self.config_file.write_text(json.dumps(self.c))
         self.state = self.b.root / 'state/workstation/backup'
         self.cli_env = dict(self.env, WSCONFIG=str(ROOT),
@@ -32,7 +32,7 @@ class BatchCLI(TransferFixture, unittest.TestCase):
         self.assertTrue(all(r['local_present'] for r in status['records']))
 
     def test_unconfigured_plan_status_have_no_side_effects(self):
-        self.config_file.unlink()
+        self.config_file.unlink(); self.config_dir.rmdir()  # config lives in the state directory
         for command in ('plan', 'status'):
             p = self.cli(command)
             self.assertEqual(p.returncode, 0, p.stderr)
@@ -45,7 +45,7 @@ class BatchCLI(TransferFixture, unittest.TestCase):
         self.assertEqual(list(self.managed.iterdir()), [])
 
     def test_unconfigured_backup_refuses_before_sudo_or_ssh(self):
-        self.config_file.unlink()
+        self.config_file.unlink(); self.config_dir.rmdir()  # config lives in the state directory
         p = self.cli()
         self.assertNotEqual(p.returncode, 0)
         self.assertIn('configuration incomplete', p.stderr)
