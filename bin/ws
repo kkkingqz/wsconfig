@@ -184,17 +184,17 @@ commit_tool_lists() {
             sed -n -e 's/^\([+-]\)[^+#-][^ ]* \([^ ]*\)$/\1\2/p' \
                 -e 's/^\([+-]\)\([^+# -][^ ]* [^ ]* [^ #]*\).*$/\1\2/p' |
             paste -sd, | sed 's/,/, /g')"
-        git -C "$repo" commit -q -m "$f: ${changes:-edited} (ws switch)" -- "$f"
+        git -C "$repo" commit -q -m "$f: ${changes:-edited} (ws switch)" -- "$f" || return
         echo "committed $f: ${changes:-edited}"
     done
 }
 
 cmd_switch() {
     local nix
-    nix="$(nix_bin)"
-    git -C "$repo" add -- "${tool_lists[@]}"
-    check_untracked
-    "$nix" run "$repo#home-manager" -- switch --flake "$(target)" "$@"
+    nix="$(nix_bin)" || return
+    git -C "$repo" add -- "${tool_lists[@]}" || return
+    check_untracked || return
+    "$nix" run "$repo#home-manager" -- switch --flake "$(target)" "$@" || return
     commit_tool_lists
 }
 
@@ -207,10 +207,10 @@ cmd_news() {
 
 cmd_diff() {
     local nix new old
-    nix="$(nix_bin)"
-    check_untracked
+    nix="$(nix_bin)" || return
+    check_untracked || return
     new="$("$nix" build --no-link --print-out-paths \
-        "$repo#homeConfigurations.\"$(id -un)@$(host)\".activationPackage")"
+        "$repo#homeConfigurations.\"$(id -un)@$(host)\".activationPackage")" || return
     old="$(current_generation)"
     if [[ -z "$old" ]]; then
         echo "no home-manager generation yet; new: $new"
@@ -296,7 +296,7 @@ update_extensions() {
     fi
     gdbus call --session --dest org.gnome.Shell.Extensions \
         --object-path /org/gnome/Shell/Extensions \
-        --method org.gnome.Shell.Extensions.CheckForUpdates > /dev/null
+        --method org.gnome.Shell.Extensions.CheckForUpdates > /dev/null || return
     echo "GNOME Shell checks for extension updates; downloaded updates are"
     echo "installed at the next log out and in (Extension Manager shows them)"
 }

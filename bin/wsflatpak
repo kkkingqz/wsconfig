@@ -183,7 +183,12 @@ def override_key(entry):
     if kind == "env":
         return app, kind, value.split("=", 1)[0]
     if kind == "filesystem":
-        return app, kind, fs_spec(value)
+        # Flatpak keeps one mode per path; changing ro/rw/create replaces it.
+        for mode in (":ro", ":rw", ":create"):
+            if value.endswith(mode):
+                value = value[:-len(mode)]
+                break
+        return app, kind, value
     return app, kind, value
 
 
@@ -208,14 +213,13 @@ def overrides_add(entry):
     parsed = [parse_override_line(x) for x in lines]
     text = " ".join(entry)
 
-    if entry in parsed:
-        print(f"Already in {OVERRIDES_LIST}: {text}")
-        return
-
     same = [
         i for i, e in enumerate(parsed)
         if e and override_key(e) == override_key(entry)
     ]
+    if len(same) == 1 and parsed[same[0]] == entry:
+        print(f"Already in {OVERRIDES_LIST}: {text}")
+        return
     of_app = [i for i, e in enumerate(parsed) if e and e[0] == entry[0]]
 
     if lines and not lines[-1].endswith("\n"):
@@ -223,6 +227,8 @@ def overrides_add(entry):
 
     if same:
         lines[same[0]] = text + "\n"
+        for index in reversed(same[1:]):
+            del lines[index]
         action = "Replaced in"
     elif of_app:
         # Next to the app's other lines.
@@ -242,6 +248,7 @@ def overrides_add(entry):
 
 
 def overrides_remove(key):
+    key = override_key(key)
     lines = OVERRIDES_LIST.read_text().splitlines(keepends=True)
     keep = [
         x for x in lines
@@ -1006,8 +1013,14 @@ def cmd_check(json_mode=False):
             else:
                 fail(f"untracked filesystem=host: {app}")
 
-    for path in OVERRIDES.glob("*.conf"):
-        app = path.stem
+    # A managed app with no .conf expects no user overrides. Include it so
+    # removing the last declaration does not hide leftover runtime grants.
+    override_apps = sorted(
+        {app.removeprefix("app/").split("/", 1)[0] for app in managed_apps()}
+        | {path.stem for path in OVERRIDES.glob("*.conf")}
+    )
+
+    for app in override_apps:
 
         if not installed_user(app):
             continue
@@ -1024,11 +1037,11 @@ def cmd_check(json_mode=False):
         for spec in sorted(actual_fs - expected_fs):
             fail(f"untracked filesystem override: {app}: {spec}")
 
-    for path in OVERRIDES.glob("*.conf"):
-        app = path.stem
+    for app in override_apps:
 
         if not installed_user(app):
-            warn(f"managed override for non-installed app: {app}")
+            if override_file(app).exists():
+                warn(f"managed override for non-installed app: {app}")
             continue
 
         if managed_host(app) and not runtime_host(app):
@@ -1053,8 +1066,7 @@ def cmd_check(json_mode=False):
                     f"{app}: {key}={value}"
                 )
 
-    for path in OVERRIDES.glob("*.conf"):
-        app = path.stem
+    for app in override_apps:
 
         if not installed_user(app):
             continue

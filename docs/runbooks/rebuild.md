@@ -254,7 +254,14 @@ ws checkpoint remove before-update
 дерево, ядро, установленные ядра и held-пакеты, держит поколение и дерево
 GC roots и снимает `ws baseline capture checkpoint-NAME --no-boxes`.
 Сам ничего не откатывает; `show` печатает шаги: `git switch --detach
-checkpoint/NAME`, `ws switch`, `ws system apply`, загрузка записанного ядра.
+checkpoint/NAME`, `ws switch`, `ws system apply`, `ws apply`, загрузка
+записанного ядра. После этого logout/login для загрузки скопированных
+расширений GNOME, повторный `ws apply` для шагов, ожидавших новую сессию,
+и `ws check`. Применение владельцев обязательно: home-manager доставляет
+декларации, а сочетания клавиш, tiling, runtime overrides Flatpak и копии
+локальных расширений применяются отдельно. Checkpoint возвращает
+конфигурацию; данные приложений и версии установленных Flatpak/контейнеров
+восстанавливаются своими средствами.
 `ws system apply` дополнительно пишет в `~/.local/state/workstation/system/`
 ссылку `applied` на поставленное дерево и строку в `history` (дата, коммит,
 дерево, результат).
