@@ -3,6 +3,9 @@ import Quickshell
 import "framework"
 ShellRoot {
     id: root
+    // The config is a live symlink into the repository: a checkout or edit would
+    // hot-reload the runtime, and the reloaded SocketServer loses its socket.
+    settings.watchFiles: false
     property var definitions: []
     function configure() {
         if (!widgetController) return;

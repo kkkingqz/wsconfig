@@ -108,6 +108,9 @@ Item {
 Применить `ws switch`: новый manifest меняет unit и перезапускает runtime,
 а extension перечитывает кнопки после изменения runtime/manifest JSON.
 При изменениях кода самого extension нужна доставка и новый вход в GNOME.
+Runtime не следит за файлами QML (`settings.watchFiles: false`): конфигурация —
+symlink в репозиторий, и смена ветки перезагружала бы его на лету без сокета.
+После правки QML перезапустить его явно: `ws-widgets restart`.
 В GNOME 50 `ReloadExtension` через D-Bus не работает, а disable/enable
 использует уже импортированный JS-модуль. Это следует из
 [реализации Shell D-Bus](https://github.com/GNOME/gnome-shell/blob/50.1/js/ui/shellDBus.js)
