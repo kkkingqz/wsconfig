@@ -11,10 +11,12 @@ export function socketPath(config) {
 }
 function verifyEndpoint(path) {
     const file = Gio.File.new_for_path(path);
-    for (const [item, mode] of [[file.get_parent(), 0o700], [file, 0o600]]) {
+    // Owner read/write required; any group or other bit is rejected.
+    for (const item of [file.get_parent(), file]) {
         const info = item.query_info('unix::uid,unix::mode', Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+        const mode = info.get_attribute_uint32('unix::mode');
         if (info.get_attribute_uint32('unix::uid') !== new Gio.Credentials().get_unix_user()
-            || (info.get_attribute_uint32('unix::mode') & 0o777) !== mode)
+            || (mode & 0o077) !== 0 || (mode & 0o600) !== 0o600)
             throw new Error('Widget socket ownership or permissions invalid');
     }
 }

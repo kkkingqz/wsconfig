@@ -67,6 +67,14 @@ export const tests = {
         shell.display.focus_window = {};
         assert(shouldDismiss({type: 'focus', inFamily: false}, {phase: state().widgets.example.phase}), 'real focus loss after opening no longer dismisses');
     }),
+    focusWaitActivatesOnlyOnce: () => fixture(async ({placement, shell, windows, prepare, state, activationTimes}) => {
+        const job = await prepare('example');
+        await placement.place(job, state()); await placement.place(job, state()); await placement.place(job, state());
+        assert(activationTimes.length === 1, `activation repeats while waiting for focus: ${activationTimes}`);
+        shell.display.focus_window = windows.example;
+        await placement.place(job, state());
+        assert(state().widgets.example.phase === 'opening' && activationTimes.length === 1, 'granted focus does not release opening');
+    }),
     clickTimestampIsNotReusedForCliOpen: () => fixture(async ({placement, prepare, state, dispatch, activationTimes, grantFocus}) => {
         grantFocus(); placement.timestamp = 77;
         let job = await prepare('example'); await placement.place(job, state());

@@ -49,6 +49,14 @@ export class WindowPlacement {
         if (!window || !button) return;
         job.busy = true;
         try {
+            if (job.activated) {
+                // Activation is asynchronous. Stay in preparing until Mutter
+                // gives us focus, so the old window's focus loss cannot close
+                // the new popup before its opening animation starts. A denied
+                // activation ends through the placement timeout.
+                if (global.display.focus_window === window) await this.client.call('placed', {id:job.id, requestId:job.requestId});
+                return;
+            }
             const state = this.snapshot.widgets[job.id];
             const [x, y] = button.get_transformed_position();
             const [width, height] = button.get_transformed_size();
@@ -78,11 +86,8 @@ export class WindowPlacement {
                 this.jobs.delete(`${job.instance}:${job.id}:${job.requestId}`);
             } else {
                 window.activate(job.timestamp || global.get_current_time());
-                // Activation is asynchronous. Stay in preparing until Mutter
-                // gives us focus, so the old window's focus loss cannot close
-                // the new popup before its opening animation starts.
-                if (global.display.focus_window !== window) return;
-                await this.client.call('placed', {id:job.id, requestId:job.requestId});
+                job.activated = true;
+                if (global.display.focus_window === window) await this.client.call('placed', {id:job.id, requestId:job.requestId});
             }
         } finally { job.busy = false; }
     }

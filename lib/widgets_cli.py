@@ -36,9 +36,11 @@ def socket_path(config):
 def ipc(config, method, *args):
     try:
         path = socket_path(config)
-        for item, mode, kind in [(path.parent, 0o700, stat.S_ISDIR), (path, 0o600, stat.S_ISSOCK)]:
+        # Owner read/write required; any group or other bit is rejected.
+        for item, kind in [(path.parent, stat.S_ISDIR), (path, stat.S_ISSOCK)]:
             info = item.lstat()
-            if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != mode or not kind(info.st_mode):
+            mode = stat.S_IMODE(info.st_mode)
+            if info.st_uid != os.getuid() or mode & 0o077 or (mode & 0o600) != 0o600 or not kind(info.st_mode):
                 raise ValueError('widget socket ownership or permissions invalid')
         deadline = time.monotonic() + 3
         with socket.socket(socket.AF_UNIX) as peer:

@@ -125,6 +125,8 @@ export function reduce(previous, event, nowMs) {
     default: accepted = false;
     }
     if (!accepted) return {state: previous, accepted: false, effects: []};
+    // A deadline only exists while placement is pending; status must not show stale ones.
+    for (const w of Object.values(state.widgets)) if (w.phase !== 'preparing') w.deadline = 0;
     if (JSON.stringify(state) === JSON.stringify(previous)) return {state: previous, accepted, effects};
     state.revision++;
     return {state, accepted, effects};

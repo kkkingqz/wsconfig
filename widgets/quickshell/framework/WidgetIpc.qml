@@ -7,19 +7,9 @@ Scope {
     id: root
     required property WidgetController controller
     property var adapter: null
-    property bool secured: false
+    // The service runs with UMask=0077 inside a 0700 runtime directory, so the
+    // socket is created owner-only (0700); clients verify that before connecting.
     readonly property string socketPath: Quickshell.env("WIDGETS_SOCKET") || Quickshell.env("XDG_RUNTIME_DIR") + "/workstation-widgets/control.sock"
-    // Qt creates its own runtime directories. UMask=0177 would make these
-    // unsearchable, so retain 0077 and remove socket execute bits once at startup.
-    Process {
-        id: permissions
-        command: [Quickshell.env("WIDGETS_CHMOD") || "chmod", "0600", root.socketPath]
-        onExited: (code, status) => {
-            if (code === 0) root.secured = true;
-            else { console.error("Cannot secure widget socket"); Qt.exit(1); }
-        }
-    }
-    Component.onCompleted: Qt.callLater(() => { permissions.running = true; })
     function execute(method, args) {
         switch (method) {
         case "status": return controller.state;
@@ -59,7 +49,7 @@ Scope {
                 try { frame = JSON.parse(line); } catch (_) { closePeer(); return; }
                 if (!role) {
                     const next = Wire.validateHello(frame);
-                    if (!next || !root.secured) { closePeer(); return; }
+                    if (!next) { closePeer(); return; }
                     role = next;
                     if (role === "adapter") {
                         const old = root.adapter;

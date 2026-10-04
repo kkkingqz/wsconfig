@@ -63,6 +63,7 @@ export const tests = {
         const s = show(initial()); assert(nextDeadline(s) === 2000);
         assert(nextDeadline(placed(s)) === null);
         assert(nextDeadline(event(s, 'COMMAND', {action:'hideAll'}).state) === null);
+        assert(placed(s).widgets.example.deadline === 0, 'opened widget keeps stale deadline');
     },
     hideAllCancelsPending: () => { let s = show(placed(show(initial())), 'compact'); s = event(s, 'COMMAND', {action: 'hideAll'}).state; assert(s.pendingId === null && !s.widgets.compact.desiredOpen); },
 };

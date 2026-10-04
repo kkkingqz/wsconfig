@@ -54,6 +54,10 @@ ws-widgets hide-all
 journalctl --user -u workstation-widgets.service -b
 ```
 
+Обычное закрытие соединения (ответ CLI, перезагрузка расширения) не пишется в журнал:
+сервис запускается с `--log-rules quickshell.io.socket.warning=false`. Обрыв adapter
+виден в состоянии (`adapter.connected`, `lastError`) и в `ws check widgets`.
+
 status и check читают состояние. show/toggle/hide обращаются к уже запущенному
 runtime и возвращают отказ без подключённого adapter, а также для неизвестного,
 выключенного или сломанного ID.
@@ -157,9 +161,9 @@ Adapter отправляет `placed` только после проверки �
 ## Контракт и восстановление
 
 Runtime слушает `$XDG_RUNTIME_DIR/workstation-widgets/control.sock`.
-Systemd создаёт каталог с правами 0700, runtime меняет права сокета на 0600
-одним вызовом chmod при старте. До этого приветствия не принимаются.
-Сокет доступен только текущему UID. CLI и Gio дополнительно проверяют права
+Systemd создаёт каталог с правами 0700, а UMask=0077 сервиса создаёт сокет
+с правами 0700. Сокет доступен только текущему UID: клиенты отклоняют каталог
+и сокет с любыми битами group/other. CLI и Gio дополнительно проверяют права
 и UID сервера (SO_PEERCRED/Gio credentials); PID snapshot должен совпадать с
 PID peer. Quickshell сам пересоздаёт сокет, оставшийся после падения.
 

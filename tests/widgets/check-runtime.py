@@ -47,7 +47,7 @@ with tempfile.TemporaryDirectory(prefix='widgets-runtime-') as tmp:
     process = start(); driver = None
     try:
         deadline = time.monotonic()+3
-        while (not endpoint.exists() or endpoint.stat().st_mode & 0o777 != 0o600) and time.monotonic()<deadline:
+        while (not endpoint.exists() or endpoint.stat().st_mode & 0o077) and time.monotonic()<deadline:
             assert process.poll() is None, runtime_log.read_text(); time.sleep(.02)
         peer = Peer(endpoint)
         assert not peer.call('show', id='example')['result']; peer.close()

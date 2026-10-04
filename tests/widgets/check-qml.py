@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix="widgets-qml-") as temporary:
             return result
         try:
             deadline = time.monotonic()+3
-            while (not endpoint.exists() or endpoint.stat().st_mode & 0o777 != 0o600) and time.monotonic()<deadline:
+            while (not endpoint.exists() or endpoint.stat().st_mode & 0o077) and time.monotonic()<deadline:
                 assert process.poll() is None, "runtime exited"
                 time.sleep(.02)
             assert endpoint.exists(), "missing runtime socket"

@@ -28,12 +28,14 @@ in {
     };
     Service = {
       # A registry change changes the unit, so Home Manager restarts the runtime.
-      Environment = [ "WIDGETS_MANIFEST=${manifestFile}" "WIDGETS_SOCKET=%t/workstation-widgets/control.sock" "WIDGETS_CHMOD=${pkgs.coreutils}/bin/chmod" ];
+      Environment = [ "WIDGETS_MANIFEST=${manifestFile}" "WIDGETS_SOCKET=%t/workstation-widgets/control.sock" ];
       RuntimeDirectory = "workstation-widgets";
       RuntimeDirectoryMode = "0700";
       UMask = "0077";
       ExecCondition = sessionGuard;
-      ExecStart = "${runtime}/bin/qs-widgets --session -n -c workstation-widgets";
+      # Peer EOF is the normal liveness signal (CLI reply, adapter reload), and
+      # Quickshell logs each one as a socket warning. Failures surface in state.
+      ExecStart = "${runtime}/bin/qs-widgets --session -n --log-rules quickshell.io.socket.warning=false -c workstation-widgets";
       Restart = "on-failure";
       RestartSec = 2;
     };

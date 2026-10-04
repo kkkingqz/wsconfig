@@ -95,6 +95,10 @@ else: sys.exit(99) # invoking Quickshell from CLI is always a failure
         result=self.run_cli('status'); self.assertNotEqual(result.returncode, 0)
         self.assertIn('permissions',result.stderr)
         self.assertEqual(self.requests, [])
+    def test_owner_only_socket_accepted(self):
+        # The service UMask=0077 creates the socket as 0700.
+        os.chmod(self.root/'control.sock', 0o700)
+        self.assertEqual(self.run_cli('status').returncode, 0)
     def test_wrong_reply_rejected(self):
         self.mode='wrong-seq'
         self.assertNotEqual(self.run_cli('show','example').returncode, 0)

@@ -1,5 +1,9 @@
 # Live evidence — 2026-10-03
 
+Sections before «Socket rewrite — 2026-10-04» describe protocol 1 (`qs ipc`
+and the adapter lease). Protocol 2 replaced the lease with socket ownership:
+adapter EOF closes widgets immediately; `adapter.connected` replaces `ready`.
+
 Environment: Ubuntu GNOME Shell 50.1, Wayland; eDP-1 native 3072×1920,
 logical 2048×1280, scale 1.5. Scoped Quickshell 0.3.0 / Qt 6.11.2 / Mesa 26.1.8.
 
