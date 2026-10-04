@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 from recovery_fixture import FakePlatform, point, U
 import recovery_transaction as transaction
@@ -97,7 +98,7 @@ class CLITests(unittest.TestCase):
         tty=Terminal('1\nstatus\n')
         # Separate read and write offsets, as a real terminal does.
         tty.reader=io.StringIO('1\nstatus\n'); tty.readline=tty.reader.readline
-        with patch('recovery.os.geteuid',return_value=0), patch('recovery.dependencies'), patch('recovery.open_tty',return_value=tty), patch('recovery.LivePlatform',return_value=p):
+        with patch('recovery.os',SimpleNamespace(geteuid=lambda:0)), patch('recovery.dependencies'), patch('recovery.open_tty',return_value=tty), patch('recovery.LivePlatform',return_value=p):
             self.assertEqual(recovery.main(['--device','/dev/fixture']),0)
         self.assertIn('unfinished transaction',tty.getvalue())
         self.assertFalse(hasattr(p,'remote_calls'))
