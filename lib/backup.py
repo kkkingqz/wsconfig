@@ -383,6 +383,9 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='command')
     p = sub.add_parser('plan')
     p.add_argument('scope', choices=[*SOURCES, 'all'], nargs='?')
+    p = sub.add_parser('recovery-export', help='export autonomous Live USB restore script')
+    p.add_argument('output', type=Path)
+    p.add_argument('--force', action='store_true', help='replace existing export')
     sub.add_parser('status')
     p = sub.add_parser('check')
     p.add_argument('--remote', action='store_true')
@@ -394,6 +397,10 @@ def main(argv=None):
     p.add_argument('target', type=Path)
     p.add_argument('--verify', action='append', required=True, metavar='RELATIVE_FILE')
     args = parser.parse_args(argv)
+    if args.command == 'recovery-export':
+        from recovery_bundle import export_bundle
+        print(json.dumps(export_bundle(args.output, overwrite=args.force), indent=2))
+        return
     c = load_config(config_path())
     scope = getattr(args, 'scope', None)
     plan = build_plan(c, scope) if args.command in {'plan', 'send'} and scope else build_batch_plan(c)

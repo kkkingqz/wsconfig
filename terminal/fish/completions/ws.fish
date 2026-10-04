@@ -35,7 +35,7 @@ complete -c ws -n __ws_needs_command -a baseline -d 'Functional baseline: captur
 complete -c ws -n __ws_needs_command -a checkpoint -d 'Commit <-> working state'
 complete -c ws -n __ws_needs_command -a collect -d 'Machine state archive for a rebuild'
 complete -c ws -n __ws_needs_command -a backup -d 'Native Btrfs backup to Unraid'
-complete -c ws -n '__ws_at backup' -a 'plan status check send restore-test'
+complete -c ws -n '__ws_at backup' -a 'plan status check send restore-test recovery-export'
 complete -c ws -n '__ws_at backup plan; or __ws_at backup send' -a 'home vms all'
 complete -c ws -n '__ws_at backup restore-test' -a 'system home vms'
 complete -c ws -n '__ws_at backup check' -l remote -d 'Check configured receiver over SSH'
@@ -64,3 +64,6 @@ complete -c ws -n '__ws_after checkpoint' -l baseline -d 'diff: capture and comp
 
 complete -c ws -n '__ws_after collect' -l no-firmware -d 'Without the Apple firmware'
 complete -c ws -n '__ws_after collect' -F
+
+complete -c ws -n '__ws_after backup; and __ws_after recovery-export' -F
+complete -c ws -n '__ws_after backup; and __ws_after recovery-export' -l force -d 'Replace existing recovery export'
