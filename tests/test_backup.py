@@ -63,8 +63,7 @@ class TransferTests(unittest.TestCase):
         self.rcfg.chmod(0o600)
         # Substitute only sudo/SSH privilege and network boundaries. Actual
         # source/receiver scripts, subprocess pipelines, files and state run.
-        (self.b.bin / 'sudo').write_text('#!/bin/sh\n[ "$1" != -v ] || exit 0\n[ "$1" != -n ] || shift\nexec "$@"\n')
-        (self.b.bin / 'sudo').chmod(0o755)
+        self.b.install_sudo()
         ssh = self.b.bin / 'ssh'
         ssh.write_text('#!/usr/bin/env python3\nimport os,sys\nos.environ["SSH_ORIGINAL_COMMAND"]=sys.argv[-1]\nos.execv("/bin/bash",["bash",' + repr(str(ROOT / 'backup/unraid/wsbackup-receiver')) + ',' + repr(str(self.rcfg)) + '])\n')
         ssh.chmod(0o755)

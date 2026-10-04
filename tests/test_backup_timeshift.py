@@ -110,8 +110,7 @@ class TransferFixture(TimeshiftFixture):
         cfg = self.b.root / 'receiver.conf'
         cfg.write_text(f'ROOT={self.remote_root}\nFS_UUID={U}\nHOST_ID=mbp16\n')
         cfg.chmod(0o600)
-        (self.b.bin / 'sudo').write_text('#!/bin/sh\n[ "$1" != -v ] || exit 0\n[ "$1" != -n ] || shift\nexec "$@"\n')
-        (self.b.bin / 'sudo').chmod(0o755)
+        self.b.install_sudo()
         ssh = self.b.bin / 'ssh'
         ssh.write_text('#!/usr/bin/env python3\nimport os,sys\nos.environ["SSH_ORIGINAL_COMMAND"]=sys.argv[-1]\nos.execv("/bin/bash",["bash",' + repr(str(ROOT / 'backup/unraid/wsbackup-receiver')) + ',' + repr(str(cfg)) + '])\n')
         ssh.chmod(0o755)

@@ -351,21 +351,42 @@ path, prefix = sys.argv[1], sys.argv[2]
 d = open(path, 'rb').read()
 if d[:4] != b'L\0\0\0':
     sys.exit(0)
+def malformed():
+    print(f'wswin: skipping malformed shortcut: {path}', file=sys.stderr)
+    sys.exit(0)
+if len(d) < 76:
+    malformed()
 flags = struct.unpack_from('<I', d, 20)[0]
 pos = 76
 if flags & 0x1:                          # LinkTargetIDList
+    if pos + 2 > len(d):
+        malformed()
     pos += 2 + struct.unpack_from('<H', d, pos)[0]
+    if pos > len(d):
+        malformed()
 target = ''
 if flags & 0x2:                          # LinkInfo
     li = pos
+    if li + 28 > len(d):
+        malformed()
     size, hdr, liflags, _v, base, _n, suffix = struct.unpack_from('<7I', d, li)
+    li_end = li + size
+    if not 28 <= hdr <= size or li_end > len(d):
+        malformed()
     def cstr(off, wide=False):
+        if not li + hdr <= off < li_end:
+            malformed()
         if wide:
-            end = off
-            while d[end:end + 2] != b'\0\0':
-                end += 2
-            return d[off:end].decode('utf-16le')
-        return d[off:d.index(b'\0', off)].decode('cp1252')
+            end = next((i for i in range(off, li_end - 1, 2)
+                        if d[i:i + 2] == b'\0\0'), -1)
+        else:
+            end = d.find(b'\0', off, li_end)
+        if end < 0:
+            malformed()
+        try:
+            return d[off:end].decode('utf-16le' if wide else 'cp1252')
+        except UnicodeDecodeError:
+            malformed()
     if liflags & 1:
         if hdr >= 0x24:
             ubase, usuffix = struct.unpack_from('<2I', d, li + 28)
@@ -376,12 +397,18 @@ if flags & 0x2:                          # LinkInfo
 wide = flags & 0x80
 def rstr():
     global pos
+    if pos + 2 > len(d):
+        malformed()
     n = struct.unpack_from('<H', d, pos)[0]
     pos += 2
-    if wide:
-        s = d[pos:pos + 2 * n].decode('utf-16le'); pos += 2 * n
-    else:
-        s = d[pos:pos + n].decode('cp1252'); pos += n
+    end = pos + n * (2 if wide else 1)
+    if end > len(d):
+        malformed()
+    try:
+        s = d[pos:end].decode('utf-16le' if wide else 'cp1252')
+    except UnicodeDecodeError:
+        malformed()
+    pos = end
     return s.rstrip('\0')
 f = {}
 for bit, key in ((0x4, 'name'), (0x8, 'rel'), (0x10, 'wd'), (0x20, 'args'), (0x40, 'icon')):

@@ -2,6 +2,8 @@
 import json
 import os
 from pathlib import Path
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -16,7 +18,7 @@ c = json.loads(pathlib.Path(os.environ['BACKUP_FIXTURE']).read_text())
 if name == 'findmnt':
     field = a[a.index('-nro') + 1] if '-nro' in a else 'TARGET'
     print({'FSTYPE': c.get('fstype', 'btrfs'), 'UUID': c.get('uuid'),
-           'OPTIONS': 'rw,subvol=/@home' if a[-1] == '/home' else 'rw,subvol=/@vms',
+           'OPTIONS': 'rw,subvol=/@home' if a[-1] in ('/home', c.get('source_home')) else 'rw,subvol=/@vms',
            'TARGET': a[-1], 'FSROOT': '/'}[field])
 elif name == 'blkid':
     print('/dev/fixture')
@@ -129,6 +131,21 @@ class Boundary:
         self.root = Path(self.temp.name)
         self.bin = self.root / 'bin'
         self.bin.mkdir()
+        self.home = self.root / 'sources/home'
+        self.vms = self.root / 'sources/vms'
+        self.home.mkdir(parents=True)
+        self.vms.mkdir()
+        # Relocate only the fixed source paths in a test copy of the helper.
+        # Its directory, filesystem, nested-mount and VM checks remain real;
+        # no test-only override or weaker validation is added to production.
+        backup_dir = Path(__file__).resolve().parents[1] / 'backup'
+        helper_dir = self.root / 'helpers'
+        helper_dir.mkdir()
+        self.source = helper_dir / 'wsbackup-source'
+        self.source.write_text((backup_dir / 'wsbackup-source').read_text()
+                               .replace('/home', str(self.home))
+                               .replace('/var/lib/vms', str(self.vms)))
+        shutil.copyfile(backup_dir / 'btrfs-common.bash', helper_dir / 'btrfs-common.bash')
         self.config = self.root / 'fixture.json'
         self.update()
         for name in ('btrfs', 'findmnt', 'virsh', 'blkid', 'mount', 'umount'):
@@ -139,7 +156,20 @@ class Boundary:
                         BACKUP_FIXTURE=str(self.config))
 
     def update(self, **changes):
-        self.config.write_text(json.dumps({'uuid': U, **changes}))
+        self.config.write_text(json.dumps({'uuid': U, 'source_home': str(self.home), **changes}))
+
+    def install_sudo(self):
+        sudo = self.bin / 'sudo'
+        sudo.write_text('''#!/bin/sh
+[ "$1" != -v ] || exit 0
+[ "$1" != -n ] || shift
+if [ "$1" = /bin/bash ] && [ "${2##*/}" = wsbackup-source ]; then
+    shift 2
+    exec /bin/bash ''' + shlex.quote(str(self.source)) + ''' "$@"
+fi
+exec "$@"
+''')
+        sudo.chmod(0o755)
 
     def close(self):
         self.temp.cleanup()

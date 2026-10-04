@@ -21,6 +21,23 @@ ShellRoot {
     WidgetHost { id: small; definition: panels.entries[1]; controller: panels }
     WidgetHost { definition: panels.entries[2]; controller: panels }
     Timer {
+        id: gentleStart
+        interval: 60
+        onTriggered: {
+            if (!(small.progress > 0 && small.progress < 0.3)) {
+                console.error("reveal must start gently; progress=" + small.progress);
+                Qt.exit(1);
+                return;
+            }
+            const progress = small.progress;
+            panels.command("toggle", "small");
+            if (panels.state.widgets.small.phase !== "closing" || small.progress !== progress) Qt.exit(1);
+            panels.command("toggle", "small");
+            if (panels.state.widgets.small.phase !== "opening" || small.progress !== progress) Qt.exit(1);
+            console.log("gentle reveal and continuous toggle reversal passed");
+        }
+    }
+    Timer {
         property int stage: 0
         property int ticks: 0
         interval: 100; repeat: true; running: Quickshell.env("WIDGETS_IPC_TEST") !== "1"
@@ -47,6 +64,7 @@ ShellRoot {
                 panels.dispatch({type: "GEOMETRY", id: "small", requestId: panels.state.widgets.small.requestId, width: 160, height: 120});
                 check(small.widgetContext.contentWidth === 128 && small.widgetContext.contentHeight === 88, "clamped logical context");
                 panels.dispatch({type: "PLACED", id: "small", requestId: panels.state.widgets.small.requestId});
+                gentleStart.restart();
             } else if (stage === 1) {
                 check(panels.state.widgets.small.phase === "open", "animation completed: " + JSON.stringify(panels.state) + " progress=" + small.progress);
                 check(large.loaded && small.loaded, "components load on first open and persist");

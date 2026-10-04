@@ -160,12 +160,18 @@ Return to it (by hand; the commands are not run):
   git -C $repo switch --detach checkpoint/$name
   ws switch                 # home-manager generation of that commit (built from flake.lock)
   ws system apply           # its system files (sudo)
+  ws apply                  # extensions, tiling, keyboard, Flatpak and Distrobox
 EOF
     [[ "$kernel" == "$(uname -r)" ]] \
         || echo "  boot kernel $kernel (rEFInd); installed now: $(cd /boot && ls vmlinuz-* 2>/dev/null | sed 's/^vmlinuz-//' | paste -sd' ')"
     cat <<EOF
 Back to the latest state:
-  git -C $repo switch main && ws switch && ws system apply
+  git -C $repo switch main && ws switch && ws system apply && ws apply
+
+After either sequence:
+  log out and log in        # load the copied GNOME extensions on Wayland
+  ws apply                  # finish any steps that required the new session
+  ws check
 EOF
 }
 

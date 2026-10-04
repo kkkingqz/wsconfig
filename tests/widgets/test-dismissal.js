@@ -1,10 +1,43 @@
 import {shouldDismiss} from '../../gnome/extensions/workstation-widgets@local/lib/dismissal.mjs';
+import * as dismissal from '../../gnome/extensions/workstation-widgets@local/lib/dismissal.mjs';
 import {createState, reduce} from '../../widgets/quickshell/framework/model.mjs';
-function assert(v) { if (!v) throw new Error('dismissal policy'); }
+function assert(v, message = 'dismissal policy') { if (!v) throw new Error(message); }
 const panelActor = {get_parent: () => null};
 const panelSurface = {get_parent: () => panelActor};
 const background = {get_parent: () => null};
 export const tests = {
+    panelPressWithNullEventSourceClosesOnSecondClick: () => {
+        assert(typeof dismissal.pointerDecision === 'function');
+        const button = {get_parent: () => null};
+        // Mutter 50 BUTTON_PRESS and TOUCH_BEGIN have no event source actor.
+        const event = {get_source: () => null, get_coords: () => [1800, 16]};
+        const pick = (x, y) => { assert(x === 1800 && y === 16); return button; };
+        const owns = actor => actor === button;
+        let state = createState([{id: 'example', enabled: true, width: 420, height: 580}], 'instance', 42);
+        const dispatch = event => { state = reduce(state, event, 0).state; };
+        const click = () => {
+            const decision = dismissal.pointerDecision(event, pick, owns, {phase: state.widgets.example.phase, familyActors: []});
+            if (decision.dismiss) dispatch({type: 'COMMAND', action: 'hideAll'});
+            dispatch({type: 'COMMAND', action: 'toggle', id: 'example'});
+            return decision;
+        };
+        click();
+        dispatch({type: 'PLACED', id: 'example', requestId: 1});
+        dispatch({type: 'FINISHED', id: 'example', requestId: 1, phase: 'opening'});
+        const second = click();
+        assert(state.widgets.example.phase === 'closing' && !state.widgets.example.desiredOpen, 'second panel click reopened instead of closing');
+        assert(second.ownButton && !second.dismiss);
+        dispatch({type: 'FINISHED', id: 'example', requestId: state.widgets.example.requestId, phase: 'closing'});
+        assert(state.widgets.example.phase === 'closed');
+    },
+    pickedSurfaceAndBackgroundKeepTheirDismissalPolicy: () => {
+        const event = {get_source: () => null, get_coords: () => [100, 200]};
+        for (const [source, dismiss] of [[panelSurface, false], [background, true]]) {
+            const decision = dismissal.pointerDecision(event, () => source, () => false,
+                {phase: 'open', familyActors: [panelActor]});
+            assert(!decision.ownButton && decision.dismiss === dismiss);
+        }
+    },
     maskedAreaFallsThrough: () => assert(shouldDismiss({type: 'pointer', source: background, familyActors: [panelActor], inFamily: true}, {phase: 'opening'})),
     transientPointer: () => {
         const popupActor = {get_parent: () => null};

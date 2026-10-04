@@ -17,7 +17,7 @@ class SourceTests(unittest.TestCase):
         self.snapshots.mkdir()
 
     def source(self, action='snapshot', scope='home', id='test-id'):
-        return subprocess.run(['bash', str(ROOT / 'backup/wsbackup-source'), '--uuid', U,
+        return subprocess.run(['bash', str(self.b.source), '--uuid', U,
                                '--root', str(self.snapshots), action, scope, id],
                               env=self.b.env, text=True, capture_output=True)
 
