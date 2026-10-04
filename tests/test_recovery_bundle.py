@@ -41,7 +41,7 @@ class BundleTests(unittest.TestCase):
             self.assertEqual(set(archive.namelist()),{'__main__.py','recovery.py','recovery_catalog.py','recovery_platform.py','recovery_transaction.py'})
             for name in archive.namelist():
                 data=archive.read(name)
-                self.assertNotIn(b'/home/king',data); self.assertNotIn(b'BEGIN OPENSSH PRIVATE KEY',data)
+                self.assertNotIn(str(Path.home()).encode(),data); self.assertNotIn(b'BEGIN OPENSSH PRIVATE KEY',data)
         other=self.directory/'other';bundle.export_bundle(other)
         self.assertEqual(content,other.read_bytes())
     def test_refuse_overwrite_and_symlink(self):

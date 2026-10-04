@@ -28,7 +28,8 @@ def boot_preflight(top, root, fs_uuid):
     boot_path = tree_path(root, 'boot/refind_linux.conf')
     if not fstab_path.is_file() or not boot_path.is_file():
         raise ValueError('fstab/rEFInd configuration missing')
-    lines = []; mountpoints = []; has_root = False
+    lines = []; mountpoints = []; has_root = False; auxiliary = []
+    mounted_trees = {'/': root}
     for line in fstab_path.read_text().splitlines():
         if not line.strip() or line.lstrip().startswith('#'):
             lines.append(line); continue
@@ -56,16 +57,33 @@ def boot_preflight(top, root, fs_uuid):
             if not safe_path(top / name).is_dir():
                 raise ValueError('fstab subvolume missing: ' + name)
             if destination == '/': has_root = True
+            mounted_trees[destination] = root if destination == '/' else top / name
             if not destination.startswith('/') or '..' in Path(destination).parts:
                 raise ValueError('unsafe fstab mountpoint')
             mountpoints.append(destination)
             fields[3] = ','.join(flags)
             line = '\t'.join(fields)
-        elif kind not in ('vfat', 'none', 'swap'):
+        elif kind in ('none', 'swap'):
+            if kind == 'none' and 'bind' not in options.split(','):
+                raise ValueError('unsupported fstab none mount')
+            auxiliary.append((source, destination, kind))
+        elif kind != 'vfat':
             raise ValueError('unsupported fstab filesystem')
         lines.append(line)
     if not has_root:
         raise ValueError('fstab root mount missing')
+    for source, destination, kind in auxiliary:
+        if not source.startswith('/') or '..' in Path(source).parts:
+            raise ValueError('unsupported fstab auxiliary source')
+        mounts = [m for m in mounted_trees if source == m or source.startswith(m.rstrip('/') + '/')]
+        mount = max(mounts, key=len)
+        path = tree_path(mounted_trees[mount], source[len(mount):])
+        if not path.exists() or (kind == 'swap' and not path.is_file()):
+            raise ValueError('fstab bind/swap source missing')
+        if kind == 'none':
+            if not destination.startswith('/') or '..' in Path(destination).parts:
+                raise ValueError('unsafe bind destination')
+            mountpoints.append(destination)
     boot_lines = []; entries = 0
     for line in boot_path.read_text().splitlines():
         if not line.strip() or line.lstrip().startswith('#'):
@@ -104,7 +122,7 @@ def boot_preflight(top, root, fs_uuid):
             'mountpoints': mountpoints, 'kernel': version}
 
 
-def preflight(top, selection, received, platform, expected_received=None):
+def preflight(top, selection, received, platform):
     top = safe_path(top); selection = validate_selection(selection)
     platform.assert_offline(top)
     old = {}; copies = {}
@@ -118,7 +136,7 @@ def preflight(top, selection, received, platform, expected_received=None):
         if top not in path.parents:
             raise ValueError('received snapshot outside target')
         copy = platform.inspect_snapshot(path)
-        if not copy['readonly'] or copy['received_uuid'] != (expected_received or {}).get(scope, selection[scope]['source_uuid']):
+        if not copy['readonly'] or copy['received_uuid'] != selection[scope]['source_uuid']:
             raise ValueError('received snapshot identity/readonly mismatch')
         copies[scope] = {'path': str(path.relative_to(top)), **copy}
     boot = boot_preflight(top, top / copies['system']['path'], selection['source_fs_uuid'])
@@ -227,6 +245,8 @@ def validate_transaction(tx):
         old = tx.get('old', {}).get(scope)
         if not isinstance(old, dict) or not UUID.fullmatch(str(old.get('uuid', ''))):
             raise ValueError('invalid original snapshot identity')
+        if type(old.get('subvolume_id')) is not int or old['subvolume_id'] <= 0 or old.get('readonly') is not False:
+            raise ValueError('invalid original snapshot properties')
         for key in ('backups', 'restored', 'candidates'):
             entry = tx.get(key, {}).get(scope)
             if entry is None:
@@ -236,12 +256,17 @@ def validate_transaction(tx):
                       'candidates': '@restore-' if scope == 'system' else '@home-restore-'}[key]
             if entry.get('path') != prefix + tx['id']:
                 raise ValueError('unexpected transaction path')
+            if type(entry.get('subvolume_id')) is not int or entry['subvolume_id'] <= 0 or entry.get('readonly') is not False:
+                raise ValueError('invalid transaction snapshot properties')
             if not UUID.fullmatch(str(entry.get('uuid', ''))):
                 raise ValueError('invalid transaction snapshot UUID')
             if key == 'backups' and entry['uuid'] != old['uuid']:
                 raise ValueError('backup UUID does not match original')
         if scope in tx.get('received', {}):
-            relative_path(tx['received'][scope]['path'])
+            copy = tx['received'][scope]
+            relative_path(copy['path'])
+            if copy.get('received_uuid') != selection[scope]['source_uuid'] or copy.get('readonly') is not True or not UUID.fullmatch(str(copy.get('uuid', ''))):
+                raise ValueError('invalid received snapshot identity')
     direction = tx.get('direction')
     if direction is not None:
         if direction not in ('switch', 'rollback'):
@@ -359,6 +384,9 @@ def observe_transaction(top, tx, platform):
                 if not orphan: raise ValueError('foreign recovery subvolume: ' + name)
                 found['unpublished_candidate'] = name
                 continue
+            expected = old if metadata['uuid'] == old['uuid'] else candidate
+            if metadata['subvolume_id'] != expected['subvolume_id'] or metadata['readonly']:
+                raise ValueError('snapshot ID/readonly changed')
             if metadata['uuid'] in found:
                 raise ValueError('duplicate snapshot UUID in transaction paths')
             found[metadata['uuid']] = name
@@ -456,6 +484,7 @@ def switch_transaction(top, tx, platform, confirmed):
     if tx['phase'] == 'complete': return tx
     if tx['phase'] != 'prepared':
         raise ValueError('transaction not prepared; use resume')
+    verify_candidate_boot(top, tx, platform)
     tx.update(direction='switch', operations=switch_operations(tx), phase='switching')
     save_transaction(top, tx, platform)
     return execute_operations(top, tx, platform)
@@ -479,8 +508,29 @@ def rollback_transaction(top, tx, platform, confirmed):
     if confirmed is not True: raise ValueError('explicit rollback confirmation required')
     if tx.get('direction') == 'rollback':
         return execute_operations(top, tx, platform)
+    for scope, locations in observation['locations'].items():
+        if 'unpublished_candidate' in locations:
+            name = locations['unpublished_candidate']
+            tx.setdefault('candidates', {})[scope] = {'path': name, **platform.inspect_snapshot(top / name)}
+    observation = observe_transaction(top, tx, platform)
     operations, restored = rollback_operations(tx, observation)
     tx.pop('intent', None)
     tx.update(direction='rollback', operations=operations, restored=restored, phase='rollback')
     save_transaction(top, tx, platform)
     return execute_operations(top, tx, platform)
+
+
+def verify_candidate_boot(top, tx, platform):
+    observation = observe_transaction(top, tx, platform)
+    candidate = tx['candidates']['system']
+    root = top / observation['locations']['system'][candidate['uuid']]
+    for relative, key in [('etc/fstab','fstab'),('boot/refind_linux.conf','refind')]:
+        if tree_path(root,relative).read_text() != tx['boot'][key]:
+            raise ValueError('prepared boot configuration changed')
+    version = tx['boot']['kernel']
+    if (tree_path(root,'boot/vmlinuz').name != 'vmlinuz-' + version or
+        not tree_path(root,'boot/vmlinuz').is_file() or
+        tree_path(root,'boot/initrd.img').name != 'initrd.img-' + version or
+        not tree_path(root,'boot/initrd.img').is_file() or
+        not tree_path(root,'lib/modules/' + version).is_dir()):
+        raise ValueError('prepared kernel/initrd/modules changed')

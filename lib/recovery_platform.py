@@ -144,11 +144,15 @@ class RecoveryPlatform:
             self.target_device = device; self.target_uuid = expected_uuid; self.target_top = top
             yield top, target
         finally:
-            if mounted:
-                self.run(['umount', top])
-            if top is not None:
-                top.rmdir()
-            os.close(fd)
+            try:
+                if mounted:
+                    self.run(['umount', top])
+                if top is not None:
+                    top.rmdir()
+            finally:
+                os.close(fd)
+                for attribute in ('target_device', 'target_uuid', 'target_top'):
+                    if hasattr(self, attribute): delattr(self, attribute)
 
     def assert_offline(self, top):
         if hasattr(self, 'target_device'):
@@ -164,12 +168,17 @@ class RecoveryPlatform:
             if ':' in line:
                 key, value = line.strip().split(':', 1)
                 fields[key] = value.strip()
+        readonly = self.run(['btrfs', 'property', 'get', '-ts', path, 'ro']).strip()
+        if readonly not in (b'ro=true', b'ro=false'):
+            raise ValueError('invalid readonly property')
         result = {'uuid': fields.get('UUID'), 'parent_uuid': fields.get('Parent UUID'),
                   'received_uuid': fields.get('Received UUID'),
                   'subvolume_id': int(fields.get('Subvolume ID', '0')),
-                  'readonly': self.run(['btrfs', 'property', 'get', '-ts', path, 'ro']).strip() == b'ro=true'}
+                  'readonly': readonly == b'ro=true'}
         for key in ('parent_uuid', 'received_uuid'):
             if result[key] == '-': result[key] = None
+            if result[key] is not None and (not isinstance(result[key], str) or not UUID.fullmatch(result[key])):
+                raise ValueError('invalid snapshot UUID')
         if not isinstance(result['uuid'], str) or not UUID.fullmatch(result['uuid']) or result['subvolume_id'] <= 0:
             raise ValueError('invalid Btrfs snapshot identity')
         return result

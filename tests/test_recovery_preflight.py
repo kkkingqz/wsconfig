@@ -124,6 +124,17 @@ class PreflightTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.preflight()
 
+    def test_missing_bind_and_swap_sources_refuse(self):
+        path=self.top/'received/system/ts-system/etc/fstab';original=path.read_text()
+        for extra in ('/var/lib/vms/missing /etc/libvirt/qemu none bind 0 0\n','/swap/missing none swap sw 0 0\n'):
+            path.write_text(original+extra)
+            with self.assertRaises(ValueError): self.preflight()
+
+    def test_unknown_readonly_property_is_not_treated_as_writable(self):
+        from unittest.mock import patch
+        with patch.object(self.platform,'run',side_effect=lambda a: b'ro=unknown' if a[:3]==['btrfs','property','get'] else FakePlatform.run(self.platform,a)):
+            with self.assertRaises(ValueError): self.platform.inspect_snapshot(self.top/'@')
+
     def test_prepare_refuses_existing_candidate_path(self):
         checked = self.preflight()
         candidate = self.top / ('@restore-' + checked['id'])

@@ -123,7 +123,7 @@ def receive_selection(top, tx, ssh_options, platform):
         remote=inspect_remote(ssh_options,record,platform)
         if scope in copies:
             existing=platform.inspect_snapshot(top/copies[scope]['path'])
-            if existing['uuid']!=copies[scope]['uuid'] or existing['received_uuid']!=remote['uuid'] or not existing['readonly']:
+            if existing['uuid']!=copies[scope]['uuid'] or existing['received_uuid']!=record['source_uuid'] or not existing['readonly']:
                 raise ValueError('received baseline changed')
             continue
         name='ws-recovery/receives/'+tx['id']+'/'+scope+'-'+uuid.uuid4().hex
@@ -135,13 +135,12 @@ def receive_selection(top, tx, ssh_options, platform):
         entries=list(destination.iterdir())
         if len(entries)!=1 or entries[0].name!=record['id']: raise ValueError('unexpected received entries')
         path=safe_path(entries[0]); info=platform.inspect_snapshot(path)
-        if not info['readonly'] or info['received_uuid']!=remote['uuid']: raise ValueError('received UUID/readonly mismatch')
+        if not info['readonly'] or info['received_uuid']!=record['source_uuid']: raise ValueError('received UUID/readonly mismatch')
         platform.sync_filesystem(top)
         copies[scope]={'path':str(path.relative_to(top)),**info}
         tx['receive_attempts'][-1]['status']='received'
         transaction.save_transaction(top,tx,platform)
-    checked=transaction.preflight(top,selection,{s:str(top/e['path']) for s,e in copies.items()},platform,
-                                  expected_received={s:e['received_uuid'] for s,e in copies.items()})
+    checked=transaction.preflight(top,selection,{s:str(top/e['path']) for s,e in copies.items()},platform)
     if checked['old']!=tx['old'] or checked['original_default']!=tx['original_default']:
         raise ValueError('original system changed during receive')
     tx.update(boot=checked['boot'],phase='received')

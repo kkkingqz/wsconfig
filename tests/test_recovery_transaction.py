@@ -141,6 +141,38 @@ class TransactionTests(unittest.TestCase):
                 if change == 'intent': tx['intent'] = {'action': 'snapshot', 'scope': 'home', 'path': '@nix', 'source_uuid': p.old_root['uuid']}
                 with self.assertRaises(ValueError): transaction.validate_transaction(tx)
 
+    def test_candidate_id_and_boot_config_rechecked_before_switch(self):
+        for change in ('id','boot'):
+            top,p,tx=self.make()
+            if change=='id': tx['candidates']['system']['subvolume_id']=999
+            else: (top/tx['candidates']['system']['path']/'etc/fstab').write_text('damaged')
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                transaction.switch_transaction(top,tx,p,True)
+            self.assertEqual(p.info(top/'@')['uuid'],p.old_root['uuid'])
+
+    def test_rollback_after_unpublished_candidate_retains_copy(self):
+        temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup)
+        top=Path(temp.name);p=CrashPlatform(top)
+        tx=transaction.create_transaction(top,transaction.preflight(top,point(),received(top),p),p)
+        p.arm(1,True,prepare=True)
+        with self.assertRaises(PowerLoss): transaction.prepare_candidates(top,tx,p)
+        tx=self.load(top,tx);del p.trip_index
+        done=transaction.rollback_transaction(top,tx,p,True)
+        self.assertEqual(done['phase'],'rolled-back')
+        self.assertTrue((top/('@restore-'+tx['id'])).is_dir())
+
+    def test_each_mutation_refuses_new_foreign_mount(self):
+        top,p,tx=self.make();p.target_device='/dev/fixture';p.target_uuid=tx['selection']['source_fs_uuid']
+        original=p.rename
+        def mount_after(source,destination):
+            original(source,destination)
+            p.mounts=[{'source':'/dev/fixture','uuid':p.target_uuid,'target':'/media/auto'}]
+        p.rename=mount_after
+        with self.assertRaisesRegex(ValueError,'mounted'): transaction.switch_transaction(top,tx,p,True)
+        self.assertFalse((top/'@').exists())
+        p.mounts=[];p.rename=original
+        self.assertEqual(transaction.resume_transaction(top,self.load(top,tx),p,True)['phase'],'complete')
+
     def test_rollback_retains_restored_home_and_restores_original_default(self):
         top, p, tx = self.make()
         done = transaction.switch_transaction(top, tx, p, confirmed=True)

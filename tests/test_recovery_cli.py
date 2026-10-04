@@ -24,12 +24,12 @@ class TransportPlatform(FakePlatform):
         return json.dumps({'uuid': NAS_UUID, 'received_uuid': point()[words[2]]['source_uuid'], 'ro': True}).encode()
     def receive_stream(self, options, words, destination):
         path = Path(destination) / words[-1]
-        self.seed(path, received_uuid=NAS_UUID, readonly=True)
+        self.seed(path, received_uuid=point()[words[2]]['source_uuid'], readonly=True)
         if words[2] == 'system': self.boot(path)
         if getattr(self, 'fail', False): raise ValueError('failed stream')
         if getattr(self, 'extra', False): (Path(destination)/'unexpected').mkdir()
         if getattr(self, 'wrong', False):
-            m = self.info(path); m['received_uuid']=U; (path/'.meta').write_text(json.dumps(m))
+            m = self.info(path); m['received_uuid']=NAS_UUID; (path/'.meta').write_text(json.dumps(m))
         if getattr(self, 'writable', False):
             m = self.info(path); m['readonly']=False; (path/'.meta').write_text(json.dumps(m))
 
@@ -58,11 +58,11 @@ class CLITests(unittest.TestCase):
             with self.assertRaises(ValueError): recovery.read_catalog(OPTIONS,'mbp16',p)
         with patch.object(p,'remote',side_effect=[p.remote(OPTIONS,['probe','mbp16']), b'x'*20000001]):
             with self.assertRaises(ValueError): recovery.read_catalog(OPTIONS,'mbp16',p)
-    def test_receive_full_uses_nas_uuid_and_keeps_secrets_out_of_journal(self):
+    def test_receive_full_preserves_original_stream_uuid_and_keeps_secrets_out_of_journal(self):
         top,p,tx = self.fixture()
         result = recovery.receive_selection(top,tx,OPTIONS,p)
         self.assertEqual(result['phase'],'received')
-        for entry in result['received'].values(): self.assertEqual(entry['received_uuid'],NAS_UUID)
+        for scope,entry in result['received'].items(): self.assertEqual(entry['received_uuid'],point()[scope]['source_uuid'])
         saved = transaction.journal_path(top,tx['id']).read_text()
         for secret in ('ssh_config','id_ed25519','nas.example'): self.assertNotIn(secret,saved)
         self.assertEqual(p.info(top/'@')['uuid'],p.old_root['uuid'])
