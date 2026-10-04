@@ -58,7 +58,7 @@ export class WindowPlacement {
             const panelWidth = Math.max(1, protocol.width - 24), panelHeight = Math.max(1, protocol.height - 24);
             const signature = `${panelWidth}:${panelHeight}`;
             if (job.geometry !== signature) {
-                if (await this.client.call('widgetAdapter', 'setGeometry', [job.id, job.requestId, panelWidth, panelHeight]) !== 'true') return;
+                if (await this.client.call('setGeometry', {id:job.id, requestId:job.requestId, width:panelWidth, height:panelHeight}) !== true) return;
                 job.geometry = signature;
                 return;
             }
@@ -74,10 +74,10 @@ export class WindowPlacement {
                 this.jobs.delete(`${job.instance}:${job.id}:${job.requestId}`);
             } else {
                 window.activate(this.timestamp || global.get_current_time());
-                await this.client.call('widgetAdapter', 'placed', [job.id, job.requestId]);
+                await this.client.call('placed', {id:job.id, requestId:job.requestId});
             }
         } finally { job.busy = false; }
     }
-    fail(job, reason) { this.client.call('widgetAdapter', 'placementFailed', [job.id, job.requestId, reason]).catch(() => {}); }
+    fail(job, reason) { this.client.call('placementFailed', {id:job.id, requestId:job.requestId, reason}).catch(() => {}); }
     destroy() { this.generation++; for (const job of this.jobs.values()) GLib.source_remove(job.timer); this.jobs.clear(); this.snapshot = null; }
 }

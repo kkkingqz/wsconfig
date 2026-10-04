@@ -2,85 +2,134 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import {acceptSnapshot} from './protocol.mjs';
 
+export function socketPath(config) {
+    const prefix = '$XDG_RUNTIME_DIR/';
+    const path = config.socketPath?.startsWith(prefix)
+        ? `${GLib.get_user_runtime_dir()}/${config.socketPath.slice(prefix.length)}` : config.socketPath;
+    if (typeof path !== 'string' || !GLib.path_is_absolute(path)) throw new Error('Invalid widget socket path');
+    return path;
+}
+function verifyEndpoint(path) {
+    const file = Gio.File.new_for_path(path);
+    for (const [item, mode] of [[file.get_parent(), 0o700], [file, 0o600]]) {
+        const info = item.query_info('unix::uid,unix::mode', Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+        if (info.get_attribute_uint32('unix::uid') !== new Gio.Credentials().get_unix_user()
+            || (info.get_attribute_uint32('unix::mode') & 0o777) !== mode)
+            throw new Error('Widget socket ownership or permissions invalid');
+    }
+}
+
 export class IpcClient {
-    constructor(config, onSnapshot, onUnavailable, spawn = args => Gio.Subprocess.new(args, Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE)) {
+    constructor(config, onSnapshot, onUnavailable) {
         this.config = config; this.onSnapshot = onSnapshot; this.onUnavailable = onUnavailable;
-        this.spawn = spawn; this.snapshot = null; this.generation = 0; this.stopped = false;
-        this.queue = Promise.resolve(); this.calls = new Set(); this.retry = 0;
+        this.snapshot = null; this.generation = 0; this.stopped = false; this.started = false;
+        this.pending = new Map(); this.seq = 0; this.retry = 0; this.writes = [];
     }
-    args() { return [this.config.qsPath, '-c', this.config.configName, 'ipc']; }
-    async call(target, method, args = []) {
-        const generation = this.generation;
-        const run = async () => {
-            if (this.stopped || generation !== this.generation) throw new Error('IPC connection changed');
-            const process = this.spawn([...this.args(), 'call', '--', target, method, ...args.map(String)]);
-            const cancellable = new Gio.Cancellable();
-            const record = {process, cancellable, timer: 0}; this.calls.add(record);
-            record.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => { record.timer = 0; cancellable.cancel(); process.force_exit(); return GLib.SOURCE_REMOVE; });
-            try {
-                return await new Promise((resolve, reject) => process.communicate_utf8_async(null, cancellable, (p, result) => {
-                    try {
-                        const [, stdout, stderr] = p.communicate_utf8_finish(result);
-                        if (!p.get_successful()) throw new Error(stderr.trim() || 'IPC call failed');
-                        if (generation !== this.generation || this.stopped) throw new Error('stale IPC reply');
-                        resolve(stdout.trim());
-                    } catch (error) { reject(error); }
-                }));
-            } finally { if (record.timer) GLib.source_remove(record.timer); this.calls.delete(record); }
-        };
-        const promise = this.queue.then(run);
-        this.queue = promise.catch(() => {});
-        return promise;
-    }
-    start() { this.connect(); }
-    receive(line, generation) {
-        if (this.stopped || generation !== this.generation) return;
-        const snapshot = acceptSnapshot(this.snapshot, JSON.parse(line));
-        if (snapshot) { this.snapshot = snapshot; this.onSnapshot(snapshot); }
-    }
-    async connect() {
+    start() { if (!this.started && !this.stopped) { this.started = true; this.connect(); } }
+    connect() {
+        if (this.stopped) return;
         const generation = ++this.generation;
+        this.cancel = new Gio.Cancellable(); this.buffer = new Uint8Array(); this.writing = false;
+        const fail = () => this.disconnect(generation);
+        this.handshake = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+            this.handshake = 0; fail(); return GLib.SOURCE_REMOVE;
+        });
         try {
-            this.listener = this.spawn([...this.args(), 'listen', '--', 'widgets', 'stateChanged']);
-            this.readerCancel = new Gio.Cancellable();
-            const stream = new Gio.DataInputStream({base_stream: this.listener.get_stdout_pipe()});
-            const read = () => stream.read_line_async(GLib.PRIORITY_DEFAULT, this.readerCancel, (s, result) => {
-                if (generation !== this.generation || this.stopped) return;
+            const path = socketPath(this.config); verifyEndpoint(path);
+            const client = new Gio.SocketClient();
+            client.connect_async(new Gio.UnixSocketAddress({path}), this.cancel, (source, result) => {
+                let connection;
                 try {
-                    const [line] = s.read_line_finish_utf8(result);
-                    if (line === null) throw new Error('IPC listener ended');
-                    this.receive(line, generation); read();
-                } catch (_) { this.disconnect(generation); }
+                    connection = source.connect_finish(result);
+                    if (this.stopped || generation !== this.generation) { connection.close(null); return; }
+                    const credentials = connection.get_socket().get_credentials();
+                    if (credentials.get_unix_user() !== new Gio.Credentials().get_unix_user()) throw new Error('Widget server UID differs');
+                    this.peerPid = credentials.get_unix_pid(); this.connection = connection;
+                    this.read(generation);
+                    this.enqueue({protocolVersion: 2, type: 'hello', role: 'adapter'}, generation);
+                } catch (_) { connection?.close(null); fail(); }
             });
-            read();
-            // Install the reader before requesting the authoritative snapshot.
-            this.receive(await this.call('widgets', 'status'), generation);
-            if (!this.snapshot) throw new Error('invalid runtime snapshot');
-            const ok = await this.call('widgetAdapter', 'adapterReady', [this.snapshot.instanceId]);
-            if (ok !== 'true') throw new Error('adapter rejected');
-            if (generation !== this.generation || this.stopped) return;
-            this.retry = 0;
-            this.lease = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
-                this.call('widgetAdapter', 'renewAdapterLease', [this.snapshot.instanceId]).catch(() => this.disconnect(generation));
-                return GLib.SOURCE_CONTINUE;
+        } catch (_) { fail(); }
+    }
+    read(generation) {
+        this.connection.get_input_stream().read_bytes_async(8192, GLib.PRIORITY_DEFAULT, this.cancel, (stream, result) => {
+            if (this.stopped || generation !== this.generation) return;
+            try {
+                const bytes = stream.read_bytes_finish(result).toArray();
+                if (!bytes.length) throw new Error('Widget socket closed');
+                const combined = new Uint8Array(this.buffer.length + bytes.length);
+                combined.set(this.buffer); combined.set(bytes, this.buffer.length);
+                let offset = 0;
+                for (let i = 0; i < combined.length; i++) {
+                    if (i - offset > 65536) throw new Error('Widget frame too large');
+                    if (combined[i] !== 10) continue;
+                    this.receive(JSON.parse(new TextDecoder().decode(combined.slice(offset, i))), generation);
+                    if (this.stopped || generation !== this.generation) return;
+                    offset = i + 1;
+                }
+                this.buffer = combined.slice(offset);
+                if (this.buffer.length > 65536) throw new Error('Widget frame too large');
+                this.read(generation);
+            } catch (_) { this.disconnect(generation); }
+        });
+    }
+    receive(frame, generation) {
+        if (frame.protocolVersion !== 2) throw new Error('Unsupported widget protocol');
+        if (frame.type === 'snapshot') {
+            if (!acceptSnapshot(null, frame.state) || frame.state.pid !== this.peerPid
+                || !frame.state.adapter.connected) throw new Error('Invalid widget snapshot');
+            const snapshot = acceptSnapshot(this.snapshot, frame.state);
+            if (this.handshake) GLib.source_remove(this.handshake);
+            this.handshake = 0; this.retry = 0;
+            if (snapshot) { this.snapshot = snapshot; this.onSnapshot(snapshot); }
+        } else if (frame.type === 'reply') {
+            const call = this.pending.get(frame.seq);
+            if (!call || typeof frame.ok !== 'boolean') throw new Error('Unexpected widget reply');
+            GLib.source_remove(call.timer); this.pending.delete(frame.seq);
+            if (frame.ok) call.resolve(frame.result);
+            else call.reject(new Error(frame.error || 'Widget command rejected'));
+        } else throw new Error('Unexpected widget frame');
+    }
+    call(method, args = {}) {
+        if (this.stopped || !this.snapshot || !this.connection) return Promise.reject(new Error('Widget adapter disconnected'));
+        const seq = ++this.seq, generation = this.generation;
+        return new Promise((resolve, reject) => {
+            const timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+                const call = this.pending.get(seq);
+                if (call) { this.pending.delete(seq); reject(new Error('Widget command timed out')); }
+                this.disconnect(generation); return GLib.SOURCE_REMOVE;
             });
-        } catch (_) { this.disconnect(generation); }
+            this.pending.set(seq, {resolve, reject, timer});
+            this.enqueue({protocolVersion: 2, type: 'command', seq, method, args}, generation);
+        });
+    }
+    enqueue(frame, generation) {
+        this.writes.push(new TextEncoder().encode(JSON.stringify(frame) + '\n'));
+        this.writeNext(generation);
+    }
+    writeNext(generation) {
+        if (this.writing || !this.writes.length || !this.connection || this.stopped) return;
+        this.writing = true;
+        this.connection.get_output_stream().write_all_async(this.writes.shift(), GLib.PRIORITY_DEFAULT, this.cancel, (stream, result) => {
+            if (this.stopped || generation !== this.generation) return;
+            try { stream.write_all_finish(result); this.writing = false; this.writeNext(generation); }
+            catch (_) { this.disconnect(generation); }
+        });
     }
     disconnect(generation) {
         if (this.stopped || generation !== this.generation) return;
-        this.cleanup(); this.generation++; this.snapshot = null; this.onUnavailable();
+        this.generation++; this.cleanup(); this.snapshot = null; this.onUnavailable();
         const delay = [250, 500, 1000, 2000][Math.min(this.retry++, 3)];
-        this.reconnect = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => { this.reconnect = 0; this.connect(); return GLib.SOURCE_REMOVE; });
+        this.reconnect = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+            this.reconnect = 0; this.connect(); return GLib.SOURCE_REMOVE;
+        });
     }
     cleanup() {
-        for (const name of ['lease', 'reconnect']) { if (this[name]) GLib.source_remove(this[name]); this[name] = 0; }
-        this.readerCancel?.cancel(); this.listener?.force_exit(); this.listener = null;
-        for (const record of this.calls) { if (record.timer) GLib.source_remove(record.timer); record.timer = 0; record.cancellable.cancel(); record.process.force_exit(); }
+        for (const name of ['handshake', 'reconnect']) { if (this[name]) GLib.source_remove(this[name]); this[name] = 0; }
+        this.cancel?.cancel(); this.connection?.close(null); this.connection = null; this.writes = [];
+        for (const call of this.pending.values()) { GLib.source_remove(call.timer); call.reject(new Error('Widget connection changed')); }
+        this.pending.clear();
     }
     destroy() { this.stopped = true; this.generation++; this.cleanup(); this.snapshot = null; }
-    shutdown() {
-        // Detach subscription and cancel queued work before the bounded final hide.
-        this.cleanup(); this.generation++; this.queue = Promise.resolve();
-        this.call('widgets', 'hideAll').catch(() => {}).finally(() => this.destroy());
-    }
+    shutdown() { this.destroy(); } // EOF tells the runtime to close immediately.
 }

@@ -26,10 +26,10 @@ export default class WorkstationWidgets extends Extension {
         this.errorSignature = '';
         this.effectSnapshot = null;
         try {
-            const root = GLib.build_filenamev([GLib.get_user_config_dir(), 'workstation', 'widgets']);
+            const root = GLib.build_filenamev([GLib.get_user_data_dir(), 'workstation', 'widgets']);
             const config = readJson(`${root}/runtime.json`);
-            if (config.schemaVersion !== 1 || config.adapter !== 'gnome' || config.configName !== 'workstation-widgets'
-                || typeof config.qsPath !== 'string' || !GLib.path_is_absolute(config.qsPath)) throw new Error('Invalid widget runtime config');
+            if (config.schemaVersion !== 2 || config.adapter !== 'gnome'
+                || typeof config.socketPath !== 'string') throw new Error('Invalid widget runtime config');
             const entries = validateManifest(readJson(config.manifestPath));
             this.monitor = Gio.File.new_for_path(root).monitor_directory(Gio.FileMonitorFlags.NONE, null);
             this.connectSignal(this.monitor, 'changed', (_monitor, file, other) => {
@@ -40,20 +40,19 @@ export default class WorkstationWidgets extends Extension {
                 });
             });
             this.client = new IpcClient(config, snapshot => {
-                // Retain the verified identity during listener reconnect so
-                // a still-valid runtime lease cannot map with a Shell effect.
+                // Use the verified socket peer identity for scoped Shell effects.
                 this.effectSnapshot = snapshot;
                 this.buttons.update(snapshot); this.placement.update(snapshot);
                 const signature = JSON.stringify(snapshot.lastError);
                 if (snapshot.lastError && signature !== this.errorSignature) Main.notifyError('Workstation Widgets', `${snapshot.lastError.id || 'Runtime'}: ${snapshot.lastError.reason}`);
                 this.errorSignature = signature;
-                if (this.instanceId !== snapshot.instanceId && snapshot.adapter.ready) { this.instanceId = snapshot.instanceId; this.sendAnimations?.(); }
+                if (this.instanceId !== snapshot.instanceId && snapshot.adapter.connected) { this.instanceId = snapshot.instanceId; this.sendAnimations?.(); }
             }, () => { this.buttons.update(null); this.placement.destroy(); });
             this.buttons = new PanelButtons(entries, (id, timestamp) => {
                 this.suppressedUntil = GLib.get_monotonic_time() + 250000;
                 this.placement.timestamp = timestamp;
-                this.client.call('widgets', 'toggle', [id]).then(result => {
-                    if (result !== 'true') Main.notifyError('Виджет не открылся', buttonPresentation(this.client?.snapshot, id, id).error || `Недоступный ID: ${id}`);
+                this.client.call('toggle', {id}).then(result => {
+                    if (result !== true) Main.notifyError('Виджет не открылся', buttonPresentation(this.client?.snapshot, id, id).error || `Недоступный ID: ${id}`);
                 }).catch(error => Main.notifyError('Workstation Widgets', String(error)));
             });
             this.placement = new WindowPlacement(this.client, this.buttons);
@@ -61,7 +60,7 @@ export default class WorkstationWidgets extends Extension {
             this.injections.overrideMethod(Main.wm, '_shouldAnimateActor',
                 original => withoutWidgetEffects(original, () => this.effectSnapshot));
             this.settings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
-            const animations = () => this.client.call('widgetAdapter', 'setAnimationsEnabled', [this.settings.get_boolean('enable-animations')]).catch(() => {});
+            const animations = () => this.client.call('setAnimations', {enabled: this.settings.get_boolean('enable-animations')}).catch(() => {});
             this.connectSignal(this.settings, 'changed::enable-animations', animations);
             this.connectSignal(global.display, 'notify::focus-window', () => this.scheduleFocusCheck());
             this.connectSignal(global.stage, 'captured-event', (_actor, event) => {
@@ -99,7 +98,7 @@ export default class WorkstationWidgets extends Extension {
         this.settings = null;
     }
     connectSignal(object, name, callback) { this.signals.push([object, object.connect(name, callback)]); }
-    hideAll() { this.client?.call('widgets', 'hideAll').catch(() => {}); }
+    hideAll() { this.client?.call('hideAll').catch(() => {}); }
     active() {
         const snapshot = this.client?.snapshot;
         const id = snapshot?.selectedId;

@@ -14,6 +14,7 @@ export const tests = {
         const pick = (x, y) => { assert(x === 1800 && y === 16); return button; };
         const owns = actor => actor === button;
         let state = createState([{id: 'example', enabled: true, width: 420, height: 580}], 'instance', 42);
+        state = reduce(state, {type:'ADAPTER_CONNECTED'}, 0).state;
         const dispatch = event => { state = reduce(state, event, 0).state; };
         const click = () => {
             const decision = dismissal.pointerDecision(event, pick, owns, {phase: state.widgets.example.phase, familyActors: []});
@@ -46,6 +47,7 @@ export const tests = {
     },
     outsideWhilePreparingCancelsPlacement: () => {
         let state = createState([{id: 'example', enabled: true, width: 420, height: 580}], 'instance', 42);
+        state = reduce(state, {type:'ADAPTER_CONNECTED'}, 0).state;
         state = reduce(state, {type: 'COMMAND', action: 'show', id: 'example'}, 0).state;
         const requestId = state.widgets.example.requestId;
         if (shouldDismiss({type: 'pointer', ownButton: false, inFamily: false}, {phase: 'preparing', ownButtonSuppressed: true})) {
@@ -63,6 +65,7 @@ export const tests = {
     ownButtonFocusRace: () => {
         for (const order of [['pointer', 'focus'], ['focus', 'pointer']]) {
             let state = createState([{id: 'example', enabled: true, width: 420, height: 580}], 'instance', 42);
+        state = reduce(state, {type:'ADAPTER_CONNECTED'}, 0).state;
             const dispatch = event => { state = reduce(state, event, 0).state; };
             dispatch({type: 'COMMAND', action: 'show', id: 'example'});
             dispatch({type: 'PLACED', id: 'example', requestId: 1});
