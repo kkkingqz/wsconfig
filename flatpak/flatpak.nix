@@ -62,7 +62,7 @@ let
 
   # Full files, ours: Claude on Wayland at scale 1.5 with its URL handler;
   # Steam through ws-gpu (the AMD dGPU when the boot has it, Intel otherwise),
-  # steam:// included.
+  # steam:// included, with -console.
   desktop = [
     ./desktop/com.anthropic.ClaudeDesktop.desktop
     ./desktop/com.valvesoftware.Steam.desktop

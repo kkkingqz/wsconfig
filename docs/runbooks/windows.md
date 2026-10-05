@@ -148,8 +148,9 @@ render node с драйвером `amdgpu` при каждом запуске и
 `com.valvesoftware.Steam` (flatpak, `flatpak/flatpak.nix`), udev-правила
 контроллеров — `steam-devices` (apt). Свой launcher
 `flatpak/desktop/com.valvesoftware.Steam.desktop` (тот же id, поэтому и
-`steam://`) запускает Steam через `ws-gpu run`. Прямой `flatpak run` из
-терминала GPU не выбирает.
+`steam://`) запускает Steam через `ws-gpu run` и с `-console` (вкладка
+консоли: `steam://open/console`). Прямой `flatpak run` из терминала GPU не
+выбирает.
 
 ## WinBox
 
