@@ -190,7 +190,7 @@ os.execvp(a[1], a[1:])
 
     def test_concurrent_backup_refused_before_snapshot(self):
         state = self.b.root / 'state/workstation/backup'
-        state.mkdir(parents=True)
+        state.mkdir(parents=True, exist_ok=True)  # holds config.json
         with (state / 'lock').open('w') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             p = self.cli('send', 'home')
