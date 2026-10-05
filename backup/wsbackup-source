@@ -4,30 +4,46 @@ set -euo pipefail
 export LC_ALL=C
 here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 . "$here/btrfs-common.bash"
-[[ $# -ge 5 && "$1" == --uuid && "$3" == --root ]] || die 'usage: --uuid UUID --root PATH init|snapshot|inspect|send ...'
+[[ $# -ge 5 && "$1" == --uuid && "$3" == --root ]] || die 'usage: --uuid UUID --root PATH init|list|snapshot|inspect|send ...'
 fs_uuid="$2"; root="$4"; action="$5"; shift 5
 uuid "$fs_uuid"; safe_path "$root"
 case "$root/" in /home/*|/var/lib/vms/*) die 'snapshot root must be outside sources' ;; esac
 
 if [[ "$action" == init ]]; then
+    # Only verifies: the subvolume and its fstab mount are created by hand
+    # (helpws backup), so it can never end up nested in @.
     [[ $# == 0 ]] || die 'init takes no arguments'
-    if [[ -e "$root" ]]; then
-        filesystem_check "$root"
-        btrfs subvolume show "$root" >/dev/null
-    else
-        filesystem_check "$(dirname "$root")"
-        btrfs subvolume create "$root" >&2
-        chmod 0700 "$root"
-    fi
+    [[ -e "$root" ]] || die "missing: $root; create top-level @wsbackup and mount it there (helpws backup)"
+    snapshot_root_check "$root"
     exit 0
+fi
+if [[ "$action" == list ]]; then
+    # Every local copy with its Btrfs identity, also writable or unexpected ones.
+    [[ $# == 0 ]] || die 'list takes no arguments'
+    snapshot_root_check "$root"
+    shopt -s nullglob dotglob
+    printf '['; sep=''
+    for scope in system home vms; do
+        safe_path "$root/$scope"
+        for copy in "$root/$scope/"*; do
+            safe_path "$copy"; id="${copy##*/}"; token "$id"
+            show="$(btrfs subvolume show "$copy")"
+            copy_uuid="$(awk '$1 == "UUID:" {print $2}' <<<"$show")"; uuid "$copy_uuid"
+            created="$(sed -n 's/^[[:space:]]*Creation time:[[:space:]]*//p' <<<"$show" | head -n 1)"
+            [[ "$created" =~ ^[0-9:\ +-]*$ ]] || created=""
+            ro=false; [[ "$(btrfs property get -ts "$copy" ro)" == 'ro=true' ]] && ro=true
+            printf '%s{"scope":"%s","id":"%s","uuid":"%s","ro":%s,"created":"%s"}' "$sep" "$scope" "$id" "$copy_uuid" "$ro" "$created"
+            sep=,
+        done
+    done
+    printf ']\n'; exit 0
 fi
 [[ $# -ge 2 ]] || die 'scope and snapshot ID required'
 scope="$1"; id="$2"; shift 2
 scope_check "$scope"; token "$id"
 [[ "$scope" != system || "$action" != snapshot ]] || die 'system copies must come from Timeshift'
 [[ "$action" == send && $# -le 1 || "$action" == hash && $# == 1 || "$action" != send && "$action" != hash && $# == 0 ]] || die 'unexpected arguments'
-filesystem_check "$root"
-btrfs subvolume show "$root" >/dev/null
+snapshot_root_check "$root"
 src=/home; expected=@home
 [[ "$scope" == home ]] || { src=/var/lib/vms; expected=@vms; }
 dest="$root/$scope/$id"

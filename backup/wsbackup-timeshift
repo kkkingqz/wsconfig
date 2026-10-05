@@ -9,8 +9,7 @@ here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 fs_uuid="$2"; root="$4"; action="$5"; shift 5
 uuid "$fs_uuid"; safe_path "$root"
 case "$root/" in /home/*|/var/lib/vms/*|/etc/libvirt/*|/var/lib/libvirt/*) die 'root must be outside live sources' ;; esac
-filesystem_check "$root"
-btrfs subvolume show "$root" >/dev/null
+snapshot_root_check "$root"
 if [[ "$action" == list ]]; then
     [[ $# == 0 ]] || die 'unexpected arguments'
     shopt -s nullglob dotglob

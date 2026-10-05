@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -u
+set -o pipefail
+
+# Backup to Unraid (helpws backup), local side only: the copy root is mounted
+# from its own top-level subvolume (fstab, like @vms) and the SSH alias has its
+# key. No sudo, no network; ws backup check --remote asks the receiver.
+# Read-only. ws check backup; ws check runs it with --json (lib/check.bash).
+
+repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/check.bash
+. "$repo/lib/check.bash"
+
+case "${1:-}" in
+    --json) check_json_mode ;;
+    "") ;;
+    -h|--help) echo "Usage: ws-check-backup [--json]  (ws check backup)"; exit 0 ;;
+    *) echo "ws-check-backup: unknown argument: $1" >&2; exit 64 ;;
+esac
+
+config="${XDG_STATE_HOME:-$HOME/.local/state}/workstation/backup/config.json"
+
+section "1. Configuration"
+
+if [[ ! -e "$config" ]]; then
+    info "not configured: $config (helpws backup)"
+    check_finish
+    exit
+fi
+values="$(python3 -c '
+import json, sys
+c = json.load(open(sys.argv[1]))
+print(c.get("source_snapshot_root", ""), c.get("source_fs_uuid", ""), c.get("ssh_host", ""))
+' "$config" 2>/dev/null)" || { fail "unreadable configuration: $config"; check_finish; exit; }
+read -r root fs_uuid ssh_host <<<"$values"
+[[ -n "$root" && -n "$fs_uuid" && -n "$ssh_host" ]] \
+    && pass "configuration: $config" \
+    || fail "incomplete configuration (ws backup check): $config"
+
+section "2. Local copy root"
+
+if [[ -z "$root" ]]; then
+    :
+elif [[ ! -d "$root" ]]; then
+    fail "missing: $root; create top-level @wsbackup and mount it there (helpws backup)"
+else
+    read -r target fstype uuid options < <(findmnt -nro TARGET,FSTYPE,UUID,OPTIONS -T "$root")
+    if [[ "$target" != "$root" ]]; then
+        fail "$root is not a mount: a subvolume inside $target moves with it on restore (helpws backup)"
+    elif [[ "$fstype" != btrfs || "$uuid" != "$fs_uuid" ]]; then
+        fail "$root: expected Btrfs $fs_uuid, found $fstype $uuid"
+    elif [[ ! ",$options," =~ ,subvol=/?(@[A-Za-z0-9_-]+), || "${BASH_REMATCH[1]}" == @home ]]; then
+        fail "$root: not its own top-level subvolume ($options)"
+    else
+        pass "$root mounted from ${BASH_REMATCH[1]}"
+        awk -v t="$root" '$1 !~ /^#/ && $2 == t' /etc/fstab | grep -q . \
+            && pass "$root in /etc/fstab" \
+            || warn "$root is mounted but not in /etc/fstab: gone after reboot (helpws backup)"
+    fi
+fi
+
+section "3. SSH"
+
+if [[ -n "$ssh_host" ]] && have ssh; then
+    key="$(ssh -G "$ssh_host" 2>/dev/null | awk '$1 == "identityfile" {print $2; exit}')"
+    key="${key/#\~/$HOME}"
+    if [[ "$(ssh -G "$ssh_host" 2>/dev/null | awk '$1 == "hostname" {print $2}')" == "$ssh_host" ]]; then
+        fail "no Host $ssh_host in ~/.ssh/config (helpws backup)"
+    elif [[ -n "$key" && -f "$key" ]]; then
+        pass "$ssh_host: key $key"
+    else
+        fail "$ssh_host: key file missing: ${key:-none}"
+    fi
+fi
+
+check_finish

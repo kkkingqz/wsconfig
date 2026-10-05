@@ -19,7 +19,7 @@ Usage:
   ws baseline capture|diff|list ...
   ws checkpoint create|list|show|diff|remove ...
   ws collect [--no-firmware] [ARCHIVE]
-  ws backup [plan|status|check|send|restore-test|recovery-export ...]
+  ws backup [plan|status|list|check|send|restore-test|recovery-export ...]
   ws host
   ws fact NAME
   ws news
@@ -56,11 +56,13 @@ check     run the owners' checks with --json and summarize their result
           objects (lib/check.bash): ws check repo, ws check home,
           ws-keyboard check, ws-gnome check, wsflatpak check, wsbox check,
           wswin check, ws-suspend check, ws system check, ws check apt,
-          ws check virt and ws-workstation-verify (cross-layer invariants);
+          ws check virt, ws check backup and ws-workstation-verify
+          (cross-layer invariants);
           shows WARN/FAIL messages, -v all;
           check repo: the checkout (Git, hygiene, syntax, bin/ executables);
           check home: home-manager generation, Nix, man pages, session;
           check virt: KVM, libvirt, VM storage @vms, NAT network, OVMF/TPM;
+          check backup: local copy root on its own subvolume, SSH alias and key;
           check apt compares nix/hosts/apt.txt and nix/hosts/<host>/apt.txt (the
           lists of bootstrap.sh) with the installed packages, report only;
           each takes --json (one result object, what ws check reads)
@@ -88,7 +90,8 @@ collect   archive of the machine state a rebuild needs and the repository
           does not hold (baseline, boot and disks, apt, Apple firmware,
           ~/.local/state/workstation), see ws-collect --help; asks sudo
 backup    Timeshift snapshots to Unraid, then retain final local ro parents;
-          plan/status work before SSH is configured;
+          plan/status work before SSH is configured; list shows the local
+          copies (asks sudo);
           recovery-export OUTPUT writes autonomous Live USB ws-restore;
           see wsbackup --help and helpws backup / helpws recovery
 checkpoint  which commit matched which working state (home-manager
@@ -804,6 +807,7 @@ check_steps=(
     "system ws system check"
     "apt ws check apt"
     "virt ws check virt"
+    "backup ws check backup"
     "verify ws-workstation-verify"
 )
 
@@ -882,6 +886,7 @@ cmd_check() {
         repo) shift; exec "$repo/bin/ws-check-repo" "$@" ;;
         home) shift; exec "$repo/bin/ws-check-home" "$@" ;;
         virt|vm) shift; exec "$repo/bin/ws-check-virt" "$@" ;;
+        backup) shift; exec "$repo/bin/ws-check-backup" "$@" ;;
         widgets) shift; exec "$repo/bin/ws-widgets-check" "$@" ;;
         -v|--verbose) verbose=true ;;
         "") ;;

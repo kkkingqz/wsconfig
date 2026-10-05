@@ -17,6 +17,18 @@ filesystem_check() {
     [[ "$(findmnt -nro FSTYPE -T "$1")" == btrfs ]] || die 'expected Btrfs filesystem'
     [[ "$(findmnt -nro UUID -T "$1")" == "$fs_uuid" ]] || die 'wrong filesystem UUID'
 }
+# The local copy root is its own top-level subvolume (fstab, like @vms). Nested
+# in @ or @home it would move with them on a Timeshift or Live USB restore, and
+# the retained parents would be gone from the restored system.
+snapshot_root_check() {
+    filesystem_check "$1"
+    [[ "$(findmnt -nro TARGET -T "$1")" == "$1" ]] \
+        || die "not mounted: $1 must be its own top-level subvolume such as @wsbackup (helpws backup)"
+    [[ ",$(findmnt -nro OPTIONS -T "$1")," =~ ,subvol=/?(@[A-Za-z0-9_-]+), ]] \
+        || die "not a top-level subvolume mount: $1"
+    [[ "${BASH_REMATCH[1]}" != @home ]] || die "copy root must not be @home: $1"
+    btrfs subvolume show "$1" >/dev/null
+}
 inspect_snapshot() {
     safe_path "$1"
     filesystem_check "$1"

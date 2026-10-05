@@ -253,6 +253,38 @@ def inspect_copy(c, scope, id):
     return json.loads(p.stdout)
 
 
+def list_copies(c, state):
+    """Local ro copies in source_snapshot_root, joined with the Timeshift journal."""
+    copies = json.loads(command(['sudo', '/bin/bash', str(REPO / 'backup/wsbackup-source'),
+                                 '--uuid', c['source_fs_uuid'], '--root', c['source_snapshot_root'], 'list']))
+    if not isinstance(copies, list) or not all(isinstance(x, dict) for x in copies):
+        raise ValueError('local copy listing is invalid')
+    from backup_timeshift import read_records
+    records = {(r['scope'], r['id']): r for r in read_records(c, state)}
+    retained = read_json(state / 'timeshift/parents.json', {})
+    for copy in copies:
+        r = records.get((copy['scope'], copy['id']))
+        copy['origin'] = 'timeshift' if r else 'send'
+        if r:
+            copy.update(timeshift_name=r['timeshift_name'], status=r['status'])
+        copy['retained_parent'] = (retained.get(copy['scope']) or {}).get('id') == copy['id']
+    return copies
+
+
+def print_copies(root, copies):
+    if not copies:
+        print(f'no local copies in {root}')
+        return
+    rows = [('SCOPE', 'ID', 'CREATED', 'ORIGIN', 'STATUS', 'PARENT')]
+    for x in copies:
+        origin = f"timeshift {x['timeshift_name']}" if x['origin'] == 'timeshift' else 'send'
+        status = x.get('status', '-') if x['ro'] else 'NOT READ-ONLY'
+        rows.append((x['scope'], x['id'], x['created'] or '-', origin, status, 'yes' if x['retained_parent'] else ''))
+    widths = [max(len(r[i]) for r in rows) for i in range(len(rows[0]))]
+    for r in rows:
+        print('  '.join(v.ljust(w) for v, w in zip(r, widths)).rstrip())
+
+
 def validate_snapshot(meta, expected, received):
     field = 'received_uuid' if received else 'uuid'
     if meta.get('ro') is not True or meta.get(field) != expected:
@@ -388,6 +420,8 @@ def main(argv=None):
     p.add_argument('output', type=Path)
     p.add_argument('--force', action='store_true', help='replace existing export')
     sub.add_parser('status')
+    p = sub.add_parser('list', help='local copies in source_snapshot_root (asks sudo)')
+    p.add_argument('--json', action='store_true')
     p = sub.add_parser('check')
     p.add_argument('--remote', action='store_true')
     p = sub.add_parser('send')
@@ -429,6 +463,12 @@ def main(argv=None):
         elif args.command == 'check':
             result = probe(c) if args.remote else plan
             print(json.dumps(result, indent=2))
+        elif args.command == 'list':
+            copies = list_copies(c, state_path())
+            if args.json:
+                print(json.dumps(copies, indent=2))
+            else:
+                print_copies(c['source_snapshot_root'], copies)
         elif args.command == 'send':
             print(json.dumps(send(c, args.scope, state_path()), indent=2))
         else:

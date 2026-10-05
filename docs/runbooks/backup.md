@@ -18,12 +18,20 @@ ws backup                             # все существующие сним
 ws backup plan                        # Timeshift workflow без сети, sudo и snapshots
 ws backup plan home|vms|all            # план отдельного backup текущих live sources
 ws backup status                      # конфигурация, успешные передачи, restore tests
+ws backup list [--json]               # локальные копии в /var/lib/workstation-backup (sudo)
 ws backup check                       # проверка полноты локальной конфигурации
 ws backup check --remote              # проверка receiver по SSH
 ws backup send home|vms|all
 ws backup restore-test system|home|vms ID TARGET --verify RELATIVE_FILE
 ws backup recovery-export OUTPUT      # один автономный ws-restore для Live USB
 ```
+
+`list` показывает локальные копии всех scope: дату создания, источник
+(снимок Timeshift или отдельный send), статус передачи и какая из них —
+сохранённый parent для следующей инкрементальной передачи. Копия без ro-флага
+помечается `NOT READ-ONLY`. `wsbackup list` — та же команда.
+`ws check backup` без sudo и сети проверяет mount `@wsbackup`, его строку fstab,
+alias SSH и ключ.
 
 `plan/status` работают без адреса. `check` без `--remote` проверяет формат и
 полноту config, а не фактическое состояние Btrfs. Источники проверяются root
@@ -97,12 +105,32 @@ IdentityFile для выделенного backup key и IdentitiesOnly yes. П�
 запуска: клиент использует BatchMode и StrictHostKeyChecking=yes.
 Таймаут подключения — 10 секунд; время всей передачи не ограничивается.
 
-После проверки UUID и свободного места подготовить отдельную local subvolume
-вне @home/@vms. ROOT_UUID ниже заменить настоящим UUID:
+Локальные ro-копии (последний parent каждого scope) хранятся в отдельной
+top-level subvolume `@wsbackup`, смонтированной в `/var/lib/workstation-backup`
+строкой fstab, как `@vms`. Вложенная в `@` subvolume при откате Timeshift или
+Live USB уехала бы вместе со старым `@`: в восстановленной системе parents
+пропали бы, следующий backup стал бы полным, а старый `@` не удалялся бы.
+Timeshift показывает только свои снимки и эти копии не видит; снимок `@` не
+захватывает вложенные subvolumes. Live USB restore сохраняет `@wsbackup` и
+принимает её строку fstab.
+
+Создать один раз (ROOT_UUID — `findmnt -nro UUID -T /`):
 
 ```console
+sudo mount -o subvolid=5 /dev/disk/by-uuid/ROOT_UUID /mnt
+sudo btrfs subvolume create /mnt/@wsbackup
+sudo chmod 0700 /mnt/@wsbackup
+sudo umount /mnt
+sudo mkdir -p /var/lib/workstation-backup
+echo 'UUID=ROOT_UUID  /var/lib/workstation-backup  btrfs  subvol=@wsbackup,noatime  0 0' | sudo tee -a /etc/fstab
+sudo systemctl daemon-reload
+sudo mount /var/lib/workstation-backup
 sudo bash ~/wsconfig/backup/wsbackup-source --uuid ROOT_UUID --root /var/lib/workstation-backup init
 ```
+
+`init` только проверяет: каталог — отдельный mount top-level subvolume (не `@`,
+не `@home`) на source filesystem. Сам он subvolume не создаёт. Те же условия
+проверяет каждое действие helper и `ws check backup`.
 
 Helper не устанавливается в /usr/local и не получает NOPASSWD.
 Перед каждым требующим root действием координатор выполняет `sudo -v`
