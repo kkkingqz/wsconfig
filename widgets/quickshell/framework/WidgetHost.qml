@@ -31,6 +31,9 @@ Scope {
         readonly property int contentHeight: Math.max(0, root.widgetState.panelHeight - Style.padding * 2)
         readonly property real devicePixelRatio: window.devicePixelRatio
         readonly property string phase: root.widgetState.phase
+        readonly property color background: Style.background
+        readonly property color foreground: Style.foreground
+        readonly property color mutedForeground: Style.mutedForeground
         function requestClose() { root.controller.command("hide", widgetId); }
     }
     GnomePopupWindow {

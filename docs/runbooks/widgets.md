@@ -1,6 +1,6 @@
 title: ws-widgets
 section: 1
-date: 2026-10-04
+date: 2026-10-09
 source: Workstation
 volume: User Commands
 
@@ -83,7 +83,7 @@ Item {
     Column {
         width: parent.width
         spacing: 16
-        Label { text: "Мой виджет"; color: "white" }
+        Label { text: "Мой виджет"; color: context.foreground }
         Button { text: "Закрыть"; onClicked: context.requestClose() }
     }
 }
@@ -127,7 +127,13 @@ symlink в репозиторий, и смена ветки перезагруж
 относительный путь существующего компонента. `enabled = false` убирает кнопку.
 
 Widget — Item с обязательным context. Контекст содержит widgetId,
-contentWidth/contentHeight, devicePixelRatio, phase и requestClose().
+contentWidth/contentHeight, devicePixelRatio, phase, background, foreground,
+mutedForeground и requestClose(). Фон контейнера и цвета текста берутся из
+фактического оформления меню GNOME, включая светлую/тёмную и пользовательскую
+Shell theme. Adapter передаёт палитру при подключении и изменении стиля;
+открытые окна обновляются без повторного открытия и без периодического опроса.
+Содержимое использует context.foreground для основного текста и
+context.mutedForeground для второстепенного.
 Компонент загружается при первом открытии и сохраняется после закрытия.
 `unloadOnClose = true` в registry выгружает содержимое после закрытия; следующее
 открытие загрузит его заново. По умолчанию false, чтобы повторное открытие было быстрым.
@@ -173,7 +179,7 @@ PID peer. Quickshell сам пересоздаёт сокет, оставший�
 Протокол — JSON-строки с protocolVersion 2. Первое сообщение: hello с ролью
 adapter или cli. Единственный adapter получает snapshot при подключении и
 после изменения состояния. Новый adapter вытесняет старый. Команды adapter:
-toggle, hideAll, placed, placementFailed, setGeometry, setAnimations.
+toggle, hideAll, placed, placementFailed, setGeometry, setAnimations, setTheme.
 CLI отправляет одну команду status/show/hide/toggle/hideAll и получает ответ;
 Quickshell процессы для команд и подписки больше не запускаются.
 Ответы связаны с запросами через seq; requestId относится к размещению окна.

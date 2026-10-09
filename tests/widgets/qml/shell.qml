@@ -3,6 +3,17 @@ import Quickshell
 import "framework"
 
 ShellRoot {
+    function backgroundOf(host) {
+        function find(item) {
+            if (item.color !== undefined) return item.color;
+            for (const child of item.children || []) {
+                const color = find(child);
+                if (color !== null) return color;
+            }
+            return null;
+        }
+        return find(host.surface.contentItem);
+    }
     WidgetController {
         id: controller
         entries: [{id: "example", enabled: true, width: 420, height: 580}]
@@ -20,6 +31,17 @@ ShellRoot {
     WidgetHost { id: large; definition: panels.entries[0]; controller: panels }
     WidgetHost { id: small; definition: panels.entries[1]; controller: panels }
     WidgetHost { definition: panels.entries[2]; controller: panels }
+    Connections {
+        target: Style
+        function onThemeChanged() {
+            if (Quickshell.env("WIDGETS_IPC_TEST") !== "1") return;
+            if (!Qt.colorEqual(backgroundOf(large), Style.theme.background)
+                || !Qt.colorEqual(large.widgetContext.foreground, Style.theme.foreground)) {
+                console.error("socket theme did not reach popup/content"); Qt.exit(1);
+            }
+            console.log("QML native theme applied: " + Style.background + "/" + Style.foreground);
+        }
+    }
     Timer {
         id: gentleStart
         interval: 60
@@ -49,6 +71,10 @@ ShellRoot {
             if (stage === 3 && panels.state.widgets.large.phase === "opening") return;
             if (stage === 4 && panels.state.widgets.large.phase === "closing") return;
             if (stage === 0) {
+                check(typeof Style.applyTheme === "function", "native theme application missing");
+                Style.applyTheme({background: "#80203040", foreground: "#fff0f1f2"});
+                check(Qt.colorEqual(backgroundOf(large), "#80203040"), "popup uses native background including alpha");
+                check(Qt.colorEqual(large.widgetContext.foreground, "#fff0f1f2"), "widget context uses native foreground");
                 check(!large.loaded && !small.loaded, "components lazy until first open");
                 check(panels.state.widgets.broken.available, "unopened broken component not loaded");
                 panels.command("show", "small");
@@ -66,6 +92,11 @@ ShellRoot {
                 panels.dispatch({type: "PLACED", id: "small", requestId: panels.state.widgets.small.requestId});
                 gentleStart.restart();
             } else if (stage === 1) {
+                const requestId = panels.state.widgets.small.requestId;
+                Style.applyTheme({background: "#fff6f5f4", foreground: "#ff222226"});
+                check(Qt.colorEqual(backgroundOf(small), "#fff6f5f4"), "open popup does not follow theme change");
+                check(Qt.colorEqual(small.widgetContext.foreground, "#ff222226"), "open content foreground remains dark-theme color");
+                check(panels.state.widgets.small.requestId === requestId, "theme change restarts widget lifecycle");
                 check(panels.state.widgets.small.phase === "open", "animation completed: " + JSON.stringify(panels.state) + " progress=" + small.progress);
                 check(large.loaded && small.loaded, "components load on first open and persist");
                 check(!panels.state.widgets.broken.available, "broken isolated on first open");

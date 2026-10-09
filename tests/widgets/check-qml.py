@@ -48,11 +48,21 @@ with tempfile.TemporaryDirectory(prefix="widgets-qml-") as temporary:
             adapter = Peer(endpoint, 'adapter'); peers.append(adapter)
             state = adapter.greeting['state']
             assert state['protocolVersion'] == 2 and state['pid'] == process.pid and state['adapter']['connected']
+            colors = {'background':'#80203040', 'foreground':'#fff0f1f2'}
+            assert not cli('setTheme', **colors)['ok'], 'CLI can replace desktop palette'
+            assert not adapter.call('setTheme', **{**colors, 'background':'invalid'})['ok'], 'invalid palette accepted'
+            assert adapter.call('setTheme', **colors)['result'], 'native theme rejected'
             assert not cli('show', id='unknown')['result']
             assert cli('show', id='example')['result']
             assert adapter.read()['state']['widgets']['example']['phase'] == 'preparing'
             assert not cli('placed', id='example', requestId=1)['ok'], 'role violation'
             assert adapter.call('placed', id='example', requestId=1)['result']
+            assert adapter.call('setTheme', background='#fff6f5f4', foreground='#ff222226')['result']
+            time.sleep(.05)
+            log.seek(0)
+            assert 'QML native theme applied: #80203040/#f0f1f2' in log.read(), 'native dark palette not rendered'
+            log.seek(0)
+            assert 'QML native theme applied: #f6f5f4/#222226' in log.read(), 'native light palette not rendered'
             replacement = Peer(endpoint, 'adapter'); peers.append(replacement)
             assert replacement.greeting['state']['widgets']['example']['phase'] == 'opening'
             adapter.close(); peers.remove(adapter)

@@ -1,11 +1,13 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
+import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension, InjectionManager} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {PanelButtons} from './lib/panelButtons.js';
 import {IpcClient} from './lib/ipcClient.js';
 import {WindowPlacement} from './lib/windowPlacement.js';
+import {MenuTheme} from './lib/menuTheme.js';
 import {validateManifest} from './lib/manifest.mjs';
 import {shouldDismiss, pointerDecision} from './lib/dismissal.mjs';
 import {buttonPresentation} from './lib/buttons.mjs';
@@ -46,8 +48,8 @@ export default class WorkstationWidgets extends Extension {
                 const signature = JSON.stringify(snapshot.lastError);
                 if (snapshot.lastError && signature !== this.errorSignature) Main.notifyError('Workstation Widgets', `${snapshot.lastError.id || 'Runtime'}: ${snapshot.lastError.reason}`);
                 this.errorSignature = signature;
-                if (this.instanceId !== snapshot.instanceId && snapshot.adapter.connected) { this.instanceId = snapshot.instanceId; this.sendAnimations?.(); }
-            }, () => { this.buttons.update(null); this.placement.destroy(); });
+                if (this.instanceId !== snapshot.instanceId && snapshot.adapter.connected) { this.instanceId = snapshot.instanceId; this.sendAnimations?.(); this.theme?.sync(); }
+            }, () => { this.instanceId = null; this.buttons.update(null); this.placement.destroy(); });
             this.buttons = new PanelButtons(entries, (id, timestamp) => {
                 this.suppressedUntil = GLib.get_monotonic_time() + 250000;
                 this.placement.timestamp = timestamp;
@@ -56,6 +58,10 @@ export default class WorkstationWidgets extends Extension {
                 }).catch(error => Main.notifyError('Workstation Widgets', String(error)));
             });
             this.placement = new WindowPlacement(this.client, this.buttons);
+            // The real popup actor carries the selected Shell stylesheet and
+            // inherited colors, including user themes and light/dark changes.
+            this.theme = new MenuTheme(this.client, Main.panel.statusArea.dateMenu.menu.box,
+                St.ThemeContext.get_for_stage(global.stage));
             this.injections = new InjectionManager();
             this.injections.overrideMethod(Main.wm, '_shouldAnimateActor',
                 original => withoutWidgetEffects(original, () => this.effectSnapshot));
@@ -93,6 +99,7 @@ export default class WorkstationWidgets extends Extension {
         for (const [object, id] of this.signals || []) object.disconnect(id);
         this.signals = [];
         this.injections?.clear(); this.injections = null; this.effectSnapshot = null;
+        this.theme?.destroy(); this.theme = null;
         this.placement?.destroy(); this.buttons?.destroy(); this.client?.shutdown();
         this.client = null; this.buttons = null; this.placement = null;
         this.settings = null;
