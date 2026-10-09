@@ -19,3 +19,5 @@ flathub org.onlyoffice.desktopeditors
 # Browser (snapd is purged, nix/hosts/apt.txt)
 flathub org.mozilla.firefox
 chatgpt io.github.rulin132.ChatGPT
+flathub org.blender.Blender
+flathub com.github.PintaProject.Pinta
