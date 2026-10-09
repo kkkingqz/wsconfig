@@ -82,6 +82,11 @@ let
     # among them (helpws keyboard). The installer leaves only its own layout.
     "org.gnome.desktop.input-sources".sources =
       raw "[('xkb', 'us'), ('xkb', 'ru'), ('xkb', 'ua')]";
+    # CapsLock selects the layout (xremap); its XKB lock is off in the
+    # session. xremap passes Shift/Ctrl/Super+CapsLock through, and every
+    # key while it restarts: without caps:none that turned on the real
+    # CapsLock. grp_led:scroll is the value GNOME had here before.
+    "org.gnome.desktop.input-sources".xkb-options = [ "grp_led:scroll" "caps:none" ];
   };
 
   optional = [ "org.gnome.shell.extensions.dash-to-dock/hot-keys" ];

@@ -134,6 +134,15 @@ UA -> EN
 CapsLock физически не используется как letter-case modifier. Он хранит
 логическое binary state EN/RU.
 
+Сам XKB-lock в сессии выключен опцией `caps:none`
+(`org.gnome.desktop.input-sources xkb-options`, задаётся `ws apply keyboard`
+из `keyboard/keyboard.nix`). xremap читает evdev до XKB, поэтому
+переключение раскладки работает как прежде. Без опции настоящий CapsLock
+включался через сочетания, которые xremap пропускает
+(`Shift/Ctrl/Super+CapsLock`), и любым нажатием, пока xremap перезапускается
+(`ws switch`): текст шёл заглавными при обычном индикаторе. На GDM/login
+опция не действует, там CapsLock обычный.
+
 ### Ukrainian override
 
 На встроенной Apple keyboard:
