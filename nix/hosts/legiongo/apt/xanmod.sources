@@ -1,0 +1,9 @@
+# XanMod kernel repository (source:xanmod in nix/hosts/legiongo/apt.txt).
+# bootstrap.sh installs it as /etc/apt/sources.list.d/ws-xanmod.sources and
+# xanmod.asc as /etc/apt/keyrings/ws-xanmod.asc.
+Types: deb
+URIs: https://deb.xanmod.org
+Suites: resolute
+Components: main
+Architectures: amd64
+Signed-By: /etc/apt/keyrings/ws-xanmod.asc

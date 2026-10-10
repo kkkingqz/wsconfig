@@ -116,7 +116,9 @@ subvolume_mount @nix /nix noatime,compress=zstd:1
 echo
 echo "== 2. apt"
 mapfile -t ppas < <(apt_lines | sed -n 's/^ppa://p')
-mapfile -t packages < <(apt_lines | grep -v '^ppa:\|^purge:')
+mapfile -t sources < <(apt_lines | sed -n 's/^source://p')
+mapfile -t archs < <(apt_lines | sed -n 's/^arch://p')
+mapfile -t packages < <(apt_lines | grep -v '^ppa:\|^purge:\|^source:\|^arch:')
 mapfile -t purges < <(apt_lines | sed -n 's/^purge://p')
 added=false
 for ppa in "${ppas[@]}"; do
@@ -124,6 +126,33 @@ for ppa in "${ppas[@]}"; do
         echo "PPA present: $ppa"
     else
         run sudo add-apt-repository -y --no-update "ppa:$ppa"
+        added=true
+    fi
+done
+# Other repositories of the host: nix/hosts/<host>/apt/NAME.sources (deb822)
+# with its key NAME.asc, installed as ws-NAME; the file must point
+# Signed-By at the installed key.
+for name in "${sources[@]}"; do
+    src="$repo/nix/hosts/$host/apt/$name.sources"
+    key="$repo/nix/hosts/$host/apt/$name.asc"
+    [[ -r "$src" && -r "$key" ]] \
+        || die "source:$name needs nix/hosts/$host/apt/$name.sources and $name.asc"
+    grep -qx "Signed-By: /etc/apt/keyrings/ws-$name.asc" "$src" \
+        || die "nix/hosts/$host/apt/$name.sources: Signed-By must be /etc/apt/keyrings/ws-$name.asc"
+    if cmp -s "$src" "/etc/apt/sources.list.d/ws-$name.sources" \
+        && cmp -s "$key" "/etc/apt/keyrings/ws-$name.asc"; then
+        echo "source present: $name"
+    else
+        run sudo install -D -m0644 "$key" "/etc/apt/keyrings/ws-$name.asc"
+        run sudo install -D -m0644 "$src" "/etc/apt/sources.list.d/ws-$name.sources"
+        added=true
+    fi
+done
+for arch in "${archs[@]}"; do
+    if dpkg --print-foreign-architectures | grep -qx "$arch"; then
+        echo "architecture present: $arch"
+    else
+        run sudo dpkg --add-architecture "$arch"
         added=true
     fi
 done

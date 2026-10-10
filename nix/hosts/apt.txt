@@ -1,6 +1,10 @@
 # apt packages every host needs on top of a standard Ubuntu desktop.
 # One package per line; `ppa:OWNER/NAME` adds an Ubuntu PPA first;
 # `purge:NAME` purges a package of the standard install (bootstrap.sh).
+# Host lists also take `source:NAME` (the repository
+# nix/hosts/<host>/apt/NAME.sources with its key NAME.asc, installed as
+# /etc/apt/sources.list.d/ws-NAME.sources and /etc/apt/keyrings/ws-NAME.asc)
+# and `arch:NAME` (dpkg --add-architecture), both before the packages.
 # Installed by bootstrap.sh; `ws check apt` compares with apt-mark showmanual.
 # Host packages: nix/hosts/<name>/apt.txt; virtual machines: virt/apt.txt
 # (hosts with vm = "yes" in facts.nix).

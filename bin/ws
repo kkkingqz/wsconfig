@@ -832,7 +832,7 @@ check_steps=(
 # A listed package that is missing or only auto-installed (apt autoremove
 # could take it) is a WARN; manual packages outside the lists are listed.
 cmd_check_apt() {
-    local h pkg status
+    local h pkg status name
     local -a want=() extra=()
     local -A listed=() manual=()
 
@@ -857,7 +857,23 @@ cmd_check_apt() {
             pass "purged: $pkg"
         fi
     done
-    mapfile -t want < <(printf '%s\n' "${want[@]}" | grep -v '^purge:')
+    # Repositories and architectures of the host list (bootstrap.sh).
+    for name in $(printf '%s\n' "${want[@]}" | sed -n 's/^source://p'); do
+        if cmp -s "$repo/nix/hosts/$h/apt/$name.sources" "/etc/apt/sources.list.d/ws-$name.sources" \
+            && cmp -s "$repo/nix/hosts/$h/apt/$name.asc" "/etc/apt/keyrings/ws-$name.asc"; then
+            pass "apt source: $name"
+        else
+            warn "apt source $name missing or not as nix/hosts/$h/apt/$name.* (bootstrap.sh)"
+        fi
+    done
+    for name in $(printf '%s\n' "${want[@]}" | sed -n 's/^arch://p'); do
+        if dpkg --print-foreign-architectures | grep -qx "$name"; then
+            pass "architecture: $name"
+        else
+            warn "architecture missing: $name (bootstrap.sh)"
+        fi
+    done
+    mapfile -t want < <(printf '%s\n' "${want[@]}" | grep -v '^purge:\|^source:\|^arch:')
     while read -r pkg; do
         manual[$pkg]=1
     done < <(apt-mark showmanual)

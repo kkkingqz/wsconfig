@@ -15,7 +15,8 @@ flathub org.videolan.VLC mbp16=yes all=ask
 flatpark com.anthropic.ClaudeDesktop mbp16=yes all=ask
 flathub com.mattjakeman.ExtensionManager mbp16=yes all=ask
 # Launcher: desktop/com.valvesoftware.Steam.desktop (AMD when present).
-flathub com.valvesoftware.Steam mbp16=yes all=ask
+# legiongo: native Steam (steam-installer), no flatpak.
+flathub com.valvesoftware.Steam mbp16=yes legiongo=no all=ask
 flathub com.jgraph.drawio.desktop mbp16=yes all=ask
 flathub org.qbittorrent.qBittorrent mbp16=yes all=ask
 flathub com.notesnook.Notesnook mbp16=yes all=ask

@@ -202,6 +202,19 @@ cmd_capture() {
                         || printf 'purge\t%s\tpurged\n' "${pkg#purge:}"
                     continue
                 fi
+                if [[ "$pkg" == source:* ]]; then
+                    cmp -s "$repo/nix/hosts/$h/apt/${pkg#source:}.sources" \
+                        "/etc/apt/sources.list.d/ws-${pkg#source:}.sources" \
+                        && printf 'source\t%s\tpresent\n' "${pkg#source:}" \
+                        || printf 'source\t%s\tMISSING\n' "${pkg#source:}"
+                    continue
+                fi
+                if [[ "$pkg" == arch:* ]]; then
+                    dpkg --print-foreign-architectures | grep -qx "${pkg#arch:}" \
+                        && printf 'arch\t%s\tpresent\n' "${pkg#arch:}" \
+                        || printf 'arch\t%s\tMISSING\n' "${pkg#arch:}"
+                    continue
+                fi
                 printf 'apt\t%s\t%s\n' "$pkg" \
                     "$(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null || echo MISSING)"
             done

@@ -196,7 +196,10 @@ ws check            # проверки всех владельцев и verify (
 `bootstrap.sh` (от пользователя, sudo вызывает сам; `--dry-run` только
 показывает шаги): subvolume `@nix` и строка `/nix` в fstab → пакеты из
 `nix/hosts/apt.txt` и `nix/hosts/<host>/apt.txt` (PPA fish и
-nautilus-my-computer; `purge:snapd` — без snap) → при `vm = "yes"` в
+nautilus-my-computer; `purge:snapd` — без snap; в списке хоста
+`source:NAME` — репозиторий `nix/hosts/<host>/apt/NAME.sources` с ключом
+`NAME.asc`, `arch:NAME` — архитектура dpkg, оба до пакетов) → при
+`vm = "yes"` в
 `facts.nix`: пакеты `virt/apt.txt`, `@vms` в `/var/lib/vms` с
 bind-монтированиями в пути libvirt, пул и сеть `default`
 (`virt/bootstrap.bash`) → группы `nix-users`, `input` (xremap читает

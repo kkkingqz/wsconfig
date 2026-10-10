@@ -68,8 +68,7 @@ swap        swapfile 16 ГБ в @swap
 
 Набор слоёв хоста задаётся механизмами, которые уже есть (4.5):
 Flatpak и Distrobox — пометками машины в `flatpak/apps.txt` и
-`distrobox/hosts.txt`, VM — фактом `vm`. Открыто: значение `vm` для
-`legiongo` (рекомендация — `"no"`).
+`distrobox/hosts.txt`, VM — фактом `vm` (`"no"`, решение пользователя).
 
 # 3. Компоненты
 
@@ -204,10 +203,14 @@ udev-правило на появление светодиода пережив�
 
 ## 4.1 Хост `nix/hosts/legiongo/`
 
+Сделано 2026-10-10: `facts.nix`, `apt.txt`, `apt/xanmod.sources`, пустой
+`system/hardware/legion-go.nix`. Нет ключа `apt/xanmod.asc` — без него
+`bootstrap.sh` остановится на `source:xanmod`.
+
 ```text
 facts.nix  hostname = "legiongo", user king, wsconfig,
            hardware = "legion-go", boot = "grub", rootUuid, gaming,
-           vm = "no" (рекомендация; факт обязателен, 4.5),
+           vm = "no",
            kernelParams = quiet splash bluetooth.disable_ertm=1
                           cpufreq.default_governor=powersave
                           zswap.enabled=1 zswap.compressor=zstd
@@ -218,6 +221,9 @@ apt.txt    source:xanmod, arch:i386,
 ```
 
 ## 4.2 `bootstrap.sh`
+
+`source:` и `arch:` сделаны 2026-10-10 (их понимают и `ws check apt`,
+`ws-baseline`); `@steam` — к этапу 6.
 
 - `source:NAME` — ставит `nix/hosts/<host>/apt/NAME.sources` и ключ из
   репозитория до установки пакетов, как `ppa:` (XanMod).
@@ -279,8 +285,8 @@ wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
 - **GNOME.** Масштаб 2.0, экранная клавиатура, ярлык «Return to Game Mode»;
   режимы питания — штатный переключатель (PPD).
 - **Steam в GNOME** — со своим launcher и extest (LD_PRELOAD).
-- **Flatpak — пометки в `flatpak/apps.txt`.** Заранее, на этапе 1:
-  `com.valvesoftware.Steam legiongo=no` (Steam нативный). Остальное — с
+- **Flatpak — пометки в `flatpak/apps.txt`.** Заранее (сделано
+  2026-10-10): `com.valvesoftware.Steam legiongo=no` (Steam нативный). Остальное — с
   `all=ask`: первый `ws apply` на устройстве спрашивает «Поставить все?
   [Y/n]» или даёт список с галочками, ответы становятся пометками
   `legiongo=yes|no`. Пересмотреть потом — `wsflatpak apply --select`.
@@ -289,7 +295,7 @@ wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
   стал бы неработающим пунктом рядом с нативным — ставить их только для
   приложений с пометкой `yes` на этой машине.
 - **Distrobox — пометки в `distrobox/hosts.txt`.** `t2bce-build` и
-  `touchbar-build` нужны только на mbp16 — `all=no`. Новый `gaming-build` —
+  `touchbar-build` нужны только на mbp16 — `all=no` (сделано 2026-10-10). Новый `gaming-build` —
   `mbp16=yes legiongo=yes all=no` (собирать можно на обеих). `arch`,
   `wine-wayland`, `wine`, `proton` — вопрос на первом `ws apply`.
 - **VM** — факт `vm` в `facts.nix`: при `"no"` `bootstrap.sh` не ставит

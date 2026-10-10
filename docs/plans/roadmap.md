@@ -58,8 +58,8 @@ volume: User Commands
    wsconfig как на mbp16, ядро XanMod, загрузка в GNOME, Game Mode из
    компонентов Bazzite (InputPlumber, steamos-manager, gamescope-session,
    нативный Steam, SDDM), питание — PPD, swap — zswap. Слои хоста —
-   пометками Flatpak и Distrobox и фактом `vm` (его значение не выбрано).
-   На устройстве ничего не начато.
+   пометками Flatpak и Distrobox и фактом `vm = "no"`. Хост в репозитории
+   заведён (без ключа XanMod); на устройстве ничего не начато.
 
 Отложено:
 

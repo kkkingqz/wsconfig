@@ -1,0 +1,24 @@
+# apt packages of legiongo (Lenovo Legion Go, gen 1) on top of
+# nix/hosts/apt.txt (helpws plan-legion-go). source: and arch: lines are
+# described there.
+
+# XanMod kernel, MAIN branch for x86-64-v3 (lenovo-wmi-*, hid-lenovo-go);
+# the generic kernel of the install stays as the fallback entry in GRUB
+source:xanmod
+linux-xanmod-x64v3
+
+# Native Steam: Game Mode calls host helpers (steamos-session-select);
+# 32-bit libraries from i386. The installer asks to accept the Steam
+# license during bootstrap.sh
+arch:i386
+steam-installer
+# Game Mode compositor (Legion Go display profile, 60/144 Hz)
+gamescope
+
+# SSH access to this machine (sshd on port 22)
+openssh-server
+# AMD CPU microcode (Ryzen Z1 Extreme)
+amd64-microcode
+# Sensors and input devices: inventory, fan, controllers
+lm-sensors
+evtest

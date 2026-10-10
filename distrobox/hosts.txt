@@ -7,5 +7,6 @@ arch mbp16=yes all=ask
 wine-wayland mbp16=yes all=ask
 wine mbp16=yes all=ask
 proton mbp16=yes all=ask
-t2bce-build mbp16=yes all=ask
-touchbar-build mbp16=yes all=ask
+# T2 builds (t2bce, Touch Bar): only mbp16.
+t2bce-build mbp16=yes all=no
+touchbar-build mbp16=yes all=no
