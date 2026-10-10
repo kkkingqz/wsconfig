@@ -6,6 +6,13 @@
 # the generic kernel of the install stays as the fallback entry in GRUB
 source:xanmod
 linux-xanmod-x64v3
+# The fallback on the 7.0 series of 26.04 with its security updates
+# (linux-generic). The installer's HWE track would bring 7.3 and later,
+# newer than XanMod for a while, and GRUB boots the newest kernel first.
+linux-generic
+purge:linux-generic-hwe-26.04
+purge:linux-image-generic-hwe-26.04
+purge:linux-headers-generic-hwe-26.04
 
 # Native Steam and gamescope: steam/apt.txt and gaming/apt.txt
 # (nativeSteam, gameMode in facts.nix)

@@ -222,7 +222,8 @@ facts.nix  hostname = "legiongo", user king, wsconfig,
            kernelParams = quiet splash bluetooth.disable_ertm=1
                           cpufreq.default_governor=powersave
                           zswap.enabled=1 zswap.compressor=zstd
-apt.txt    source:xanmod, linux-xanmod-x64v3, openssh-server,
+apt.txt    source:xanmod, linux-xanmod-x64v3; linux-generic (запасное
+           ядро на серии 7.0) и purge: метапакетов HWE; openssh-server,
            amd64-microcode, lm-sensors, evtest
 факты      nativeSteam = "yes" → steam/apt.txt (arch:i386,
            steam-installer, 32-битные Vulkan, EGL и GBM) и @steam
@@ -419,9 +420,10 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
   Lenovo публикует капсулы в LVFS) или с Windows на USB.
 - Прошивку контроллеров Go 1 через fwupd не обновлять: для них предлагалась
   прошивка Go 2 (fwupd #9734).
-- GRUB выбирает по умолчанию самое новое ядро: когда generic-ядро Ubuntu
-  станет новее XanMod (HWE 7.3), по умолчанию загрузится оно. Закрепить
-  пункт XanMod (`GRUB_DEFAULT`) или переход сделать осознанно.
+- GRUB выбирает по умолчанию самое новое ядро. Запасное generic-ядро
+  остаётся на серии 7.0 (`linux-generic`, метапакеты HWE сняты
+  `purge:`), XanMod MAIN всегда новее; переход generic на HWE — только
+  осознанно, правкой `apt.txt`.
 - XanMod — один основной автор; DKMS-модули потребуют clang на host.
 - `setup.sh` и `ws btrfs make` целиком не прогонялись: первый запуск —
   на устройстве. Если `@` после шага 1 не загрузится — в GRUB `c`, затем
