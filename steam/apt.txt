@@ -1,0 +1,9 @@
+# Native Steam (hosts with nativeSteam = "yes" in facts.nix; helpws
+# plan-legion-go): the apt Steam instead of the Flathub flatpak, which the
+# Game Mode session cannot use (it calls host helpers such as
+# steamos-session-select). bootstrap.sh installs it, ws check apt compares.
+# The installer asks to accept the Steam license during bootstrap.sh.
+
+# 32-bit libraries of the Steam client and of games
+arch:i386
+steam-installer

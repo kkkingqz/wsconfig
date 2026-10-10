@@ -7,13 +7,8 @@
 source:xanmod
 linux-xanmod-x64v3
 
-# Native Steam: Game Mode calls host helpers (steamos-session-select);
-# 32-bit libraries from i386. The installer asks to accept the Steam
-# license during bootstrap.sh
-arch:i386
-steam-installer
-# Game Mode compositor (Legion Go display profile, 60/144 Hz)
-gamescope
+# Native Steam and gamescope: steam/apt.txt and gaming/apt.txt
+# (nativeSteam, gameMode in facts.nix)
 
 # SSH access to this machine (sshd on port 22)
 openssh-server

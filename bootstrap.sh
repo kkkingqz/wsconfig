@@ -3,10 +3,12 @@ set -euo pipefail
 
 # First steps on a fresh Ubuntu (helpws rebuild, helpws history-nix):
 # @nix subvolume at /nix → apt packages (nix/hosts/apt.txt, nix/hosts/<host>/apt.txt,
-# virt/apt.txt) → VM state on @vms (images, nvram, qemu XML bound into
-# libvirt), pool and network (virt/bootstrap.bash) → groups nix-users,
-# libvirt, input → fish as login shell → first `ws switch`. The VM parts
-# only with vm = "yes" in facts.nix.
+# virt/apt.txt, steam/apt.txt, gaming/apt.txt) → VM state on @vms (images,
+# nvram, qemu XML bound into libvirt), pool and network (virt/bootstrap.bash)
+# → Steam data on @steam (steam/bootstrap.bash) → groups nix-users, libvirt,
+# input → fish as login shell → first `ws switch`. The VM parts only with
+# vm = "yes" in facts.nix, the Steam parts with nativeSteam = "yes", the
+# Game Mode list with gameMode = "yes".
 #
 # Runs as the desktop user from the checkout at ~/<wsconfig of
 # nix/hosts/<host>/facts.nix> and calls sudo itself. Every step checks
@@ -56,13 +58,26 @@ expected="$HOME/$("$repo/bin/ws" fact wsconfig)" || die "no wsconfig in nix/host
 # VM layer (helpws virt): packages of virt/apt.txt, @vms and libvirt.
 vm="$("$repo/bin/ws" fact vm)" || die "no vm in nix/hosts/$host/facts.nix (\"yes\" or \"no\")"
 [[ "$vm" == yes || "$vm" == no ]] || die "vm in nix/hosts/$host/facts.nix must be \"yes\" or \"no\", not \"$vm\""
-echo "Host: $host (vm = $vm)"
+# Native Steam and the Game Mode session (helpws plan-legion-go).
+native_steam="$("$repo/bin/ws" fact nativeSteam)" \
+    || die "no nativeSteam in nix/hosts/$host/facts.nix (\"yes\" or \"no\")"
+[[ "$native_steam" == yes || "$native_steam" == no ]] \
+    || die "nativeSteam in nix/hosts/$host/facts.nix must be \"yes\" or \"no\", not \"$native_steam\""
+game_mode="$("$repo/bin/ws" fact gameMode)" \
+    || die "no gameMode in nix/hosts/$host/facts.nix (\"yes\" or \"no\")"
+[[ "$game_mode" == yes || "$game_mode" == no ]] \
+    || die "gameMode in nix/hosts/$host/facts.nix must be \"yes\" or \"no\", not \"$game_mode\""
+[[ "$game_mode" == no || "$native_steam" == yes ]] \
+    || die "gameMode = \"yes\" needs nativeSteam = \"yes\" in nix/hosts/$host/facts.nix"
+echo "Host: $host (vm = $vm, nativeSteam = $native_steam, gameMode = $game_mode)"
 
 # Package and PPA lines of the apt lists, without comments.
 apt_lines() {
     local f
     local lists=("$repo/nix/hosts/apt.txt" "$host_list")
     [[ "$vm" == no ]] || lists+=("$repo/virt/apt.txt")
+    [[ "$native_steam" == no ]] || lists+=("$repo/steam/apt.txt")
+    [[ "$game_mode" == no ]] || lists+=("$repo/gaming/apt.txt")
     for f in "${lists[@]}"; do
         [[ -r "$f" ]] && sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' "$f"
     done
@@ -199,7 +214,15 @@ else
 fi
 
 echo
-echo "== 4. Nix daemon and groups"
+echo "== 4. Steam data on @steam (helpws plan-legion-go)"
+if [[ "$native_steam" == yes ]]; then
+    . "$repo/steam/bootstrap.bash"
+else
+    echo "nativeSteam = \"$native_steam\" in nix/hosts/$host/facts.nix: no apt Steam"
+fi
+
+echo
+echo "== 5. Nix daemon and groups"
 if systemctl is-enabled --quiet nix-daemon.socket 2>/dev/null; then
     echo "nix-daemon.socket enabled"
 else
@@ -227,7 +250,7 @@ for group in "${groups[@]}"; do
 done
 
 echo
-echo "== 5. Login shell"
+echo "== 6. Login shell"
 if [[ "$(getent passwd "$user" | cut -d: -f7)" == /usr/bin/fish ]]; then
     echo "login shell is fish"
 else
@@ -235,7 +258,7 @@ else
 fi
 
 echo
-echo "== 6. First ws switch"
+echo "== 7. First ws switch"
 # Before the first switch there is no ~/.config/nix/nix.conf yet, and the
 # nix-users membership applies only to new logins: sg (util-linux-extra on
 # Ubuntu 26.04) runs the switch with it when this session lacks the group.

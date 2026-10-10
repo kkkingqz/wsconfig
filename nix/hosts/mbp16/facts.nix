@@ -12,6 +12,13 @@
   # virt/apt.txt, @vms with libvirt (bootstrap.sh), OVMF descriptor, ~/VMs,
   # ws check virt; "no" leaves it out.
   vm = "yes";
+  # Native Steam (helpws plan-legion-go): "yes" installs the apt Steam
+  # (steam/apt.txt, i386) and keeps its data on @steam; "no" — Steam is the
+  # Flathub flatpak here.
+  nativeSteam = "no";
+  # Game Mode session, gamescope + Steam as in SteamOS (gaming/apt.txt,
+  # system/gaming.nix); "yes" needs nativeSteam = "yes".
+  gameMode = "no";
   boot = "refind-grub-recovery";
   kernelParams = [
     "quiet" "splash" "intel_iommu=on" "iommu=pt" "pm_async=off"

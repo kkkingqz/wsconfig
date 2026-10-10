@@ -202,12 +202,16 @@ nautilus-my-computer; `purge:snapd` — без snap; в списке хоста
 `vm = "yes"` в
 `facts.nix`: пакеты `virt/apt.txt`, `@vms` в `/var/lib/vms` с
 bind-монтированиями в пути libvirt, пул и сеть `default`
-(`virt/bootstrap.bash`) → группы `nix-users`, `input` (xremap читает
-клавиатуры), при `vm = "yes"` и `libvirt` → fish как login shell → первый
-`ws switch` (заменяемые файлы сохраняются как `*.pre-hm`). Хост определяется по `hostname` в `nix/hosts/*/facts.nix` (`ws
+(`virt/bootstrap.bash`) → при `nativeSteam = "yes"`: пакеты
+`steam/apt.txt` (Steam из apt, i386) и subvolume `@steam` в
+`~/.local/share/Steam` (`steam/bootstrap.bash`; до первого запуска Steam);
+при `gameMode = "yes"` — пакеты `gaming/apt.txt` → группы `nix-users`,
+`input` (xremap читает клавиатуры), при `vm = "yes"` и `libvirt` → fish как
+login shell → первый `ws switch` (заменяемые файлы сохраняются как
+`*.pre-hm`). Хост определяется по `hostname` в `nix/hosts/*/facts.nix` (`ws
 host`, переопределяет `WS_HOST=<name>`); для новой машины — каталог
-`nix/hosts/<name>/` с `facts.nix` (в том числе `vm = "yes"` или `"no"`) и
-`apt.txt`. Повторный запуск ничего не меняет.
+`nix/hosts/<name>/` с `facts.nix` (в том числе `vm`, `nativeSteam` и
+`gameMode` — `"yes"` или `"no"`) и `apt.txt`. Повторный запуск ничего не меняет.
 
 Шаг `ws apply`, чей preflight не прошёл (exit 69), выводится в конце как
 `PREFLIGHT`; отдельный шаг — `ws apply keyboard`.

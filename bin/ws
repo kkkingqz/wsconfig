@@ -65,7 +65,8 @@ check     run the owners' checks with --json and summarize their result
           (hosts with vm = "yes" in facts.nix);
           check backup: local copy root on its own subvolume, SSH alias and key;
           check apt compares nix/hosts/apt.txt, nix/hosts/<host>/apt.txt and, with
-          vm = "yes", virt/apt.txt (the
+          vm = "yes", virt/apt.txt, with nativeSteam = "yes", steam/apt.txt,
+          with gameMode = "yes", gaming/apt.txt (the
           lists of bootstrap.sh) with the installed packages, report only;
           each takes --json (one result object, what ws check reads)
 system    build the host system file tree (system) and compare it
@@ -848,6 +849,9 @@ cmd_check_apt() {
     local -a lists=("$repo/nix/hosts/apt.txt" "$repo/nix/hosts/$h/apt.txt")
     # VM packages only on hosts with vm = "yes" (helpws virt).
     [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" vm)" != yes ]] || lists+=("$repo/virt/apt.txt")
+    # Native Steam and the Game Mode session (helpws plan-legion-go).
+    [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" nativeSteam)" != yes ]] || lists+=("$repo/steam/apt.txt")
+    [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" gameMode)" != yes ]] || lists+=("$repo/gaming/apt.txt")
     mapfile -t want < <(cat "${lists[@]}" 2>/dev/null \
         | sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' -e '/^ppa:/d' | sort -u)
     for pkg in $(printf '%s\n' "${want[@]}" | sed -n 's/^purge://p'); do

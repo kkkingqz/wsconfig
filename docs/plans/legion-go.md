@@ -58,6 +58,8 @@ backup      отдельного backup сохранений игр нет
 ```text
 ядро        пакет linux-xanmod-x64v3 (MAIN); generic-ядро Ubuntu — запасной
             пункт GRUB
+факты       nativeSteam = "yes", gameMode = "yes" (как vm: "yes"/"no" в
+            facts.nix; пользователь)
 параметры   bluetooth.disable_ertm=1 cpufreq.default_governor=powersave
             zswap.enabled=1 zswap.compressor=zstd
 питание     steamos-manager без TDP и профиля
@@ -212,29 +214,30 @@ udev-правило на появление светодиода пережив�
 
 ```text
 facts.nix  hostname = "legiongo", user king, wsconfig,
-           hardware = "legion-go", boot = "grub", rootUuid, gaming,
-           vm = "no",
+           hardware = "legion-go", boot = "grub", vm = "no",
+           nativeSteam = "yes", gameMode = "yes",
            kernelParams = quiet splash bluetooth.disable_ertm=1
                           cpufreq.default_governor=powersave
                           zswap.enabled=1 zswap.compressor=zstd
-apt.txt    source:xanmod, arch:i386,
-           linux-xanmod-x64v3, steam-installer, gamescope,
-           openssh-server, amd64-microcode, lm-sensors, evtest
-           (sddm ставит wsgame, 4.4)
+apt.txt    source:xanmod, linux-xanmod-x64v3, openssh-server,
+           amd64-microcode, lm-sensors, evtest
+факты      nativeSteam = "yes" → steam/apt.txt (arch:i386,
+           steam-installer) и @steam (steam/bootstrap.bash);
+           gameMode = "yes" → gaming/apt.txt (gamescope) и
+           system/gaming.nix (sddm ставит wsgame, 4.4)
 ```
 
 ## 4.2 `bootstrap.sh`
 
 `source:` и `arch:` сделаны 2026-10-10 (их понимают и `ws check apt`,
-`ws-baseline`); `@steam` — к этапу 6.
+`ws-baseline`).
 
 - `source:NAME` — ставит `nix/hosts/<host>/apt/NAME.sources` и ключ из
   репозитория до установки пакетов, как `ppa:` (XanMod).
 - `arch:i386` — `dpkg --add-architecture i386` до `apt-get update` (Steam).
 - Subvolume `@steam` в `~/.local/share/Steam` (строка fstab, как `@vms`) —
-  на хостах с фактом `gaming`. Факт появляется на этапе 6, поэтому там
-  `bootstrap.sh` запускается повторно (шаги идемпотентны), до первого
-  запуска Steam.
+  при `nativeSteam = "yes"`, шаг 4 (`steam/bootstrap.bash`), до первого
+  запуска Steam. Сделано 2026-10-10.
 - Пакеты из локальных `.deb` `ws check apt` получает от `wsgame`, а не из
   списка.
 
@@ -246,7 +249,8 @@ apt.txt    source:xanmod, arch:i386,
 system/hardware/legion-go.nix   этап 5: sysctl.d, udev (I/O, позже RGB),
                                 hwdb (F16), PipeWire/WirePlumber 83E1,
                                 limits.d, modprobe.d
-system/gaming.nix               этап 6, при факте gaming: sddm.conf.d,
+system/gaming.nix               этап 6, при gameMode = "yes" (часть
+                                есть, пока пустая): sddm.conf.d,
                                 polkit, os-session-select, Return to Game
                                 Mode, platform.toml, logind.conf.d;
                                 units: sddm enabled, gdm3 masked,
@@ -349,7 +353,7 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
    - `aplay -l`, `pw-cli ls Node` (PCI-адрес аудио для 3.5);
    - `fwupdmgr get-devices`: видит ли fwupd BIOS (Windows нет — других
      способов обновить BIOS, кроме Windows с USB, не остаётся).
-4. **База wsconfig.** `bootstrap.sh` (ставит XanMod и Steam) → reboot в
+4. **База wsconfig.** `bootstrap.sh` (ставит XanMod, Steam и `@steam`) → reboot в
    XanMod → `ws system apply` → `ws apply` (шаги flatpak и distrobox
    спрашивают о не помеченных) → `ws switch` (коммитит пометки
    `legiongo`) → `git push` → `ws check`, как в `helpws rebuild`. GDM ещё
@@ -364,9 +368,9 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
      ли — решить по результату);
    - zswap: включён, zstd, swapfile активен;
    - звук на свёртке, после сна (известный шум первые ~30 с).
-6. **Game Mode.** Факт `gaming` → `bootstrap.sh` (`@steam`) →
-   `wsgame install` (пакеты и sddm) → `ws system apply` (SDDM вместо GDM)
-   → первый запуск Steam в GNOME. Проверить:
+6. **Game Mode.** Содержимое `system/gaming.nix` → `wsgame install`
+   (пакеты и sddm) → `ws system apply` (SDDM вместо GDM) → первый запуск
+   Steam в GNOME (`@steam` уже есть с этапа 4). Проверить:
    - autologin в GNOME; «Return to Game Mode» и «Switch to Desktop» в обе
      стороны; не остаются ли процессы после переключения (если остаются —
      logind `KillUserProcesses`);

@@ -1,0 +1,7 @@
+# Game Mode session, gamescope + Steam as in SteamOS (hosts with
+# gameMode = "yes" in facts.nix; helpws plan-legion-go). bootstrap.sh
+# installs it, ws check apt compares. sddm is not here: installing it
+# switches the display manager, so it comes with the session files later.
+
+# Game Mode compositor (display profiles, e.g. Legion Go at 60/144 Hz)
+gamescope

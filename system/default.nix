@@ -28,7 +28,8 @@ let
     (import ./common.nix args)
     (import ./boot/${facts.boot}.nix args)
     (import ./hardware/${facts.hardware}.nix args)
-  ] ++ lib.optionals (facts.vm == "yes") [ (import ./virt.nix args) ];
+  ] ++ lib.optionals (facts.vm == "yes") [ (import ./virt.nix args) ]
+    ++ lib.optionals (facts.gameMode == "yes") [ (import ./gaming.nix args) ];
   collect = name: lib.concatMap (p: p.${name} or [ ]) parts;
   units = lib.foldl' (acc: p: acc // (p.units or { })) { } parts;
 in

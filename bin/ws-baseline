@@ -190,10 +190,17 @@ cmd_capture() {
     echo "== packages"
     # The owners' package lists: apt (nix/hosts/*apt.txt, as ws check apt)
     # and the Nix profile (home.packages) of the active generation.
-    local h pkg hm
+    local h pkg hm fact list
+    local -a lists
     h="$("$repo/bin/ws" host)"
+    # The same lists as ws check apt: the layers by their facts.
+    lists=("$repo/nix/hosts/apt.txt" "$repo/nix/hosts/$h/apt.txt")
+    for fact in vm:virt nativeSteam:steam gameMode:gaming; do
+        list="${fact#*:}"
+        [[ "$("$repo/bin/ws" fact "${fact%%:*}" 2>/dev/null)" != yes ]] || lists+=("$repo/$list/apt.txt")
+    done
     {
-        cat "$repo/nix/hosts/apt.txt" "$repo/nix/hosts/$h/apt.txt" 2>/dev/null \
+        cat "${lists[@]}" 2>/dev/null \
             | sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' -e '/^ppa:/d' | sort -u \
             | while read -r pkg; do
                 if [[ "$pkg" == purge:* ]]; then

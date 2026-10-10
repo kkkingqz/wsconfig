@@ -22,6 +22,14 @@
         let facts = import ./nix/hosts/${host}/facts.nix; in
         assert lib.assertMsg (lib.elem (facts.vm or null) [ "yes" "no" ])
           "nix/hosts/${host}/facts.nix: vm must be \"yes\" or \"no\" (helpws virt)";
+        assert lib.assertMsg (lib.elem (facts.nativeSteam or null) [ "yes" "no" ])
+          "nix/hosts/${host}/facts.nix: nativeSteam must be \"yes\" or \"no\" (helpws plan-legion-go)";
+        assert lib.assertMsg (lib.elem (facts.gameMode or null) [ "yes" "no" ])
+          "nix/hosts/${host}/facts.nix: gameMode must be \"yes\" or \"no\" (helpws plan-legion-go)";
+        # The Game Mode session runs the apt Steam: the flatpak cannot reach
+        # the host helpers (steamos-session-select, steamosctl).
+        assert lib.assertMsg (facts.gameMode == "no" || facts.nativeSteam == "yes")
+          "nix/hosts/${host}/facts.nix: gameMode = \"yes\" needs nativeSteam = \"yes\"";
         facts;
 
       mkHome = host: home-manager.lib.homeManagerConfiguration {

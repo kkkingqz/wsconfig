@@ -8,6 +8,9 @@
   hardware = "generic-pc";
   # No VMs inside the test VM (helpws virt).
   vm = "no";
+  # Neither native Steam nor the Game Mode session in the test VM.
+  nativeSteam = "no";
+  gameMode = "no";
   boot = "grub";
   kernelParams = [ "quiet" "splash" ];
 }

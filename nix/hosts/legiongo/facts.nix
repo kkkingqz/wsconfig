@@ -8,6 +8,10 @@
   hardware = "legion-go";
   # No VMs on the handheld (helpws virt).
   vm = "no";
+  # Native Steam (steam/apt.txt, i386, data on @steam) and the Game Mode
+  # session (gaming/apt.txt, system/gaming.nix; helpws plan-legion-go).
+  nativeSteam = "yes";
+  gameMode = "yes";
   boot = "grub";
   kernelParams = [
     "quiet" "splash"

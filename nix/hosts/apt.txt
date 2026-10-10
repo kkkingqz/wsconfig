@@ -6,8 +6,9 @@
 # /etc/apt/sources.list.d/ws-NAME.sources and /etc/apt/keyrings/ws-NAME.asc)
 # and `arch:NAME` (dpkg --add-architecture), both before the packages.
 # Installed by bootstrap.sh; `ws check apt` compares with apt-mark showmanual.
-# Host packages: nix/hosts/<name>/apt.txt; virtual machines: virt/apt.txt
-# (hosts with vm = "yes" in facts.nix).
+# Host packages: nix/hosts/<name>/apt.txt; by facts in facts.nix: virtual
+# machines virt/apt.txt (vm = "yes"), native Steam steam/apt.txt
+# (nativeSteam = "yes"), Game Mode session gaming/apt.txt (gameMode = "yes").
 
 # Nix: delivers the user layer (helpws history-nix)
 nix-bin
