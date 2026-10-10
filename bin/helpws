@@ -34,6 +34,7 @@ case "$topic" in
     plan-t2) open_title ws-plan-t2 ;;
     plan-dgpu|dgpu|t2gmux) open_title ws-plan-dgpu ;;
     plan-final) open_title ws-plan-final ;;
+    plan-legion-go|legion-go|lgo) open_title ws-plan-legion-go ;;
     history-gnome|plan-gnome) open_title ws-history-gnome ;;
     history-flatpak|plan-flatpak) open_title ws-history-flatpak ;;
     history-distrobox|plan-dev) open_title ws-history-distrobox ;;
@@ -75,6 +76,7 @@ Plans (docs/plans):
   plan-t2          T2 optional / power / auth
   plan-dgpu        AMD dGPU through t2gmux (power off like macOS)
   plan-final       Backup / inventory / finalization
+  plan-legion-go   Legion Go (gen 1): host, Game Mode from Bazzite parts
 
 History (docs/history; old plan-* names work too):
   history-gnome    history-flatpak    history-distrobox

@@ -53,6 +53,12 @@ volume: User Commands
    выполнить первый реальный перенос и restore test. Финальный smoke-test
    также остаётся.
 
+3. `helpws plan-legion-go`
+   Legion Go 1 третьим хостом (план 2026-10-10): Ubuntu и wsconfig как на
+   mbp16, сверху Game Mode из компонентов Bazzite (InputPlumber,
+   steamos-manager, gamescope-session, нативный Steam, SDDM). На устройстве
+   ничего не начато; до этапа 0 нужны решения пользователя (раздел 5).
+
 Отложено:
 
 - `helpws plan-hyprland` — предложение Hyprland + Caelestia рядом с GNOME,
