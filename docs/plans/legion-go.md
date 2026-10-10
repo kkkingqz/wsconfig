@@ -13,8 +13,11 @@ home-manager поверх неё. Устройство загружается в
 стороны идёт без экрана входа. Компоненты Game Mode взяты из Bazzite
 (`ublue-os/bazzite` `7f903b9`, изучен 2026-10-10) и перенесены на Ubuntu.
 
-Состояние: план. На устройстве ничего не делалось, в репозитории есть только
-этот документ.
+Состояние: план. На устройстве ничего не делалось. В репозитории готово:
+хост `legiongo` (4.1), `source:`/`arch:` и факты (4.2), пометки и
+`.desktop` по пометкам (4.5), раскладка Btrfs `ws btrfs make` и первичная
+настройка `setup.sh` (`helpws setup`). Не начаты: системные части (4.3) и
+игровой слой (4.4).
 
 # 1. Устройство
 
@@ -222,7 +225,8 @@ facts.nix  hostname = "legiongo", user king, wsconfig,
 apt.txt    source:xanmod, linux-xanmod-x64v3, openssh-server,
            amd64-microcode, lm-sensors, evtest
 факты      nativeSteam = "yes" → steam/apt.txt (arch:i386,
-           steam-installer) и @steam (steam/bootstrap.bash);
+           steam-installer, 32-битные Vulkan, EGL и GBM) и @steam
+           (steam/bootstrap.bash);
            gameMode = "yes" → gaming/apt.txt (gamescope) и
            system/gaming.nix (sddm ставит wsgame, 4.4)
 ```
@@ -293,22 +297,23 @@ wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
   режимы питания — штатный переключатель (PPD).
 - **Steam в GNOME** — со своим launcher и extest (LD_PRELOAD).
 - **Flatpak — пометки в `flatpak/apps.txt`.** Заранее (сделано
-  2026-10-10): `com.valvesoftware.Steam legiongo=no` (Steam нативный). Остальное — с
-  `all=ask`: первый `ws apply` на устройстве спрашивает «Поставить все?
-  [Y/n]» или даёт список с галочками, ответы становятся пометками
-  `legiongo=yes|no`. Пересмотреть потом — `wsflatpak apply --select`.
+  2026-10-10): `com.valvesoftware.Steam legiongo=no` (Steam нативный).
+  Остальное — с `all=ask`: `setup.sh` в начале показывает список с
+  галочками (всё без пометки `legiongo`; `all=ask` отмечены), ответы
+  становятся пометками `legiongo=yes|no` и пушатся; `ws apply` потом не
+  спрашивает. Пересмотреть — `wsflatpak apply --select`.
 - **Свои `.desktop`** (25ff6a1): `ws switch` ставит файлы
   `flatpak/desktop/` только для приложений с `yes` на этой машине, а
   launchers `ws-win-NAME` — только где бокс помечен `yes`. На `legiongo`
   пункта flatpak-Steam нет (`legiongo=no`).
 - **Overrides Flatpak** (306e244): у строк `flatpak/overrides.txt` свои
-  пометки; нынешние — `mbp16=yes all=yes`, то есть действуют и на
-  `legiongo` для установленных там приложений. Строку, которая там не
-  нужна, — пометить `legiongo=no` (`wsflatpak un…` на устройстве).
+  пометки; нынешние — `mbp16=yes all=yes`. Overrides выбранных приложений
+  идут в тот же список `setup.sh` (отмечены); позже — `wsflatpak un…` на
+  устройстве.
 - **Distrobox — пометки в `distrobox/hosts.txt`.** `t2bce-build` и
   `touchbar-build` нужны только на mbp16 — `all=no` (сделано 2026-10-10). Новый `gaming-build` —
   `mbp16=yes legiongo=yes all=no` (собирать можно на обеих). `arch`,
-  `wine-wayland`, `wine`, `proton` — вопрос на первом `ws apply`.
+  `wine-wayland`, `wine`, `proton` — в списке `setup.sh`.
 - **VM** — факт `vm` в `facts.nix`: при `"no"` `bootstrap.sh` не ставит
   `virt/apt.txt`, `@vms`, libvirt и группу `libvirt`, `ws check virt` молчит.
 - **Масштаб** — только если эти приложения и боксы получат `legiongo=yes`:
@@ -317,17 +322,19 @@ wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
   свой вариант или факт хоста; DPI префиксов `wine-wayland` и `proton`
   (144 → 192) — в `distrobox.nix`; `GDK_SCALE=2` AnyDesk (override) при
   200% подходит.
-- **git на устройстве.** `ws switch` коммитит пометки локально. Чтобы они
-  дошли до mbp16, на `legiongo` нужен доступ к GitHub (`gh auth login` —
-  вводит пользователь), а перед `ws switch` на любой машине — `git pull`.
+- **git на устройстве.** `setup.sh` входит в GitHub (`gh auth login` в
+  браузере, код вводит пользователь) и сам пушит хост и пометки. Позже
+  `ws switch` коммитит пометки локально: перед ним на любой машине —
+  `git pull`, после — `git push`.
 - **Проверки.** `ws check gaming`; verify — связи InputPlumber ↔
   steamos-manager ↔ SDDM ↔ xremap.
 
 ## 4.6 Диск
 
-Btrfs по `helpws rebuild`: `@`, `@home`, `@cache`, `@tmp`, `@log`, `@nix`,
-`@swap` (3.3), `@steam` — клиент, библиотека, compatdata и shadercache вне
-Timeshift и backup. Сохранения, которых нет в Steam Cloud, живут только на
+Btrfs по `helpws rebuild`: `@`, `@home`, `@cache`, `@tmp`, `@log` делает
+`ws btrfs make` (из `setup.sh`), `@nix`, `@steam` и `@wsbackup` —
+`bootstrap.sh`, `@swap` — этап 5 (3.3). `@steam` — клиент, библиотека,
+compatdata и shadercache вне Timeshift и backup. Сохранения, которых нет в Steam Cloud, живут только на
 устройстве. microSD — вторая библиотека Steam.
 
 # 5. Этапы
@@ -353,7 +360,9 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
    `wsgame fetch`; пакеты ставятся и снимаются в чистом контейнере Ubuntu
    26.04.
 3. **Ubuntu.** Установка 26.04 с USB на весь диск, hostname `legiongo`,
-   пользователь `king`; ESP и корень Btrfs без отдельного `/boot`. Затем
+   пользователь `king`. Разметка вручную: ESP FAT32 около 1 ГБ
+   (`/boot/efi`) и Btrfs на остальное (`/`), без swap-раздела и отдельного
+   `/boot`. Затем
    `setup.sh` (`helpws setup`): хост `legiongo` по имени, списки с
    галочками для того, что не помечено `legiongo`, дальше сам — раскладка
    Btrfs, этап 4, Timeshift. Инвентарь (до или после setup.sh) в
@@ -396,8 +405,11 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
    контроллер как мышь (InputPlumber или Steam с extest), xremap только в
    GNOME и без виртуальных устройств, RGB стиков выключен (3.7); Flatpak и
    Distrobox — по пометкам `legiongo` (этап 4).
-8. **Recovery и backup.** Timeshift и пункты GRUB (XanMod и generic),
-   проверка отката. `wsbackup` на Unraid без `@steam` — отдельным шагом.
+8. **Recovery и backup.** Timeshift настроил `setup.sh` (снимок «setup»);
+   здесь — откат и пункты GRUB (XanMod и generic). Backup на Unraid:
+   приёмник пока принимает только mbp16 (`receiver.conf`, один `HOST_ID`) —
+   подключение `legiongo` на сервере отдельно и с подтверждением; ключ
+   `~/.ssh/wsbackup_ed25519` сделал `setup.sh`, `@steam` в backup не входит.
 9. **Опционально, каждое — с замером до и после.** Вентилятор сверх
    прошивки (3.7), режим `custom` TDP, swappiness и page-cluster, Decky
    Loader, scx_lavd, hibernate (`resume=`/`resume_offset` из swap-setup в
@@ -413,6 +425,10 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
   станет новее XanMod (HWE 7.3), по умолчанию загрузится оно. Закрепить
   пункт XanMod (`GRUB_DEFAULT`) или переход сделать осознанно.
 - XanMod — один основной автор; DKMS-модули потребуют clang на host.
+- `setup.sh` и `ws btrfs make` целиком не прогонялись: первый запуск —
+  на устройстве. Если `@` после шага 1 не загрузится — в GRUB `c`, затем
+  `configfile /boot/grub/grub.cfg` (старый корень); для этого нужна
+  USB-клавиатура, меню GRUB на портретной панели повёрнуто.
 - Ограничитель FPS gamescope без Mesa с патчами Valve может не работать
   (3.4).
 - gamescope 3.16.20 старше того, на что рассчитан текущий клиент Steam;
