@@ -81,7 +81,8 @@ system    build the host system file tree (system) and compare it
           the package template (an installer may edit it; settings live in
           grub.d), removes known obsolete files,
           enables and restarts units, reloads udev, rebuilds the initramfs
-          if modprobe.d changed and runs update-grub if grub.d changed;
+          if modprobe.d changed, runs update-grub if grub.d changed and
+          sysctl --system if sysctl.d changed;
           it does not touch the ESP and does not reboot;
           manifest prints what the system layer owns (file MODE PATH,
           esp PARTUUID PATH, unit STATE NAME, restart - NAME, watch - PATH:
@@ -594,7 +595,7 @@ system_record() {
 # Only files that differ are backed up and replaced; the ESP is not touched,
 # nothing reboots.
 cmd_system_apply() {
-    local tree kind a b f backup tmp unit changed=0 modprobe=false grub=false logind=false
+    local tree kind a b f backup tmp unit changed=0 modprobe=false grub=false logind=false sysctl=false
     local refind=false d3cold=false touchbar=false bootlinks=false has_bootlinks=false saved=false dev cfg out rc=0
     local -a restart=()
 
@@ -633,6 +634,7 @@ cmd_system_apply() {
                     /etc/default/grub.d/*) grub=true ;;
                     /etc/grub.d/*) grub=true ;;
                     /etc/systemd/logind.conf.d/*) logind=true ;;
+                    /etc/sysctl.d/*) sysctl=true ;;
                     /boot/refind_linux.conf) refind=true ;;
                     /usr/local/sbin/ws-boot-links) bootlinks=true ;;
                     */70-bcm4364-no-d3cold.rules) d3cold=true ;;
@@ -713,6 +715,10 @@ cmd_system_apply() {
         sudo systemctl restart "$unit"
         echo "restarted: $unit"
     done
+    if [[ "$sysctl" == true ]]; then
+        sudo sysctl --system >/dev/null
+        echo "applied: sysctl.d"
+    fi
     # logind rereads logind.conf.d on reload; a restart would end sessions.
     if [[ "$logind" == true ]]; then
         sudo systemctl reload systemd-logind

@@ -169,7 +169,8 @@ Valve. Если ограничитель FPS не работает, убирае
           headroom 1024 / period 256, suspend-timeout 0; аппаратный sink —
           100% (DSP рассчитан на это). .wav (1 МБ, Apache-2.0) — в
           репозитории с указанием источника или по sha256
-hwdb      AT-клавиатура 83E1: scancode 0x67 → F16 (долгое нажатие питания)
+hwdb      AT-клавиатура 83E1: scancode 0x67 → F16 (долгое нажатие питания) —
+          уже в hwdb systemd 259 Ubuntu, своего файла не нужно
 kargs     bluetooth.disable_ertm=1
 ICC       Legion_GO_BT1886.icc — проверить на глаз, ставить по результату
 Wi-Fi     mt7921e disable_aspm=Y — только при обрывах (стоит энергии)
@@ -251,9 +252,11 @@ apt.txt    source:xanmod, linux-xanmod-x64v3; linux-generic (запасное
 Две части, чтобы GDM работал, пока Game Mode не готов:
 
 ```text
-system/hardware/legion-go.nix   этап 5: sysctl.d, udev (I/O, позже RGB),
-                                hwdb (F16), PipeWire/WirePlumber 83E1,
-                                limits.d, modprobe.d
+system/hardware/legion-go.nix   сделано 2026-10-10 (ставит ws system
+                                apply в setup.sh): sysctl.d, udev (I/O),
+                                limits.d (nice), modprobe.d (sp5100_tco),
+                                PipeWire (свёртка) и WirePlumber 83E1; на
+                                этапе 5 — RGB, ICC, ASPM Wi-Fi по замеру
 system/gaming.nix               этап 6, при gameMode = "yes" (часть
                                 есть, пока пустая): sddm.conf.d,
                                 polkit, os-session-select, Return to Game
@@ -382,7 +385,8 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
    `uname -r`, параметры ядра, AppArmor не активен, governor `powersave` до
    PPD, поворот, касания, Wi-Fi, Bluetooth; `ws check steam` — `@steam`
    смонтирован.
-5. **Железо.** `system/hardware/legion-go.nix`, `ws-suspend swap-setup 16g`
+5. **Железо.** Остальное в `system/hardware/legion-go.nix` (база —
+   с этапа 4), `ws-suspend swap-setup 16g`
    (если `ws btrfs make` уже перенёс swapfile установщика другого размера:
    `sudo swapoff /swap/swapfile`, `sudo rm /swap/swapfile`, затем swap-setup).
    Проверить:
@@ -391,7 +395,12 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
    - есть ли hwmon вентилятора и `charge_types` (лимит заряда; включать
      ли — решить по результату);
    - zswap: включён, zstd, swapfile активен;
-   - звук на свёртке, после сна (известный шум первые ~30 с).
+   - звук на свёртке: sink «Legion GO» по умолчанию, громкость
+     аппаратного sink (`alsa_output.pci-0000_c2_00.6`) — 100% (`wpctl
+     set-volume`); если звука нет — имя узла в `pw-cli ls Node` (адрес PCI
+     в правилах — из Bazzite); после сна (известный шум первые ~30 с);
+   - sysctl (`sysctl kernel.split_lock_mitigate`), планировщики
+     (`cat /sys/block/nvme0n1/queue/scheduler` — kyber).
 6. **Game Mode.** Содержимое `system/gaming.nix` → `wsgame install`
    (пакеты и sddm) → `ws system apply` (SDDM вместо GDM) → первый запуск
    Steam в GNOME (`@steam` уже есть с этапа 4). Проверить:
