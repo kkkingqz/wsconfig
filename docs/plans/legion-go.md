@@ -76,10 +76,36 @@ hid-lenovo-go     настройка контроллеров через sysfs  
 `hid-lenovo-go`. InputPlumber работает с контроллерами через hidraw и без
 этого драйвера.
 
-**Мы:** generic-ядро Ubuntu. Оно подписано, Secure Boot можно не
-выключать. Ядро OGC — только если упрёмся в конкретную проблему: его
-пришлось бы собирать в `.deb` в podman и подписывать MOK, как t2bce, а это
-дорого.
+Своё ядро не собираем (решение 4). Готовые варианты для Ubuntu 26.04
+(2026-10-10):
+
+```text
+ядро                  версия  Secure Boot  обновления          для Go 1
+Ubuntu generic        7.0     подписано    Canonical           всё, кроме hid-lenovo-go
+                                                               и лимита заряда
+Ubuntu HWE из 26.10   7.3     подписано    Canonical           всё; 26.10 выходит 15.10,
+                                                               для 26.04 — по обычному
+                                                               графику: hwe-edge, затем
+                                                               26.04.2 (~февраль 2027)
+Zabbly                stable  нет          apt, еженедельно    всё; конфиг Ubuntu, без
+                                                               патчей Ubuntu
+XanMod MAIN           7.2.9   нет          apt (resolute)      всё; x64v3, BBRv3, свои
+                                                               правки
+Liquorix              zen     нет          PPA                 всё; 1000 Гц и вытеснение
+                                                               ради отклика, батарее хуже
+kernel.ubuntu.com     любая   нет          нет                 только для отладки
+OGC, CachyOS          —       —            .deb нет            —
+```
+
+Что даёт Go 1 ядро новее 7.0: лимит заряда 80% (`charge_types` в
+power_supply, lenovo-wmi-other, 7.2), лимиты температуры CPU/GPU (7.2),
+`hid-lenovo-go` (RGB и настройки контроллеров, 7.1).
+
+**Мы (рекомендация):** generic 7.0 на старте, затем HWE 7.3, как только он
+выйдет для 26.04: подписан, обновляется Canonical, Secure Boot остаётся.
+Из сторонних ближе всего к Ubuntu Zabbly (тот же конфиг, без своих
+патчей). Но ради неё придётся выключить Secure Boot, поэтому брать её стоит,
+только если лимит заряда нужен раньше HWE.
 
 ## 2.2 Графика и игровые библиотеки
 
@@ -106,23 +132,70 @@ OpenXR, libFAudio и umu-launcher. Пакет `gamemode` Bazzite наоборо�
 | InputPlumber (ShadowBlip) | `50-legion_go.yaml`: исходные устройства скрыты, вместо них виртуальный контроллер Steam Deck (`deck-uhid`) с гироскопом, задними кнопками и Legion L/R | `.deb` из релиза (0.81.0), версия и sha256 закреплены |
 | PowerStation | TDP для устройств без WMI-драйвера | для 83E1 не нужен (`steamos-manager-hardware`). Не ставим |
 | powerbuttond | короткое нажатие питания — сон через Steam, долгое — меню; logind при этом `HandlePowerKey=ignore` | собираем (Valve `holo/powerbuttond` 4.2, C) |
-| SDDM вместо GDM | autologin с `Relogin=true` в `gamescope-session-*.desktop`. Режим переключается файлами `/etc/sddm.conf.d/zz-holo-autologin.conf` и `zzt-holo-temp-login.conf`, это делает steamos-manager. Обвязка: `os-session-select` (вызывает Steam, внутри `steamosctl`), `gnome-session-oneshot`, `return-to-gamemode`, правила polkit | SDDM на этом хосте. Переключение режимов в steamos-manager умеет только SDDM. На mbp16 остаётся GDM |
+| SDDM вместо GDM | autologin с `Relogin=true` в `gamescope-session-*.desktop`. Режим переключается файлами `/etc/sddm.conf.d/zz-holo-autologin.conf` и `zzt-holo-temp-login.conf`, это делает steamos-manager. Обвязка: `os-session-select` (вызывает Steam, внутри `steamosctl`), `gnome-session-oneshot`, `return-to-gamemode`, правила polkit | SDDM на этом хосте, autologin в GNOME (решение 2; у Bazzite так же — `/etc/bazzite/desktop_autologin`). Переключение режимов в steamos-manager умеет только SDDM. На mbp16 остаётся GDM |
 | mangoapp (MangoHud) | оверлей производительности Steam в Game Mode (`STEAM_USE_MANGOAPP`) | в `mangohud` Ubuntu mangoapp нет. Собираем MangoHud в podman |
 | extest | `libextest.so`: Steam Input на Wayland-рабочем столе | берём (готовая `.so` релиза `ublue-os/extest`) |
 | Decky Loader, gamemode-news-hook, steam-notif-daemon, sdgyrodsu, jupiter-*, vpower, galileo-mura | плагины, новости, Deck | Decky — этап 9; остальное только для Deck |
 
-## 2.4 Питание
+Steam нативный или flatpak (решение 3):
 
-На портативных `bazzite-deck` маскирует `tuned` и `tuned-ppd`. TDP и
-профилем владеет steamos-manager. В GNOME тем же управляет расширение
-`tdp-control@opengamingcollective.org`, оно ходит в steamos-manager по DBus.
-Ещё Bazzite добавляет karg `amdgpu.ppfeaturemask` = текущее значение | `0x4000`
-(OverDrive: ручная частота GPU из Steam). ryzenadj и ryzen_smu
-(undervolt) есть, но по умолчанию выключены.
+```text
+                  нативный (steam-installer)         flatpak (Flathub)
+Game Mode         как в SteamOS и Bazzite: Steam     не рассчитан: из sandbox Steam
+                  вызывает на host                   не видит helpers host; нужны свои
+                  steamos-session-select, steamosctl шимы и права DBus, так никто
+                  и polkit-helpers                   не делает
+host              i386 multiarch: 32-битные Mesa,    только steam-devices
+                  glibc и другие (сотни МБ,
+                  обновляются вместе с amd64)
+Mesa в играх      Ubuntu 26.0.8, как у gamescope     runtime Flathub (обычно новее)
+Steam Input       extest через LD_PRELOAD            extest придётся класть в sandbox
+  в GNOME
+изоляция          нет                                sandbox
+AppArmor          профиль steam в Ubuntu — проверить не касается
+как на mbp16      нет (там flatpak)                  да
+```
 
-**Мы:** маскируем power-profiles-daemon на этом хосте (решение 6), ставим
-расширение, добавляем karg (из `0xfff7bfff` получается `0xfff7ffff`).
-Undervolt не трогаем.
+**Мы (рекомендация):** нативный Steam: в Game Mode другого
+работающего варианта нет.
+
+## 2.4 Питание: power-profiles-daemon или steamos-manager
+
+Оба пишут один и тот же `platform_profile` (lenovo-wmi-gamezone), поэтому
+вместе не работают: PPD сбрасывает режим `custom`, и ползунок TDP
+перестаёт действовать. Bazzite решает по образу. На `bazzite-deck` у
+портативных `tuned` и `tuned-ppd` замаскированы, владеет steamos-manager.
+На обычных образах работает `tuned-ppd`, а steamos-manager нет.
+
+```text
+              power-profiles-daemon 0.30        steamos-manager
+режимы        экономия, баланс,                 профили прошивки и custom
+              производительность
+TDP           только режимы прошивки            ползунок в ваттах: PPT через
+              (примерно 8 / 15 / 20 Вт)         lenovo-wmi-other, режим custom
+CPU           EPP amd-pstate по режиму          boost, governor
+GPU           экономия панели amdgpu (ABM)      ручная частота (ppfeaturemask),
+              в режиме экономии                 профиль питания GPU
+Game Mode     ползунка TDP в QAM нет            ползунок и профиль в QAM,
+                                                как в SteamOS
+GNOME         штатный переключатель режимов     расширение
+                                                tdp-control@opengamingcollective.org
+лимит заряда  нет                               для Go 1 нет (умеет Deck,
+                                                Ally, Claw)
+```
+
+Режим прошивки переключается и кнопками Legion L + Y, при любом владельце.
+karg `amdgpu.ppfeaturemask` = текущее значение | `0x4000` (OverDrive)
+нужен steamos-manager для частоты GPU. ryzenadj и ryzen_smu (undervolt) у
+Bazzite есть, но выключены.
+
+**Мы (рекомендация):** только steamos-manager, PPD замаскирован, как в
+`bazzite-deck`. Главное на устройстве — ползунок TDP в Game Mode, а в GNOME
+то же даёт tdp-control. Без PPD пропадают EPP по режиму и экономия панели.
+Если замер покажет разницу, их можно задать своими правилами. Если же Game
+Mode будет редким, наоборот — оставить PPD. Тогда нужно проверить, можно
+ли запретить steamos-manager трогать `platform_profile`: переключение
+режимов всё равно нужно от него. Karg добавляем, undervolt не трогаем.
 
 ## 2.5 Особенности 83E1 в Bazzite
 
@@ -175,14 +248,43 @@ rom-properties и GSConnect. input-remapper конфликтовал бы с
 InputPlumber и xremap. bees (дедупликация) — только если префиксы Proton
 займут много места. Lutris решаем вместе со слоем Windows (решение 5).
 
+## 2.8 HHD вместо этого стека
+
+HHD (Handheld Daemon, `hhd-dev/hhd`) раньше стоял в Bazzite. В текущем
+образе его нет: вместо него InputPlumber и steamos-manager (OGC). Сравнение
+для Go 1 на Ubuntu (HHD 4.1.12, `a87fb30`):
+
+| | HHD | InputPlumber + steamos-manager |
+| --- | --- | --- |
+| Контроллеры | эмуляция DualSense Edge или Xbox: гироскоп, задние кнопки, ярлыки Legion | виртуальный Steam Deck (`deck-uhid`): Steam видит Deck, со своими значками и кнопками Steam/QAM |
+| TDP | свой оверлей в gamescope (двойное нажатие боковой кнопки) и приложение для рабочего стола | ползунок в QAM Steam; в GNOME — tdp-control |
+| Вентилятор | кривые, полная скорость | нет, управляет прошивка |
+| Лимит заряда 80% | есть | нет (с ядром 7.2+ — `charge_types`) |
+| RGB | есть | нет из коробки (`hid-lenovo-go`, 7.1+) |
+| GNOME | заменяет power-profiles-daemon своим DBus: штатный переключатель режимов управляет TDP | PPD маскируется (2.4) |
+| Game Mode ↔ GNOME | не переключает | steamos-manager и SDDM |
+| Доступ к прошивке | `acpi_call` (внешний DKMS-модуль): прямые вызовы методов WMI в ACPI; при Secure Boot нужна подпись MOK, lockdown может мешать | драйверы ядра `lenovo-wmi-*`, Secure Boot не мешает |
+| Установка на Ubuntu | только скрипт `install.sh` через curl в локальный venv; ломается при обновлении Python, зависимости ставятся вручную; под Nix автор не рекомендует, советует свой дистрибутив Anatase | InputPlumber — `.deb`, steamos-manager — сборка, сессия — скрипты |
+| Кто развивает | в основном один автор; он против драйверов контроллеров в mainline | OGC (Bazzite, ChimeraOS и другие); steamos-manager — Valve; InputPlumber используется в SteamOS |
+
+Итог. По Lenovo-функциям HHD богаче: вентилятор, заряд, RGB, всё в одном
+оверлее, плюс штатный переключатель GNOME. Стек Bazzite лучше ложится на
+wsconfig: драйверы ядра вместо `acpi_call`, Secure Boot, `.deb` вместо
+curl, Steam работает как в SteamOS, режимы переключаются. Лимит заряда
+приходит с ядром 7.2+.
+
+**Мы (рекомендация):** стек Bazzite. HHD — запасной путь, если
+InputPlumber не справится с контроллерами Go 1 (в Bazzite Deck 44 у Go 1
+сейчас не работает гироскоп).
+
 # 3. Как это ложится на wsconfig
 
 ## 3.1 Хост
 
-`nix/hosts/lgo/` (имя — предложение):
+`nix/hosts/legiongo/` (решение 8):
 
 ```text
-facts.nix  hostname (как задан при установке), user king, wsconfig,
+facts.nix  hostname = "legiongo", user king, wsconfig,
            hardware = "legion-go", boot = "grub", rootUuid,
            kernelParams: quiet splash amdgpu.ppfeaturemask=0xfff7ffff
                          bluetooth.disable_ertm=1
@@ -199,11 +301,11 @@ i386 multiarch для Steam: `bootstrap.sh` должен уметь
 ```text
 файлы   sysctl.d, zram-generator.conf, udev (I/O), hwdb (F16),
         PipeWire/WirePlumber 83E1, logind.conf.d, modprobe.d,
-        sddm.conf.d (Wayland, autologin, Relogin), polkit,
+        sddm.conf.d (Wayland, autologin в GNOME, Relogin), polkit,
         /usr/libexec/os-session-select, platform.toml steamos-manager
         ([session] desktop = "gnome.desktop")
 units   inputplumber, steamos-manager, powerbuttond (user), sddm;
-        gdm3 и power-profiles-daemon — masked
+        gdm3 — masked; power-profiles-daemon — по решению 6
 ```
 
 `ws system apply` ставит файлы, как на mbp16. Проверки T2 и dGPU здесь не
@@ -244,10 +346,9 @@ wsgame mode game|desktop   то же, что steamosctl (для терминал
   Mode» (`steamosctl switch-to-game-mode`), экранная клавиатура.
 - **Flatpak.** Свой список на хост. Steam здесь нативный, flatpak-версия не
   ставится.
-- **Distrobox и Windows.** Бокс `proton` (umu) для игр не из Steam и
-  dev-боксы — по решению 5.
-- **VM.** Выключить на хосте: `bootstrap.sh` без `@vms` и libvirt
-  (решение 5).
+- **Distrobox, Windows, VM.** Какие слои ставить, выбирается отдельно до
+  установки (решение 5). Если VM не нужны, `bootstrap.sh` должен уметь
+  обходиться без `@vms` и libvirt.
 - **Масштаб в факты хоста.** DPI Wine (LogPixels 192 при 200%), масштаб
   Claude и AnyDesk.
 - **Проверки.** `ws check gaming`; verify — связи InputPlumber ↔
@@ -258,8 +359,8 @@ wsgame mode game|desktop   то же, что steamosctl (для терминал
 Btrfs по `helpws rebuild`: `@`, `@home`, `@cache`, `@tmp`, `@log`, `@nix`
 (плюс `@swap`, если будет hibernate). Отдельно — `@steam` в
 `~/.local/share/Steam`: клиент, библиотека, compatdata и shadercache вне
-Timeshift и backup, по аналогии с `@vms`. Сохранения игр без Steam Cloud
-лежат в compatdata, их отдельно прикрываем backup'ом (решение 7). microSD —
+Timeshift и backup, по аналогии с `@vms`. Отдельного backup сохранений нет
+(решение 7): что не в Steam Cloud, живёт только на устройстве. microSD —
 вторая библиотека Steam; форматирование из Game Mode (скрипты
 steamos-manager) — позже.
 
@@ -268,19 +369,21 @@ steamos-manager) — позже.
 Каждый этап заканчивается `ws checkpoint create NAME`. Перед ядром, загрузкой
 и питанием делается снимок Timeshift (главное правило roadmap).
 
-0. **Windows на устройстве, до установки.**
+0. **Windows на устройстве, последний раз (решение 1).** После установки
+   Windows не останется.
    - Посмотреть версию BIOS. Целевая — N3CN40WW (январь 2026). N3CN42WW
      (июнь 2026) Lenovo отозвала после случаев, когда устройство переставало
      загружаться: её не ставить.
    - Обновить прошивку контроллеров в Legion Space. fwupd обновлять
      контроллеры Go 1 не поддерживает: для них раньше предлагалась прошивка
      Go 2 (fwupd #9734).
+   - Лимит заряда 80% включить в Legion Space, если он нужен до ядра 7.2+.
+     Держится ли он без Windows, проверить на этапе 5.
    - В BIOS: UMA frame buffer задать вручную (6–8 ГБ — рекомендация
      legion-go-tricks против мерцания при авто), разрешить загрузку с USB.
      Secure Boot с ядром Ubuntu можно оставить.
-   - Нужны USB-C хаб, клавиатура и флешка. Решения 1 и 8 принять до
-     разметки.
-1. **Репозиторий на mbp16, без устройства.** Хост `lgo`, профиль
+   - Нужны USB-C хаб, клавиатура и флешка.
+1. **Репозиторий на mbp16, без устройства.** Хост `legiongo`, профиль
    `legion-go`, факты для слоёв из 3.4, каркас `gaming/` и `wsgame`, страница
    `helpws gaming`. На mbp16 ничего не меняется: home generation, дерево
    system и man — те же пути store, `ws check` без FAIL. CI зелёный.
@@ -288,7 +391,7 @@ steamos-manager) — позже.
    steamos-manager, MangoHud с mangoapp и powerbuttond. Скачать
    InputPlumber и extest. Проверить, что пакеты ставятся и снимаются в чистом
    контейнере Ubuntu 26.04.
-3. **Ubuntu на Legion Go.** Установка 26.04 с USB (разметка — решение 1),
+3. **Ubuntu на Legion Go.** Установка 26.04 с USB на весь диск,
    subvolumes, как в фазе 6. Инвентарь в `docs/history/` через `ws collect`
    и вручную:
    - DMI;
@@ -298,7 +401,9 @@ steamos-manager) — позже.
    - hwmon, iio (акселерометр, свет);
    - `aplay -l`, `pw-cli ls Node`;
    - `libinput list-devices`;
-   - `grep LENOVO_WMI /boot/config-*`, `SCHED_CLASS_EXT`.
+   - `grep LENOVO_WMI /boot/config-*`, `SCHED_CLASS_EXT`;
+   - `fwupdmgr get-devices`: видит ли fwupd BIOS. Без Windows BIOS больше
+     нечем обновлять.
 4. **База wsconfig (GDM, GNOME, без игрового слоя).** `bootstrap.sh` →
    `ws system apply` → `ws apply` → `ws check`, как в `helpws rebuild`.
    Поворот, касания, Wi-Fi и Bluetooth работают.
@@ -309,7 +414,7 @@ steamos-manager) — позже.
 6. **Game Mode.**
    - InputPlumber; Steam (первый запуск в GNOME); gamescope и сессия;
      steamos-manager; mangoapp; powerbuttond.
-   - Переход GDM → SDDM, autologin в Game Mode.
+   - Переход GDM → SDDM, autologin в GNOME (решение 2).
    - Проверить: переключение Game Mode ↔ GNOME в обе стороны; ползунок TDP
      и профиль в QAM; оверлей; сон из Game Mode; кнопка питания.
    - Контроллеры: снятые и пристёгнутые, гироскоп, задние кнопки, Legion
@@ -321,35 +426,38 @@ steamos-manager) — позже.
 8. **Recovery и backup.** Timeshift и пункты GRUB, проверка отката.
    `wsbackup` на Unraid без `@steam` — позже, отдельным шагом.
 9. **Опционально, каждое — с замером до и после.** Decky Loader, scx_lavd,
-   dmemcg-booster, hibernate, ядро OGC (если 7.0 чего-то не даст), Lutris
-   или Heroic, эмуляторы.
+   dmemcg-booster, hibernate, Lutris или Heroic, эмуляторы.
 
-# 5. Решения пользователя
+# 5. Решения
 
-Это рекомендации, решений пока нет:
+Приняты пользователем 2026-10-10:
 
-1. **Windows.** Оставить второй системой или стереть диск. BIOS и прошивку
-   контроллеров Go 1 официально обновляет только Windows (Legion Space).
-   Рекомендация: маленький раздел Windows, если SSD 1 ТБ; при 512 ГБ —
-   обновить всё на этапе 0 и стереть.
-2. **Режим при загрузке.** Рекомендация — Game Mode (как Bazzite Deck);
-   GNOME запускается из Steam.
-3. **Steam.** Рекомендация — нативный пакет (см. 2.3); на mbp16 остаётся
-   flatpak.
-4. **Ядро.** Рекомендация — generic 7.0 Ubuntu на старте. HWE с 7.1+
-   принесёт `hid-lenovo-go`: тогда проверить, что он не конфликтует с
-   InputPlumber (в Bazzite Deck 44 у Go 1 сейчас не работает гироскоп).
-5. **Набор слоёв.** VM — выключить. dev-боксы — по желанию. Бокс `proton`
-   — если будут игры не из Steam. Flatpak — короткий свой список.
-6. **Питание.** Маскировать power-profiles-daemon в пользу steamos-manager,
-   как Bazzite; в GNOME вместо переключателя профилей — tdp-control.
-7. **Библиотека Steam.** `@steam` вне снимков; нужен ли отдельный backup
-   compatdata.
-8. **Имя хоста** и каталог `nix/hosts/<name>/` (предложение — `lgo`).
+1. **Windows не будет.** Весь SSD — под Linux. То, что обновляется только
+   из Windows (BIOS, прошивка контроллеров), делаем на этапе 0.
+2. **Загрузка в GNOME.** Game Mode включается из GNOME («Return to Game
+   Mode»), обратно — «Switch to Desktop» в Steam.
+4. **Своё ядро не собираем.** Выбор из готовых — ниже.
+5. **Набор слоёв** выбирается в отдельной сессии, до установки.
+7. **Отдельного backup сохранений нет.**
+8. **Хост — `legiongo`.**
+
+Ждут выбора; сравнения — в 2.1, 2.3, 2.4 и 2.8, ниже рекомендации:
+
+- **Steam (3):** нативный.
+- **Ядро (4):** generic 7.0, затем HWE 7.3. Zabbly — только если лимит
+  заряда нужен раньше, ценой Secure Boot.
+- **Питание (6):** steamos-manager, PPD замаскирован.
+- **Экран входа (следствие 2):** SDDM с autologin в `gnome.desktop`, как в
+  Bazzite с `desktop_autologin`. Режимы переключаются без экрана входа. С
+  GDM Game Mode пришлось бы выбирать на экране входа, а возвращаться —
+  через logout.
+- **HHD или стек Bazzite:** стек Bazzite.
 
 # 6. Риски
 
 - BIOS N3CN42WW: не ставить ни из Windows, ни через fwupd.
+- Без Windows BIOS обновляется только через fwupd, если Lenovo публикует
+  капсулы в LVFS. Проверить на этапе 3.
 - Прошивка контроллеров через fwupd на Go 1: не обновлять.
 - Без Mesa Valve может не работать ограничитель FPS gamescope (2.2).
 - gamescope 3.16.20 старше того, на что рассчитан текущий клиент Steam.
@@ -374,5 +482,10 @@ steamos-manager) — позже.
 - InputPlumber: <https://github.com/ShadowBlip/InputPlumber>
 - legion-go-tricks: <https://github.com/aarron-lee/legion-go-tricks>
 - fwupd #9734: <https://github.com/fwupd/fwupd/issues/9734>
+- HHD: <https://github.com/hhd-dev/hhd>
+- Zabbly: <https://github.com/zabbly/linux>; XanMod: <https://xanmod.org/>;
+  Liquorix: <https://liquorix.net/>
+- Ubuntu 26.10 с Linux 7.3:
+  <https://www.phoronix.com/news/Ubuntu-26.10-With-Linux-7.3>
 - Отзыв BIOS N3CN42WW:
   <https://www.notebookcheck.net/Lenovo-quietly-removes-BIOS-update-that-bricked-Legion-Go-handhelds-but-affected-users-are-still-left-with-unusable-devices.1363023.0.html>

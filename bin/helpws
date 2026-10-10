@@ -34,7 +34,7 @@ case "$topic" in
     plan-t2) open_title ws-plan-t2 ;;
     plan-dgpu|dgpu|t2gmux) open_title ws-plan-dgpu ;;
     plan-final) open_title ws-plan-final ;;
-    plan-legion-go|legion-go|lgo) open_title ws-plan-legion-go ;;
+    plan-legion-go|legion-go|legiongo) open_title ws-plan-legion-go ;;
     history-gnome|plan-gnome) open_title ws-history-gnome ;;
     history-flatpak|plan-flatpak) open_title ws-history-flatpak ;;
     history-distrobox|plan-dev) open_title ws-history-distrobox ;;
