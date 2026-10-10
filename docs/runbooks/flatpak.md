@@ -25,6 +25,16 @@ bin/wsflatpak           владелец: install, apply, check
 приложения и применяет overrides; overrides управляемого приложения сначала
 сбрасываются, так что строка, убранная из `overrides.txt`, исчезает.
 
+Если управляемые приложения ещё не установлены, `apply` выводит их список и
+спрашивает «Поставить все? [Y/n]». На `n` открывается список с галочками:
+↑/↓ выбирают строку, Space ставит и снимает галочку, `a` переключает все,
+Enter ставит отмеченные, Esc/q отменяет. Снятые приложения запоминаются для
+этой машины в `~/.local/state/workstation/flatpak/skipped`: в `apps.txt` они
+остаются, `apply` о них больше не спрашивает, а `check` показывает их как
+INFO, не FAIL. Вернуть их: `wsflatpak apply --select` (спросит обо всех
+неустановленных, пропущенные будут без галочки) или `wsflatpak install APP`.
+Без терминала (вывод в pipe, cron) `apply` ставит все, кроме пропущенных.
+
 Remotes: `flathub`, `flatpark` (Claude Desktop). Новый remote — строка
 `NAME = "URL.flatpakrepo";` в `remotes` файла `flatpak/flatpak.nix`
 (`wsflatpak remote-add NAME URL` печатает её), затем `ws switch &&

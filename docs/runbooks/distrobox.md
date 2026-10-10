@@ -57,7 +57,7 @@ Digest (`repo@sha256:…`) тоже поддерживается.
 wsbox list | status [NAME] | apps [NAME]
 wsbox check [--json]
 wsbox dry-run [NAME]
-wsbox apply [NAME]            создать недостающие, восстановить экспорты
+wsbox apply [--select|NAME]   создать недостающие, восстановить экспорты
 wsbox update [NAME...]        пакеты внутри (distrobox upgrade)
 wsbox recreate NAME           новый rootfs, тот же HOME
 wsbox remove NAME
@@ -67,6 +67,15 @@ wsbox export NAME APP | unexport NAME APP
 
 `apply` не трогает существующий контейнер. `recreate` и `remove` меняют
 только rootfs; описание в `distrobox.nix` и HOME остаются.
+
+Если контейнеров ещё нет, `apply` без имени выводит их список (имя и образ) и
+спрашивает «Поставить все? [Y/n]». На `n` открывается список с галочками:
+Space ставит и снимает галочку, `a` переключает все, Enter создаёт
+отмеченные, Esc/q отменяет. Снятые контейнеры запоминаются для этой машины в
+`~/.local/state/workstation/distrobox/skipped`: `apply` о них больше не
+спрашивает, а `check` показывает их как INFO. Вернуть их: `wsbox apply
+--select` (пропущенные будут без галочки) или `wsbox apply NAME`. Без
+терминала создаются все, кроме пропущенных.
 
 В Fish + Ghostty `wsbox enter NAME`, `distrobox enter NAME` и
 `distrobox-enter -n NAME` меняют обычный цвет текста до выхода из контейнера.

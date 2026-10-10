@@ -32,6 +32,13 @@ REMOTES = CFG / "remotes.conf"
 OVERRIDES = CFG / "overrides"
 DESKTOP_OVERRIDES = CFG / "desktop"
 USER_APPLICATIONS = Path.home() / ".local/share/applications"
+# Managed apps left out on this machine (lib/ws_select.py): apply does not
+# ask about them again, check reports them as info.
+SKIPPED = Path.home() / ".local/state/workstation/flatpak/skipped"
+SELECT_HINT = "wsflatpak apply --select"
+
+sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
+import ws_select  # noqa: E402
 
 
 def run(args, check=True, capture=False):
@@ -900,6 +907,11 @@ def cmd_check(json_mode=False):
     def fail(text):
         report("fail", text)
 
+    def info(text):
+        messages.append({"level": "info", "text": text})
+        if not json_mode:
+            print(f"  {'INFO':<5} {text}")
+
     def finish():
         status = "fail" if counts["fail"] else "warn" if counts["warn"] else "pass"
         if json_mode:
@@ -911,6 +923,8 @@ def cmd_check(json_mode=False):
         else:
             print(f"\n  PASS={counts['pass']} WARN={counts['warn']} FAIL={counts['fail']}")
         return 1 if counts["fail"] else 0
+
+    skipped = set(ws_select.read_skipped(SKIPPED))
 
     if not shutil.which("flatpak"):
         fail("flatpak installed")
@@ -980,7 +994,10 @@ def cmd_check(json_mode=False):
             fail(f"managed app remote is not declared: {app}: {remote}")
 
         if not installed_user(app):
-            fail(f"managed app missing: {app}")
+            if app in skipped:
+                info(f"managed app skipped on this machine: {app} ({SELECT_HINT})")
+            else:
+                fail(f"managed app missing: {app}")
             continue
 
         passed(f"managed app installed: {app}")
@@ -1040,7 +1057,7 @@ def cmd_check(json_mode=False):
     for app in override_apps:
 
         if not installed_user(app):
-            if override_file(app).exists():
+            if override_file(app).exists() and app not in skipped:
                 warn(f"managed override for non-installed app: {app}")
             continue
 
@@ -1188,7 +1205,7 @@ def parse_remotes():
     return out
 
 
-def cmd_apply():
+def cmd_apply(reselect=False):
     need_flatpak()
 
     for name, url in parse_remotes():
@@ -1203,7 +1220,18 @@ def cmd_apply():
             ]
         )
 
+    missing = [(app, remote) for remote, app in managed_entries()
+               if not installed_user(app)]
+    chosen = ws_select.choose(missing, SKIPPED, SELECT_HINT,
+                              "приложения Flatpak", reselect)
+    if chosen is None:
+        print("wsflatpak: выбор отменён, ничего не установлено", file=sys.stderr)
+        return 1
+    skipped = {app for app, _ in missing} - set(chosen)
+
     for remote, app in managed_entries():
+        if app in skipped:
+            continue
         if not installed_user(app):
             print(f"Installing managed app: {remote} {app}")
             run(
@@ -1227,7 +1255,7 @@ def cmd_apply():
 
         if installed_user(app):
             apply_override(app)
-        else:
+        elif app not in skipped:
             print(
                 f"WARNING: override exists for non-installed app: {app}",
                 file=sys.stderr,
@@ -1338,6 +1366,11 @@ Runtime устанавливается для пользователя, даже
 """,
     "apply": """Добавляет объявленные user remotes, устанавливает отсутствующие приложения
 и обеспечивает user runtime для всех установленных веток управляемых приложений.
+Об отсутствующих спрашивает «Поставить все? [Y/n]»; на n — список, где Space
+ставит и снимает галочку. Снятые запоминаются для этой машины
+(~/.local/state/workstation/flatpak/skipped): apply о них больше не спрашивает,
+check показывает их как INFO. --select спрашивает снова и о пропущенных.
+Без терминала ставит все, кроме пропущенных.
 Затем сбрасывает их overrides, применяет объявленные значения и запускает check.
 Перед apply выполните ws switch, чтобы собрать изменения конфигурации.
 Ссылки на свои .desktop устанавливаются через ws switch.
@@ -1447,8 +1480,12 @@ ws switch собирает эти списки; apply применяет соб�
     q = command("check")
     q.add_argument("--json", action="store_true", help="вывести результат в JSON")
 
-    for name in ("status", "test", "apply"):
+    for name in ("status", "test"):
         command(name)
+
+    q = command("apply")
+    q.add_argument("--select", action="store_true",
+                   help="снова спросить и о пропущенных на этой машине приложениях")
 
     q = command("help")
     q.add_argument("command", nargs="?", choices=tuple(sp.choices), metavar="COMMAND",
@@ -1516,7 +1553,7 @@ def main():
     elif ns.cmd == "test":
         raise SystemExit(cmd_test())
     elif ns.cmd == "apply":
-        raise SystemExit(cmd_apply())
+        raise SystemExit(cmd_apply(ns.select))
 
 
 if __name__ == "__main__":

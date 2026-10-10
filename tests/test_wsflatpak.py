@@ -124,8 +124,10 @@ class UserRuntimeTests(unittest.TestCase):
         self.g = runpy.run_path(str(SCRIPT))["cmd_install"].__globals__
         self.g.update(APPS=cfg / "apps.conf", REMOTES=cfg / "remotes.conf",
                       OVERRIDES=cfg / "overrides", APPS_LIST=root / "apps.txt",
-                      cmd_check=lambda: 0)
+                      SKIPPED=root / "skipped", cmd_check=lambda: 0)
         self.addCleanup(patch.stopall)
+        # No terminal: apply chooses every app that is not skipped.
+        patch.object(self.g["ws_select"], "open_tty", return_value=None).start()
         patch("shutil.which", return_value="/fake/flatpak").start()
         self.output = contextlib.redirect_stdout(io.StringIO())
         self.output.__enter__()
@@ -164,6 +166,26 @@ class UserRuntimeTests(unittest.TestCase):
         state = FlatpakState(system_runtime=True, app=True)
         self.execute(state, "apply")
         self.assertTrue(state.user_runtime)
+
+    def test_apply_without_terminal_installs_missing_app(self):
+        state = FlatpakState(system_runtime=True)
+        self.execute(state, "apply")
+        self.assertTrue(state.app)
+
+    def test_apply_leaves_skipped_app_alone(self):
+        state = FlatpakState(system_runtime=True)
+        self.g["SKIPPED"].write_text(APP + "\n")
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            self.execute(state, "apply")
+        self.assertFalse(state.app)
+        self.assertIn("wsflatpak apply --select", err.getvalue())
+        self.assertEqual(self.g["SKIPPED"].read_text(), APP + "\n")
+
+    def test_skip_of_installed_app_is_dropped(self):
+        state = FlatpakState(system_runtime=True, app=True)
+        self.g["SKIPPED"].write_text(APP + "\n")
+        self.execute(state, "apply")
+        self.assertFalse(self.g["SKIPPED"].exists())
 
     def test_runtime_install_failure_propagates(self):
         state = FlatpakState(system_runtime=True)

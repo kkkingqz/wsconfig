@@ -144,6 +144,11 @@ for cmd in status dry-run apply update create enter run stop remove recreate app
 end
 
 complete -c wsbox \
+    -n "__wsbox_needs_box apply" \
+    -l select \
+    -d 'Ask about containers skipped on this machine too'
+
+complete -c wsbox \
     -n '__wsbox_using_command export' \
     -a '(__wsbox_current_export_aliases)' \
     -d 'Managed application alias'

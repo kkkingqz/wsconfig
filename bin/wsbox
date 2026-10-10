@@ -10,6 +10,11 @@ manifest="${XDG_RUNTIME_DIR:-/tmp}/wsbox-$(id -u)/containers.ini"
 exports_manifest="$cfg/exports.ini"
 boxes_manifest="$cfg/boxes.ini"
 bin_dir="$(dirname "$(readlink -f "$0")")"
+# Managed containers left out on this machine (lib/ws_select.py): apply does
+# not ask about them again, check reports them as info.
+skipped_file="$HOME/.local/state/workstation/distrobox/skipped"
+select_py="$bin_dir/../lib/ws_select.py"
+select_hint="wsbox apply --select"
 
 usage() {
     cat <<'USAGE'
@@ -18,7 +23,7 @@ Usage:
   wsbox status [NAME]
   wsbox check [--json]
   wsbox dry-run [NAME]
-  wsbox apply [NAME]
+  wsbox apply [--select | NAME]
   wsbox update [NAME...]
   wsbox create NAME
   wsbox enter NAME
@@ -147,6 +152,10 @@ export_aliases() {
 
 export_source() {
     ini_value "$exports_manifest" "$1" "$2"
+}
+
+is_skipped() {
+    [[ -r "$skipped_file" ]] && grep -Fxq -- "$1" "$skipped_file"
 }
 
 is_managed() {
@@ -527,7 +536,11 @@ cmd_check() {
         expected_home="$(manifest_value "$name" home)"
 
         if ! container_exists "$name"; then
-            fail "managed container missing: $name"
+            if is_skipped "$name"; then
+                info "managed container skipped on this machine: $name ($select_hint)"
+            else
+                fail "managed container missing: $name"
+            fi
             continue
         fi
 
@@ -636,27 +649,53 @@ cmd_dry_run() {
 }
 
 cmd_apply() {
-    local name="${1:-}"
-    local box
-    local args=(
-        create
-        --file "$manifest"
-    )
+    local name="" box chosen rc=0
+    local -a items=() select_args=()
+
+    case "${1:-}" in
+        --select) select_args=(--select) ;;
+        "") ;;
+        *) name="$1" ;;
+    esac
 
     if [[ -n "$name" ]]; then
         require_managed "$name"
-        args+=(--name "$name")
-    fi
-
-    distrobox assemble "${args[@]}"
-
-    if [[ -n "$name" ]]; then
+        distrobox assemble create --file "$manifest" --name "$name"
         apply_exports_for "$name"
-    else
-        while IFS= read -r box; do
-            [[ -n "$box" ]] && apply_exports_for "$box"
-        done < <(managed_boxes)
+        # Asked for by name: no longer skipped on this machine.
+        python3 "$select_py" --state "$skipped_file" --hint "$select_hint" --unskip -- "$name"
+        return
     fi
+
+    # Containers that do not exist yet: all of them, or the ones picked in
+    # the checklist; the others are remembered as skipped.
+    while IFS= read -r box; do
+        if [[ -n "$box" ]] && ! container_exists "$box"; then
+            items+=("$box"$'\t'"$(manifest_value "$box" image)")
+        fi
+    done < <(managed_boxes)
+
+    chosen="$(python3 "$select_py" --state "$skipped_file" --hint "$select_hint" \
+        --what "контейнеры Distrobox" "${select_args[@]}" -- "${items[@]}")" || rc=$?
+    case "$rc" in
+        0) ;;
+        2) die "выбор отменён, ничего не создано" ;;
+        *) exit "$rc" ;;
+    esac
+
+    # One container at a time, in manifest order (assemble skips existing
+    # ones; the list holds only missing ones).
+    while IFS= read -r box; do
+        if [[ -n "$box" ]]; then
+            distrobox assemble create --file "$manifest" --name "$box"
+        fi
+    done <<<"$chosen"
+
+    while IFS= read -r box; do
+        if [[ -n "$box" ]]; then
+            apply_exports_for "$box"
+        fi
+    done < <(managed_boxes)
 }
 
 # Packages inside the containers, with their own package manager
