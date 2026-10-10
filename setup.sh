@@ -192,6 +192,8 @@ new_host() {
   # (gaming/apt.txt; helpws plan-legion-go).
   nativeSteam = "$steam";
   gameMode = "$game";
+  # Display scale of GNOME; Claude, ChatGPT and Wine DPI follow it.
+  displayScale = "1";
   boot = "grub";
   kernelParams = [ "quiet" "splash" ];
 }

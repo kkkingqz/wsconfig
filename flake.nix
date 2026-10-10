@@ -69,6 +69,8 @@
         { name = "system-${host}"; value = mkSystem host; }
       ]) // {
         inherit man;
+        scale = assert import ./lib/test-scale.nix { inherit lib; };
+          pkgs.writeText "scale" "lib/scale.nix: sizes by the display scale";
         ws-marks = assert import ./lib/test-ws-marks.nix { inherit lib; };
           pkgs.writeText "ws-marks" "lib/ws_marks.nix reads the workstation marks";
         widgets-manifest = assert import ./widgets/test-manifest.nix { inherit lib; };

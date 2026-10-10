@@ -17,6 +17,8 @@
 # check then compares the repo digest.
 { config, lib, pkgs, facts, ... }:
 let
+  # LogPixels of new prefixes by the display scale (lib/scale.nix).
+  scale = import ../lib/scale.nix { inherit lib facts; };
   # The same for every container unless a container sets it.
   defaults = {
     init = false;
@@ -82,11 +84,12 @@ let
       # icoutils: icons of portable programs (wswin portable).
       packages = [ "base-devel" "git" "icoutils" "mesa" "vulkan-intel" "vulkan-radeon" ];
       initHooks = [ ntsyncHook (pacmanHook [ "wine" "wine-mono" "wine-gecko" "winetricks" ]) ];
-      # LogPixels 144: the Wayland driver does not scale (display scale 1.5).
-      windows = { profile = "wine"; driver = "wayland"; dpi = 144; };
+      # LogPixels 96 x scale: the Wayland driver does not scale (144 at 1.5).
+      windows = { profile = "wine"; driver = "wayland"; dpi = scale.dpi; };
     }
     {
-      # Wine through XWayland (xwayland-native-scaling, so LogPixels 192):
+      # Wine through XWayland (xwayland-native-scaling, so LogPixels 128 x
+      # scale, 192 at 1.5):
       # programs the Wayland driver does not suit (none yet). WineHQ stable,
       # amd64 only (WoW64), from the hook.
       name = "wine";
@@ -99,7 +102,7 @@ let
       ];
       # WineHQ has no Mono/Gecko packages: wineboot would ask to download
       # them; winetricks adds them to a prefix that needs them.
-      windows = { profile = "wine"; driver = "x11"; dpi = 192; initOverrides = "mscoree,mshtml="; };
+      windows = { profile = "wine"; driver = "x11"; dpi = scale.dpiX11; initOverrides = "mscoree,mshtml="; };
     }
     {
       # Games and heavy 3D: umu-launcher runs Proton (UMU-Proton by default)
@@ -115,8 +118,8 @@ let
       initHooks = [ ntsyncHook ];
       gpu = "amd";
       # Proton draws through XWayland (xwayland-native-scaling): LogPixels
-      # 144 for the display scale 1.5, as in wine-wayland.
-      windows = { profile = "proton"; dpi = 144; };
+      # 96 x scale, as in wine-wayland.
+      windows = { profile = "proton"; dpi = scale.dpi; };
     }
     {
       # Manual kernel/module builds; the t2bce modules themselves are built by

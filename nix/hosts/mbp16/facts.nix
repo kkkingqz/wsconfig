@@ -20,6 +20,9 @@
   # Game Mode session, gamescope + Steam as in SteamOS (gaming/apt.txt,
   # system/gaming.nix); "yes" needs nativeSteam = "yes".
   gameMode = "no";
+  # Display scale of GNOME (set in Settings, monitors.xml): the sizes GNOME
+  # does not scale itself follow it (lib/scale.nix: Claude, ChatGPT, Wine DPI).
+  displayScale = "1.5";
   boot = "refind-grub-recovery";
   kernelParams = [
     "quiet" "splash" "intel_iommu=on" "iommu=pt" "pm_async=off"

@@ -13,6 +13,9 @@
   # session (gaming/apt.txt, system/gaming.nix; helpws plan-legion-go).
   nativeSteam = "yes";
   gameMode = "yes";
+  # 200% on the 8.8" 2560x1600 panel (helpws plan-legion-go, 4.5): Claude,
+  # ChatGPT and the Wine DPI follow it (lib/scale.nix).
+  displayScale = "2";
   boot = "grub";
   # Not for xremap (keyboard/xremap.nix): the virtual keyboard InputPlumber
   # makes of the controller (src/input/target/keyboard.rs). The controllers

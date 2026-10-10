@@ -11,6 +11,8 @@
   # Neither native Steam nor the Game Mode session in the test VM.
   nativeSteam = "no";
   gameMode = "no";
+  # Display scale of the VM window (lib/scale.nix).
+  displayScale = "1";
   boot = "grub";
   kernelParams = [ "quiet" "splash" ];
 }

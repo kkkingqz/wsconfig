@@ -13,9 +13,13 @@
 # ones, so a key removed here disappears too. Desktop overrides are linked
 # into ~/.local/share/applications by home-manager, on a workstation whose
 # mark for the app is yes (elsewhere the launcher would start nothing).
-{ lib, pkgs, wsHost, ... }:
+{ lib, pkgs, wsHost, facts, ... }:
 let
   marks = import ../lib/ws_marks.nix { inherit lib; };
+  # @claude@, @chatgpt@ in the desktop files: the scale factors of the host.
+  scale = import ../lib/scale.nix { inherit lib facts; };
+  fill = f: pkgs.writeText (baseNameOf f) (builtins.replaceStrings
+    [ "@claude@" "@chatgpt@" ] [ scale.claude scale.chatgpt ] (builtins.readFile f));
 
   remotes = {
     flathub = "https://dl.flathub.org/repo/flathub.flatpakrepo";
@@ -79,7 +83,8 @@ let
     // lib.optionalAttrs (bus != { }) { "Session Bus Policy" = bus; }
   ) (lib.groupBy (x: x.app) overrideLines);
 
-  # Full files, ours: Claude on Wayland at scale 1.5 with its URL handler;
+  # Full files, ours: Claude on Wayland at the factor of lib/scale.nix with its
+  # URL handler; ChatGPT likewise;
   # Steam through ws-gpu (the AMD dGPU when the boot has it, Intel otherwise),
   # steam:// included, with -console.
   desktop = [
@@ -108,7 +113,7 @@ let
   '' + lines (app: o: ''
     cp ${pkgs.writeText "${app}.conf" (toIni o)} $out/overrides/${app}.conf
   '') overrides + lib.concatMapStrings (f: ''
-    cp ${f} $out/desktop/${baseNameOf f}
+    cp ${fill f} $out/desktop/${baseNameOf f}
   '') desktop);
 in
 {

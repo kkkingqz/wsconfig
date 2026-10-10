@@ -331,12 +331,12 @@ wsgame mode game|desktop   steamosctl (терминал, ssh)
   Game Mode собираются без бокса (4.4).
 - **VM** — факт `vm` в `facts.nix`: при `"no"` `bootstrap.sh` не ставит
   `virt/apt.txt`, `@vms`, libvirt и группу `libvirt`, `ws check virt` молчит.
-- **Масштаб** — только если эти приложения и боксы получат `legiongo=yes`:
-  `--force-device-scale-factor` в `.desktop` Claude (1.5) и ChatGPT
-  (1.333333, для экрана 1.5) — один файл на все машины, для 2.0 нужен
-  свой вариант или факт хоста; DPI префиксов `wine-wayland` и `proton`
-  (144 → 192) — в `distrobox.nix`; `GDK_SCALE=2` AnyDesk (override) при
-  200% подходит.
+- **Масштаб** (сделано 2026-10-10) — факт `displayScale` в `facts.nix`
+  (legiongo `"2"`, mbp16 `"1.5"`), из него `lib/scale.nix`:
+  `--force-device-scale-factor` Claude (2.25/scale) и ChatGPT (2/scale) в
+  своих `.desktop`, DPI префиксов `wine-wayland` и `proton` (96×scale) и
+  `wine` (128×scale). На mbp16 значения прежние; на legiongo — 1.125, 1,
+  192, 256. `GDK_SCALE=2` AnyDesk (override) при 200% подходит.
 - **git на устройстве.** `setup.sh` входит в GitHub (`gh auth login` в
   браузере, код вводит пользователь) и сам пушит хост и пометки. Позже
   `ws switch` коммитит пометки локально: перед ним на любой машине —

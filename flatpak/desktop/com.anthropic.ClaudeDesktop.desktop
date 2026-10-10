@@ -1,9 +1,11 @@
 [Desktop Entry]
+# The scale factor is 2.25 / displayScale of the host, 2.25 in total
+# (lib/scale.nix; flatpak.nix fills it in).
 Name=Claude
 Comment=Desktop app for Claude
 GenericName=AI Assistant
 Keywords=AI;Chat;Assistant;Claude;Code;LLM;
-Exec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=claude-desktop --file-forwarding com.anthropic.ClaudeDesktop --ozone-platform=wayland --force-device-scale-factor=1.5 @@u %U @@
+Exec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=claude-desktop --file-forwarding com.anthropic.ClaudeDesktop --ozone-platform=wayland --force-device-scale-factor=@claude@ @@u %U @@
 Icon=com.anthropic.ClaudeDesktop
 Type=Application
 Terminal=false
@@ -17,8 +19,8 @@ X-Flatpak=com.anthropic.ClaudeDesktop
 
 [Desktop Action NewChat]
 Name=New chat
-Exec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=claude-desktop com.anthropic.ClaudeDesktop --ozone-platform=wayland --force-device-scale-factor=1.5 claude://claude.ai/new
+Exec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=claude-desktop com.anthropic.ClaudeDesktop --ozone-platform=wayland --force-device-scale-factor=@claude@ claude://claude.ai/new
 
 [Desktop Action NewCode]
 Name=New Claude Code session
-Exec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=claude-desktop com.anthropic.ClaudeDesktop --ozone-platform=wayland --force-device-scale-factor=1.5 claude://code/new
+Exec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=claude-desktop com.anthropic.ClaudeDesktop --ozone-platform=wayland --force-device-scale-factor=@claude@ claude://code/new
