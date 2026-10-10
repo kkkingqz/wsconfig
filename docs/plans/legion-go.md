@@ -297,19 +297,26 @@ wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
   `all=ask`: первый `ws apply` на устройстве спрашивает «Поставить все?
   [Y/n]» или даёт список с галочками, ответы становятся пометками
   `legiongo=yes|no`. Пересмотреть потом — `wsflatpak apply --select`.
-- **Свои `.desktop` Flatpak** (`flatpak/desktop/`: Steam, Claude, ChatGPT)
-  `ws switch` сейчас ставит на всех машинах. На `legiongo` flatpak-Steam
-  стал бы неработающим пунктом рядом с нативным — ставить их только для
-  приложений с пометкой `yes` на этой машине.
+- **Свои `.desktop`** (25ff6a1): `ws switch` ставит файлы
+  `flatpak/desktop/` только для приложений с `yes` на этой машине, а
+  launchers `ws-win-NAME` — только где бокс помечен `yes`. На `legiongo`
+  пункта flatpak-Steam нет (`legiongo=no`).
+- **Overrides Flatpak** (306e244): у строк `flatpak/overrides.txt` свои
+  пометки; нынешние — `mbp16=yes all=yes`, то есть действуют и на
+  `legiongo` для установленных там приложений. Строку, которая там не
+  нужна, — пометить `legiongo=no` (`wsflatpak un…` на устройстве).
 - **Distrobox — пометки в `distrobox/hosts.txt`.** `t2bce-build` и
   `touchbar-build` нужны только на mbp16 — `all=no` (сделано 2026-10-10). Новый `gaming-build` —
   `mbp16=yes legiongo=yes all=no` (собирать можно на обеих). `arch`,
   `wine-wayland`, `wine`, `proton` — вопрос на первом `ws apply`.
 - **VM** — факт `vm` в `facts.nix`: при `"no"` `bootstrap.sh` не ставит
   `virt/apt.txt`, `@vms`, libvirt и группу `libvirt`, `ws check virt` молчит.
-- **Факты масштаба** — DPI Wine (LogPixels 192 при 200%), масштаб Claude и
-  AnyDesk — нужны, только если эти боксы и приложения получат
-  `legiongo=yes`.
+- **Масштаб** — только если эти приложения и боксы получат `legiongo=yes`:
+  `--force-device-scale-factor` в `.desktop` Claude (1.5) и ChatGPT
+  (1.333333, для экрана 1.5) — один файл на все машины, для 2.0 нужен
+  свой вариант или факт хоста; DPI префиксов `wine-wayland` и `proton`
+  (144 → 192) — в `distrobox.nix`; `GDK_SCALE=2` AnyDesk (override) при
+  200% подходит.
 - **git на устройстве.** `ws switch` коммитит пометки локально. Чтобы они
   дошли до mbp16, на `legiongo` нужен доступ к GitHub (`gh auth login` —
   вводит пользователь), а перед `ws switch` на любой машине — `git pull`.
@@ -338,8 +345,9 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
    - USB-C хаб, клавиатура, флешка с Ubuntu 26.04.
 1. **Репозиторий на mbp16.** Хост `legiongo` (4.1), `bootstrap.sh` (4.2),
    обе системные части (4.3), каркас `gaming/`, `wsgame` и контейнер
-   `gaming-build` (4.4), пометки и `.desktop` Flatpak, xremap и прочее из
-   4.5, `helpws gaming`. На mbp16 ничего не меняется: те же пути store для
+   `gaming-build` (4.4), xremap и прочее из 4.5, `helpws gaming`. Хост,
+   `source:`/`arch:`, факты `nativeSteam`/`gameMode`, пометки и `.desktop`
+   по пометкам уже сделаны (2026-10-10). На mbp16 ничего не меняется: те же пути store для
    home, system и man, `ws check` без FAIL, CI зелёный.
 2. **Пакеты на mbp16.** `wsbox apply gaming-build`, `wsgame build` и
    `wsgame fetch`; пакеты ставятся и снимаются в чистом контейнере Ubuntu
