@@ -155,7 +155,7 @@ sysctl     swappiness и page-cluster — умолчания ядра, подб�
 | MangoHud с mangoapp | оверлей производительности Steam (`STEAM_USE_MANGOAPP`); в `mangohud` Ubuntu mangoapp нет | сборка → `.deb` |
 | extest | `libextest.so`: Steam Input на Wayland-рабочем столе | релиз `ublue-os/extest` → `.deb` |
 | SDDM | autologin в `ubuntu.desktop`, `Relogin=true`; steamos-manager пишет `zz-holo-autologin.conf` и `zzt-holo-temp-login.conf` | apt, ставит `wsgame install` на этапе 6: при установке Ubuntu спрашивает display manager, до этого работает GDM; конфиги — системный слой |
-| обвязка сессии | `os-session-select` (Steam → `steamosctl`), «Return to Game Mode», polkit, `platform.toml` (`[session] desktop = "ubuntu.desktop"`, режим входа по умолчанию — desktop) | по образцу Bazzite, под `gnome-session --session=ubuntu` — системный слой |
+| обвязка сессии | `os-session-select` (Steam → `steamosctl`), «Return to Game Mode», autologin SDDM, `HandlePowerKey=ignore` — системный слой (`system/gaming.nix`, сделано 2026-10-10); `platform.toml` (`[session]`: `desktop = "ubuntu.desktop"`, `gamescope-session-steam.desktop`, `gamescope-session-plus@steam.service`) и device-файл 83E1 — в пакете steamos-manager | по образцу Bazzite, под `gnome-session --session=ubuntu`; polkit не нужен: `steamosctl` идёт через DBus steamos-manager, его policy — в пакете |
 
 Mesa — из Ubuntu (26.0.8). Сессия выставляет
 `STEAM_GAMESCOPE_DYNAMIC_FPSLIMITER`, рассчитанный на Mesa с патчами
@@ -257,12 +257,17 @@ system/hardware/legion-go.nix   сделано 2026-10-10 (ставит ws syste
                                 limits.d (nice), modprobe.d (sp5100_tco),
                                 PipeWire (свёртка) и WirePlumber 83E1; на
                                 этапе 5 — RGB, ICC, ASPM Wi-Fi по замеру
-system/gaming.nix               этап 6, при gameMode = "yes" (часть
-                                есть, пока пустая): sddm.conf.d,
-                                polkit, os-session-select, Return to Game
-                                Mode, platform.toml, logind.conf.d;
-                                units: sddm enabled, gdm3 masked,
-                                inputplumber, steamos-manager
+system/gaming.nix               сделано 2026-10-10, при gameMode = "yes":
+                                sddm.conf.d (autologin в ubuntu.desktop,
+                                Relogin, Wayland-greeter), os-session-select,
+                                return-to-gamemode и его .desktop
+                                (TryExec=steamosctl), logind.conf.d
+                                (HandlePowerKey=ignore). Без пакетов эти
+                                файлы ничего не делают, поэтому ставятся уже
+                                на этапе 4. Units не переключаются:
+                                display manager делает sddm сам при
+                                установке (debconf), сервисы включают их
+                                пакеты
 ```
 
 ## 4.4 Игровой слой `gaming/`, владелец `wsgame`
@@ -401,8 +406,9 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
      в правилах — из Bazzite); после сна (известный шум первые ~30 с);
    - sysctl (`sysctl kernel.split_lock_mitigate`), планировщики
      (`cat /sys/block/nvme0n1/queue/scheduler` — kyber).
-6. **Game Mode.** Содержимое `system/gaming.nix` → `wsgame install`
-   (пакеты и sddm) → `ws system apply` (SDDM вместо GDM) → первый запуск
+6. **Game Mode.** `wsgame install` (пакеты, sddm и compositor для его
+   Wayland-greeter — weston, по умолчанию SDDM) → reboot (SDDM вместо GDM)
+   → первый запуск
    Steam в GNOME (`@steam` уже есть с этапа 4). Проверить:
    - autologin в GNOME; «Return to Game Mode» и «Switch to Desktop» в обе
      стороны; не остаются ли процессы после переключения (если остаются —

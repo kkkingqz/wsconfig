@@ -1,0 +1,28 @@
+#!/bin/bash
+# Steam's "Switch to Desktop" and "Return to Gaming Mode" end here:
+# steamos-session-select of gamescope-session-steam execs it (helpws
+# plan-legion-go, 3.4). The switch itself is steamos-manager's: it writes
+# the SDDM autologin files and ends the session, SDDM logs in again. The
+# desktop is GNOME on Ubuntu; the default login mode stays desktop (boot
+# into GNOME), so going to Game Mode is a temporary switch.
+set -e
+
+desktop=ubuntu.desktop
+
+case "${1:-gamescope}" in
+    plasma-wayland-persistent|plasma-x11-persistent|desktop-persistent)
+        steamosctl set-default-login-mode desktop
+        steamosctl set-default-desktop-session "$desktop"
+        steamosctl switch-to-desktop-mode
+        ;;
+    plasma|plasma-wayland|plasma-x11|desktop)
+        steamosctl switch-to-desktop-mode "$desktop"
+        ;;
+    gamescope)
+        steamosctl switch-to-game-mode
+        ;;
+    *)
+        echo "os-session-select: unknown session: $1" >&2
+        exit 1
+        ;;
+esac

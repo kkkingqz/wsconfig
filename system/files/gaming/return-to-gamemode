@@ -1,0 +1,6 @@
+#!/bin/bash
+# "Return to Game Mode" of the GNOME desktop (helpws plan-legion-go, 3.4):
+# steamos-manager switches the session; GNOME ends and SDDM logs into Game
+# Mode. The default login mode stays desktop.
+set -e
+exec steamosctl switch-to-game-mode
