@@ -130,14 +130,79 @@ Liquorix 7.2.9
 `kernel.ubuntu.com/mainline` — без обновлений, только для отладки. У OGC и
 CachyOS пакетов `.deb` нет.
 
-**Мы (рекомендация):** Secure Boot выключен, поэтому главный минус
-сторонних ядер пропадает. Ближе всего к Ubuntu — Zabbly: тот же конфиг,
-почти чистый mainline. Он уже сейчас даёт выключение RGB через sysfs и
-лимит заряда. Generic-ядро Ubuntu остаётся в GRUB запасным пунктом. Когда
-для 26.04 выйдет HWE 7.3, можно вернуться на ядро Ubuntu. XanMod — только
-если замер покажет выигрыш от его настроек (250 Гц, THP always,
-x86-64-v3). Liquorix не подходит. Zabbly подключается своим источником apt
-с ключом: файлы в системном слое, не строка в `apt.txt`.
+Secure Boot выключен, поэтому главный минус сторонних ядер — отсутствие
+подписи — не мешает. Liquorix не подходит, ядро Ubuntu 7.0 лишено
+`hid-lenovo-go` и лимита заряда, HWE 7.3 для 26.04 ещё нет. Остаются Zabbly
+и XanMod.
+
+### Zabbly и XanMod (7.2.9, 2026-10-10)
+
+Оба собраны из одного и того же 7.2.9 (выпуск 2026-10-03), поэтому драйверы
+Go 1 (`lenovo-wmi-*`, `hid-lenovo-go`, quirk панели) у них одинаковые.
+Различаются патчи, конфиг и упаковка.
+
+```text
+                   Zabbly                          XanMod MAIN (x64v3)
+кто                Stéphane Graber (Incus),        Alexandre Frade, один
+                   коммерческая поддержка Zabbly   основной автор
+цель               свежий mainline с широкой       производительность
+                   поддержкой железа; под Incus    десктопа и игр
+патчи              только idmap для cephfs         BBRv3, le9uo, TCP collapse,
+                                                   full-cone NAT, ACS override,
+                                                   часть Clear Linux, опции CPU
+                                                   graysky, EC Steam Deck, binder
+конфиг             производная от Ubuntu,          свой
+                   «почти всё модулями»
+компилятор         под каждый релиз Ubuntu         clang 21 (Debian), без LTO
+                   (уточнить по /boot/config)
+архитектура        x86-64 (базовая)                x86-64-v3 (Zen 4 это умеет)
+таймер             как Ubuntu: HZ 1000,            HZ 250, NO_HZ_IDLE
+                   NO_HZ_FULL
+вытеснение         как Ubuntu: PREEMPT_LAZY        PREEMPT_LAZY (dynamic)
+                   (dynamic)
+cpufreq по умолч.  как Ubuntu: schedutil →         performance → amd-pstate-epp
+                   amd-pstate-epp в powersave,     в policy performance: EPP
+                   EPP задаёт PPD                  зафиксирован, запись даёт
+                                                   EBUSY, PPD им не управляет
+zswap              как Ubuntu: выключен            включён (lzo) — вдобавок к
+                                                   zram
+THP                как Ubuntu: madvise             always
+память             MGLRU                           MGLRU + le9uo (защита 15%
+                                                   анонимных и чистых страниц)
+TCP                как Ubuntu: cubic, BBR модулем  BBRv3 встроен, по умолчанию
+LSM                как Ubuntu: AppArmor по         AppArmor собран, но не в
+                   умолчанию (без патчей Ubuntu)   списке LSM: выключен
+sched_ext, ntsync  есть                            есть
+модули             сжаты как в Ubuntu (уточнить)   без сжатия
+DKMS               нужен gcc на host               нужен clang на host
+пакеты             linux-zabbly → image +          linux-xanmod-x64v3 → image +
+                   headers; ~640 МБ после          headers; ~600 МБ после
+                   установки; ещё linux-libc-dev   установки
+                   7.2.9 — заменит пакет Ubuntu,
+                   если тот стоит (нужен pin)
+версии             ждёт первого bugfix новой       MAIN — сразу; EDGE — новее
+                   ветки; 7.1.13, 7.2.4–7.2.9      (сейчас тоже 7.2.9);
+                   в репозитории                   7.2.4–7.2.9 в репозитории
+обновления         apt, раз в неделю               apt (resolute), по выходу stable
+```
+
+Под наши решения (PPD, zram, AppArmor Ubuntu) XanMod нужно поправить
+параметрами загрузки:
+
+- `cpufreq.default_governor=powersave` — иначе PPD не меняет EPP, а на
+  батарее это главное;
+- `zswap.enabled=0` — у нас zram;
+- `lsm=landlock,lockdown,yama,integrity,apparmor,bpf`, если AppArmor
+  нужен.
+
+Его плюсы — 250 Гц, le9uo, x86-64-v3, THP always — для Go 1 не измерены.
+Zabbly ведёт себя как ядро Ubuntu, только новее.
+
+**Мы (рекомендация):** Zabbly; generic-ядро Ubuntu остаётся запасным
+пунктом в GRUB. Когда для 26.04 выйдет HWE 7.3, можно вернуться на ядро
+Ubuntu. XanMod — эксперимент этапа 9 с теми же параметрами и замером
+батареи и FPS. Zabbly подключается своим источником apt с ключом и pin для
+`linux-libc-dev`: это файлы системного слоя, не строка в `apt.txt`.
 
 ## 2.2 Графика и игровые библиотеки
 
@@ -304,15 +369,14 @@ wsconfig: драйверы ядра вместо `acpi_call`, `.deb` вмест�
 curl, Steam работает как в SteamOS, режимы переключаются. Лимит заряда
 приходит с ядром 7.2+.
 
-**Мы (рекомендация):** стек Bazzite. HHD — запасной путь, если
-InputPlumber не справится с контроллерами Go 1 (в Bazzite Deck 44 у Go 1
-сейчас не работает гироскоп). Secure Boot выключен, так что `acpi_call` не
-требует подписи и lockdown не мешает.
+**Мы: стек Bazzite, от HHD отказались (решение 9).** RGB и вентилятор —
+без HHD, как ниже. Secure Boot выключен, так что `acpi_call`, если
+понадобится, не требует подписи, и lockdown не мешает.
 
 ### RGB без HHD
 
-Нужно только выключить подсветку стиков. InputPlumber RGB Go 1 не
-управляет.
+Нужно только выключить подсветку стиков. Разбираемся после установки
+(решение 9). InputPlumber RGB Go 1 не управляет.
 
 - **Ядро 7.1+** (`hid-lenovo-go`; Zabbly, XanMod, HWE 7.3): светодиод
   `/sys/class/leds/go:rgb:joystick_rings` — `enabled` = `false` (или
@@ -321,9 +385,8 @@ InputPlumber не справится с контроллерами Go 1 (в Bazz
 - **Ядро 7.0:** тот же HID-отчёт, что посылает HHD (`rgb_enable`):
   `05 06 70 02 {03 левый | 04 правый} 00 01` в hidraw контроллера с usage
   page `0xFFA0`. Маленький oneshot по udev на появление hidraw.
-- Сохраняет ли контроллер выключение сам (настройку из Legion Space или
-  после одной записи), проверить на этапе 6. Если сохраняет, правило
-  только подстраховывает.
+- Сохраняет ли контроллер выключение сам после одной записи, проверить на
+  этапе 6. Если сохраняет, правило только подстраховывает.
 
 Светодиод кнопки питания — отдельная вещь: HHD управляет им через метод
 WMI (`acpi_call`).
@@ -345,7 +408,7 @@ WMI (`acpi_call`).
    режимах прошивка применяет кривую. В BIOS v29 кривая и custom TDP
    конфликтовали, исправлено в 29.1+.
 
-Рекомендация: начать с варианта 1, остальные — только если не устроят шум
+Начинаем с варианта 1 (решение 9); остальные — только если не устроят шум
 или температура.
 
 # 3. Как это ложится на wsconfig
@@ -445,21 +508,19 @@ steamos-manager) — позже.
 Каждый этап заканчивается `ws checkpoint create NAME`. Перед ядром, загрузкой
 и питанием делается снимок Timeshift (главное правило roadmap).
 
-0. **Windows на устройстве, последний раз (решение 1).** После установки
-   Windows не останется.
-   - Посмотреть версию BIOS. Целевая — N3CN40WW (январь 2026). N3CN42WW
-     (июнь 2026) Lenovo отозвала после случаев, когда устройство переставало
-     загружаться: её не ставить.
-   - Обновить прошивку контроллеров в Legion Space. fwupd обновлять
-     контроллеры Go 1 не поддерживает: для них раньше предлагалась прошивка
-     Go 2 (fwupd #9734).
-   - Лимит заряда 80% включить в Legion Space, если он нужен до ядра 7.2+.
-     Держится ли он без Windows, проверить на этапе 5.
+0. **Устройство до установки.** Windows на нём уже нет (решение 1), поэтому
+   Legion Space недоступен.
+   - Версия BIOS — в BIOS setup. Целевая — N3CN40WW (январь 2026).
+     N3CN42WW (июнь 2026) Lenovo отозвала после случаев, когда устройство
+     переставало загружаться: её не ставить. Обновить BIOS теперь можно
+     только через fwupd (если Lenovo публикует капсулы в LVFS; проверить на
+     этапе 3) или с Windows на USB.
+   - Прошивка контроллеров остаётся как есть: fwupd для Go 1 её не
+     поддерживает (раньше предлагалась прошивка Go 2, fwupd #9734), а
+     Legion Space недоступен.
    - В BIOS: UMA frame buffer задать вручную (6–8 ГБ — рекомендация
      legion-go-tricks против мерцания при авто), разрешить загрузку с USB.
      Secure Boot выключен.
-   - RGB стиков выключить в Legion Space: проверим, сохранится ли это в
-     контроллере.
    - Нужны USB-C хаб, клавиатура и флешка.
 1. **Репозиторий на mbp16, без устройства.** Хост `legiongo`, профиль
    `legion-go`, факты для слоёв из 3.4, каркас `gaming/` и `wsgame`, страница
@@ -515,32 +576,32 @@ steamos-manager) — позже.
 
 Приняты пользователем 2026-10-10:
 
-1. **Windows не будет.** Весь SSD — под Linux. То, что обновляется только
-   из Windows (BIOS, прошивка контроллеров), делаем на этапе 0.
+1. **Windows нет** (на устройстве её уже нет). Весь SSD — под Linux; BIOS и
+   прошивка контроллеров — см. этап 0.
 2. **Загрузка в GNOME** через SDDM с autologin. Game Mode включается из
    GNOME («Return to Game Mode»), обратно — «Switch to Desktop» в Steam.
 3. **Steam нативный.**
-4. **Своё ядро не собираем.** Какое из готовых — ждёт выбора (2.1).
+4. **Своё ядро не собираем.** Выбор между Zabbly и XanMod ждёт решения
+   (2.1).
 5. **Набор слоёв** выбирается в отдельной сессии, до установки.
 6. **Питание — PPD.** steamos-manager без TDP и профиля (2.4).
 7. **Отдельного backup сохранений нет.**
 8. **Хост — `legiongo`.**
+9. **Без HHD.** Вентилятор — сначала по умолчанию (прошивка); RGB стиков —
+   разбираемся после установки (2.8).
 
-Secure Boot на устройстве выключен. RGB стиков должен быть выключен;
-вентилятор и RGB — без HHD (2.8).
+Secure Boot на устройстве выключен.
 
-Ждут выбора:
+Ждёт выбора:
 
 - **Ядро (4):** рекомендация — Zabbly, generic-ядро Ubuntu запасным пунктом
   в GRUB (2.1).
-- **HHD или стек Bazzite:** рекомендация — стек Bazzite; RGB и вентилятор
-  решаются без HHD (2.8).
 
 # 6. Риски
 
-- BIOS N3CN42WW: не ставить ни из Windows, ни через fwupd.
-- Без Windows BIOS обновляется только через fwupd, если Lenovo публикует
-  капсулы в LVFS. Проверить на этапе 3.
+- BIOS N3CN42WW: не ставить ни через fwupd, ни с Windows на USB.
+- Windows нет: BIOS обновляется только через fwupd (если Lenovo публикует
+  капсулы в LVFS; проверить на этапе 3) или с Windows на USB.
 - Прошивка контроллеров через fwupd на Go 1: не обновлять.
 - Без Mesa Valve может не работать ограничитель FPS gamescope (2.2).
 - gamescope 3.16.20 старше того, на что рассчитан текущий клиент Steam.
@@ -569,12 +630,16 @@ Secure Boot на устройстве выключен. RGB стиков дол�
 - legion-go-tricks: <https://github.com/aarron-lee/legion-go-tricks>
 - fwupd #9734: <https://github.com/fwupd/fwupd/issues/9734>
 - HHD: <https://github.com/hhd-dev/hhd>
-- Zabbly: <https://github.com/zabbly/linux>; XanMod: <https://xanmod.org/>,
+- Zabbly: <https://github.com/zabbly/linux>, индекс
+  `pkgs.zabbly.com/kernel/stable/dists/resolute`; XanMod: <https://xanmod.org/>,
+  индекс `deb.xanmod.org/dists/resolute`,
   конфиг <https://gitlab.com/xanmod/linux> (`CONFIGS/x86_64/config`, 7.2);
   Liquorix: <https://liquorix.net/>, <https://github.com/damentz/liquorix-package>
 - Ядро Ubuntu: `git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/resolute`,
   тег `Ubuntu-7.0.0-38.38` (`debian.master/config/annotations`)
 - `hid-lenovo-go`: `Documentation/ABI/testing/sysfs-driver-hid-lenovo-go` (7.2)
+- amd-pstate и выбор policy: `drivers/cpufreq/amd-pstate.c`,
+  `drivers/cpufreq/cpufreq.c` (7.2)
 - Ubuntu 26.10 с Linux 7.3:
   <https://www.phoronix.com/news/Ubuntu-26.10-With-Linux-7.3>
 - Отзыв BIOS N3CN42WW:
