@@ -163,8 +163,7 @@ Go 1 (`lenovo-wmi-*`, `hid-lenovo-go`, quirk панели) у них одина�
 cpufreq по умолч.  как Ubuntu: schedutil →         performance → amd-pstate-epp
                    amd-pstate-epp в powersave      в policy performance (до
                                                    старта PPD; см. ниже)
-zswap              как Ubuntu: выключен            включён (lzo) — вдобавок к
-                                                   zram
+zswap              как Ubuntu: выключен            включён (lzo)
 THP                как Ubuntu: madvise             always
 память             MGLRU                           MGLRU + le9uo (защита 15%
                                                    анонимных и чистых страниц)
@@ -212,10 +211,10 @@ Zabbly ведёт себя как ядро Ubuntu, только новее.
   режим «Производительность», в GNOME или Legion L + Y. На батарее PPD его
   не урезает и сохраняет режим между загрузками. Сверх режима прошивки
   performance — только `custom` с PPT через firmware-attributes (до ~30 Вт),
-  мимо PPD. `cpufreq.default_governor=powersave` нужен лишь на время до PPD
-  и на случай, если PPD не запущен (решение ниже).
-- **zswap.** Включён по умолчанию (lzo), а у нас zram: `zswap.enabled=0`
-  (2.6).
+  мимо PPD. `cpufreq.default_governor=powersave` (решение пользователя)
+  действует до старта PPD и на случай, если PPD не запущен.
+- **zswap** — наш swap (решение пользователя, 2.6). В XanMod он включён по
+  умолчанию (lzo); задаём `zswap.compressor=zstd` (встроен в XanMod).
 - **AppArmor** не нужен (решение пользователя): у XanMod его нет в списке
   LSM, `lsm=` не задаём. Пакет `apparmor` без LSM ничего не делает;
   ограничения Ubuntu на user namespaces нет, Steam (pressure-vessel),
@@ -349,7 +348,9 @@ VRAM     dmemcg-booster / uresourced-dmemcg: приоритет памяти GPU
          приложению (dmem cgroup + патчи TTM из OGC)
 ```
 
-**Мы:** берём sysctl, zram, I/O, nice и watchdog. NTSync уже есть
+**Мы:** берём sysctl, кроме настроек под zram (swappiness 180,
+page-cluster 0: у нас zswap, их подбираем замером), I/O, nice и watchdog;
+zram не берём (2.6). NTSync уже есть
 (Distrobox). scx_lavd и dmemcg — этап 9: только с замером, на ядре без
 патчей TTM из OGC.
 
@@ -382,8 +383,21 @@ VRAM     dmemcg-booster / uresourced-dmemcg: приоритет памяти GPU
 3. **zram (высокий приоритет) + swapfile (низкий, только для hibernate)**,
    zswap выключен.
 
-Рекомендация: вариант 1 сейчас. Если на этапе 9 понадобится hibernate —
-вариант 3: поведение днём то же, swapfile нужен только для образа.
+**Мы: вариант 2, zswap + swapfile (решение пользователя).**
+
+```text
+swapfile   /swap/swapfile в @swap: ws-suspend swap-setup 16g (как на mbp16:
+           без CoW и снимков, строка fstab, печатает resume_offset)
+           16 ГБ = RAM: hibernate остаётся возможным (этап 9)
+kargs      zswap.enabled=1 zswap.compressor=zstd — для обоих ядер GRUB
+           (в generic-ядре zswap выключен по умолчанию, zstd там модуль:
+           при загрузке он может откатиться на lzo — для запасного ядра
+           не страшно)
+пул        max_pool_percent 20 (по умолчанию), shrinker включён (по
+           умолчанию в обоих ядрах) — меняем только по замеру
+проверка   /sys/module/zswap/parameters/*, swapon --show,
+           /sys/kernel/debug/zswap/* (stored_pages, written_back_pages)
+```
 
 ## 2.7 Не берём
 
@@ -472,10 +486,11 @@ WMI (`acpi_call`).
 facts.nix  hostname = "legiongo", user king, wsconfig,
            hardware = "legion-go", boot = "grub", rootUuid,
            kernelParams: quiet splash bluetooth.disable_ertm=1
-                         zswap.enabled=0 (+ cpufreq.default_governor=powersave,
-                         если решим; 2.1) — для обоих ядер GRUB
+                         cpufreq.default_governor=powersave
+                         zswap.enabled=1 zswap.compressor=zstd
+                         — для обоих ядер GRUB (2.1, 2.6)
 apt.txt    openssh-server, amd64-microcode, steam-installer (i386),
-           sddm, gamescope, lm-sensors, evtest, systemd-zram-generator,
+           sddm, gamescope, lm-sensors, evtest,
            linux-xanmod-x64v3 (источник и ключ — файлы системного слоя)
 ```
 
@@ -486,7 +501,7 @@ i386 multiarch для Steam: `bootstrap.sh` должен уметь
 ## 3.2 Профиль железа `system/hardware/legion-go.nix`
 
 ```text
-файлы   sysctl.d, zram-generator.conf, udev (I/O), hwdb (F16),
+файлы   sysctl.d, udev (I/O), hwdb (F16),
         PipeWire/WirePlumber 83E1, logind.conf.d, modprobe.d,
         sddm.conf.d (Wayland, autologin в GNOME, Relogin), polkit,
         /usr/libexec/os-session-select, platform.toml steamos-manager
@@ -547,8 +562,8 @@ wsgame mode game|desktop   то же, что steamosctl (для терминал
 
 ## 3.5 Диск
 
-Btrfs по `helpws rebuild`: `@`, `@home`, `@cache`, `@tmp`, `@log`, `@nix`
-(плюс `@swap`, если будет hibernate). Отдельно — `@steam` в
+Btrfs по `helpws rebuild`: `@`, `@home`, `@cache`, `@tmp`, `@log`, `@nix`,
+`@swap` (swapfile 16 ГБ под zswap, 2.6). Отдельно — `@steam` в
 `~/.local/share/Steam`: клиент, библиотека, compatdata и shadercache вне
 Timeshift и backup, по аналогии с `@vms`. Отдельного backup сохранений нет
 (решение 7): что не в Steam Cloud, живёт только на устройстве. microSD —
@@ -598,11 +613,13 @@ steamos-manager) — позже.
 4. **База wsconfig (GDM, GNOME, без игрового слоя).** `bootstrap.sh` →
    `ws system apply` → `ws apply` → `ws check`, как в `helpws rebuild`.
    Поворот, касания, Wi-Fi и Bluetooth работают.
-5. **Профиль железа.** Ядро (решение 4), kargs, аудио, hwdb, sysctl, zram,
-   I/O. Проверить:
+5. **Профиль железа.** Ядро (решение 4), kargs, аудио, hwdb, sysctl,
+   swapfile и zswap, I/O. Проверить:
    - s2idle (`amd_s2idle.py`), яркость, автоповорот, батарея;
    - режимы PPD → `platform_profile` → вентилятор; hwmon вентилятора;
    - лимит заряда (`charge_types`, ядро 7.2+);
+   - zswap: включён, zstd, swapfile активен; governor после загрузки
+     (powersave до PPD, затем по режиму PPD);
    - звук после сна (известный шум первые ~30 с).
 6. **Game Mode.**
    - InputPlumber; Steam (первый запуск в GNOME); gamescope и сессия;
@@ -622,7 +639,8 @@ steamos-manager) — позже.
 8. **Recovery и backup.** Timeshift и пункты GRUB, проверка отката.
    `wsbackup` на Unraid без `@steam` — позже, отдельным шагом.
 9. **Опционально, каждое — с замером до и после.** Decky Loader, scx_lavd,
-   dmemcg-booster, hibernate, Lutris или Heroic, эмуляторы.
+   dmemcg-booster, hibernate (swapfile уже есть: `resume=`/`resume_offset`
+   в facts), Lutris или Heroic, эмуляторы.
 
 # 5. Решения
 
@@ -634,22 +652,20 @@ steamos-manager) — позже.
    GNOME («Return to Game Mode»), обратно — «Switch to Desktop» в Steam.
 3. **Steam нативный.**
 4. **Ядро — XanMod MAIN x64v3**, своё не собираем; generic Ubuntu запасным
-   пунктом в GRUB. AppArmor не нужен (2.1).
+   пунктом в GRUB. AppArmor не нужен; `cpufreq.default_governor=powersave`
+   (2.1).
 5. **Набор слоёв** выбирается в отдельной сессии, до установки.
 6. **Питание — PPD.** steamos-manager без TDP и профиля (2.4).
 7. **Отдельного backup сохранений нет.**
 8. **Хост — `legiongo`.**
 9. **Без HHD.** Вентилятор — сначала по умолчанию (прошивка); RGB стиков —
    разбираемся после установки (2.8).
+10. **Swap — zswap** со swapfile в `@swap`, без zram (2.6).
 
 Secure Boot на устройстве выключен.
 
-Ждут выбора:
-
-- **`cpufreq.default_governor=powersave`:** рекомендация — да; PPD всё
-  равно включает `performance` в режиме «Производительность» (2.1).
-- **swap:** рекомендация — только zram, `zswap.enabled=0`; hibernate позже
-  через zram + swapfile (2.6).
+Открытых решений перед этапом 1 нет, кроме набора слоёв (5). Размер
+swapfile — 16 ГБ по рекомендации (2.6), если не решим иначе.
 
 # 6. Риски
 
