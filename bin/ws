@@ -282,6 +282,11 @@ cmd_apply() {
 
     printf '\n=== ws apply\n'
     printf '  %s\n' "${results[@]}"
+    # wsflatpak/wsbox apply may have written marks: switch links the desktop
+    # entries of what this workstation now has and commits the lists.
+    if ! git -C "$repo" diff --quiet HEAD -- "${marked_lists[@]}" 2>/dev/null; then
+        printf '  marks changed: ws switch (links the desktop entries, commits the lists)\n'
+    fi
     [[ "$failed" == false ]]
 }
 

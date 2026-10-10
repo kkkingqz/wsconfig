@@ -21,8 +21,10 @@ bin/wsflatpak           владелец: install, apply, check
 
 `ws switch` собирает `~/.local/share/workstation/flatpak/` (`remotes.conf`,
 `apps.conf`, `overrides/`, `desktop/`) и ставит свои `.desktop` в
-`~/.local/share/applications`. `wsflatpak apply` добавляет remotes, ставит
-приложения и применяет overrides; overrides управляемого приложения сначала
+`~/.local/share/applications` — только приложений с пометкой `HOST=yes` для
+этой машины (без пометки — по `all=`): у не поставленного приложения ярлык
+ничего бы не запускал. После `apply`, изменившего пометки, — `ws switch`.
+`wsflatpak apply` добавляет remotes, ставит приложения и применяет overrides; overrides управляемого приложения сначала
 сбрасываются, так что строка, убранная из `overrides.txt`, исчезает.
 
 Какие приложения на какой машине, записано в самом `apps.txt` — пометками
@@ -47,7 +49,8 @@ flathub org.gimp.GIMP mbp16=yes wsvm=no all=ask
 снимает галочку, `a` переключает все, Enter ставит отмеченные, Esc/q
 отменяет только вопрос: предложенные остаются `ask` (спросит в следующий
 раз), остальное `apply` делает. Ответ пишется в `apps.txt` (`HOST=yes` /
-`HOST=no`), `ws switch` коммитит его. Уже установленное без пометки получает `yes` молча.
+`HOST=no`), `ws switch` коммитит его и ставит `.desktop` новых `yes`. Уже
+установленное без пометки получает `yes` молча.
 `wsflatpak apply --select` спрашивает и о `HOST=no` (они без галочки). Без
 терминала не предложенные не ставятся. `check`: `yes`, но не установлено —
 FAIL; установлено, но `no` или без пометки — WARN; `no`/`ask` без установки
@@ -150,5 +153,6 @@ ws check
 
 `check`: remotes (системных нет), системная установка пуста, нет глобального
 `filesystem=host`, приложения `apps.txt` установлены из своих remotes,
-overrides применены, свои `.desktop` на месте; приложение или remote вне
+overrides применены, свои `.desktop` приложений с `yes` на месте (ярлык
+приложения без `yes` — WARN, нужен `ws switch`); приложение или remote вне
 объявленных — предупреждение.

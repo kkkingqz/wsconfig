@@ -162,7 +162,7 @@ def list_add(app, remote):
     marks.save()
     print(
         f"{'Marked' if known else 'Added'} in {APPS_LIST}: {line.render()}\n"
-        "then: ws switch (commits it)"
+        "then: ws switch (commits it, links the desktop entries)"
     )
 
 
@@ -1164,16 +1164,21 @@ def cmd_check(json_mode=False):
                     f"{app}: {name}={policy}"
                 )
 
+    # Linked by ws switch only where the app is marked yes (flatpak.nix).
     for source in managed_desktop_entries():
-        if desktop_override_ok(source):
-            passed(
-                f"managed desktop override applied: {source.name}"
-            )
+        app = source.name.removesuffix(".desktop")
+        linked = desktop_override_ok(source)
+        if marks.state(app, host) == "yes":
+            if linked:
+                passed(f"managed desktop override applied: {source.name}")
+            else:
+                fail(f"managed desktop override not applied: {source.name} "
+                     f"({host}=yes; run ws switch)")
+        elif linked:
+            warn(f"managed desktop override linked but {app} is not marked "
+                 f"{host}=yes: {source.name} (run ws switch)")
         else:
-            fail(
-                f"managed desktop override not applied: {source.name} "
-                "(run ws switch)"
-            )
+            info(f"managed desktop override not linked: {app} is not on {host}")
 
     return finish()
 
@@ -1317,7 +1322,8 @@ def cmd_apply(reselect=False):
     wanted |= set(chosen)
     if any(line.changed for line in marks.lines):
         marks.save()
-        print(f"Marks for {host} written to {APPS_LIST}; then: ws switch (commits it)")
+        print(f"Marks for {host} written to {APPS_LIST}; then: ws switch "
+              "(commits it, links the desktop entries)")
 
     for remote, app in entries:
         if app not in wanted:

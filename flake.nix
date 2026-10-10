@@ -37,6 +37,9 @@
         extraSpecialArgs = {
           inherit man;
           facts = factsOf host;
+          # The flake host (ws host): its workstation marks in
+          # flatpak/apps.txt and distrobox/hosts.txt (lib/ws_marks.nix).
+          wsHost = host;
           xremap = pkgs.callPackage ./nix/pkgs/xremap.nix { };
         };
         modules = [ ./nix/home ];
@@ -66,6 +69,8 @@
         { name = "system-${host}"; value = mkSystem host; }
       ]) // {
         inherit man;
+        ws-marks = assert import ./lib/test-ws-marks.nix { inherit lib; };
+          pkgs.writeText "ws-marks" "lib/ws_marks.nix reads the workstation marks";
         widgets-manifest = assert import ./widgets/test-manifest.nix { inherit lib; };
           pkgs.writeText "widgets-manifest.json" (builtins.toJSON widgetsManifest);
         widgets-qml = pkgs.runCommand "widgets-qml" { nativeBuildInputs = [ pkgs.python3 ]; } ''

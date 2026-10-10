@@ -66,6 +66,29 @@ class OverrideTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(result['failures'], 0)
 
+    def test_desktop_overrides_follow_the_marks(self):
+        # APP is marked test=yes; org.example.Other is not on this workstation.
+        desktop = self.g['DESKTOP_OVERRIDES']
+        applications = self.root / 'applications'
+        applications.mkdir()
+        self.g['USER_APPLICATIONS'] = applications
+        for app in (APP, 'org.example.Other'):
+            (desktop / f'{app}.desktop').write_text('[Desktop Entry]\n')
+        texts = lambda result: {level: [m['text'] for m in result['messages'] if m['level'] == level]
+                                for level in ('fail', 'warn', 'info')}
+        status, result = self.check()
+        self.assertEqual(status, 1)
+        self.assertIn(f'managed desktop override not applied: {APP}.desktop (test=yes; run ws switch)',
+                      texts(result)['fail'])
+        self.assertIn('managed desktop override not linked: org.example.Other is not on test',
+                      texts(result)['info'])
+        for app in (APP, 'org.example.Other'):
+            (applications / f'{app}.desktop').symlink_to(desktop / f'{app}.desktop')
+        status, result = self.check()
+        self.assertEqual(result['failures'], 0)
+        self.assertIn('managed desktop override linked but org.example.Other is not marked '
+                      'test=yes: org.example.Other.desktop (run ws switch)', texts(result)['warn'])
+
     def test_app_without_declaration_rejects_filesystem_override(self):
         self.runtime = '[Context]\nfilesystems=home;\n'
         status, result = self.check()

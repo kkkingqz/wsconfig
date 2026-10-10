@@ -128,7 +128,11 @@ wswin portable --prefix tools ~/Downloads/tool.zip
 
 Программы, которые должны возвращаться вместе с репозиторием, — в
 `windows/apps.nix` (`exe` — путь внутри prefix), `ws switch`: launcher
-`ws-win-NAME.desktop` (`wswin run NAME`), как у WinBox.
+`ws-win-NAME.desktop` (`wswin run NAME`), как у WinBox. Launcher ставится
+только на машине, где box программы помечен `HOST=yes` в
+`distrobox/hosts.txt` (`helpws distrobox`); `ws-win-exe.desktop` и обработчик
+`.exe` — там, где помечен `wine-wayland`. `wswin check` программы других
+box не проверяет (INFO).
 
 ## GPU
 

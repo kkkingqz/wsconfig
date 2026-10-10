@@ -20,9 +20,15 @@
 # A double click on an .exe in Files runs it in the standard prefix of
 # defaultBox (ws-win-exe.desktop: wswin exec FILE); switch makes it the
 # default application for the .exe types with xdg-mime.
-{ config, lib, ... }:
+#
+# The launchers only on a workstation that has the box: BOX HOST=yes in
+# distrobox/hosts.txt (lib/ws_marks.nix); apps.ini lists every program.
+{ config, lib, wsHost, ... }:
 let
   defaultBox = "wine-wayland";
+  marks = import ../lib/ws_marks.nix { inherit lib; };
+  boxMarks = marks.read ../distrobox/hosts.txt;
+  hasBox = box: marks.has boxMarks box wsHost;
 
   # LC_CTYPE of every Windows program (wswin): the codepage for non-Unicode
   # programs, as "Language for non-Unicode programs" in Windows. With the
@@ -117,12 +123,14 @@ in
 
   xdg.dataFile = {
     "workstation/windows/apps.ini".text = appsIni;
+  } // lib.optionalAttrs (hasBox defaultBox) {
     "applications/ws-win-exe.desktop".text = exeDesktop;
   } // lib.mapAttrs' (name: a:
-    lib.nameValuePair "applications/ws-win-${name}.desktop" { text = desktop name a; }) full;
+    lib.nameValuePair "applications/ws-win-${name}.desktop" { text = desktop name a; })
+    (lib.filterAttrs (_: a: hasBox a.box) full);
 
   # Only these keys of ~/.config/mimeapps.list; the rest stays the user's.
-  home.activation.wswinExeDefault = lib.hm.dag.entryAfter [ "flatpakDesktopDatabase" ] ''
+  home.activation.wswinExeDefault = lib.mkIf (hasBox defaultBox) (lib.hm.dag.entryAfter [ "flatpakDesktopDatabase" ] ''
     if [ -x /usr/bin/xdg-mime ]; then
       for t in ${lib.concatStringsSep " " exeTypes}; do
         if [ "$(/usr/bin/xdg-mime query default "$t")" != ws-win-exe.desktop ]; then
@@ -130,5 +138,5 @@ in
         fi
       done
     fi
-  '';
+  '');
 }

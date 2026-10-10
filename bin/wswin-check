@@ -29,6 +29,21 @@ else
     fail "no Windows box in boxes.ini (distrobox/distrobox.nix)"
 fi
 
+# Launchers exist only where the box is marked yes (distrobox/hosts.txt,
+# windows/apps.nix); the programs of other boxes are not checked here.
+hosts_file="${WSBOX_HOSTS:-$repo/distrobox/hosts.txt}"
+declare -A box_state=()
+if host="$("$repo/bin/ws" host 2>/dev/null)" \
+    && states="$(python3 "$repo/lib/ws_marks.py" "$hosts_file" states "$host" $win_boxes 2>&1)"; then
+    while read -r box state; do
+        [[ -n "$box" ]] && box_state[$box]="$state"
+    done <<<"$states"
+else
+    fail "workstation marks of $hosts_file: ${states:-unknown workstation (ws host)}"
+    host=unknown
+fi
+on_host() { [[ "${box_state[$1]:-ask}" == yes ]]; }
+
 default_box="$(sed -nE 's/^default_box=//p' "$apps_ini" 2>/dev/null)"
 if [[ -n "$default_box" ]] && grep -qxF "$default_box" <<<"$win_boxes"; then
     pass "wswin default box is a Windows box: $default_box"
@@ -43,6 +58,10 @@ while IFS= read -r app; do
         pass "app $app: box $app_box is a Windows box"
     else
         fail "app $app: box ${app_box:-<none>} is not a Windows box"
+    fi
+    if ! on_host "$app_box"; then
+        info "app $app: box $app_box is not on $host, no launcher (wsbox apply $app_box)"
+        continue
     fi
     # The program itself is machine state (wswin install, a prefix from a
     # backup): on a new machine the launcher exists before it (phase 6, wsvm).
@@ -60,7 +79,9 @@ while IFS= read -r app; do
     fi
 done < <(sed -nE 's/^\[([^]]+)\]$/\1/p' "$apps_ini" 2>/dev/null)
 
-if have xdg-mime; then
+if ! on_host "$default_box"; then
+    info ".exe: default box $default_box is not on $host, no ws-win-exe.desktop"
+elif have xdg-mime; then
     exe_default="$(xdg-mime query default application/vnd.microsoft.portable-executable 2>/dev/null)"
     if [[ "$exe_default" == ws-win-exe.desktop ]]; then
         pass ".exe opens with ws-win-exe.desktop (wine-wayland, standard prefix)"

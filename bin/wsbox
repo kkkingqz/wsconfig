@@ -750,7 +750,7 @@ cmd_apply() {
                         mark_box "$box" no
                     fi
                 done
-                printf 'Marks for %s written to %s; then: ws switch (commits it)\n' "$host" "$hosts_file"
+                printf 'Marks for %s written to %s; then: ws switch (commits it, links the launchers)\n' "$host" "$hosts_file"
                 ;;
             2)
                 # Cancel answers only the question: the offered containers
