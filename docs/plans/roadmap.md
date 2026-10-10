@@ -59,7 +59,7 @@ volume: User Commands
    компонентов Bazzite (InputPlumber, steamos-manager, gamescope-session,
    нативный Steam, SDDM), питание — PPD, swap — zswap. Слои хоста —
    пометками Flatpak и Distrobox и фактом `vm = "no"`. Хост в репозитории
-   заведён (без ключа XanMod); на устройстве ничего не начато.
+   заведён; на устройстве ничего не начато.
 
 Отложено:
 

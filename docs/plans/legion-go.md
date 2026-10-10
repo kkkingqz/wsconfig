@@ -203,9 +203,12 @@ udev-правило на появление светодиода пережив�
 
 ## 4.1 Хост `nix/hosts/legiongo/`
 
-Сделано 2026-10-10: `facts.nix`, `apt.txt`, `apt/xanmod.sources`, пустой
-`system/hardware/legion-go.nix`. Нет ключа `apt/xanmod.asc` — без него
-`bootstrap.sh` остановится на `source:xanmod`.
+Сделано 2026-10-10: `facts.nix`, `apt.txt`, `apt/xanmod.sources`, ключ
+`apt/xanmod.asc`, пустой `system/hardware/legion-go.nix`. Ключ —
+«XanMod Kernel <kernel@xanmod.org>», rsa2048 от 2017-01-07, отпечаток
+`D38D 7D1D A134 9567 ADED 882D 86F7 D09E E734 E623` (с
+`dl.xanmod.org/archive.key` → `gitlab.com/afrd.gpg`); им подписан
+`InRelease` репозитория `resolute` (проверено 2026-10-10).
 
 ```text
 facts.nix  hostname = "legiongo", user king, wsconfig,
