@@ -237,7 +237,7 @@ apt.txt    source:xanmod, linux-xanmod-x64v3, openssh-server,
 - `arch:i386` — `dpkg --add-architecture i386` до `apt-get update` (Steam).
 - Subvolume `@steam` в `~/.local/share/Steam` (строка fstab, как `@vms`) —
   при `nativeSteam = "yes"`, шаг 4 (`steam/bootstrap.bash`), до первого
-  запуска Steam. Сделано 2026-10-10.
+  запуска Steam; проверяет `ws check steam`. Сделано 2026-10-10.
 - Пакеты из локальных `.deb` `ws check apt` получает от `wsgame`, а не из
   списка.
 
@@ -367,7 +367,8 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
    `legiongo`) → `git push` → `ws check`, как в `helpws rebuild`. GDM ещё
    работает. Проверить:
    `uname -r`, параметры ядра, AppArmor не активен, governor `powersave` до
-   PPD, поворот, касания, Wi-Fi, Bluetooth.
+   PPD, поворот, касания, Wi-Fi, Bluetooth; `ws check steam` — `@steam`
+   смонтирован.
 5. **Железо.** `system/hardware/legion-go.nix`, `ws-suspend swap-setup 16g`.
    Проверить:
    - s2idle (`amd_s2idle.py`), яркость, автоповорот, батарея;

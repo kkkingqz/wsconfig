@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -u
+set -o pipefail
+
+# Native Steam (helpws plan-legion-go): its data directory on @steam that
+# bootstrap.sh sets up, outside the snapshots and the backup of @home. The
+# packages (steam/apt.txt, i386) are ws check apt.
+# Read-only. ws check steam; ws check runs it with --json (lib/check.bash).
+
+repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/check.bash
+. "$repo/lib/check.bash"
+
+case "${1:-}" in
+    --json) check_json_mode ;;
+    "") ;;
+    -h|--help) echo "Usage: ws-check-steam [--json]  (ws check steam)"; exit 0 ;;
+    *) echo "ws-check-steam: unknown argument: $1" >&2; exit 64 ;;
+esac
+
+# Only hosts with nativeSteam = "yes" in facts.nix have the apt Steam.
+if [[ "$(host_fact nativeSteam)" != yes ]]; then
+    info "nativeSteam = \"$(host_fact nativeSteam)\" in nix/hosts/$("$repo/bin/ws" host 2>/dev/null)/facts.nix: no apt Steam, nothing to check"
+    check_finish
+    exit
+fi
+
+steam_dir="$HOME/.local/share/Steam"
+user="$(id -un)"
+
+section "1. Steam data on @steam"
+
+if findmnt -no OPTIONS "$steam_dir" 2>/dev/null | tr ',' '\n' | grep -qx 'subvol=/@steam'; then
+    pass "$steam_dir is subvolume @steam"
+else
+    fail "$steam_dir is not mounted from @steam: games go into @home and its snapshots (bootstrap.sh)"
+fi
+if awk -v t="$steam_dir" '$1 !~ /^#/ && $2 == t' /etc/fstab 2>/dev/null | grep -q .; then
+    pass "$steam_dir in /etc/fstab"
+else
+    fail "$steam_dir not in /etc/fstab (bootstrap.sh)"
+fi
+owner="$(stat -c %U "$steam_dir" 2>/dev/null)"
+if [[ -z "$owner" ]]; then
+    fail "$steam_dir missing (bootstrap.sh)"
+elif [[ "$owner" == "$user" ]]; then
+    pass "$steam_dir belongs to $user"
+else
+    fail "$steam_dir belongs to $owner: Steam cannot write it (bootstrap.sh)"
+fi
+
+section "2. Client"
+
+# steam-installer puts the launcher in place; the client itself arrives in
+# steam_dir on the first start.
+if [[ -x "$steam_dir/steam.sh" ]]; then
+    pass "Steam client in $steam_dir"
+else
+    info "no Steam client in $steam_dir yet: start Steam once"
+fi
+
+check_finish

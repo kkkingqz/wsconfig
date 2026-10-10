@@ -40,6 +40,7 @@ Root работает на **Btrfs**.
 @log
 @nix          /nix: Nix store, отдельно от @ (откат @ не трогает /nix)
 @vms          /var/lib/vms: состояние VM (диски, UEFI, TPM, XML), вне snapshots @
+@steam        ~/.local/share/Steam: Steam из apt (nativeSteam = "yes"), вне snapshots @home
 @swap         /swap: swapfile 32G для hibernate (swapfile нельзя в томе со snapshots)
 timeshift-btrfs  snapshots Timeshift (@, @home); создаёт Timeshift
 ```
@@ -809,7 +810,7 @@ Shebang:
 
 ```text
 wsconfig/
-├── bootstrap.sh          новая машина: @nix → apt → @vms/libvirt → группы → fish → ws switch
+├── bootstrap.sh          новая машина: @nix → apt → @vms/libvirt → @steam → группы → fish → ws switch
 ├── flake.nix, flake.lock nixpkgs 26.05 + home-manager, обновляет ws update nix
 ├── nix/
 │   ├── hosts/            apt.txt всех хостов; <host>/facts.nix, apt.txt

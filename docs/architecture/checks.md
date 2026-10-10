@@ -25,6 +25,7 @@ ws system check         файлы и units manifest, шаблон grub, nofail,
 ws check apt            apt-списки против установленного, purge: (snapd) снят
 ws check virt           KVM, libvirt, @vms без CoW, пул и сеть default, OVMF и swtpm,
                         NVRAM VM в qcow2, проход qemu в HOME (пулы в ~/VMs)
+ws check steam          ~/.local/share/Steam на @steam (fstab, владелец), клиент Steam
 ws-workstation-verify   связи: GNOME ↔ клавиатура, ядро ↔ t2bce, загрузка ↔ dGPU,
                         Distrobox ↔ NTSync host
 ```

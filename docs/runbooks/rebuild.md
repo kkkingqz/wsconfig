@@ -77,6 +77,8 @@ apply` — из них собираются `refind_linux.conf`, `refind.conf` �
 @  @home  @cache  @tmp  @log
 @nix       создаёт bootstrap.sh (раздел 6.0)
 @vms       состояние VM в /var/lib/vms, создаёт bootstrap.sh; backup — отдельно
+@steam     Steam из apt в ~/.local/share/Steam (nativeSteam = "yes"), создаёт
+           bootstrap.sh; вне snapshots и backup @home
 ```
 
 Root грузится с `rootflags=subvol=@`. Установщик Ubuntu 26.04 при ручной
@@ -596,8 +598,9 @@ ws baseline diff before-reinstall after-reinstall
 Расписание и хранение — в GUI, `/etc/timeshift/timeshift.json` принадлежит
 Timeshift. Снапшоты лежат на верхнем уровне Btrfs в
 `timeshift-btrfs/snapshots/<дата>/{@,@home}`. Другие subvolumes Timeshift не
-умеет: `@nix`, `@vms`, `@log`, `@cache` в снапшоты не входят (VM — своими
-снапшотами libvirt, `helpws virt`, и backup `@vms`, `helpws plan-final`).
+умеет: `@nix`, `@vms`, `@steam`, `@log`, `@cache` в снапшоты не входят (VM —
+своими снапшотами libvirt, `helpws virt`, и backup `@vms`, `helpws
+plan-final`; игры Steam — заново из Steam).
 
 Из проверенного состояния (после раздела 11) — первый снапшот:
 

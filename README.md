@@ -14,7 +14,7 @@ home-manager доставляют конфигурацию поверх неё, 
 ```console
 sudo apt install git
 git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
-~/wsconfig/bootstrap.sh     # @nix, apt-списки, @vms и libvirt, группы, fish, первый ws switch
+~/wsconfig/bootstrap.sh     # @nix, apt-списки, @vms и libvirt, @steam, группы, fish, первый ws switch
 # logout/login
 ws system apply             # системные файлы (sudo)
 ws apply                    # расширения → tiling → клавиатура → Flatpak → Distrobox

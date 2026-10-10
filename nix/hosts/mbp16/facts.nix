@@ -13,7 +13,8 @@
   # ws check virt; "no" leaves it out.
   vm = "yes";
   # Native Steam (helpws plan-legion-go): "yes" installs the apt Steam
-  # (steam/apt.txt, i386) and keeps its data on @steam; "no" — Steam is the
+  # (steam/apt.txt, i386) and keeps its data on @steam in
+  # ~/.local/share/Steam (bootstrap.sh, ws check steam); "no" — Steam is the
   # Flathub flatpak here.
   nativeSteam = "no";
   # Game Mode session, gamescope + Steam as in SteamOS (gaming/apt.txt,

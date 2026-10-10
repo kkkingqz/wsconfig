@@ -13,7 +13,7 @@ Ubuntu остаётся базовой системой; Nix и home-manager д�
 ## Порядок
 
 ```text
-bootstrap.sh       @nix, apt-списки, @vms и libvirt, группы, fish, первый ws switch
+bootstrap.sh       @nix, apt-списки, @vms и libvirt, @steam, группы, fish, первый ws switch
 ws switch          home-manager: пользовательский слой, собранные списки
 ws system apply    системные файлы из system/ (sudo)
 ws apply           владельцы по порядку: расширения, tiling, клавиатура,
@@ -43,6 +43,7 @@ Distrobox        distrobox/distrobox.nix               wsbox apply          wsbo
 Windows          windows/apps.nix (+ боксы Distrobox)  ws switch, wswin     wswin check
 suspend / T2     system/hardware, system/kernel/t2bce  ws system apply, ws-suspend t2bce-*   ws-suspend check
 VM               apt.txt, bootstrap.sh, virt/virt.nix   bootstrap.sh, virt-manager           ws check virt
+Steam (apt)      steam/apt.txt, steam/bootstrap.bash   bootstrap.sh         ws check steam
 checkout         весь репозиторий                      git                  ws check repo
 ```
 
@@ -85,6 +86,8 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
 ~/distrobox/<имя>               HOME каждого контейнера
 /var/lib/vms                    всё состояние VM: subvolume @vms вне snapshots @
                                 (диски, UEFI, TPM, XML; bind в пути libvirt; ~/VMs)
+~/.local/share/Steam            Steam из apt (nativeSteam = "yes"): subvolume @steam
+                                вне snapshots и backup @home
 ```
 
 Путь checkout — `wsconfig` в `facts.nix`; скрипты находят его по своему
