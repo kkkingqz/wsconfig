@@ -3,7 +3,7 @@
 # and reads what is built here from ~/.local/share/workstation/flatpak (one link to the store):
 #
 #   remotes.conf      NAME URL
-#   apps.conf         REMOTE APP
+#   apps.conf         REMOTE APP (apps.txt without the workstation marks)
 #   overrides/APP.conf, desktop/APP.desktop
 #
 # Change: apps.txt and overrides.txt through wsflatpak (install, manage,
@@ -20,11 +20,13 @@ let
     chatgpt = "https://rulin132.github.io/chatgpt-flatpak/chatgpt.flatpakrepo";
   };
 
-  # REMOTE APP lines of apps.txt, in order; wsflatpak edits that file.
+  # REMOTE APP lines of apps.txt, in order; wsflatpak edits that file. The
+  # workstation marks after them (HOST=yes|no|ask, all=...) are read by
+  # wsflatpak from the checkout, not built (lib/ws_marks.py).
   apps = lib.concatMap (raw:
     let
       line = lib.head (lib.splitString "#" raw);
-      m = builtins.match "[[:space:]]*([^[:space:]]+)[[:space:]]+([^[:space:]]+)[[:space:]]*" line;
+      m = builtins.match "[[:space:]]*([^[:space:]=]+)[[:space:]]+([^[:space:]=]+)([[:space:]]+[A-Za-z0-9][A-Za-z0-9_-]*=(yes|no|ask))*[[:space:]]*" line;
     in
     if builtins.match "[[:space:]]*" line != null then [ ]
     else if m == null then throw "flatpak/apps.txt: invalid line: ${raw}"

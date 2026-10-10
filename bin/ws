@@ -25,8 +25,8 @@ Usage:
   ws news
 
 switch    home-manager switch for this user and host (pinned by flake.lock);
-          after a successful switch commits flatpak/apps.txt and
-          flatpak/overrides.txt if they changed
+          after a successful switch commits flatpak/apps.txt,
+          flatpak/overrides.txt and distrobox/hosts.txt if they changed
 news      home-manager news of this flake (switch does not notify about them)
 diff      build the home generation without activating it and show the
           package difference against the current one (nvd)
@@ -174,16 +174,29 @@ current_generation() {
     done
 }
 
-# Lists that commands edit in the checkout (wsflatpak install/manage/unmanage,
-# filesystem/env/talk and un…): switch adds them before the build and commits
-# them after a successful one.
-tool_lists=(flatpak/apps.txt flatpak/overrides.txt)
+# Lists that commands edit in the checkout (wsflatpak install/manage/unmanage/
+# remove/apply, filesystem/env/talk and un…; wsbox create/apply/remove):
+# switch adds them before the build and commits them after a successful one.
+tool_lists=(flatpak/apps.txt flatpak/overrides.txt distrobox/hosts.txt)
+# Lists with workstation marks (lib/ws_marks.py).
+marked_lists=(flatpak/apps.txt distrobox/hosts.txt)
 
 commit_tool_lists() {
-    local f changes
+    local f changes old
     for f in "${tool_lists[@]}"; do
-        git -C "$repo" diff --quiet HEAD -- "$f" && continue
-        # apps.txt: +APP, -APP; overrides.txt: +APP KIND VALUE, -...
+        [[ -e "$repo/$f" ]] || continue
+        git -C "$repo" diff --quiet HEAD -- "$f" 2>/dev/null && continue
+        if [[ " ${marked_lists[*]} " == *" $f "* ]]; then
+            # +NAME, -NAME, NAME HOST=STATE
+            old="$(mktemp)"
+            git -C "$repo" show "HEAD:$f" > "$old" 2>/dev/null || : > "$old"
+            changes="$(python3 "$repo/lib/ws_marks.py" "$repo/$f" summary "$old")"
+            rm -f "$old"
+            git -C "$repo" commit -q -m "$f: ${changes:-edited} (ws switch)" -- "$f" || return
+            echo "committed $f: ${changes:-edited}"
+            continue
+        fi
+        # overrides.txt: +APP KIND VALUE, -...
         changes="$(git -C "$repo" diff HEAD -- "$f" |
             sed -n -e 's/^\([+-]\)[^+#-][^ ]* \([^ ]*\)$/\1\2/p' \
                 -e 's/^\([+-]\)\([^+# -][^ ]* [^ ]* [^ #]*\).*$/\1\2/p' |
@@ -194,9 +207,11 @@ commit_tool_lists() {
 }
 
 cmd_switch() {
-    local nix
+    local nix f
     nix="$(nix_bin)" || return
-    git -C "$repo" add -- "${tool_lists[@]}" || return
+    for f in "${tool_lists[@]}"; do
+        [[ ! -e "$repo/$f" ]] || git -C "$repo" add -- "$f" || return
+    done
     check_untracked || return
     "$nix" run "$repo#home-manager" -- switch --flake "$(target)" "$@" || return
     commit_tool_lists

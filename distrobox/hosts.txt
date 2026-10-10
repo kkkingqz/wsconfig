@@ -1,0 +1,11 @@
+# Which workstation has which container of distrobox.nix: NAME HOST=STATE...
+# all=STATE (lib/ws_marks.py). HOST is `ws host`; STATE yes (created there),
+# no (declined), ask (not offered; wsbox apply asks). all= counts only for a
+# workstation without its own mark. wsbox create/apply/remove edit this file,
+# ws switch commits it; a container without a line is offered (ask).
+arch mbp16=yes all=ask
+wine-wayland mbp16=yes all=ask
+wine mbp16=yes all=ask
+proton mbp16=yes all=ask
+t2bce-build mbp16=yes all=ask
+touchbar-build mbp16=yes all=ask

@@ -1,23 +1,27 @@
-# Managed Flatpak apps: REMOTE APP, one per line. Remotes are declared in
-# flatpak.nix. `wsflatpak install` appends here (unless --unmanaged),
-# `wsflatpak manage|unmanage` add or drop a line; then `ws switch`.
-flathub com.github.tchx84.Flatseal
-flathub org.gimp.GIMP
-flathub com.mikrotik.WinBox
-flathub com.anydesk.Anydesk
-flathub us.zoom.Zoom
-flathub com.obsproject.Studio
-flathub org.videolan.VLC
-flatpark com.anthropic.ClaudeDesktop
-flathub com.mattjakeman.ExtensionManager
+# Managed Flatpak apps: REMOTE APP HOST=STATE... all=STATE, one per line.
+# Remotes are declared in flatpak.nix. HOST is `ws host`; STATE yes
+# (installed there), no (declined), ask (not offered; wsflatpak apply asks).
+# all= counts only for a workstation without its own mark (lib/ws_marks.py).
+# `wsflatpak install|manage` mark this workstation yes (a new line gets
+# all=ask), `wsflatpak remove` drops the line or marks it no when other
+# workstations have marks, `unmanage` drops it; then `ws switch` (commits).
+flathub com.github.tchx84.Flatseal mbp16=yes all=ask
+flathub org.gimp.GIMP mbp16=yes all=ask
+flathub com.mikrotik.WinBox mbp16=yes all=ask
+flathub com.anydesk.Anydesk mbp16=yes all=ask
+flathub us.zoom.Zoom mbp16=yes all=ask
+flathub com.obsproject.Studio mbp16=yes all=ask
+flathub org.videolan.VLC mbp16=yes all=ask
+flatpark com.anthropic.ClaudeDesktop mbp16=yes all=ask
+flathub com.mattjakeman.ExtensionManager mbp16=yes all=ask
 # Launcher: desktop/com.valvesoftware.Steam.desktop (AMD when present).
-flathub com.valvesoftware.Steam
-flathub com.jgraph.drawio.desktop
-flathub org.qbittorrent.qBittorrent
-flathub com.notesnook.Notesnook
-flathub org.onlyoffice.desktopeditors
+flathub com.valvesoftware.Steam mbp16=yes all=ask
+flathub com.jgraph.drawio.desktop mbp16=yes all=ask
+flathub org.qbittorrent.qBittorrent mbp16=yes all=ask
+flathub com.notesnook.Notesnook mbp16=yes all=ask
+flathub org.onlyoffice.desktopeditors mbp16=yes all=ask
 # Browser (snapd is purged, nix/hosts/apt.txt)
-flathub org.mozilla.firefox
-chatgpt io.github.rulin132.ChatGPT
-flathub org.blender.Blender
-flathub com.github.PintaProject.Pinta
+flathub org.mozilla.firefox mbp16=yes all=ask
+chatgpt io.github.rulin132.ChatGPT mbp16=yes all=ask
+flathub org.blender.Blender mbp16=yes all=ask
+flathub com.github.PintaProject.Pinta mbp16=yes all=ask

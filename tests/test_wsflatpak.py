@@ -105,6 +105,9 @@ class FlatpakState:
                                 self.runtimes.add(runtime)
         elif command == "uninstall" and "--unused" in args:
             self.runtimes.intersection_update(set(self.apps.values()) | self.pins)
+        elif command == "uninstall":
+            for ref in [r for r in self.apps if r.split("/")[1] == args[-1]]:
+                del self.apps[ref]
         elif command not in ("override", "remote-add"):
             raise AssertionError(args)
         return subprocess.CompletedProcess(args, code, output, "")
@@ -124,9 +127,9 @@ class UserRuntimeTests(unittest.TestCase):
         self.g = runpy.run_path(str(SCRIPT))["cmd_install"].__globals__
         self.g.update(APPS=cfg / "apps.conf", REMOTES=cfg / "remotes.conf",
                       OVERRIDES=cfg / "overrides", APPS_LIST=root / "apps.txt",
-                      SKIPPED=root / "skipped", cmd_check=lambda: 0)
+                      this_host=lambda: "test", cmd_check=lambda: 0)
         self.addCleanup(patch.stopall)
-        # No terminal: apply chooses every app that is not skipped.
+        # No terminal: apply asks nothing (apps not offered stay so).
         patch.object(self.g["ws_select"], "open_tty", return_value=None).start()
         patch("shutil.which", return_value="/fake/flatpak").start()
         self.output = contextlib.redirect_stdout(io.StringIO())
@@ -167,25 +170,75 @@ class UserRuntimeTests(unittest.TestCase):
         self.execute(state, "apply")
         self.assertTrue(state.user_runtime)
 
-    def test_apply_without_terminal_installs_missing_app(self):
+    def marks(self, line):
+        self.g["APPS_LIST"].write_text(line + "\n")
+
+    def test_apply_installs_app_marked_yes_for_this_host(self):
         state = FlatpakState(system_runtime=True)
+        self.marks(f"flathub {APP} test=yes all=ask")
         self.execute(state, "apply")
         self.assertTrue(state.app)
 
-    def test_apply_leaves_skipped_app_alone(self):
+    def test_apply_follows_all_without_own_mark(self):
         state = FlatpakState(system_runtime=True)
-        self.g["SKIPPED"].write_text(APP + "\n")
+        self.marks(f"flathub {APP} other=no all=yes")
+        self.execute(state, "apply")
+        self.assertTrue(state.app)
+        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} other=no all=yes\n")
+
+    def test_apply_leaves_declined_app_alone(self):
+        state = FlatpakState(system_runtime=True)
+        self.marks(f"flathub {APP} test=no all=yes")
+        self.execute(state, "apply")
+        self.assertFalse(state.app)
+
+    def test_not_offered_app_waits_for_a_terminal(self):
+        state = FlatpakState(system_runtime=True)
+        self.marks(f"flathub {APP} other=yes all=ask")
         with contextlib.redirect_stderr(io.StringIO()) as err:
             self.execute(state, "apply")
         self.assertFalse(state.app)
-        self.assertIn("wsflatpak apply --select", err.getvalue())
-        self.assertEqual(self.g["SKIPPED"].read_text(), APP + "\n")
+        self.assertIn("no terminal", err.getvalue())
+        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} other=yes all=ask\n")
 
-    def test_skip_of_installed_app_is_dropped(self):
+    def test_answer_is_written_for_this_host(self):
+        state = FlatpakState(system_runtime=True)
+        self.marks(f"flathub {APP} other=yes all=ask")
+        with patch.object(self.g["ws_select"], "choose", return_value=[APP]):
+            self.execute(state, "apply")
+        self.assertTrue(state.app)
+        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} other=yes test=yes all=ask\n")
+        state = FlatpakState(system_runtime=True)
+        self.marks(f"flathub {APP} other=yes all=ask")
+        with patch.object(self.g["ws_select"], "choose", return_value=[]):
+            self.execute(state, "apply")
+        self.assertFalse(state.app)
+        self.assertIn("test=no", self.g["APPS_LIST"].read_text())
+
+    def test_installed_app_without_mark_is_marked_yes(self):
         state = FlatpakState(system_runtime=True, app=True)
-        self.g["SKIPPED"].write_text(APP + "\n")
         self.execute(state, "apply")
-        self.assertFalse(self.g["SKIPPED"].exists())
+        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} test=yes all=ask\n")
+
+    def test_install_marks_this_host_on_existing_line(self):
+        state = FlatpakState(system_runtime=True)
+        self.marks(f"flathub {APP} other=yes all=ask  # note")
+        (self.g["APPS"]).write_text(f"flathub {APP}\n")
+        self.execute(state)
+        self.assertEqual(self.g["APPS_LIST"].read_text(),
+                         f"flathub {APP} other=yes test=yes all=ask  # note\n")
+
+    def test_remove_drops_line_or_marks_no(self):
+        state = FlatpakState(system_runtime=True, app=True)
+        self.marks(f"flathub {APP} test=yes all=ask")
+        with patch("subprocess.run", side_effect=state.run):
+            self.g["cmd_remove"](SimpleNamespace(app=APP, keep_data=True))
+        self.assertEqual(self.g["APPS_LIST"].read_text(), "")
+        state = FlatpakState(system_runtime=True, app=True)
+        self.marks(f"flathub {APP} other=yes test=yes all=ask")
+        with patch("subprocess.run", side_effect=state.run):
+            self.g["cmd_remove"](SimpleNamespace(app=APP, keep_data=True))
+        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} other=yes test=no all=ask\n")
 
     def test_runtime_install_failure_propagates(self):
         state = FlatpakState(system_runtime=True)

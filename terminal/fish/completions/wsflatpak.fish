@@ -192,4 +192,4 @@ complete -c wsflatpak -n '__wsflatpak_using_command unfilesystem; and __wsflatpa
 complete -c wsflatpak -n '__wsflatpak_using_command unenv; and __wsflatpak_at_position 2' -a '(__wsflatpak_override_values env)'
 complete -c wsflatpak -n '__wsflatpak_using_command untalk; and __wsflatpak_at_position 2' -a '(__wsflatpak_override_values talk)'
 complete -c wsflatpak -n '__wsflatpak_using_command talk; and __wsflatpak_at_position 2' -a 'org.freedesktop.Flatpak org.kde.StatusNotifierWatcher'
-complete -c wsflatpak -n '__wsflatpak_using_command apply' -l select -d 'Спросить и о пропущенных на этой машине'
+complete -c wsflatpak -n '__wsflatpak_using_command apply' -l select -d 'Спросить и о помеченных HOST=no'

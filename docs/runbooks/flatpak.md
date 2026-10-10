@@ -25,15 +25,32 @@ bin/wsflatpak           владелец: install, apply, check
 приложения и применяет overrides; overrides управляемого приложения сначала
 сбрасываются, так что строка, убранная из `overrides.txt`, исчезает.
 
-Если управляемые приложения ещё не установлены, `apply` выводит их список и
-спрашивает «Поставить все? [Y/n]». На `n` открывается список с галочками:
-↑/↓ выбирают строку, Space ставит и снимает галочку, `a` переключает все,
-Enter ставит отмеченные, Esc/q отменяет. Снятые приложения запоминаются для
-этой машины в `~/.local/state/workstation/flatpak/skipped`: в `apps.txt` они
-остаются, `apply` о них больше не спрашивает, а `check` показывает их как
-INFO, не FAIL. Вернуть их: `wsflatpak apply --select` (спросит обо всех
-неустановленных, пропущенные будут без галочки) или `wsflatpak install APP`.
-Без терминала (вывод в pipe, cron) `apply` ставит все, кроме пропущенных.
+Какие приложения на какой машине, записано в самом `apps.txt` — пометками
+после `REMOTE APP` (`lib/ws_marks.py`); имя машины — `ws host`:
+
+```text
+flathub org.gimp.GIMP mbp16=yes wsvm=no all=ask
+```
+
+- `HOST=yes` — стоит на этой машине; `apply` ставит без вопроса.
+- `HOST=no` — на этой машине отказались; `apply` не трогает.
+- `HOST=ask` — не предложено; `apply` спрашивает.
+- `all=…` действует только для машины без своей пометки (`all=yes` —
+  ставить везде, где не сказано иначе). Нет ни своей пометки, ни `all` — ask.
+
+`wsflatpak install|manage APP` ставит своей машине `yes` (новая строка
+получает `all=ask`), `wsflatpak remove APP` удаляет строку, если других
+машин в ней нет, иначе ставит своей `no`; `unmanage` удаляет строку целиком.
+
+О не предложенных `apply` выводит список и спрашивает «Поставить все?
+[Y/n]». На `n` — список с галочками: ↑/↓ выбирают строку, Space ставит и
+снимает галочку, `a` переключает все, Enter ставит отмеченные, Esc/q
+отменяет. Ответ пишется в `apps.txt` (`HOST=yes` / `HOST=no`), `ws switch`
+коммитит его. Уже установленное без пометки получает `yes` молча.
+`wsflatpak apply --select` спрашивает и о `HOST=no` (они без галочки). Без
+терминала не предложенные не ставятся. `check`: `yes`, но не установлено —
+FAIL; установлено, но `no` или без пометки — WARN; `no`/`ask` без установки
+— INFO.
 
 Remotes: `flathub`, `flatpark` (Claude Desktop). Новый remote — строка
 `NAME = "URL.flatpakrepo";` в `remotes` файла `flatpak/flatpak.nix`
@@ -72,16 +89,18 @@ remotes: сначала remote приложения, затем остальны
 `wsflatpak cleanup` может удалить его, когда он больше не нужен приложениям.
 
 ```console
-wsflatpak install APP                # ставит и дописывает в apps.txt
+wsflatpak install APP                # ставит, в apps.txt: HOST=yes
 wsflatpak install --unmanaged APP    # только ставит
-wsflatpak manage APP [REMOTE]        # уже установленное — в apps.txt
+wsflatpak manage APP [REMOTE]        # уже установленное — HOST=yes
 wsflatpak unmanage APP               # убрать строку из apps.txt
-wsflatpak remove APP                 # управляемое — сначала unmanage
+wsflatpak remove APP                 # удаляет; строку или HOST=no
+wsflatpak apply [--select]           # ставит HOST=yes, спрашивает об ask
 ws switch                            # собирает и коммитит apps.txt
 ```
 
-`ws switch` добавляет изменённые `apps.txt` и `overrides.txt` в сборку и
-после успешного switch коммитит их (без push).
+`ws switch` добавляет изменённые `apps.txt`, `overrides.txt` и
+`distrobox/hosts.txt` в сборку и после успешного switch коммитит их (без
+push).
 
 ## Разрешения и окружение
 

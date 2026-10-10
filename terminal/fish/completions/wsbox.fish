@@ -146,7 +146,7 @@ end
 complete -c wsbox \
     -n "__wsbox_needs_box apply" \
     -l select \
-    -d 'Ask about containers skipped on this machine too'
+    -d 'Ask about containers marked no for this workstation too'
 
 complete -c wsbox \
     -n '__wsbox_using_command export' \

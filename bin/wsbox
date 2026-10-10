@@ -10,9 +10,12 @@ manifest="${XDG_RUNTIME_DIR:-/tmp}/wsbox-$(id -u)/containers.ini"
 exports_manifest="$cfg/exports.ini"
 boxes_manifest="$cfg/boxes.ini"
 bin_dir="$(dirname "$(readlink -f "$0")")"
-# Managed containers left out on this machine (lib/ws_select.py): apply does
-# not ask about them again, check reports them as info.
-skipped_file="$HOME/.local/state/workstation/distrobox/skipped"
+# Which containers this workstation has: distrobox/hosts.txt in the checkout,
+# NAME HOST=yes|no|ask ... all=STATE (lib/ws_marks.py). create/apply NAME mark
+# this workstation yes, remove drops the line or marks it no, apply asks about
+# the containers not offered here yet (lib/ws_select.py); ws switch commits it.
+hosts_file="${WSBOX_HOSTS:-$bin_dir/../distrobox/hosts.txt}"
+marks_py="$bin_dir/../lib/ws_marks.py"
 select_py="$bin_dir/../lib/ws_select.py"
 select_hint="wsbox apply --select"
 
@@ -154,8 +157,23 @@ export_source() {
     ini_value "$exports_manifest" "$1" "$2"
 }
 
-is_skipped() {
-    [[ -r "$skipped_file" ]] && grep -Fxq -- "$1" "$skipped_file"
+this_host() {
+    [[ -n "${ws_host:-}" ]] || ws_host="$("$bin_dir/ws" host)" || die "unknown workstation (ws host)"
+    printf '%s\n' "$ws_host"
+}
+
+# NAME STATE lines for every managed container on this workstation.
+box_states() {
+    local host
+    host="$(this_host)" || exit 1
+    mapfile -t _boxes < <(managed_boxes)
+    python3 "$marks_py" "$hosts_file" states "$host" "${_boxes[@]}"
+}
+
+mark_box() {
+    local host
+    host="$(this_host)" || exit 1
+    python3 "$marks_py" "$hosts_file" set "$1" "$host" "$2" >/dev/null
 }
 
 is_managed() {
@@ -468,7 +486,8 @@ cmd_check() {
     local expected_image
     local actual_image
     local expected_home
-    local repo hook path pkgbuild readme_sum ntsync_hook
+    local repo hook path pkgbuild readme_sum ntsync_hook host state box_state
+    local -A states=()
 
     # Result contract of ws check (--json): lib/check.bash.
     repo="$(cd "$bin_dir/.." && pwd)"
@@ -508,6 +527,20 @@ cmd_check() {
         fail "manifest missing"
     fi
 
+    if host="$(this_host 2>/dev/null)" && box_state="$(box_states 2>&1)"; then
+        while read -r name state; do
+            [[ -n "$name" ]] && states[$name]="$state"
+        done <<<"$box_state"
+        pass "workstation marks read: $host (distrobox/hosts.txt)"
+        while read -r name; do
+            [[ -n "$name" ]] || continue
+            is_managed "$name" || warn "distrobox/hosts.txt marks an undeclared container: $name"
+        done < <(sed -e 's/#.*//' "$hosts_file" 2>/dev/null | awk 'NF {print $1}')
+    else
+        fail "workstation marks: ${box_state:-unknown workstation (ws host)}"
+        host=unknown
+    fi
+
     if [[ -r "$boxes_manifest" ]]; then
         pass "boxes manifest present"
     else
@@ -535,16 +568,22 @@ cmd_check() {
         expected_image="$(manifest_value "$name" image)"
         expected_home="$(manifest_value "$name" home)"
 
+        state="${states[$name]:-ask}"
+
         if ! container_exists "$name"; then
-            if is_skipped "$name"; then
-                info "managed container skipped on this machine: $name ($select_hint)"
-            else
-                fail "managed container missing: $name"
-            fi
+            case "$state" in
+                yes) fail "managed container missing: $name ($host=yes; wsbox apply)" ;;
+                no) info "managed container declined on $host: $name ($select_hint)" ;;
+                *) info "managed container not offered on $host yet: $name (wsbox apply asks)" ;;
+            esac
             continue
         fi
 
-        pass "managed container exists: $name"
+        case "$state" in
+            yes) pass "managed container exists: $name" ;;
+            no) warn "managed container exists but marked $host=no: $name (wsbox remove $name, or wsbox apply $name)" ;;
+            *) warn "managed container exists but not marked for $host: $name (wsbox apply marks it)" ;;
+        esac
 
         actual_image="$(container_image "$name")"
 
@@ -649,11 +688,12 @@ cmd_dry_run() {
 }
 
 cmd_apply() {
-    local name="" box chosen rc=0
-    local -a items=() select_args=()
+    local name="" box state chosen rc=0 reselect=false host
+    local -a items=() unchecked=() offered=() create=()
+    local -A wanted=()
 
     case "${1:-}" in
-        --select) select_args=(--select) ;;
+        --select) reselect=true ;;
         "") ;;
         *) name="$1" ;;
     esac
@@ -662,34 +702,60 @@ cmd_apply() {
         require_managed "$name"
         distrobox assemble create --file "$manifest" --name "$name"
         apply_exports_for "$name"
-        # Asked for by name: no longer skipped on this machine.
-        python3 "$select_py" --state "$skipped_file" --hint "$select_hint" --unskip -- "$name"
+        mark_box "$name" yes
         return
     fi
 
-    # Containers that do not exist yet: all of them, or the ones picked in
-    # the checklist; the others are remembered as skipped.
-    while IFS= read -r box; do
-        if [[ -n "$box" ]] && ! container_exists "$box"; then
+    # yes: created without asking; ask: offered, the answer is written to
+    # hosts.txt; no: left alone unless --select. An existing container
+    # without a mark is marked yes.
+    host="$(this_host)" || exit 1
+    while read -r box state; do
+        [[ -n "$box" ]] || continue
+        if container_exists "$box"; then
+            case "$state" in
+                ask) mark_box "$box" yes ;;
+                no) printf 'WARNING: %s exists but is marked %s=no\n' "$box" "$host" >&2 ;;
+            esac
+        elif [[ "$state" == yes ]]; then
+            wanted[$box]=1
+        elif [[ "$state" == ask || ( "$state" == no && "$reselect" == true ) ]]; then
             items+=("$box"$'\t'"$(manifest_value "$box" image)")
+            offered+=("$box")
+            [[ "$state" == ask ]] || unchecked+=(--unchecked "$box")
         fi
-    done < <(managed_boxes)
+    done < <(box_states)
 
-    chosen="$(python3 "$select_py" --state "$skipped_file" --hint "$select_hint" \
-        --what "контейнеры Distrobox" "${select_args[@]}" -- "${items[@]}")" || rc=$?
-    case "$rc" in
-        0) ;;
-        2) die "выбор отменён, ничего не создано" ;;
-        *) exit "$rc" ;;
-    esac
+    if ((${#items[@]})); then
+        chosen="$(python3 "$select_py" --what "контейнеры Distrobox" "${unchecked[@]}" -- "${items[@]}")" || rc=$?
+        case "$rc" in
+            0)
+                for box in "${offered[@]}"; do
+                    if grep -Fxq -- "$box" <<<"$chosen"; then
+                        mark_box "$box" yes
+                        wanted[$box]=1
+                    else
+                        mark_box "$box" no
+                    fi
+                done
+                printf 'Marks for %s written to %s; then: ws switch (commits it)\n' "$host" "$hosts_file"
+                ;;
+            2) die "выбор отменён, ничего не создано" ;;
+            3)
+                [[ "$reselect" == false ]] || die "$select_hint: needs a terminal"
+                printf 'Not offered on %s yet (no terminal to ask): %s; run wsbox apply in a terminal\n' \
+                    "$host" "${offered[*]}" >&2
+                ;;
+            *) exit "$rc" ;;
+        esac
+    fi
 
-    # One container at a time, in manifest order (assemble skips existing
-    # ones; the list holds only missing ones).
+    # One container at a time, in manifest order.
     while IFS= read -r box; do
-        if [[ -n "$box" ]]; then
+        if [[ -n "$box" && -n "${wanted[$box]:-}" ]]; then
             distrobox assemble create --file "$manifest" --name "$box"
         fi
-    done <<<"$chosen"
+    done < <(managed_boxes)
 
     while IFS= read -r box; do
         if [[ -n "$box" ]]; then
@@ -740,6 +806,8 @@ cmd_create() {
     distrobox assemble create \
         --file "$manifest" \
         --name "$name"
+
+    mark_box "$name" yes
 }
 
 cmd_enter() {
@@ -830,6 +898,16 @@ cmd_remove() {
         --force \
         --yes \
         "$name"
+
+    # hosts.txt: the line goes when no other workstation is marked, else
+    # this one is marked no. The definition in distrobox.nix stays.
+    local host result
+    host="$(this_host)" || exit 1
+    result="$(python3 "$marks_py" "$hosts_file" remove "$name" "$host")"
+    case "$result" in
+        removed) echo "Removed from $hosts_file: $name (then: ws switch, commits it)" ;;
+        no) echo "Marked in $hosts_file: $name $host=no (other workstations keep it; then: ws switch)" ;;
+    esac
 
     echo \
         "Managed definition and custom HOME were kept. Use 'wsbox apply $name' to recreate it."

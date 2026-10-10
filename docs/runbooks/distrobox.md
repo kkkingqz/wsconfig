@@ -68,14 +68,19 @@ wsbox export NAME APP | unexport NAME APP
 `apply` не трогает существующий контейнер. `recreate` и `remove` меняют
 только rootfs; описание в `distrobox.nix` и HOME остаются.
 
-Если контейнеров ещё нет, `apply` без имени выводит их список (имя и образ) и
-спрашивает «Поставить все? [Y/n]». На `n` открывается список с галочками:
-Space ставит и снимает галочку, `a` переключает все, Enter создаёт
-отмеченные, Esc/q отменяет. Снятые контейнеры запоминаются для этой машины в
-`~/.local/state/workstation/distrobox/skipped`: `apply` о них больше не
-спрашивает, а `check` показывает их как INFO. Вернуть их: `wsbox apply
---select` (пропущенные будут без галочки) или `wsbox apply NAME`. Без
-терминала создаются все, кроме пропущенных.
+Какие контейнеры на какой машине — `distrobox/hosts.txt`: `NAME HOST=STATE…
+all=STATE`, те же пометки, что в `flatpak/apps.txt` (`helpws flatpak`):
+`yes` — создан, `no` — отказались, `ask` — не предложено; `all=` — для машины
+без своей пометки; контейнер без строки — ask. `wsbox create NAME` и
+`wsbox apply NAME` ставят своей машине `yes`, `wsbox remove NAME` удаляет
+строку, если других машин в ней нет, иначе ставит своей `no` (описание в
+`distrobox.nix` остаётся). `recreate` пометки не трогает. `ws switch`
+коммитит файл.
+
+`apply` без имени создаёт контейнеры с `yes`, о не предложенных спрашивает
+«Поставить все? [Y/n]», на `n` — список с галочками (Space, `a`, Enter,
+Esc/q), ответ пишется в `hosts.txt`. `wsbox apply --select` спрашивает и о
+`no`. Без терминала не предложенные не создаются.
 
 В Fish + Ghostty `wsbox enter NAME`, `distrobox enter NAME` и
 `distrobox-enter -n NAME` меняют обычный цвет текста до выхода из контейнера.

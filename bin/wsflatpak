@@ -32,13 +32,27 @@ REMOTES = CFG / "remotes.conf"
 OVERRIDES = CFG / "overrides"
 DESKTOP_OVERRIDES = CFG / "desktop"
 USER_APPLICATIONS = Path.home() / ".local/share/applications"
-# Managed apps left out on this machine (lib/ws_select.py): apply does not
-# ask about them again, check reports them as info.
-SKIPPED = Path.home() / ".local/state/workstation/flatpak/skipped"
+# apps.txt lines carry per-workstation marks after REMOTE APP (lib/ws_marks.py):
+# HOST=yes (installed there), HOST=no (declined), HOST=ask (not offered);
+# all=STATE for a workstation without its own mark. install/manage mark this
+# workstation yes, remove drops the line or marks it no, apply asks about
+# the apps not offered here yet (lib/ws_select.py) and records the answer.
 SELECT_HINT = "wsflatpak apply --select"
 
 sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
+import ws_marks  # noqa: E402
 import ws_select  # noqa: E402
+
+
+def this_host():
+    return ws_marks.current_host(REPO)
+
+
+def app_marks():
+    try:
+        return ws_marks.MarkedList(APPS_LIST, key_fields={1, 2})
+    except ValueError as e:
+        raise SystemExit(f"wsflatpak: {e}")
 
 
 def run(args, check=True, capture=False):
@@ -70,11 +84,14 @@ def declare_hint(action, snippet):
 
 
 def parse_managed_line(raw):
-    line = raw.split("#", 1)[0].strip()
-    if not line:
-        return None
+    """REMOTE APP of a line, without its workstation marks."""
+    try:
+        parts = ws_marks.Line(raw).key
+    except ValueError as e:
+        raise SystemExit(f"wsflatpak: invalid managed app line: {e}")
 
-    parts = line.split()
+    if not parts:
+        return None
 
     if len(parts) == 1:
         # Backward compatibility with the original one-column format.
@@ -127,16 +144,18 @@ def listed_apps():
 
 
 def list_add(app, remote):
-    if app in listed_apps():
-        print(f"Already in {APPS_LIST}: {app}")
+    """Mark APP installed on this workstation; a new line gets all=ask."""
+    host = this_host()
+    marks = app_marks()
+    known = marks.find(app) is not None
+    if known and marks.state(app, host) == "yes" and host in marks.find(app).marks:
+        print(f"Already in {APPS_LIST}: {app} ({host}=yes)")
         return
 
-    text = APPS_LIST.read_text()
-    if text and not text.endswith("\n"):
-        text += "\n"
-    APPS_LIST.write_text(text + f"{remote} {app}\n")
+    line = marks.set(app, host, "yes", key=[remote, app])
+    marks.save()
     print(
-        f"Added to {APPS_LIST}: {remote} {app}\n"
+        f"{'Marked' if known else 'Added'} in {APPS_LIST}: {line.render()}\n"
         "then: ws switch (commits it)"
     )
 
@@ -681,6 +700,7 @@ def cmd_install(ns):
     for app in sorted({ref.split("/")[1] for ref in targets}):
         if is_managed(app):
             apply_override(app)
+            list_add(app, ns.remote)
         elif ns.unmanaged:
             print(f"\nNot managed (--unmanaged): {app}")
         else:
@@ -691,12 +711,6 @@ def cmd_remove(ns):
     need_flatpak()
     app = resolve_user_app(ns.app)
 
-    if is_managed(app):
-        raise SystemExit(
-            f"wsflatpak: {app} is managed; `wsflatpak unmanage {app}`, "
-            "`ws switch`, then remove again"
-        )
-
     cmd = ["flatpak", "uninstall", "--user"]
 
     if not ns.keep_data:
@@ -704,6 +718,21 @@ def cmd_remove(ns):
 
     cmd.append(app)
     run(cmd)
+
+    # The list: gone when no other workstation is marked, else HOST=no.
+    host = this_host()
+    marks = app_marks()
+    result = marks.remove(app, host)
+    if result is None:
+        return
+    marks.save()
+    if result == "removed":
+        print(f"\nRemoved from {APPS_LIST}: {app}\nthen: ws switch (commits it)")
+        if app in listed_override_apps():
+            print(f"NOTE: {app} still has overrides in {OVERRIDES_LIST}")
+    else:
+        print(f"\nMarked in {APPS_LIST}: {app} {host}=no (other workstations keep it)\n"
+              "then: ws switch (commits it)")
 
 
 
@@ -924,7 +953,12 @@ def cmd_check(json_mode=False):
             print(f"\n  PASS={counts['pass']} WARN={counts['warn']} FAIL={counts['fail']}")
         return 1 if counts["fail"] else 0
 
-    skipped = set(ws_select.read_skipped(SKIPPED))
+    try:
+        host = this_host()
+        marks = app_marks()
+    except SystemExit as e:
+        fail(f"workstation marks of {APPS_LIST.name}: {e}")
+        return finish()
 
     if not shutil.which("flatpak"):
         fail("flatpak installed")
@@ -993,14 +1027,23 @@ def cmd_check(json_mode=False):
         if remote not in expected_remotes:
             fail(f"managed app remote is not declared: {app}: {remote}")
 
+        state = marks.state(app, host)
+
         if not installed_user(app):
-            if app in skipped:
-                info(f"managed app skipped on this machine: {app} ({SELECT_HINT})")
+            if state == "yes":
+                fail(f"managed app missing: {app} ({host}=yes; wsflatpak apply)")
+            elif state == "no":
+                info(f"managed app declined on {host}: {app} ({SELECT_HINT})")
             else:
-                fail(f"managed app missing: {app}")
+                info(f"managed app not offered on {host} yet: {app} (wsflatpak apply asks)")
             continue
 
-        passed(f"managed app installed: {app}")
+        if state == "no":
+            warn(f"managed app installed but marked {host}=no: {app} (wsflatpak remove, or install to mark yes)")
+        elif state == "ask":
+            warn(f"managed app installed but not marked for {host}: {app} (wsflatpak apply marks it)")
+        else:
+            passed(f"managed app installed: {app}")
 
         origin = installed_origin(app)
 
@@ -1057,7 +1100,7 @@ def cmd_check(json_mode=False):
     for app in override_apps:
 
         if not installed_user(app):
-            if override_file(app).exists() and app not in skipped:
+            if override_file(app).exists() and marks.state(app, host) == "yes":
                 warn(f"managed override for non-installed app: {app}")
             continue
 
@@ -1220,17 +1263,50 @@ def cmd_apply(reselect=False):
             ]
         )
 
-    missing = [(app, remote) for remote, app in managed_entries()
-               if not installed_user(app)]
-    chosen = ws_select.choose(missing, SKIPPED, SELECT_HINT,
-                              "приложения Flatpak", reselect)
+    # What this workstation gets: yes is installed, ask is offered (the
+    # answer is written into apps.txt), no is left alone unless --select.
+    host = this_host()
+    marks = app_marks()
+    entries = managed_entries()
+    installed = {app for _, app in entries if installed_user(app)}
+    offer, declined = [], []
+    for remote, app in entries:
+        state = marks.state(app, host)
+        if app in installed:
+            if state == "ask":
+                marks.set(app, host, "yes", key=[remote, app])
+            elif state == "no":
+                print(f"WARNING: {app} is installed but marked {host}=no", file=sys.stderr)
+        elif state == "ask":
+            offer.append((app, remote))
+        elif state == "no" and reselect:
+            offer.append((app, remote))
+            declined.append(app)
+
+    wanted = {app for _, app in entries if app in installed or marks.state(app, host) == "yes"}
+    try:
+        chosen = ws_select.choose(offer, "приложения Flatpak", unchecked=declined)
+    except ws_select.NoTerminal:
+        if reselect:
+            raise SystemExit(f"{SELECT_HINT}: needs a terminal")
+        chosen = []
+        if offer:
+            print(f"Not offered on {host} yet (no terminal to ask): "
+                  f"{', '.join(app for app, _ in offer)}; run wsflatpak apply in a terminal",
+                  file=sys.stderr)
+        offer = []
     if chosen is None:
         print("wsflatpak: выбор отменён, ничего не установлено", file=sys.stderr)
         return 1
-    skipped = {app for app, _ in missing} - set(chosen)
+    for app, remote in offer:
+        marks.set(app, host, "yes" if app in chosen else "no", key=[remote, app])
+    wanted |= set(chosen)
+    if any(line.changed for line in marks.lines):
+        marks.save()
+        print(f"Marks for {host} written to {APPS_LIST}; then: ws switch (commits it)")
 
-    for remote, app in managed_entries():
-        if app in skipped:
+    for remote, app in entries:
+        if app not in wanted:
             continue
         if not installed_user(app):
             print(f"Installing managed app: {remote} {app}")
@@ -1255,7 +1331,7 @@ def cmd_apply(reselect=False):
 
         if installed_user(app):
             apply_override(app)
-        elif app not in skipped:
+        elif app in wanted:
             print(
                 f"WARNING: override exists for non-installed app: {app}",
                 file=sys.stderr,
@@ -1343,10 +1419,9 @@ Runtime устанавливается для пользователя, даже
 """,
     "remove": """По умолчанию используется flatpak uninstall --user --delete-data.
 --keep-data сохраняет данные приложения.
-Управляемое приложение сначала исключите из конфигурации:
-  wsflatpak unmanage org.videolan.VLC
-  ws switch
-  wsflatpak remove org.videolan.VLC
+Строка управляемого приложения в apps.txt удаляется, если других машин в ней
+нет; иначе этой машине ставится HOST=no (остальные машины его сохраняют).
+Затем ws switch (коммитит apps.txt).
 """,
     "reset-permissions": """Объявленные overrides остаются в конфигурации и восстанавливаются при apply.
 Для постоянного изменения используйте unfilesystem, unhost, unenv или untalk.
@@ -1366,11 +1441,12 @@ Runtime устанавливается для пользователя, даже
 """,
     "apply": """Добавляет объявленные user remotes, устанавливает отсутствующие приложения
 и обеспечивает user runtime для всех установленных веток управляемых приложений.
-Об отсутствующих спрашивает «Поставить все? [Y/n]»; на n — список, где Space
-ставит и снимает галочку. Снятые запоминаются для этой машины
-(~/.local/state/workstation/flatpak/skipped): apply о них больше не спрашивает,
-check показывает их как INFO. --select спрашивает снова и о пропущенных.
-Без терминала ставит все, кроме пропущенных.
+Что ставить на этой машине, решают пометки в apps.txt (HOST — имя из ws host):
+HOST=yes ставится без вопроса, HOST=no пропускается, HOST=ask или нет пометки
+(тогда действует all=…) — apply спрашивает «Поставить все? [Y/n]», на n —
+список, где Space ставит и снимает галочку; ответ пишется в apps.txt
+(HOST=yes / HOST=no). --select спрашивает снова и о HOST=no.
+Без терминала не предложенные не ставятся.
 Затем сбрасывает их overrides, применяет объявленные значения и запускает check.
 Перед apply выполните ws switch, чтобы собрать изменения конфигурации.
 Ссылки на свои .desktop устанавливаются через ws switch.
@@ -1485,7 +1561,7 @@ ws switch собирает эти списки; apply применяет соб�
 
     q = command("apply")
     q.add_argument("--select", action="store_true",
-                   help="снова спросить и о пропущенных на этой машине приложениях")
+                   help="спросить и о приложениях с пометкой HOST=no")
 
     q = command("help")
     q.add_argument("command", nargs="?", choices=tuple(sp.choices), metavar="COMMAND",

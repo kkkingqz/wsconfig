@@ -26,13 +26,14 @@ class OverrideTests(unittest.TestCase):
         (cfg / 'apps.conf').write_text(f'flathub {APP}\n')
         (cfg / 'remotes.conf').write_text('flathub https://example.org/repo\n')
         self.apps = self.root / 'apps.txt'
-        self.apps.write_text(f'flathub {APP}\n')
+        self.apps.write_text(f'flathub {APP} test=yes all=ask\n')
         self.list = self.root / 'overrides.txt'
         self.list.write_text('')
         self.g = runpy.run_path(str(ROOT / 'bin/wsflatpak'))['cmd_check'].__globals__
         self.g.update(CFG=cfg, APPS=cfg / 'apps.conf', REMOTES=cfg / 'remotes.conf',
                       OVERRIDES=self.overrides, DESKTOP_OVERRIDES=cfg / 'desktop',
-                      APPS_LIST=self.apps, OVERRIDES_LIST=self.list)
+                      APPS_LIST=self.apps, OVERRIDES_LIST=self.list,
+                      this_host=lambda: 'test')
         self.runtime = ''
         self.addCleanup(patch.stopall)
         patch('shutil.which', return_value='/fake/flatpak').start()

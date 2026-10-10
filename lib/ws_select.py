@@ -1,54 +1,31 @@
 #!/usr/bin/env python3
-"""Choice of the declared items that are not installed yet, for the apply of
-wsflatpak (apps) and wsbox (containers).
+"""Interactive choice of the items apply would install, for wsflatpak
+(apps) and wsbox (containers): the items not offered to this workstation yet
+(ws_marks: state ask).
 
-Asks "install all?"; on "n" shows a checklist (Space toggles). Items left
-out are remembered in a state file of this machine
-(~/.local/state/workstation/<layer>/skipped, one name per line): the next
-apply does not ask about them again and check reports them as info, not as
-a failure. `--select` asks about every missing item again, the skipped ones
-start unchecked. Without a terminal nothing is asked: every item not
-skipped is chosen, as before.
+Asks "Поставить все? [Y/n]"; on "n" a checklist (Space toggles, a toggles
+all, Enter confirms, Esc/q cancels). The caller writes the answer into its
+list (ws_marks): chosen items yes, the rest no.
 
 Used by wsbox as a command:
 
-    ws_select.py --state FILE --hint CMD [--select] -- NAME<TAB>LABEL...
+    ws_select.py --what TEXT [--unchecked NAME]... -- NAME<TAB>LABEL...
 
-prints the chosen names, one per line; exit 2 when the choice was cancelled.
+prints the chosen names, one per line; exit 2 when cancelled, 3 without a
+terminal.
 """
 import argparse
 import os
-from pathlib import Path
 import select as _select
 import sys
 import termios
 
 CANCELLED = 2
+NO_TERMINAL = 3
 
 
-def read_skipped(path):
-    try:
-        text = Path(path).read_text()
-    except FileNotFoundError:
-        return []
-    return [x.strip() for x in text.splitlines() if x.strip()]
-
-
-def write_skipped(path, names):
-    path = Path(path)
-    if not names:
-        path.unlink(missing_ok=True)
-        return
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text("".join(f"{n}\n" for n in names))
-    tmp.replace(path)
-
-
-def unskip(path, names):
-    """Drop NAMES from the state file (installed on explicit request)."""
-    left = [n for n in read_skipped(path) if n not in set(names)]
-    write_skipped(path, left)
+class NoTerminal(Exception):
+    """No controlling terminal to ask on."""
 
 
 def open_tty():
@@ -95,7 +72,8 @@ class Terminal:
     def size(self):
         try:
             size = os.get_terminal_size(self.fd)
-            return size.columns, size.lines
+            # A terminal that reports no size (0x0) gets the classic one.
+            return size.columns or 80, size.lines or 24
         except OSError:
             return 80, 24
 
@@ -171,35 +149,21 @@ def checklist(term, title, items, checked):
         termios.tcsetattr(term.fd, termios.TCSADRAIN, old)
 
 
-def choose(items, state, hint, what, reselect=False, tty=None):
-    """items: [(name, label)] of the declared items that are missing.
-    Returns the names to install, or None when cancelled. Updates STATE."""
-    names = [n for n, _ in items]
-    skipped = [n for n in read_skipped(state) if n in names]
-    if reselect:
-        ask = items
-    else:
-        ask = [(n, label) for n, label in items if n not in skipped]
-        if skipped:
-            print(f"Пропущены на этой машине: {', '.join(skipped)} "
-                  f"(вернуть: {hint})", file=sys.stderr)
-    if not ask:
-        write_skipped(state, skipped)
+def choose(items, what, unchecked=(), tty=None):
+    """items: [(name, label)]. Returns the chosen names, None when cancelled;
+    raises NoTerminal without a terminal. UNCHECKED start unchecked in the
+    checklist and are marked in the list (declined earlier)."""
+    if not items:
         return []
-
     fd = open_tty() if tty is None else tty
     if fd is None:
-        if reselect:
-            raise SystemExit(f"{hint}: нужен терминал")
-        write_skipped(state, skipped)
-        return [n for n, _ in ask]
-
+        raise NoTerminal()
     term = Terminal(fd)
     try:
-        width = max(len(n) for n, _ in ask)
-        term.write(f"\nНе установлены {what} ({len(ask)}):\n")
-        for n, label in ask:
-            mark = " (пропущено)" if n in skipped else ""
+        width = max(len(n) for n, _ in items)
+        term.write(f"\nНе установлены {what} ({len(items)}):\n")
+        for n, label in items:
+            mark = " (отказались)" if n in unchecked else ""
             term.write(f"  {n:<{width}}  {label}{mark}\n")
         while True:
             term.write("Поставить все? [Y/n] ")
@@ -209,43 +173,26 @@ def choose(items, state, hint, what, reselect=False, tty=None):
                 return None
             answer = answer.lower()
             if answer in ("", "y", "yes", "д", "да"):
-                chosen = [n for n, _ in ask]
-                break
+                return [n for n, _ in items]
             if answer in ("n", "no", "н", "нет"):
-                chosen = checklist(
-                    term, f"Что поставить ({what}):", ask,
-                    [n not in skipped for n, _ in ask])
-                if chosen is None:
-                    return None
-                break
+                return checklist(term, f"Что поставить ({what}):", items,
+                                 [n not in unchecked for n, _ in items])
     finally:
         if tty is None:
             os.close(fd)
 
-    left = [n for n, _ in ask if n not in chosen]
-    write_skipped(state, sorted(set(skipped) - set(chosen) | set(left)))
-    if left:
-        print(f"Пропущены (запомнено для этой машины): {', '.join(left)}; "
-              f"вернуть: {hint}", file=sys.stderr)
-    return chosen
-
 
 def main():
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("--state", required=True)
-    p.add_argument("--hint", required=True)
     p.add_argument("--what", default="")
-    p.add_argument("--select", action="store_true")
-    p.add_argument("--unskip", action="store_true",
-                   help="drop the names from the state file")
+    p.add_argument("--unchecked", action="append", default=[])
     p.add_argument("items", nargs="*", metavar="NAME<TAB>LABEL")
     ns = p.parse_args()
-
     items = [tuple((x.split("\t", 1) + [""])[:2]) for x in ns.items]
-    if ns.unskip:
-        unskip(ns.state, [n for n, _ in items])
-        return 0
-    chosen = choose(items, ns.state, ns.hint, ns.what, ns.select)
+    try:
+        chosen = choose(items, ns.what, ns.unchecked)
+    except NoTerminal:
+        return NO_TERMINAL
     if chosen is None:
         return CANCELLED
     for n in chosen:
