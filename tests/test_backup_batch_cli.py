@@ -98,3 +98,17 @@ class BatchCLI(TransferFixture, unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         r = json.loads(p.stdout)['vms']
         self.assertTrue((self.managed / 'vms' / r['id']).exists())
+
+    def test_host_without_vm_layer_has_no_vms_scope(self):
+        # wsvm: vm = "no" in its facts.nix.
+        self.cli_env['WS_HOST'] = 'wsvm'
+        p = self.cli('send', 'vms')
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('no VM layer', p.stderr)
+        self.assertFalse((self.managed / 'vms').exists())
+        p = self.cli('plan', 'all')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(json.loads(p.stdout)['sources'], {'home': '/home'})
+        p = self.cli('send', 'all')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(set(json.loads(p.stdout)), {'home'})

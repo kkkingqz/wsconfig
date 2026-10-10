@@ -230,8 +230,9 @@ class Boundary:
             f = self.bin / name
             f.write_text(STUB)
             f.chmod(0o755)
+        # mbp16 has the VM layer (vm = "yes"): scope vms exists.
         self.env = dict(os.environ, PATH=str(self.bin) + ':' + os.environ['PATH'],
-                        BACKUP_FIXTURE=str(self.config))
+                        BACKUP_FIXTURE=str(self.config), WS_HOST='mbp16')
 
     def update(self, **changes):
         c = {'uuid': U, 'source_home': str(self.home), **changes}

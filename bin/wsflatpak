@@ -44,8 +44,14 @@ import ws_marks  # noqa: E402
 import ws_select  # noqa: E402
 
 
+_host = None
+
+
 def this_host():
-    return ws_marks.current_host(REPO)
+    global _host
+    if _host is None:
+        _host = ws_marks.current_host(REPO)
+    return _host
 
 
 def app_marks():
@@ -638,6 +644,8 @@ def apply_override(app):
 
 def cmd_install(ns):
     need_flatpak()
+    # The workstation before installing: its mark is written afterwards.
+    this_host()
 
     remotes = {
         x.strip()
@@ -710,6 +718,10 @@ def cmd_install(ns):
 def cmd_remove(ns):
     need_flatpak()
     app = resolve_user_app(ns.app)
+    # The workstation and the marks first: a failure here leaves the app
+    # installed rather than gone but still marked yes.
+    host = this_host()
+    app_marks()
 
     cmd = ["flatpak", "uninstall", "--user"]
 
@@ -720,7 +732,6 @@ def cmd_remove(ns):
     run(cmd)
 
     # The list: gone when no other workstation is marked, else HOST=no.
-    host = this_host()
     marks = app_marks()
     result = marks.remove(app, host)
     if result is None:
@@ -1296,8 +1307,11 @@ def cmd_apply(reselect=False):
                   file=sys.stderr)
         offer = []
     if chosen is None:
-        print("wsflatpak: выбор отменён, ничего не установлено", file=sys.stderr)
-        return 1
+        # Cancel answers only the question: the offered apps keep their
+        # marks and are asked about next time; the rest is applied.
+        print("wsflatpak: выбор отменён, предложенные приложения не тронуты "
+              "(спросит в следующий раз)", file=sys.stderr)
+        chosen, offer = [], []
     for app, remote in offer:
         marks.set(app, host, "yes" if app in chosen else "no", key=[remote, app])
     wanted |= set(chosen)

@@ -55,6 +55,16 @@ class MarkTests(unittest.TestCase):
             with self.subTest(text=text), self.assertRaises(ValueError):
                 self.write(text)
 
+    def test_workstation_name_must_fit_a_mark(self):
+        m = self.write("box a=yes all=ask\n")
+        for host in ("legion.go", "all", "-x", ""):
+            with self.subTest(host=host), self.assertRaises(ValueError):
+                m.set("box", host, "yes")
+            with self.subTest(host=host), self.assertRaises(ValueError):
+                m.remove("box", host)
+        self.assertEqual(m.set("box", "legion-go_2", "no").render(),
+                         "box a=yes legion-go_2=no all=ask")
+
     def test_summary_for_the_commit_message(self):
         old = self.write("a h=yes all=ask\nb h=yes all=ask\n")
         new_path = Path(self.temp.name) / "new.txt"
@@ -71,6 +81,12 @@ class MarkTests(unittest.TestCase):
         self.assertEqual(run("state", "box", "b").stdout, "yes\n")
         self.assertEqual(run("remove", "box", "b").stdout, "no\n")
         self.assertEqual(self.path.read_text(), "box a=yes b=no all=ask\n")
+        # Nothing to remove: the file is not written, a missing one not made.
+        missing = Path(self.temp.name) / "missing.txt"
+        p = subprocess.run([sys.executable, str(ROOT / "lib/ws_marks.py"), str(missing), "remove", "box", "b"],
+                           text=True, capture_output=True)
+        self.assertEqual(p.stdout, "absent\n")
+        self.assertFalse(missing.exists())
 
 
 if __name__ == "__main__":

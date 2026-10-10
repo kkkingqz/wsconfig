@@ -32,12 +32,23 @@ MARK = re.compile(r"([A-Za-z0-9][A-Za-z0-9_-]*)=(yes|no|ask)\Z")
 ALL = "all"
 
 
+def check_host(host):
+    """HOST as it can stand in a mark: what the parser reads back."""
+    if host == ALL or not MARK.match(f"{host}=yes"):
+        raise ValueError(f"invalid workstation name {host!r} for a mark "
+                         "(letters, digits, - and _; not all)")
+    return host
+
+
 def current_host(repo):
     """The flake host of this machine (WS_HOST or facts.nix hostname)."""
     p = subprocess.run([str(Path(repo) / "bin/ws"), "host"], text=True, capture_output=True)
     if p.returncode or not p.stdout.strip():
         raise SystemExit(p.stderr.strip() or "ws host: unknown workstation")
-    return p.stdout.strip()
+    try:
+        return check_host(p.stdout.strip())
+    except ValueError as e:
+        raise SystemExit(str(e))
 
 
 class Line:
@@ -101,7 +112,8 @@ class MarkedList:
 
     def set(self, name, host, state, key=None):
         """Mark HOST; a missing line is appended as KEY host=STATE all=ask."""
-        assert state in STATES and host != ALL
+        assert state in STATES
+        check_host(host)
         line = self.find(name)
         if line is None:
             line = Line(" ".join(key or [name]))
@@ -121,6 +133,7 @@ class MarkedList:
     def remove(self, name, host):
         """Drop the line when no other workstation is marked, else mark HOST
         no. Returns 'removed', 'no' or None (no such line)."""
+        check_host(host)
         line = self.find(name)
         if line is None:
             return None
@@ -177,11 +190,13 @@ def main(argv):
         elif action == "marked" and len(args) == 1:
             return 0 if marks.find(args[0]) else 1
         elif action == "set" and len(args) == 3 and args[2] in STATES:
-            marks.set(*args)
-            marks.save()
+            if marks.set(*args).changed:
+                marks.save()
         elif action == "remove" and len(args) == 2:
-            print(marks.remove(*args) or "absent")
-            marks.save()
+            result = marks.remove(*args)
+            print(result or "absent")
+            if result:
+                marks.save()
         else:
             print(__doc__, file=sys.stderr)
             return 2

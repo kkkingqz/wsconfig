@@ -60,6 +60,10 @@ class ChooseTests(unittest.TestCase):
         self.assertEqual(self.choose(["n\n", DOWN, " ", "\n"]), ["a.App", "c.App"])
         self.assertIn("[x] a.App", self.screen)
 
+    def test_arrows_in_application_cursor_mode(self):
+        # ESC O B (SS3), as a terminal in application cursor mode sends it.
+        self.assertEqual(self.choose(["n\n", "\x1bOB", " ", "\x1bOA", " ", "\n"]), ["c.App"])
+
     def test_toggle_all_off_then_one_on(self):
         self.assertEqual(self.choose(["n\n", "a", DOWN, DOWN, " ", "\n"]), ["c.App"])
 

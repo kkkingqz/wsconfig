@@ -310,7 +310,7 @@ class BackupCLI(unittest.TestCase):
     def run_cli(self, *args):
         with tempfile.TemporaryDirectory() as d:
             env = dict(os.environ, WSCONFIG=str(ROOT), XDG_CONFIG_HOME=d,
-                       XDG_STATE_HOME=d)
+                       XDG_STATE_HOME=d, WS_HOST='mbp16')
             return subprocess.run([str(ROOT / 'bin/ws'), 'backup', *args],
                                   env=env, text=True, capture_output=True)
 

@@ -157,23 +157,31 @@ export_source() {
     ini_value "$exports_manifest" "$1" "$2"
 }
 
+# The workstation (ws host) into ws_host, once, in this shell: commands call
+# it before they change anything. The name must fit a mark (ws_marks.py).
+load_host() {
+    [[ -z "${ws_host:-}" ]] || return 0
+    ws_host="$("$bin_dir/ws" host)" || die "unknown workstation (ws host)"
+    [[ "$ws_host" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ && "$ws_host" != all ]] \
+        || die "invalid workstation name for distrobox/hosts.txt: $ws_host"
+}
+
 this_host() {
-    [[ -n "${ws_host:-}" ]] || ws_host="$("$bin_dir/ws" host)" || die "unknown workstation (ws host)"
+    load_host
     printf '%s\n' "$ws_host"
 }
 
 # NAME STATE lines for every managed container on this workstation.
 box_states() {
-    local host
-    host="$(this_host)" || exit 1
-    mapfile -t _boxes < <(managed_boxes)
-    python3 "$marks_py" "$hosts_file" states "$host" "${_boxes[@]}"
+    local -a boxes
+    load_host
+    mapfile -t boxes < <(managed_boxes)
+    python3 "$marks_py" "$hosts_file" states "$ws_host" "${boxes[@]}"
 }
 
 mark_box() {
-    local host
-    host="$(this_host)" || exit 1
-    python3 "$marks_py" "$hosts_file" set "$1" "$host" "$2" >/dev/null
+    load_host
+    python3 "$marks_py" "$hosts_file" set "$1" "$ws_host" "$2" >/dev/null
 }
 
 is_managed() {
@@ -527,7 +535,7 @@ cmd_check() {
         fail "manifest missing"
     fi
 
-    if host="$(this_host 2>/dev/null)" && box_state="$(box_states 2>&1)"; then
+    if host="$(this_host 2>&1)" && box_state="$(box_states 2>&1)"; then
         while read -r name state; do
             [[ -n "$name" ]] && states[$name]="$state"
         done <<<"$box_state"
@@ -537,7 +545,7 @@ cmd_check() {
             is_managed "$name" || warn "distrobox/hosts.txt marks an undeclared container: $name"
         done < <(sed -e 's/#.*//' "$hosts_file" 2>/dev/null | awk 'NF {print $1}')
     else
-        fail "workstation marks: ${box_state:-unknown workstation (ws host)}"
+        fail "workstation marks: ${box_state:-$host}"
         host=unknown
     fi
 
@@ -688,8 +696,8 @@ cmd_dry_run() {
 }
 
 cmd_apply() {
-    local name="" box state chosen rc=0 reselect=false host
-    local -a items=() unchecked=() offered=() create=()
+    local name="" box state states chosen rc=0 reselect=false host
+    local -a items=() unchecked=() offered=()
     local -A wanted=()
 
     case "${1:-}" in
@@ -697,6 +705,9 @@ cmd_apply() {
         "") ;;
         *) name="$1" ;;
     esac
+
+    load_host
+    host="$ws_host"
 
     if [[ -n "$name" ]]; then
         require_managed "$name"
@@ -708,8 +719,9 @@ cmd_apply() {
 
     # yes: created without asking; ask: offered, the answer is written to
     # hosts.txt; no: left alone unless --select. An existing container
-    # without a mark is marked yes.
-    host="$(this_host)" || exit 1
+    # without a mark is marked yes. The marks are read first: an unreadable
+    # hosts.txt stops apply here instead of leaving it with nothing to do.
+    states="$(box_states)" || die "cannot read $hosts_file"
     while read -r box state; do
         [[ -n "$box" ]] || continue
         if container_exists "$box"; then
@@ -724,7 +736,7 @@ cmd_apply() {
             offered+=("$box")
             [[ "$state" == ask ]] || unchecked+=(--unchecked "$box")
         fi
-    done < <(box_states)
+    done <<<"$states"
 
     if ((${#items[@]})); then
         chosen="$(python3 "$select_py" --what "контейнеры Distrobox" "${unchecked[@]}" -- "${items[@]}")" || rc=$?
@@ -740,7 +752,11 @@ cmd_apply() {
                 done
                 printf 'Marks for %s written to %s; then: ws switch (commits it)\n' "$host" "$hosts_file"
                 ;;
-            2) die "выбор отменён, ничего не создано" ;;
+            2)
+                # Cancel answers only the question: the offered containers
+                # stay ask; those marked yes are still created.
+                printf 'wsbox: выбор отменён, предложенные контейнеры не тронуты (спросит в следующий раз)\n' >&2
+                ;;
             3)
                 [[ "$reselect" == false ]] || die "$select_hint: needs a terminal"
                 printf 'Not offered on %s yet (no terminal to ask): %s; run wsbox apply in a terminal\n' \
@@ -799,6 +815,7 @@ cmd_create() {
     local name="${1:-}"
 
     require_managed "$name"
+    load_host
 
     container_exists "$name" \
         && die "container already exists: $name"
@@ -894,6 +911,13 @@ cmd_remove() {
     container_exists "$name" \
         || die "container does not exist: $name"
 
+    # The workstation and a readable hosts.txt first: a failure leaves the
+    # container in place rather than gone but still marked yes.
+    local result
+    load_host
+    python3 "$marks_py" "$hosts_file" state "$name" "$ws_host" >/dev/null \
+        || die "cannot read $hosts_file"
+
     distrobox rm \
         --force \
         --yes \
@@ -901,12 +925,10 @@ cmd_remove() {
 
     # hosts.txt: the line goes when no other workstation is marked, else
     # this one is marked no. The definition in distrobox.nix stays.
-    local host result
-    host="$(this_host)" || exit 1
-    result="$(python3 "$marks_py" "$hosts_file" remove "$name" "$host")"
+    result="$(python3 "$marks_py" "$hosts_file" remove "$name" "$ws_host")"
     case "$result" in
         removed) echo "Removed from $hosts_file: $name (then: ws switch, commits it)" ;;
-        no) echo "Marked in $hosts_file: $name $host=no (other workstations keep it; then: ws switch)" ;;
+        no) echo "Marked in $hosts_file: $name $ws_host=no (other workstations keep it; then: ws switch)" ;;
     esac
 
     echo \

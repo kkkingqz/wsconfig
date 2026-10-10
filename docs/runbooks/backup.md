@@ -66,6 +66,9 @@ HOME Distrobox/Wine и caches. Нативный btrfs send не исключае
 Вложенные subvolumes и отдельные mounts не копируются рекурсивно;
 при их обнаружении snapshot отказывает до явного решения о дополнительном scope.
 
+Scope `vms` есть только на хосте с `vm = "yes"` в `facts.nix` (`helpws virt`):
+иначе `plan|send vms` отказывают, а `plan|send all` — это только HOME.
+
 `send vms` снимает @vms целиком: диски, XML, NVRAM, TPM из `/var/lib/vms`. VM должны быть
 выключены и не запускаться во время snapshot; активные VM или ошибка libvirt
 останавливают операцию. Автоматического shutdown/freeze нет. Состояние

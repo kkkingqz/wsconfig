@@ -15,6 +15,8 @@ import sys
 import tempfile
 import uuid as uuidlib
 
+# Every source a workstation may have; vms only with vm = "yes" in its
+# facts.nix (scope_sources). The path checks keep all of them.
 SOURCES = {'home': '/home', 'vms': '/var/lib/vms'}
 LIVE_PATHS = [*SOURCES.values(), '/var/lib/libvirt', '/etc/libvirt']
 FIELDS = {'schema_version', 'ssh_host', 'remote_host_id', 'source_fs_uuid',
@@ -61,23 +63,46 @@ def load_config(path):
     return c
 
 
-def build_plan(config, scope):
+def vm_layer():
+    """True with vm = "yes" in this host's facts.nix (helpws virt): only then
+    is there a VM layer and its source @vms."""
+    p = subprocess.run([str(REPO / 'bin/ws'), 'fact', 'vm'], text=True, capture_output=True)
+    vm = p.stdout.strip()
+    if p.returncode or vm not in {'yes', 'no'}:
+        raise ValueError('vm fact of this host: ' + (p.stderr.strip() or vm or 'missing') +
+                         ' (vm = "yes" or "no" in nix/hosts/<host>/facts.nix)')
+    return vm == 'yes'
+
+
+def scope_sources(scope, vm):
+    """Sources of SCOPE; VM: the host has the VM layer (vm_layer). all is
+    home alone without it, vms is refused."""
     if scope not in {*SOURCES, 'all'}:
         raise ValueError('scope must be home, vms or all')
+    if scope == 'vms' and not vm:
+        raise ValueError('scope vms needs vm = "yes" in facts.nix: this host has no VM layer')
+    if scope == 'all':
+        return {k: v for k, v in SOURCES.items() if vm or k != 'vms'}
+    return {scope: SOURCES[scope]}
+
+
+def build_plan(config, scope, vm):
+    sources = scope_sources(scope, vm)
     missing = sorted(REQUIRED - set(config))
     return {'configured': not missing, 'missing': missing,
-            'sources': SOURCES.copy() if scope == 'all' else {scope: SOURCES[scope]},
+            'sources': sources,
             'transport': 'btrfs-send-over-ssh', 'protocol': 1,
             'exclusions': [], 'nested_subvolumes': 'checked before snapshot',
             'vm_policy': 'refuse running VMs', 'automatic_prune': False}
 
 
 def build_batch_plan(config):
-    plan = build_plan(config, 'all')
+    plan = build_plan(config, 'home', False)
     plan.update(workflow='timeshift-batch', sources={'system': 'Timeshift @', 'home': 'Timeshift @home when present'},
                 coverage='inventory at batch start; missing @home reported explicitly',
                 automatic_prune=True, local_retention='one verified parent per scope after whole batch succeeds',
-                remote_retention=False, vms='separate: ws backup send vms')
+                remote_retention=False,
+                vms='separate: ws backup send vms (hosts with vm = "yes")')
     return plan
 
 
@@ -320,12 +345,13 @@ def stream(sender, receiver):
                     stop_process(p, private_session)
 
 
-def send(c, scope, state):
+def send(c, scope, state, vm):
+    names = list(scope_sources(scope, vm))
     result = {}
     with operation(state, 'send ' + scope) as (id, stage):
         stage('receiver probe'); probe(c)
         last = read_json(state / 'last-success.json', {})
-        for name in (SOURCES if scope == 'all' else [scope]):
+        for name in names:
             stage(name + ': parent check')
             parent = last.get(name)
             parent_id = None
@@ -438,7 +464,9 @@ def main(argv=None):
         return
     c = load_config(config_path())
     scope = getattr(args, 'scope', None)
-    plan = build_plan(c, scope) if args.command in {'plan', 'send'} and scope else build_batch_plan(c)
+    # The vm fact only where it matters: home needs no facts.nix.
+    vm = vm_layer() if args.command in {'plan', 'send'} and scope in {'vms', 'all'} else False
+    plan = build_plan(c, scope, vm) if args.command in {'plan', 'send'} and scope else build_batch_plan(c)
     if args.command == 'plan':
         print(json.dumps(plan, indent=2))
     elif args.command == 'status':
@@ -470,7 +498,7 @@ def main(argv=None):
             else:
                 print_copies(c['source_snapshot_root'], copies)
         elif args.command == 'send':
-            print(json.dumps(send(c, args.scope, state_path()), indent=2))
+            print(json.dumps(send(c, args.scope, state_path(), vm), indent=2))
         else:
             print(json.dumps(restore_test(c, args.scope, args.id, args.target, args.verify, state_path()), indent=2))
 

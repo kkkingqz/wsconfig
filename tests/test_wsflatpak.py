@@ -215,6 +215,30 @@ class UserRuntimeTests(unittest.TestCase):
         self.assertFalse(state.app)
         self.assertIn("test=no", self.g["APPS_LIST"].read_text())
 
+    def test_cancel_answers_only_the_question(self):
+        state = FlatpakState(system_runtime=True)
+        self.g["APPS"].write_text(f"flathub {APP}\nflathub {OTHER}\n")
+        self.marks(f"flathub {APP} test=yes all=ask\nflathub {OTHER} other=yes all=ask")
+        with patch.object(self.g["ws_select"], "choose", return_value=None), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertFalse(self.execute(state, "apply"))
+        self.assertIn("выбор отменён", err.getvalue())
+        self.assertEqual(state.apps.keys(), {APP_REF})
+        self.assertEqual(self.g["APPS_LIST"].read_text(),
+                         f"flathub {APP} test=yes all=ask\nflathub {OTHER} other=yes all=ask\n")
+
+    def test_remove_resolves_the_workstation_before_uninstalling(self):
+        state = FlatpakState(system_runtime=True, app=True)
+        self.marks(f"flathub {APP} test=yes all=ask")
+
+        def unknown():
+            raise SystemExit("ws host: unknown workstation")
+        self.g["this_host"] = unknown
+        with patch("subprocess.run", side_effect=state.run), self.assertRaises(SystemExit):
+            self.g["cmd_remove"](SimpleNamespace(app=APP, keep_data=True))
+        self.assertTrue(state.app)
+        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} test=yes all=ask\n")
+
     def test_installed_app_without_mark_is_marked_yes(self):
         state = FlatpakState(system_runtime=True, app=True)
         self.execute(state, "apply")

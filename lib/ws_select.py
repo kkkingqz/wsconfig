@@ -5,7 +5,8 @@
 
 Asks "Поставить все? [Y/n]"; on "n" a checklist (Space toggles, a toggles
 all, Enter confirms, Esc/q cancels). The caller writes the answer into its
-list (ws_marks): chosen items yes, the rest no.
+list (ws_marks): chosen items yes, the rest no; a cancel answers only the
+question (the items stay ask, the rest of apply goes on).
 
 Used by wsbox as a command:
 
@@ -59,15 +60,20 @@ class Terminal:
             return "eof"
         if b != b"\x1b":
             return b.decode(errors="replace")
-        # A bare Esc or the start of an arrow key sequence.
+        # A bare Esc or a key sequence: CSI (ESC [ ... A) or, in application
+        # cursor mode, SS3 (ESC O A); both end with a letter or ~ after
+        # their introducer.
         seq = b""
         while _select.select([self.fd], [], [], 0.05)[0]:
             seq += os.read(self.fd, 1)
-            if seq[-1:].isalpha() or seq[-1:] == b"~":
+            if seq[:1] not in (b"[", b"O"):
+                break
+            if len(seq) > 1 and (seq[-1:].isalpha() or seq[-1:] == b"~"):
                 break
         return {b"[A": "up", b"OA": "up", b"[B": "down", b"OB": "down",
-                b"[5~": "pgup", b"[6~": "pgdn", b"[H": "home",
-                b"[F": "end"}.get(seq, "esc" if not seq else "")
+                b"[5~": "pgup", b"[6~": "pgdn", b"[H": "home", b"OH": "home",
+                b"[1~": "home", b"[F": "end", b"OF": "end",
+                b"[4~": "end"}.get(seq, "esc" if not seq else "")
 
     def size(self):
         try:
@@ -85,7 +91,7 @@ def checklist(term, title, items, checked):
     pos = top = 0
     width = max(len(n) for n, _ in items)
     help_line = ("↑/↓ — выбор, Space — галочка, a — все/ничего, "
-                 "Enter — установить отмеченные, Esc/q — отмена")
+                 "Enter — установить отмеченные, Esc/q — не сейчас")
     drawn = 0
 
     old = termios.tcgetattr(term.fd)
