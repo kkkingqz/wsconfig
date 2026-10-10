@@ -1,0 +1,362 @@
+#!/usr/bin/env python3
+"""wsgame: the packages of the Game Mode session (helpws gaming, helpws
+plan-legion-go 3.4). Sources and versions are gaming/sources.nix, built by
+ws switch into ~/.local/share/workstation/gaming/sources.json; downloads and
+.debs live next to it. Nothing is installed from outside dpkg.
+
+  fetch            download the sources, check their sha256
+  build            fetch, then build the .debs in a podman container of the
+                   host's Ubuntu release (gaming/build.sh)
+  test             install and purge the built .debs in a clean container of
+                   that release: dependencies resolve, scripts run
+  install          on a host with gameMode = "yes": the .debs with apt, sddm
+                   as display manager (and weston for its greeter), services
+                   on, default login mode desktop; then reboot
+  check [--json]   packages and versions, services, display manager, session
+                   names, the default login mode (ws check)
+  status           pinned, built and installed version of each package
+  mode game|desktop
+                   switch the session now (steamosctl)
+"""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import urllib.request
+
+REPO = Path(os.environ.get("WSCONFIG") or Path(os.path.realpath(__file__)).parent.parent)
+DATA = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "workstation/gaming"
+SOURCES = DATA / "sources.json"
+SRC = DATA / "src"
+DEBS = DATA / "debs"
+CARGO = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "wsgame/cargo"
+BUILD_SCRIPT = REPO / "gaming/build.sh"
+DESKTOP = "ubuntu.desktop"
+
+# Package of each source and its architecture; the debounce patch goes into
+# powerbuttond.
+PACKAGES = {
+    "steamos-manager": "amd64",
+    "powerbuttond": "amd64",
+    "gamescope-session-plus": "all",
+    "gamescope-session-steam": "all",
+    "extest": "i386",
+    "inputplumber": "amd64",
+}
+# From Ubuntu with the packages (sddm makes itself the display manager).
+APT = ["sddm", "weston"]
+
+
+def die(text):
+    raise SystemExit(f"wsgame: {text}")
+
+
+def run(args, check=True, capture=False, **kw):
+    if capture:
+        kw.update(text=True, capture_output=True)
+    return subprocess.run(args, check=check, **kw)
+
+
+def load_sources():
+    try:
+        return json.loads(SOURCES.read_text())
+    except FileNotFoundError:
+        die(f"missing {SOURCES} (gaming/sources.nix; ws switch)")
+    except ValueError as e:
+        die(f"{SOURCES}: {e}")
+
+
+def src_file(name, source):
+    """The download of NAME: its name and the suffix of the url."""
+    url = source["url"]
+    suffix = ".tar.gz" if url.endswith(".tar.gz") else os.path.splitext(url)[1]
+    return SRC / f"{name}{suffix}"
+
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def deb_name(name, version):
+    return f"{name}_{version}_{PACKAGES[name]}.deb"
+
+
+def fact(name):
+    p = run([str(REPO / "bin/ws"), "fact", name], check=False, capture=True)
+    return p.stdout.strip() if p.returncode == 0 else ""
+
+
+def cmd_fetch(sources=None):
+    sources = sources or load_sources()
+    SRC.mkdir(parents=True, exist_ok=True)
+    for name, s in sorted(sources.items()):
+        path = src_file(name, s)
+        if path.exists() and sha256(path) == s["sha256"]:
+            print(f"present: {path.name}")
+            continue
+        part = path.with_name(path.name + ".part")
+        print(f"fetch:   {path.name} <- {s['url']}")
+        try:
+            with urllib.request.urlopen(s["url"], timeout=60) as r, open(part, "wb") as f:
+                shutil.copyfileobj(r, f)
+        except OSError as e:
+            part.unlink(missing_ok=True)
+            die(f"{name}: download failed: {e}")
+        got = sha256(part)
+        if got != s["sha256"]:
+            part.unlink()
+            die(f"{name}: sha256 {got}, gaming/sources.nix says {s['sha256']}")
+        part.replace(path)
+    return 0
+
+
+def versions_env(sources):
+    """Shell assignments of the versions for gaming/build.sh."""
+    return "".join(f"VERSION_{name.replace('-', '_')}='{s['version']}'\n"
+                   for name, s in sorted(sources.items()) if s.get("version"))
+
+
+def host_release():
+    for line in Path("/etc/os-release").read_text().splitlines():
+        if line.startswith("VERSION_ID="):
+            return line.split("=", 1)[1].strip('"')
+    die("no VERSION_ID in /etc/os-release")
+
+
+def cmd_build():
+    sources = load_sources()
+    cmd_fetch(sources)
+    if not shutil.which("podman"):
+        die("podman not found")
+    (SRC / "versions.env").write_text(versions_env(sources))
+    DEBS.mkdir(parents=True, exist_ok=True)
+    CARGO.mkdir(parents=True, exist_ok=True)
+    image = f"docker.io/library/ubuntu:{host_release()}"
+    print(f"\n== Build in {image} (gaming/build.sh)")
+    run(["podman", "run", "--rm",
+         "-v", f"{SRC}:/src:ro", "-v", f"{DEBS}:/out", "-v", f"{CARGO}:/cargo",
+         "-v", f"{BUILD_SCRIPT}:/build.sh:ro", image, "bash", "/build.sh"])
+    missing = [n for n in PACKAGES if not (DEBS / deb_name(n, sources[n]["version"])).exists()]
+    if missing:
+        die(f"build made no package for: {', '.join(missing)}")
+    print(f"\nPackages in {DEBS}; install on a gameMode host: wsgame install")
+    return 0
+
+
+# Install and purge in a clean container: apt resolves every dependency
+# (i386 for extest, multiverse for Steam), the maintainer scripts run
+# without systemd.
+TEST_SCRIPT = r"""
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+dpkg --add-architecture i386
+apt-get update -qq
+printf '%s\n' 'steam steam/question select I AGREE' 'steam steam/license note ' \
+    'sddm shared/default-x-display-manager select sddm' | debconf-set-selections
+apt-get install -y -qq /debs/*.deb "$@" >/dev/null
+dpkg-query -W -f='${Package} ${Version} ${db:Status-Abbrev}\n' $(cd /debs && ls *.deb | cut -d_ -f1)
+steamosctl --help >/dev/null && echo "steamosctl runs"
+apt-get purge -y -qq $(cd /debs && ls *.deb | cut -d_ -f1) >/dev/null
+echo "purged"
+"""
+
+
+def cmd_test():
+    sources = load_sources()
+    debs = [DEBS / deb_name(n, sources[n]["version"]) for n in PACKAGES]
+    missing = [d.name for d in debs if not d.exists()]
+    if missing:
+        die(f"not built: {', '.join(missing)} (wsgame build)")
+    image = f"docker.io/library/ubuntu:{host_release()}"
+    print(f"== Install and purge in {image}")
+    with_debs = DEBS / ".test"
+    shutil.rmtree(with_debs, ignore_errors=True)
+    with_debs.mkdir()
+    for d in debs:
+        shutil.copy2(d, with_debs)
+    try:
+        run(["podman", "run", "--rm", "-v", f"{with_debs}:/debs:ro", image,
+             "bash", "-c", TEST_SCRIPT, "test", *APT])
+    finally:
+        shutil.rmtree(with_debs, ignore_errors=True)
+    return 0
+
+
+def installed_version(name):
+    p = run(["dpkg-query", "-W", "-f=${Version} ${db:Status-Abbrev}", name], check=False, capture=True)
+    if p.returncode or not p.stdout.split()[1:2] or p.stdout.split()[1] != "ii":
+        return None
+    return p.stdout.split()[0]
+
+
+def cmd_install():
+    sources = load_sources()
+    if fact("gameMode") != "yes":
+        die('gameMode is not "yes" in the facts.nix of this host: no Game Mode here')
+    debs = [DEBS / deb_name(n, sources[n]["version"]) for n in PACKAGES]
+    missing = [d.name for d in debs if not d.exists()]
+    if missing:
+        die(f"not built: {', '.join(missing)} (wsgame build)")
+    # sddm becomes the display manager without the debconf question; GDM
+    # stays installed.
+    seed = "".join(f"{p} shared/default-x-display-manager select sddm\n" for p in ("sddm", "gdm3"))
+    run(["sudo", "debconf-set-selections"], input=seed, text=True)
+    run(["sudo", "env", "DEBIAN_FRONTEND=noninteractive", "apt-get", "-o", "DPkg::Lock::Timeout=600",
+         "install", "-y", *map(str, debs), *APT])
+    run(["sudo", "systemctl", "enable", "inputplumber.service"])
+    # Boot into GNOME: steamos-manager starts with Game Mode as its default.
+    run(["systemctl", "--user", "daemon-reload"])
+    run(["systemctl", "--user", "start", "steamos-manager.service"])
+    run(["steamosctl", "set-default-desktop-session", DESKTOP])
+    run(["steamosctl", "set-default-login-mode", "desktop"])
+    print("\nInstalled. Reboot: SDDM logs into GNOME, Game Mode is a switch away "
+          "(Return to Game Mode, wsgame mode game).")
+    return 0
+
+
+class Check:
+    """lib/check.bash in Python: the same result object for ws check."""
+
+    def __init__(self, json_mode):
+        self.json_mode, self.messages = json_mode, []
+        self.counts = {"pass": 0, "warn": 0, "fail": 0}
+
+    def msg(self, level, text):
+        self.messages.append({"level": level, "text": text})
+        if level in self.counts:
+            self.counts[level] += 1
+        if not self.json_mode:
+            print(f"  {level.upper():<5} {text}")
+
+    def finish(self):
+        status = "fail" if self.counts["fail"] else "warn" if self.counts["warn"] else "pass"
+        if self.json_mode:
+            print(json.dumps({"status": status, "passes": self.counts["pass"],
+                              "warnings": self.counts["warn"], "failures": self.counts["fail"],
+                              "messages": self.messages}))
+        else:
+            print(f"\n  PASS={self.counts['pass']} WARN={self.counts['warn']} FAIL={self.counts['fail']}")
+        return 1 if self.counts["fail"] else 0
+
+
+def ok(args):
+    return run(args, check=False, capture=True).returncode == 0
+
+
+def cmd_check(json_mode=False):
+    c = Check(json_mode)
+    game = fact("gameMode")
+    if game != "yes":
+        c.msg("info", f'gameMode = "{game or "?"}" in facts.nix: no Game Mode on this host')
+        return c.finish()
+    sources = load_sources()
+    versions = {n: installed_version(n) for n in PACKAGES}
+    if not any(versions.values()):
+        c.msg("info", "Game Mode packages not installed yet: wsgame build, wsgame install "
+                      "(helpws plan-legion-go, stage 6)")
+        return c.finish()
+
+    for name, got in versions.items():
+        want = sources[name]["version"]
+        if got is None:
+            c.msg("fail", f"package missing: {name} (wsgame install)")
+        elif got != want:
+            c.msg("warn", f"{name} {got} installed, {want} pinned (wsgame build, wsgame install)")
+        else:
+            c.msg("pass", f"{name} {got}")
+    for name in APT:
+        (c.msg("pass", f"{name} installed") if installed_version(name)
+         else c.msg("fail", f"{name} missing (wsgame install)"))
+
+    dm = Path("/etc/X11/default-display-manager")
+    (c.msg("pass", "display manager: sddm") if dm.exists() and "sddm" in dm.read_text()
+     else c.msg("fail", f"display manager is not sddm ({dm}; wsgame install)"))
+    for unit in ("steamos-manager.service", "inputplumber.service"):
+        (c.msg("pass", f"{unit} enabled") if ok(["systemctl", "is-enabled", "--quiet", unit])
+         else c.msg("fail", f"{unit} not enabled (wsgame install)"))
+    (c.msg("pass", "user steamos-manager.service enabled")
+     if ok(["systemctl", "--global", "is-enabled", "--quiet", "steamos-manager.service"])
+     else c.msg("fail", "user steamos-manager.service not enabled (package postinst)"))
+    wants = Path("/usr/lib/systemd/user/gamescope-session-plus@steam.service.wants/steamos-powerbuttond.service")
+    (c.msg("pass", "powerbuttond starts with the Steam session") if wants.exists()
+     else c.msg("fail", f"missing {wants} (powerbuttond package)"))
+
+    platform = Path("/usr/share/steamos-manager/platform.toml")
+    text = platform.read_text() if platform.exists() else ""
+    (c.msg("pass", f"steamos-manager desktop session: {DESKTOP}") if f'desktop = "{DESKTOP}"' in text
+     else c.msg("fail", f"{platform}: no [session] desktop = \"{DESKTOP}\" (wsgame build)"))
+    device = Path("/usr/share/steamos-manager/devices/legion-go-series.toml")
+    if device.exists():
+        (c.msg("pass", "no TDP limit or performance profile in steamos-manager (PPD owns platform_profile)")
+         if "tdp_limit" not in device.read_text()
+         else c.msg("fail", f"{device} has tdp_limit: Steam would fight PPD (wsgame build)"))
+    (c.msg("pass", "power-profiles-daemon active") if ok(["systemctl", "is-active", "--quiet", "power-profiles-daemon"])
+     else c.msg("warn", "power-profiles-daemon not active"))
+
+    p = run(["steamosctl", "get-default-login-mode"], check=False, capture=True) if shutil.which("steamosctl") else None
+    if p is None or p.returncode:
+        c.msg("info", "steamos-manager not reachable from here (user service of a graphical session)")
+    elif p.stdout.strip().lower() == "desktop":
+        c.msg("pass", "default login mode: desktop (boot into GNOME)")
+    else:
+        c.msg("warn", f"default login mode: {p.stdout.strip()} (steamosctl set-default-login-mode desktop)")
+    return c.finish()
+
+
+def cmd_status():
+    sources = load_sources()
+    print(f"{'PACKAGE':<24} {'PINNED':<34} {'BUILT':<6} INSTALLED")
+    for name in PACKAGES:
+        want = sources[name]["version"]
+        built = "yes" if (DEBS / deb_name(name, want)).exists() else "-"
+        print(f"{name:<24} {want:<34} {built:<6} {installed_version(name) or '-'}")
+    return 0
+
+
+def cmd_mode(mode):
+    if mode == "game":
+        return run(["steamosctl", "switch-to-game-mode"], check=False).returncode
+    return run(["steamosctl", "switch-to-desktop-mode", DESKTOP], check=False).returncode
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(prog="wsgame", description=__doc__.split("\n\n")[0],
+                                formatter_class=argparse.RawDescriptionHelpFormatter,
+                                epilog=__doc__.split("\n\n", 1)[1])
+    sp = p.add_subparsers(dest="cmd", required=True)
+    for name in ("fetch", "build", "test", "install", "status"):
+        sp.add_parser(name)
+    sp.add_parser("check").add_argument("--json", action="store_true")
+    sp.add_parser("mode").add_argument("mode", choices=("game", "desktop"))
+    ns = p.parse_args(argv)
+    if ns.cmd == "fetch":
+        return cmd_fetch()
+    if ns.cmd == "build":
+        return cmd_build()
+    if ns.cmd == "test":
+        return cmd_test()
+    if ns.cmd == "install":
+        return cmd_install()
+    if ns.cmd == "check":
+        return cmd_check(ns.json)
+    if ns.cmd == "status":
+        return cmd_status()
+    return cmd_mode(ns.mode)
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except subprocess.CalledProcessError as e:
+        sys.exit(f"wsgame: {' '.join(map(str, e.cmd))}: exit {e.returncode}")
+    except KeyboardInterrupt:
+        print(file=sys.stderr)
+        sys.exit(130)

@@ -14,7 +14,7 @@ Usage:
   ws diff
   ws apply [STEP...]
   ws update [STEP...]
-  ws check [-v] | ws check apt|repo|home|virt|steam [--json]
+  ws check [-v] | ws check apt|repo|home|virt|steam|gaming [--json]
   ws system diff|check [--json]|apply|manifest|tree
   ws baseline capture|diff|list ...
   ws checkpoint create|list|show|diff|remove ...
@@ -57,7 +57,7 @@ check     run the owners' checks with --json and summarize their result
           objects (lib/check.bash): ws check repo, ws check home,
           ws-keyboard check, ws-gnome check, wsflatpak check, wsbox check,
           wswin check, ws-suspend check, ws system check, ws check apt,
-          ws check virt, ws check steam, ws check backup and
+          ws check virt, ws check steam, wsgame check, ws check backup and
           ws-workstation-verify (cross-layer invariants);
           shows WARN/FAIL messages, -v all;
           check repo: the checkout (Git, hygiene, syntax, bin/ executables);
@@ -66,6 +66,8 @@ check     run the owners' checks with --json and summarize their result
           (hosts with vm = "yes" in facts.nix);
           check steam: Steam data on @steam in ~/.local/share/Steam (hosts
           with nativeSteam = "yes");
+          check gaming: the Game Mode packages, services, display manager
+          and session names (wsgame check; hosts with gameMode = "yes");
           check backup: local copy root on its own subvolume, SSH alias and key;
           check apt compares nix/hosts/apt.txt, nix/hosts/<host>/apt.txt and, with
           vm = "yes", virt/apt.txt, with nativeSteam = "yes", steam/apt.txt,
@@ -834,6 +836,7 @@ check_steps=(
     "apt ws check apt"
     "virt ws check virt"
     "steam ws check steam"
+    "gaming wsgame check"
     "backup ws check backup"
     "verify ws-workstation-verify"
 )
@@ -944,6 +947,7 @@ cmd_check() {
         home) shift; exec "$repo/bin/ws-check-home" "$@" ;;
         virt|vm) shift; exec "$repo/bin/ws-check-virt" "$@" ;;
         steam) shift; exec "$repo/bin/ws-check-steam" "$@" ;;
+        gaming|game) shift; exec "$repo/bin/wsgame" check "$@" ;;
         backup) shift; exec "$repo/bin/ws-check-backup" "$@" ;;
         widgets) shift; exec "$repo/bin/ws-widgets-check" "$@" ;;
         -v|--verbose) verbose=true ;;

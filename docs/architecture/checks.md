@@ -26,6 +26,7 @@ ws check apt            apt-списки против установленног
 ws check virt           KVM, libvirt, @vms без CoW, пул и сеть default, OVMF и swtpm,
                         NVRAM VM в qcow2, проход qemu в HOME (пулы в ~/VMs)
 ws check steam          ~/.local/share/Steam на @steam (fstab, владелец), клиент Steam
+wsgame check            пакеты Game Mode и версии, sddm, сервисы, имена сессий, режим входа
 ws-workstation-verify   связи: GNOME ↔ клавиатура, ядро ↔ t2bce, загрузка ↔ dGPU,
                         Distrobox ↔ NTSync host
 ```

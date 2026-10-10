@@ -19,6 +19,9 @@
     ../../distrobox/distrobox.nix
     ../../windows/apps.nix
     ../../widgets/widgets.nix
+    # Sources of the Game Mode packages: built anywhere, installed only with
+    # gameMode = "yes" (wsgame, helpws gaming).
+    ../../gaming/sources.nix
   ]
   # ~/VMs (helpws virt) on hosts with VMs.
   ++ lib.optionals (facts.vm == "yes") [ ../../virt/virt.nix ]

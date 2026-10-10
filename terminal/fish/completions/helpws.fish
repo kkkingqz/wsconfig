@@ -1,7 +1,7 @@
 # Completions for helpws.
 complete -c helpws -f
 
-set -l helpws_topics readme layers architecture checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall install setup new distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton virt vm vms libvirt kvm roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-virt plan-final history-gnome history-flatpak history-distrobox history-windows history-nix history-suspend history-touchbar history-virt plan-gnome plan-flatpak plan-dev plan-windows plan-nix man help
+set -l helpws_topics readme layers architecture checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall install setup new distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton virt vm vms libvirt kvm gaming game gamemode wsgame roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-virt plan-final history-gnome history-flatpak history-distrobox history-windows history-nix history-suspend history-touchbar history-virt plan-gnome plan-flatpak plan-dev plan-windows plan-nix man help
 
 function __helpws_topic -a name desc
     complete -c helpws -n "not __fish_seen_subcommand_from $helpws_topics" -a $name -d $desc
@@ -22,6 +22,7 @@ __helpws_topic flatpak 'Flatpak applications'
 __helpws_topic distrobox 'Managed Distrobox / Podman'
 __helpws_topic windows 'Wine / Proton / Steam'
 __helpws_topic virt 'Virtual machines: KVM, libvirt, virt-manager'
+__helpws_topic gaming 'Game Mode: gamescope + Steam session'
 __helpws_topic roadmap 'What is left'
 __helpws_topic plan-t2 'T2 optional / power / auth'
 __helpws_topic plan-dgpu 'AMD dGPU through t2gmux'

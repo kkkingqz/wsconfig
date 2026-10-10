@@ -51,9 +51,9 @@ complete -c ws -n __ws_needs_command -a news -d 'home-manager news'
 complete -c ws -n '__ws_after apply' -a '(ws steps apply)'
 complete -c ws -n '__ws_after update' -a '(ws steps update)'
 
-complete -c ws -n '__ws_at check' -a 'apt repo home virt steam backup' -d 'One owner check'
+complete -c ws -n '__ws_at check' -a 'apt repo home virt steam gaming backup' -d 'One owner check'
 complete -c ws -n '__ws_at check' -s v -l verbose -d 'All messages'
-complete -c ws -n '__ws_at check apt; or __ws_at check repo; or __ws_at check home; or __ws_at check virt; or __ws_at check steam; or __ws_at check backup' -l json -d 'Result object'
+complete -c ws -n '__ws_at check apt; or __ws_at check repo; or __ws_at check home; or __ws_at check virt; or __ws_at check steam; or __ws_at check gaming; or __ws_at check backup' -l json -d 'Result object'
 
 complete -c ws -n '__ws_at system' -a 'diff check apply manifest tree'
 complete -c ws -n '__ws_at system check' -l json -d 'Result object'

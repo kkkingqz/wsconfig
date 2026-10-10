@@ -31,6 +31,7 @@ case "$topic" in
     flatpak|wsflatpak) open_title ws-flatpak ;;
     windows|wine|wswin|steam|proton) open_title ws-windows ;;
     virt|vm|vms|libvirt|kvm) open_title ws-virt ;;
+    gaming|game|gamemode|wsgame) open_title ws-gaming ;;
     roadmap|plans) open_title ws-roadmap ;;
     plan-t2) open_title ws-plan-t2 ;;
     plan-dgpu|dgpu|t2gmux) open_title ws-plan-dgpu ;;
@@ -72,6 +73,7 @@ Runbooks (docs/runbooks):
   distrobox        Managed Distrobox / Podman containers (wsbox)
   windows          Windows programs, Wine, Proton, Steam (wswin)
   virt             Virtual machines: KVM, libvirt, virt-manager
+  gaming           Game Mode: gamescope + Steam session (wsgame)
 
 Plans (docs/plans):
   roadmap          What is left

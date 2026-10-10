@@ -5,3 +5,5 @@
 
 # Game Mode compositor (display profiles, e.g. Legion Go at 60/144 Hz)
 gamescope
+# Performance overlay of Steam in Game Mode (STEAM_USE_MANGOAPP)
+mangoapp

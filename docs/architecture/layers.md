@@ -46,6 +46,7 @@ Windows          windows/apps.nix (+ боксы Distrobox)  ws switch, wswin    
 suspend / T2     system/hardware, system/kernel/t2bce  ws system apply, ws-suspend t2bce-*   ws-suspend check
 VM               apt.txt, bootstrap.sh, virt/virt.nix   bootstrap.sh, virt-manager           ws check virt
 Steam (apt)      steam/apt.txt, steam/bootstrap.bash   bootstrap.sh         ws check steam
+Game Mode        gaming/*, system/gaming.nix           wsgame               wsgame check
 checkout         весь репозиторий                      git                  ws check repo
 ```
 

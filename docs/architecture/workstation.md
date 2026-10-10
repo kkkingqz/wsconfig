@@ -832,6 +832,8 @@ wsconfig/
 ├── flatpak/              flatpak.nix, apps.txt, overrides.txt, desktop/
 ├── distrobox/            distrobox.nix, arch/ (wsbox-host-ntsync, хуки), wine/
 ├── windows/              apps.nix (Windows-программы с launcher)
+├── steam/                apt.txt, bootstrap.bash (Steam из apt, @steam; nativeSteam)
+├── gaming/               sources.nix, build.sh, apt.txt (Game Mode; wsgame, helpws gaming)
 ├── bin/
 │   ├── ws                switch, diff, apply, update, check, system, baseline
 │   ├── dotgit
@@ -848,6 +850,7 @@ wsconfig/
 │   ├── ws-suspend, ws-suspend-check
 │   ├── ws-baseline, ws-checkpoint, ws-collect
 │   ├── ws-btrfs          ws btrfs make: раскладка Btrfs свежей установки
+│   ├── wsgame            пакеты Game Mode: build, install, check (helpws gaming)
 │   ├── ws-gnome
 │   ├── ws-gnome-check
 │   ├── ws-gnome-status

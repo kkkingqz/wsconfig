@@ -151,8 +151,8 @@ sysctl     swappiness и page-cluster — умолчания ядра, подб�
 | Steam | клиент; первый запуск — в GNOME, чтобы он обновился | `steam-installer` (multiverse), i386 |
 | steamos-manager | DBus между Steam и ОС: переключение Game Mode ↔ GNOME (файлы SDDM), цели InputPlumber (`deck-uhid`, `keyboard`, `mouse`) | OGC `dev` (`9b62985`, как у Bazzite), сборка Rust → `.deb` |
 | InputPlumber | `50-legion_go.yaml`: исходные устройства скрыты, вместо них виртуальный контроллер Steam Deck — гироскоп, задние кнопки, Legion L/R | релиз 0.81.0, `.deb` (sha256 закреплён) |
-| powerbuttond | кнопка питания в Game Mode: коротко — сон через Steam, долго — меню | Valve `holo/powerbuttond` 4.2, сборка → `.deb` |
-| MangoHud с mangoapp | оверлей производительности Steam (`STEAM_USE_MANGOAPP`); в `mangohud` Ubuntu mangoapp нет | сборка → `.deb` |
+| powerbuttond | кнопка питания в Game Mode: коротко — сон через Steam, долго — меню | Valve `holo/powerbuttond` 4.2 + debounce после сна (Terra, 2026-09-25), сборка → `.deb` |
+| mangoapp | оверлей производительности Steam (`STEAM_USE_MANGOAPP`) | apt (`mangoapp` 0.8.2 в 26.04, `gaming/apt.txt`) |
 | extest | `libextest.so`: Steam Input на Wayland-рабочем столе | релиз `ublue-os/extest` → `.deb` |
 | SDDM | autologin в `ubuntu.desktop`, `Relogin=true`; steamos-manager пишет `zz-holo-autologin.conf` и `zzt-holo-temp-login.conf` | apt, ставит `wsgame install` на этапе 6: при установке Ubuntu спрашивает display manager, до этого работает GDM; конфиги — системный слой |
 | обвязка сессии | `os-session-select` (Steam → `steamosctl`), «Return to Game Mode», autologin SDDM, `HandlePowerKey=ignore` — системный слой (`system/gaming.nix`, сделано 2026-10-10); `platform.toml` (`[session]`: `desktop = "ubuntu.desktop"`, `gamescope-session-steam.desktop`, `gamescope-session-plus@steam.service`) и device-файл 83E1 — в пакете steamos-manager | по образцу Bazzite, под `gnome-session --session=ubuntu`; polkit не нужен: `steamosctl` идёт через DBus steamos-manager, его policy — в пакете |
@@ -272,27 +272,29 @@ system/gaming.nix               сделано 2026-10-10, при gameMode = "ye
 
 ## 4.4 Игровой слой `gaming/`, владелец `wsgame`
 
-Источники и версии объявлены в Nix (`gaming/sources.nix`: tag или commit
-плюс sha256), собирает и ставит владелец («Nix доставляет, владельцы
-остаются»):
+Сделано 2026-10-10 (`helpws gaming`). Источники и версии — в
+`gaming/sources.nix` (url, sha256, версия пакета), собирает и ставит
+владелец («Nix доставляет, владельцы остаются»):
 
 ```text
-wsgame build     в сборочном контейнере gaming-build (distrobox.nix,
-                 образ — Ubuntu релиза host, как t2bce-build):
-                 steamos-manager (device-файл 83E1 без TDP и профиля),
-                 MangoHud с mangoapp, powerbuttond → .deb
-wsgame fetch     по sha256: InputPlumber .deb; extest и gamescope-session
-                 (-plus, -steam), обёрнутые в .deb
-wsgame install   apt install ./*.deb — файлы принадлежат dpkg; sddm из apt
-                 (display manager — sddm, без вопроса debconf)
-wsgame check     пакеты и версии, сервисы, DBus steamos-manager, цели
-                 InputPlumber, файлы SDDM, PPD — единственный владелец
-                 platform_profile
-wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
+wsgame fetch     источники по sha256 в ~/.local/share/workstation/gaming/src
+wsgame build     fetch, затем gaming/build.sh в одноразовом контейнере
+                 podman Ubuntu релиза host (как ws-suspend t2bce-build;
+                 бокса gaming-build нет): steamos-manager (Rust;
+                 platform.toml [session], device-файл 83E1 без TDP и
+                 профиля), powerbuttond (C) → .deb; gamescope-session-plus,
+                 gamescope-session-steam, extest — в .deb как есть;
+                 InputPlumber — .deb upstream
+wsgame install   apt install ./*.deb + sddm и weston (display manager —
+                 sddm без вопроса debconf), inputplumber.service, режим
+                 входа по умолчанию desktop
+wsgame check     пакеты и версии, сервисы, display manager, имена сессий,
+                 PPD — единственный владелец platform_profile, режим входа
+wsgame mode game|desktop   steamosctl (терминал, ssh)
 ```
 
-Новые версии upstream показывает `ws update`, переход — правка
-`sources.nix`. Toolchains на host не ставятся.
+Переход на новую версию — правка `sources.nix`. Toolchains на host не
+ставятся.
 
 ## 4.5 Зависящее от хоста в других слоях
 
@@ -307,7 +309,8 @@ wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
   не применять.
 - **GNOME.** Масштаб 2.0, экранная клавиатура, ярлык «Return to Game Mode»;
   режимы питания — штатный переключатель (PPD).
-- **Steam в GNOME** — со своим launcher и extest (LD_PRELOAD).
+- **Steam в GNOME** — со своим launcher и extest
+  (`LD_PRELOAD=/usr/lib/extest/libextest.so`, пакет `extest`): этап 7.
 - **Flatpak — пометки в `flatpak/apps.txt`.** Заранее (сделано
   2026-10-10): `com.valvesoftware.Steam legiongo=no` (Steam нативный).
   Остальное — с `all=ask`: `setup.sh` в начале показывает список с
@@ -323,9 +326,9 @@ wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
   идут в тот же список `setup.sh` (отмечены); позже — `wsflatpak un…` на
   устройстве.
 - **Distrobox — пометки в `distrobox/hosts.txt`.** `t2bce-build` и
-  `touchbar-build` нужны только на mbp16 — `all=no` (сделано 2026-10-10). Новый `gaming-build` —
-  `mbp16=yes legiongo=yes all=no` (собирать можно на обеих). `arch`,
-  `wine-wayland`, `wine`, `proton` — в списке `setup.sh`.
+  `touchbar-build` нужны только на mbp16 — `all=no` (сделано 2026-10-10).
+  `arch`, `wine-wayland`, `wine`, `proton` — в списке `setup.sh`. Пакеты
+  Game Mode собираются без бокса (4.4).
 - **VM** — факт `vm` в `facts.nix`: при `"no"` `bootstrap.sh` не ставит
   `virt/apt.txt`, `@vms`, libvirt и группу `libvirt`, `ws check virt` молчит.
 - **Масштаб** — только если эти приложения и боксы получат `legiongo=yes`:
@@ -338,8 +341,8 @@ wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
   браузере, код вводит пользователь) и сам пушит хост и пометки. Позже
   `ws switch` коммитит пометки локально: перед ним на любой машине —
   `git pull`, после — `git push`.
-- **Проверки.** `ws check gaming`; verify — связи InputPlumber ↔
-  steamos-manager ↔ SDDM ↔ xremap.
+- **Проверки.** `ws check gaming` (`wsgame check`, сделано); verify —
+  связи InputPlumber ↔ steamos-manager ↔ SDDM ↔ xremap — после этапа 6.
 
 ## 4.6 Диск
 
@@ -368,9 +371,8 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
    `source:`/`arch:`, факты `nativeSteam`/`gameMode`, пометки и `.desktop`
    по пометкам уже сделаны (2026-10-10). На mbp16 ничего не меняется: те же пути store для
    home, system и man, `ws check` без FAIL, CI зелёный.
-2. **Пакеты на mbp16.** `wsbox apply gaming-build`, `wsgame build` и
-   `wsgame fetch`; пакеты ставятся и снимаются в чистом контейнере Ubuntu
-   26.04.
+2. **Пакеты на mbp16.** `wsgame build`; пакеты ставятся и снимаются в
+   чистом контейнере Ubuntu 26.04.
 3. **Ubuntu.** Установка 26.04 с USB на весь диск, hostname `legiongo`,
    пользователь `king`. Разметка вручную: ESP FAT32 около 1 ГБ
    (`/boot/efi`) и Btrfs на остальное (`/`), без swap-раздела и отдельного
