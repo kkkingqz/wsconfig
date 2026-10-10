@@ -37,18 +37,31 @@ let
     else [ { remote = lib.elemAt m 0; app = lib.elemAt m 1; } ]
   ) (lib.splitString "\n" (builtins.readFile ./apps.txt));
 
-  # APP KIND VALUE lines of overrides.txt; wsflatpak edits that file. Built
-  # into the keys `wsflatpak apply` sets with `flatpak override`:
-  # Context.filesystems, Environment, "Session Bus Policy" (talk only).
+  # APP KIND VALUE [HOST=yes|no ... all=yes|no] lines of overrides.txt;
+  # wsflatpak edits that file. Only the lines that apply to this workstation
+  # (yes: own mark, else all=, else yes) are built into the keys `wsflatpak
+  # apply` sets with `flatpak override`: Context.filesystems, Environment,
+  # "Session Bus Policy" (talk only).
   overrideLines = lib.concatMap (raw:
     let
       line = lib.head (lib.splitString "#" raw);
-      m = builtins.match "[[:space:]]*([^[:space:]]+)[[:space:]]+(filesystem|env|talk)[[:space:]]+([^[:space:]]+)[[:space:]]*" line;
+      m = builtins.match "[[:space:]]*([^[:space:]]+)[[:space:]]+(filesystem|env|talk)[[:space:]]+([^[:space:]]+)(([[:space:]]+[A-Za-z0-9][A-Za-z0-9_-]*=(yes|no))*)[[:space:]]*" line;
     in
     if builtins.match "[[:space:]]*" line != null then [ ]
     else if m == null then throw "flatpak/overrides.txt: invalid line: ${raw}"
+    else if marks.stateIn (marks.marksIn (lib.elemAt m 3)) wsHost "yes" != "yes" then [ ]
     else [ { app = lib.elemAt m 0; kind = lib.elemAt m 1; value = lib.elemAt m 2; } ]
   ) (lib.splitString "\n" (builtins.readFile ./overrides.txt));
+
+  # One value per key on a workstation, as wsflatpak keeps it: an env name,
+  # a filesystem path whatever its mode (:ro, :rw, :create).
+  overrideKey = x:
+    if x.kind == "env" then lib.head (lib.splitString "=" x.value)
+    else if x.kind == "filesystem" then
+      let m = builtins.match "(.*):(ro|rw|create)" x.value; in if m == null then x.value else lib.head m
+    else x.value;
+  duplicateKeys = lib.filter (k: lib.count (x: "${x.app} ${x.kind} ${overrideKey x}" == k) overrideLines > 1)
+    (lib.unique (map (x: "${x.app} ${x.kind} ${overrideKey x}") overrideLines));
 
   overrides = lib.mapAttrs (app: entries:
     let
@@ -102,7 +115,10 @@ in
   assertions = map (x: {
     assertion = remotes ? ${x.remote};
     message = "flatpak/apps.txt: ${x.app} uses undeclared remote ${x.remote}";
-  }) apps;
+  }) apps ++ map (k: {
+    assertion = false;
+    message = "flatpak/overrides.txt: ${k} has two values on ${wsHost} (mark one ${wsHost}=no)";
+  }) duplicateKeys;
 
   xdg.dataFile = {
     "workstation/flatpak".source = flatpakConfig;

@@ -65,6 +65,28 @@ class MarkTests(unittest.TestCase):
         self.assertEqual(m.set("box", "legion-go_2", "no").render(),
                          "box a=yes legion-go_2=no all=ask")
 
+    def test_fixed_key_fields_for_overrides(self):
+        self.path.write_text("app env ENABLE=yes a=no\napp talk bus\n")
+        m = ws_marks.MarkedList(self.path, **ws_marks.OVERRIDES)
+        self.assertEqual(m.find(("app", "env", "ENABLE=yes")).marks, {"a": "no"})
+        self.assertEqual(m.state(("app", "env", "ENABLE=yes"), "a"), "no")
+        self.assertEqual(m.state(("app", "talk", "bus"), "a"), "yes")
+        for text in ("app env X=1 a=ask\n", "app env X=1 extra\n", "app env\n"):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                self.path.write_text(text)
+                ws_marks.MarkedList(self.path, **ws_marks.OVERRIDES)
+        self.path.write_text("app env ENABLE=yes a=no\napp talk bus\n")
+        old = ws_marks.MarkedList(self.path, fixed=3)
+        self.path.write_text("app env ENABLE=yes a=no b=yes\napp env X=1\n")
+        self.assertEqual(ws_marks.summary(old, ws_marks.MarkedList(self.path, fixed=3)),
+                         "app env ENABLE=yes b=yes, +app env X=1, -app talk bus")
+        # ws switch: the command line with 3 key fields.
+        old_path = Path(self.temp.name) / "old.txt"
+        old_path.write_text("app env ENABLE=yes a=no\napp talk bus\n")
+        p = subprocess.run([sys.executable, str(ROOT / "lib/ws_marks.py"), str(self.path), "summary", str(old_path), "3"],
+                           text=True, capture_output=True)
+        self.assertEqual(p.stdout, "app env ENABLE=yes b=yes, +app env X=1, -app talk bus\n", p.stderr)
+
     def test_summary_for_the_commit_message(self):
         old = self.write("a h=yes all=ask\nb h=yes all=ask\n")
         new_path = Path(self.temp.name) / "new.txt"

@@ -126,6 +126,25 @@ wsflatpak apply                      # применяет
 APP — ID, имя или часть имени установленного приложения. Значение — одно
 слово без `#`.
 
+У каждой строки свои пометки машин после `APP KIND VALUE`, только `yes` и
+`no`: строка действует там, где `yes`; `all=` — для машины без своей
+пометки; строка без пометок действует везде. `ws switch` собирает overrides
+только из строк этой машины, `apply` и `check` работают с ними.
+
+```text
+com.anydesk.Anydesk env GDK_SCALE=2 mbp16=yes legiongo=no all=yes
+com.anydesk.Anydesk env GDK_SCALE=1 legiongo=yes all=no
+```
+
+- `wsflatpak filesystem|host|env|talk` ставит своей машине `yes`; новая
+  строка — `HOST=yes all=yes`.
+- Другое значение того же ключа (имя env, путь filesystem при любом режиме)
+  меняет строку на месте, если других машин в ней нет. Иначе та строка
+  получает `HOST=no`, а новое значение — свою строку `HOST=yes all=no`.
+- `un…` удаляет строку, если других машин в ней нет, иначе ставит `HOST=no`.
+- На одной машине у ключа одно значение: две действующие строки одного ключа
+  `ws switch` отвергает.
+
 ```console
 wsflatpak permissions APP
 wsflatpak reset-permissions APP

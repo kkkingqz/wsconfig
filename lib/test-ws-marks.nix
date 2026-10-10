@@ -22,4 +22,9 @@ assert state "org.example.App" "b" == "yes";
 assert state "org.example.App" "a" == "ask";
 assert !(m ? header);
 assert marks.has m "box" "b" && !(marks.has m "box" "a");
+# overrides.txt: the marks after APP KIND VALUE, yes by default.
+assert marks.marksIn " a=no  all=yes " == { a = "no"; all = "yes"; };
+assert marks.stateIn { a = "no"; } "a" "yes" == "no";
+assert marks.stateIn { a = "no"; } "b" "yes" == "yes";
+assert marks.stateIn { all = "no"; } "b" "yes" == "no";
 true

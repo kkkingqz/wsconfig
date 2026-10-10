@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Per-workstation marks of the managed lists: flatpak/apps.txt (REMOTE APP)
-and distrobox/hosts.txt (NAME). After the key fields a line carries
+and distrobox/hosts.txt (NAME); flatpak/overrides.txt (APP KIND VALUE)
+with yes and no only (OVERRIDES). After the key fields a line carries
 HOST=STATE tokens, STATE one of
 
     yes  installed on that workstation (apply installs it without asking)
@@ -20,7 +21,12 @@ Used by wsbox as a command:
     ws_marks.py FILE set NAME HOST STATE add the line (all=ask) if needed
     ws_marks.py FILE remove NAME HOST    drop the line or mark HOST no
     ws_marks.py FILE marked NAME         exit 0 when the line exists
-    ws_marks.py FILE summary OLDFILE     +NAME, -NAME, NAME HOST=STATE (ws switch)
+    ws_marks.py FILE summary OLDFILE [N] +NAME, -NAME, NAME HOST=STATE (ws switch);
+                                         N fixed key fields (overrides.txt: 3),
+                                         NAME is then the whole key
+
+An override line applies on a workstation whose state is yes; a line
+without its own mark and without all= applies everywhere.
 """
 from pathlib import Path
 import re
@@ -30,6 +36,9 @@ import sys
 STATES = ("yes", "no", "ask")
 MARK = re.compile(r"([A-Za-z0-9][A-Za-z0-9_-]*)=(yes|no|ask)\Z")
 ALL = "all"
+# flatpak/overrides.txt: APP KIND VALUE, then marks (a VALUE may be KEY=yes);
+# yes or no, applies everywhere unless marked no; a new line gets all=yes.
+OVERRIDES = dict(fixed=3, default="yes", new_all="yes", states=("yes", "no"))
 
 
 def check_host(host):
@@ -52,13 +61,20 @@ def current_host(repo):
 
 
 class Line:
-    def __init__(self, raw):
+    def __init__(self, raw, fixed=None):
+        """FIXED: the first FIXED fields are the key whatever they look like
+        (an env VALUE such as KEY=yes), every field after them a mark."""
         self.raw = raw
         body, sep, comment = raw.partition("#")
         self.comment = sep + comment if sep else ""
         self.key, self.marks = [], {}
-        for token in body.split():
+        tokens = body.split()
+        if fixed:
+            self.key, tokens = tokens[:fixed], tokens[fixed:]
+        for token in tokens:
             m = MARK.match(token)
+            if fixed and not m:
+                raise ValueError(f"invalid mark {token!r} (HOST=yes|no): {raw}")
             if m:
                 if m[1] in self.marks:
                     raise ValueError(f"duplicate mark {m[1]}: {raw}")
@@ -85,42 +101,64 @@ class MarkedList:
     """FILE of KEY... [HOST=STATE...] [# comment] lines; comments, blank
     lines and untouched lines are written back as they were."""
 
-    def __init__(self, path, key_fields=None):
+    def __init__(self, path, key_fields=None, fixed=None, default="ask",
+                 new_all="ask", states=STATES):
+        """DEFAULT: the state of a line with neither the own mark nor all=;
+        NEW_ALL: all= of a new line; STATES: the allowed ones (OVERRIDES)."""
         self.path = Path(path)
-        self.key_fields = key_fields
+        self.key_fields = {fixed} if fixed else key_fields
+        self.fixed, self.default, self.new_all, self.states = fixed, default, new_all, states
         text = self.path.read_text() if self.path.exists() else ""
-        self.lines = [Line(raw) for raw in text.splitlines()]
+        self.lines = [Line(raw, fixed) for raw in text.splitlines()]
         for line in self.lines:
-            if line.key and key_fields and len(line.key) not in key_fields:
+            if line.key and self.key_fields and len(line.key) not in self.key_fields:
                 raise ValueError(f"{self.path}: invalid line: {line.raw}")
+            bad = [f"{h}={s}" for h, s in line.marks.items() if s not in states]
+            if bad:
+                raise ValueError(f"{self.path}: {bad[0]}: only {'|'.join(states)} here: {line.raw}")
 
     def entries(self):
         return [line for line in self.lines if line.key]
 
     def find(self, name):
-        """The line whose last key field is NAME (APP, container)."""
+        """The line whose last key field is NAME (APP, container), or whose
+        whole key is NAME when it is a tuple or list (overrides)."""
+        whole = isinstance(name, (tuple, list))
         for line in self.entries():
-            if line.key[-1] == name:
+            if (line.key == list(name)) if whole else (line.key[-1] == name):
                 return line
         return None
+
+    def line_state(self, line, host):
+        return line.marks.get(host, line.marks.get(ALL, self.default))
 
     def state(self, name, host):
         line = self.find(name)
         if line is None:
             return "ask"
-        return line.marks.get(host, line.marks.get(ALL, "ask"))
+        return self.line_state(line, host)
+
+    @staticmethod
+    def others(line, host):
+        """Workstations other than HOST with their own mark on LINE."""
+        return [h for h in line.marks if h not in (host, ALL)]
+
+    def add(self, key, marks, after=None):
+        """A new line KEY MARKS, after the line AFTER (else at the end)."""
+        line = Line(" ".join(key), self.fixed)
+        line.marks = dict(marks)
+        line.changed = True
+        index = self.lines.index(after) + 1 if after is not None else len(self.lines)
+        self.lines.insert(index, line)
+        return line
 
     def set(self, name, host, state, key=None):
-        """Mark HOST; a missing line is appended as KEY host=STATE all=ask."""
-        assert state in STATES
+        """Mark HOST; a missing line is appended as KEY host=STATE all=NEW_ALL."""
+        assert state in self.states
         check_host(host)
         line = self.find(name)
         if line is None:
-            line = Line(" ".join(key or [name]))
-            line.marks = {host: state, ALL: "ask"}
-            line.changed = True
-            self.lines.append(line)
-            return line
+            return self.add(key or [name], {host: state, ALL: self.new_all})
         if line.marks.get(host) != state:
             marks = {h: s for h, s in line.marks.items() if h != ALL}
             marks[host] = state
@@ -137,7 +175,7 @@ class MarkedList:
         line = self.find(name)
         if line is None:
             return None
-        if any(h not in (host, ALL) for h in line.marks):
+        if self.others(line, host):
             self.set(name, host, "no")
             return "no"
         self.lines.remove(line)
@@ -158,9 +196,11 @@ class MarkedList:
 
 def summary(old, new):
     """What changed from OLD to NEW (MarkedList): the commit message of ws
-    switch."""
-    before = {line.key[-1]: line.marks for line in old.entries()}
-    after = {line.key[-1]: line.marks for line in new.entries()}
+    switch. A line is named by its last key field, by the whole key in a
+    list of fixed key fields."""
+    name = (lambda line: " ".join(line.key)) if new.fixed else (lambda line: line.key[-1])
+    before = {name(line): line.marks for line in old.entries()}
+    after = {name(line): line.marks for line in new.entries()}
     out = []
     for name, marks in after.items():
         if name not in before:
@@ -179,14 +219,16 @@ def main(argv):
         return 2
     path, action, args = argv[0], argv[1], argv[2:]
     try:
+        if action == "summary" and len(args) in (1, 2):
+            fixed = int(args[1]) if len(args) == 2 else None
+            print(summary(MarkedList(args[0], fixed=fixed), MarkedList(path, fixed=fixed)))
+            return 0
         marks = MarkedList(path)
         if action == "state" and len(args) == 2:
             print(marks.state(*args))
         elif action == "states" and args:
             for name in args[1:]:
                 print(name, marks.state(name, args[0]))
-        elif action == "summary" and len(args) == 1:
-            print(summary(MarkedList(args[0], key_fields=None), MarkedList(path, key_fields=None)))
         elif action == "marked" and len(args) == 1:
             return 0 if marks.find(args[0]) else 1
         elif action == "set" and len(args) == 3 and args[2] in STATES:

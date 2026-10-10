@@ -178,32 +178,22 @@ current_generation() {
 }
 
 # Lists that commands edit in the checkout (wsflatpak install/manage/unmanage/
-# remove/apply, filesystem/env/talk and un…; wsbox create/apply/remove):
-# switch adds them before the build and commits them after a successful one.
+# remove/apply, filesystem/env/talk and un…; wsbox create/apply/remove), all
+# with workstation marks (lib/ws_marks.py): switch adds them before the build
+# and commits them after a successful one.
 tool_lists=(flatpak/apps.txt flatpak/overrides.txt distrobox/hosts.txt)
-# Lists with workstation marks (lib/ws_marks.py).
-marked_lists=(flatpak/apps.txt distrobox/hosts.txt)
 
 commit_tool_lists() {
     local f changes old
     for f in "${tool_lists[@]}"; do
         [[ -e "$repo/$f" ]] || continue
         git -C "$repo" diff --quiet HEAD -- "$f" 2>/dev/null && continue
-        if [[ " ${marked_lists[*]} " == *" $f "* ]]; then
-            # +NAME, -NAME, NAME HOST=STATE
-            old="$(mktemp)"
-            git -C "$repo" show "HEAD:$f" > "$old" 2>/dev/null || : > "$old"
-            changes="$(python3 "$repo/lib/ws_marks.py" "$repo/$f" summary "$old")"
-            rm -f "$old"
-            git -C "$repo" commit -q -m "$f: ${changes:-edited} (ws switch)" -- "$f" || return
-            echo "committed $f: ${changes:-edited}"
-            continue
-        fi
-        # overrides.txt: +APP KIND VALUE, -...
-        changes="$(git -C "$repo" diff HEAD -- "$f" |
-            sed -n -e 's/^\([+-]\)[^+#-][^ ]* \([^ ]*\)$/\1\2/p' \
-                -e 's/^\([+-]\)\([^+# -][^ ]* [^ ]* [^ #]*\).*$/\1\2/p' |
-            paste -sd, | sed 's/,/, /g')"
+        # +NAME, -NAME, NAME HOST=STATE; overrides.txt: NAME is APP KIND VALUE.
+        old="$(mktemp)"
+        git -C "$repo" show "HEAD:$f" > "$old" 2>/dev/null || : > "$old"
+        changes="$(python3 "$repo/lib/ws_marks.py" "$repo/$f" summary "$old" \
+            $([[ "$f" != flatpak/overrides.txt ]] || echo 3))"
+        rm -f "$old"
         git -C "$repo" commit -q -m "$f: ${changes:-edited} (ws switch)" -- "$f" || return
         echo "committed $f: ${changes:-edited}"
     done
@@ -284,7 +274,7 @@ cmd_apply() {
     printf '  %s\n' "${results[@]}"
     # wsflatpak/wsbox apply may have written marks: switch links the desktop
     # entries of what this workstation now has and commits the lists.
-    if ! git -C "$repo" diff --quiet HEAD -- "${marked_lists[@]}" 2>/dev/null; then
+    if ! git -C "$repo" diff --quiet HEAD -- "${tool_lists[@]}" 2>/dev/null; then
         printf '  marks changed: ws switch (links the desktop entries, commits the lists)\n'
     fi
     [[ "$failed" == false ]]

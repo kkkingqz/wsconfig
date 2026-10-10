@@ -1,20 +1,25 @@
-# Flatpak overrides of apps: APP KIND VALUE, one per line; read by flatpak.nix.
+# Flatpak overrides of apps: APP KIND VALUE HOST=STATE... all=STATE, one per
+# line; read by flatpak.nix.
 #   APP filesystem SPEC     Context.filesystems: host, home:ro, xdg-download, /path
 #   APP env KEY=VALUE       Environment
 #   APP talk BUS            Session Bus Policy, talk
-# `wsflatpak filesystem|host|env|talk` and `un…` add or drop a line; then
-# `ws switch` (commits it) and `wsflatpak apply`.
+# STATE yes or no (lib/ws_marks.py): a line applies on a workstation marked
+# yes; all= counts for one without its own mark; no marks at all: everywhere.
+# One value per key (env name, filesystem path) on a workstation.
+# `wsflatpak filesystem|host|env|talk` mark this workstation yes (a new line:
+# all=yes), `un…` drop the line or mark it no; then `ws switch` (commits it)
+# and `wsflatpak apply`.
 
 # Host files; flatpak-spawn --host for Claude Code.
-com.anthropic.ClaudeDesktop filesystem host
-com.anthropic.ClaudeDesktop talk org.freedesktop.Flatpak
+com.anthropic.ClaudeDesktop filesystem host mbp16=yes all=yes
+com.anthropic.ClaudeDesktop talk org.freedesktop.Flatpak mbp16=yes all=yes
 
 # HiDPI scale; tray icon.
-com.anydesk.Anydesk env GDK_SCALE=2
-com.anydesk.Anydesk talk org.kde.StatusNotifierWatcher
+com.anydesk.Anydesk env GDK_SCALE=2 mbp16=yes all=yes
+com.anydesk.Anydesk talk org.kde.StatusNotifierWatcher mbp16=yes all=yes
 
-com.notesnook.Notesnook filesystem home:rw
+com.notesnook.Notesnook filesystem home:rw mbp16=yes all=yes
 
-io.github.rulin132.ChatGPT filesystem host
-io.github.rulin132.ChatGPT talk org.freedesktop.Flatpak
+io.github.rulin132.ChatGPT filesystem host mbp16=yes all=yes
+io.github.rulin132.ChatGPT talk org.freedesktop.Flatpak mbp16=yes all=yes
 

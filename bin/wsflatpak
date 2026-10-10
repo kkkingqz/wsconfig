@@ -38,6 +38,10 @@ USER_APPLICATIONS = Path.home() / ".local/share/applications"
 # workstation yes, remove drops the line or marks it no, apply asks about
 # the apps not offered here yet (lib/ws_select.py) and records the answer.
 SELECT_HINT = "wsflatpak apply --select"
+# overrides.txt lines carry marks after APP KIND VALUE, yes or no only: a
+# line applies where its state is yes, all=yes when unmarked; flatpak.nix
+# builds those of this workstation. filesystem/env/talk mark it yes, un…
+# drop the line or mark it no (overrides_add, overrides_remove).
 
 sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
 import ws_marks  # noqa: E402
@@ -189,12 +193,23 @@ def list_remove(app):
         print(f"NOTE: {app} still has a desktop file in {SOURCE}")
 
 
-def parse_override_line(raw):
-    line = raw.split("#", 1)[0].strip()
-    if not line:
-        return None
+def override_marks():
+    """overrides.txt with its workstation marks (yes/no; all=yes by default)."""
+    try:
+        return ws_marks.MarkedList(OVERRIDES_LIST, **ws_marks.OVERRIDES)
+    except ValueError as e:
+        raise SystemExit(f"wsflatpak: {e}")
 
-    parts = line.split()
+
+def parse_override_line(raw):
+    """APP KIND VALUE of a line, without its workstation marks."""
+    try:
+        parts = ws_marks.Line(raw, fixed=3).key
+    except ValueError as e:
+        raise SystemExit(f"wsflatpak: invalid line in {OVERRIDES_LIST}: {e}")
+
+    if not parts:
+        return None
 
     if len(parts) != 3 or parts[1] not in OVERRIDE_KINDS:
         raise SystemExit(
@@ -241,62 +256,82 @@ def override_app(query):
 
 
 def overrides_add(entry):
-    lines = OVERRIDES_LIST.read_text().splitlines(keepends=True)
-    parsed = [parse_override_line(x) for x in lines]
+    """Declare ENTRY on this workstation. A line of the same key (env name,
+    filesystem path) that applies here is replaced: in place when no other
+    workstation is marked on it, else it is marked HOST=no and ENTRY gets a
+    line of its own, HOST=yes all=no; on every workstation one value per key."""
+    host = this_host()
+    marks = override_marks()
     text = " ".join(entry)
+    key = override_key(entry)
+    exact = marks.find(entry)
+    same = [x for x in marks.entries() if x is not exact and override_key(tuple(x.key)) == key]
+    active = [x for x in same if marks.line_state(x, host) == "yes"]
 
-    same = [
-        i for i, e in enumerate(parsed)
-        if e and override_key(e) == override_key(entry)
-    ]
-    if len(same) == 1 and parsed[same[0]] == entry:
-        print(f"Already in {OVERRIDES_LIST}: {text}")
+    if exact is not None and marks.line_state(exact, host) == "yes" and not active:
+        print(f"Already in {OVERRIDES_LIST}: {exact.render()}")
         return
-    of_app = [i for i, e in enumerate(parsed) if e and e[0] == entry[0]]
 
-    if lines and not lines[-1].endswith("\n"):
-        lines[-1] += "\n"
+    general = [x for x in active if not marks.others(x, host)]
+    split = [x for x in active if marks.others(x, host)]
+    if exact is not None and general and not marks.others(exact, host):
+        # ENTRY takes the place of the first line of its key.
+        first = min([exact] + general, key=marks.lines.index)
+        if first is not exact:
+            first.key, first.marks, first.changed = list(entry), dict(exact.marks), True
+            marks.lines.remove(exact)
+            general.remove(first)
+            exact = first
+    for x in split:
+        marks.set(tuple(x.key), host, "no")
 
-    if same:
-        lines[same[0]] = text + "\n"
-        for index in reversed(same[1:]):
-            del lines[index]
-        action = "Replaced in"
-    elif of_app:
-        # Next to the app's other lines.
-        lines.insert(of_app[-1] + 1, text + "\n")
-        action = "Added to"
+    if exact is not None:
+        if marks.line_state(exact, host) != "yes":
+            marks.set(entry, host, "yes")
+        line, action = exact, "Marked in"
+        for x in general:
+            marks.lines.remove(x)
+    elif general:
+        line, action = general[0], "Replaced in"
+        line.key, line.changed = list(entry), True
+        for x in general[1:]:
+            marks.lines.remove(x)
     else:
-        if lines and lines[-1].strip():
-            lines.append("\n")
-        lines.append(text + "\n")
+        of_app = [x for x in marks.entries() if x.key[0] == entry[0]]
+        after = (same or of_app or [None])[-1]
+        if after is None and marks.lines and marks.lines[-1].raw.strip():
+            marks.lines.append(ws_marks.Line(""))
+        all_state = "no" if same else "yes"
+        line = marks.add(list(entry), {host: "yes", ws_marks.ALL: all_state}, after=after)
         action = "Added to"
 
-    OVERRIDES_LIST.write_text("".join(lines))
+    marks.save()
     print(
-        f"{action} {OVERRIDES_LIST}: {text}\n"
+        f"{action} {OVERRIDES_LIST}: {line.render() or text}\n"
         "then: ws switch (commits it) && wsflatpak apply"
     )
 
 
 def overrides_remove(key):
+    """Drop the declaration of KEY on this workstation: a line no other
+    workstation is marked on goes, else it is marked HOST=no."""
+    host = this_host()
+    marks = override_marks()
     key = override_key(key)
-    lines = OVERRIDES_LIST.read_text().splitlines(keepends=True)
-    keep = [
-        x for x in lines
-        if not (e := parse_override_line(x)) or override_key(e) != key
-    ]
+    active = [x for x in marks.entries()
+              if override_key(tuple(x.key)) == key and marks.line_state(x, host) == "yes"]
 
-    if len(keep) == len(lines):
+    if not active:
         raise SystemExit(
-            f"wsflatpak: not in {OVERRIDES_LIST}: {' '.join(key)}"
+            f"wsflatpak: not declared for {host} in {OVERRIDES_LIST}: {' '.join(key)}"
         )
 
-    OVERRIDES_LIST.write_text("".join(keep))
-    print(
-        f"Removed from {OVERRIDES_LIST}: {' '.join(key)}\n"
-        "then: ws switch (commits it) && wsflatpak apply"
-    )
+    for x in active:
+        result = marks.remove(tuple(x.key), host)
+        done = "Removed from" if result == "removed" else f"Marked {host}=no in"
+        print(f"{done} {OVERRIDES_LIST}: {' '.join(x.key)}")
+    marks.save()
+    print("then: ws switch (commits it) && wsflatpak apply")
 
 
 def cmd_override(ns):
@@ -1404,7 +1439,12 @@ OVERRIDE_HELP = """APP — ID, имя или однозначная часть �
 Команды un… также принимают ID приложения из overrides.txt после его удаления.
 Значение должно быть одним словом без пробелов и #.
 
-Изменение записывается в flatpak/overrides.txt; чтобы применить его:
+Изменение записывается в flatpak/overrides.txt для этой машины (ws host):
+строка получает HOST=yes, новая — HOST=yes all=yes (действует везде, где не
+помечено HOST=no). Другое значение того же ключа (имя env, путь filesystem)
+заменяет строку на месте, если других машин в ней нет; иначе та строка
+получает HOST=no, а новое значение — свою строку HOST=yes all=no. un… удаляет
+строку, если других машин в ней нет, иначе ставит HOST=no. Чтобы применить:
   ws switch && wsflatpak apply
 При apply текущие overrides управляемого приложения сбрасываются и заменяются
 объявленными. Ручные изменения через Flatseal при этом исчезают.

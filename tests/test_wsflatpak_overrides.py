@@ -142,6 +142,58 @@ class OverrideTests(unittest.TestCase):
         self.assertEqual(self.list.read_text(),
                          f'# permissions\n{APP} filesystem home:ro\n{APP} env EXAMPLE=value\n')
 
+    def edit(self, text, *entries, remove=False):
+        """overrides_add (or overrides_remove) of ENTRIES on host test over
+        overrides.txt TEXT; the file afterwards."""
+        self.list.write_text(text)
+        with contextlib.redirect_stdout(io.StringIO()):
+            for entry in entries:
+                self.g['overrides_remove' if remove else 'overrides_add'](entry)
+        return self.list.read_text()
+
+    def test_new_override_applies_everywhere(self):
+        self.assertEqual(self.edit('', (APP, 'env', 'SCALE=2')),
+                         f'{APP} env SCALE=2 test=yes all=yes\n')
+
+    def test_value_of_this_host_only_splits_a_shared_line(self):
+        # Another workstation is marked on the line: it keeps SCALE=2.
+        self.assertEqual(self.edit(f'{APP} env SCALE=2 other=yes all=yes\n', (APP, 'env', 'SCALE=3')),
+                         f'{APP} env SCALE=2 other=yes test=no all=yes\n'
+                         f'{APP} env SCALE=3 test=yes all=no\n')
+        # Back to SCALE=2 here: the own line goes, the shared one is marked yes.
+        self.assertEqual(self.edit(self.list.read_text(), (APP, 'env', 'SCALE=2')),
+                         f'{APP} env SCALE=2 other=yes test=yes all=yes\n')
+
+    def test_line_of_no_other_host_changes_in_place(self):
+        self.assertEqual(self.edit(f'{APP} env SCALE=2 test=yes all=yes  # hidpi\n', (APP, 'env', 'SCALE=3')),
+                         f'{APP} env SCALE=3 test=yes all=yes  # hidpi\n')
+
+    def test_declined_here_is_marked_back(self):
+        self.assertEqual(self.edit(f'{APP} talk org.example.Bus other=yes test=no all=no\n',
+                                   (APP, 'talk', 'org.example.Bus')),
+                         f'{APP} talk org.example.Bus other=yes test=yes all=no\n')
+
+    def test_value_that_looks_like_a_mark_is_the_value(self):
+        text = self.edit('', (APP, 'env', 'ENABLE=yes'))
+        self.assertEqual(text, f'{APP} env ENABLE=yes test=yes all=yes\n')
+        self.assertEqual(self.g['parse_override_line'](text), (APP, 'env', 'ENABLE=yes'))
+
+    def test_un_drops_the_line_or_marks_this_host_no(self):
+        self.assertEqual(self.edit(f'{APP} filesystem home:ro test=yes all=yes\n',
+                                   (APP, 'filesystem', 'home'), remove=True), '')
+        self.assertEqual(self.edit(f'{APP} filesystem home:ro other=yes all=yes\n',
+                                   (APP, 'filesystem', 'home'), remove=True),
+                         f'{APP} filesystem home:ro other=yes test=no all=yes\n')
+
+    def test_un_of_an_override_not_applying_here_fails(self):
+        with self.assertRaises(SystemExit) as error:
+            self.edit(f'{APP} env SCALE=2 test=no all=yes\n', (APP, 'env', 'SCALE'), remove=True)
+        self.assertIn('not declared for test', str(error.exception))
+
+    def test_ask_is_not_a_state_of_an_override(self):
+        with self.assertRaises(SystemExit):
+            self.edit(f'{APP} env SCALE=2 test=ask\n', (APP, 'env', 'SCALE=3'))
+
     def test_unfilesystem_removes_declared_path_regardless_of_mode(self):
         self.list.write_text(f'{APP} filesystem home:ro\n')
         with contextlib.redirect_stdout(io.StringIO()):

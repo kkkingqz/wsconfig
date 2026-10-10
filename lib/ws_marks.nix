@@ -6,18 +6,25 @@
 let
   isMark = t: builtins.match "[A-Za-z0-9][A-Za-z0-9_-]*=(yes|no|ask)" t != null;
 
+  tokens = text: lib.filter (t: lib.isString t && t != "") (builtins.split "[[:space:]]+" text);
+  pair = t: let p = lib.splitString "=" t; in lib.nameValuePair (lib.head p) (lib.last p);
+
   entry = raw:
-    let
-      body = lib.head (lib.splitString "#" raw);
-      tokens = lib.filter (t: lib.isString t && t != "") (builtins.split "[[:space:]]+" body);
-      pair = t: let p = lib.splitString "=" t; in lib.nameValuePair (lib.head p) (lib.last p);
-    in
+    let ts = tokens (lib.head (lib.splitString "#" raw)); in
     {
-      key = lib.filter (t: !isMark t) tokens;
-      marks = lib.listToAttrs (map pair (lib.filter isMark tokens));
+      key = lib.filter (t: !isMark t) ts;
+      marks = lib.listToAttrs (map pair (lib.filter isMark ts));
     };
 in
 rec {
+  # { HOST = STATE; } of the marks in TEXT (what follows the key fields of a
+  # line whose key may itself look like a mark: overrides.txt).
+  marksIn = text: lib.listToAttrs (map pair (lib.filter isMark (tokens text)));
+
+  # STATE of HOST in MARKS: the own mark, else all=, else DEFAULT (ask for
+  # apps and boxes, yes for overrides).
+  stateIn = marks: host: default: marks.${host} or (marks.all or default);
+
   # NAME -> { HOST = STATE; } of FILE; the last key field names the line
   # (APP, container).
   read = file: lib.listToAttrs (map (e: lib.nameValuePair (lib.last e.key) e.marks)
@@ -25,8 +32,7 @@ rec {
 
   # yes, no or ask of NAME on HOST, as ws_marks.py state: the own mark, else
   # all=, else ask.
-  state = marks: name: host:
-    let m = marks.${name} or { }; in m.${host} or (m.all or "ask");
+  state = marks: name: host: stateIn (marks.${name} or { }) host "ask";
 
   has = marks: name: host: state marks name host == "yes";
 }
