@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2088 # "~/..." in the messages is text, not a path
 set -u
 set -o pipefail
 

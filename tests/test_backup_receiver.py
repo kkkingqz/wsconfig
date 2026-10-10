@@ -64,12 +64,19 @@ class ReceiverTests(unittest.TestCase):
         self.assertEqual((self.destination / 'mbp16/home/test-id/payload').read_text(), 'original')
 
     def test_busy_receiver_does_not_start_receive(self):
-        with (self.destination / '.receiver.lock').open('w') as lock:
+        with (self.destination / '.receiver-mbp16.lock').open('w') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             p = self.receiver(f'receive mbp16 home test-id {U}')
         self.assertNotEqual(p.returncode, 0)
         self.assertIn('receiver busy', p.stderr)
         self.assertFalse((self.destination / 'mbp16').exists())
+
+    def test_another_workstation_does_not_wait(self):
+        # legiongo backing up holds its own lock, not the one of mbp16.
+        with (self.destination / '.receiver-legiongo.lock').open('w') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            p = self.receiver('probe mbp16')
+        self.assertEqual(p.returncode, 0, p.stderr)
 
     def test_wrong_filesystem_rejected(self):
         self.b.update(uuid='22222222-2222-2222-2222-222222222222')

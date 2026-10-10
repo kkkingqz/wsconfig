@@ -1,7 +1,5 @@
-import os
 from pathlib import Path
 import subprocess
-import tempfile
 import unittest
 from backup_fixture import Boundary
 
@@ -34,6 +32,20 @@ class SourceTests(unittest.TestCase):
         self.assertIn('nested subvolumes', p.stderr)
         self.assertNotEqual(p.returncode, 0)
         self.assertEqual(list(self.snapshots.iterdir()), [])
+
+    def test_steam_subvolume_inside_home_is_left_out(self):
+        steam = f'{self.b.home}/king/.local/share/Steam btrfs {U} rw,noatime,subvol=/@steam'
+        self.b.update(nested_mounts=[steam])
+        p = self.source()
+        self.assertEqual(p.returncode, 0, p.stderr)
+        # Anything else mounted inside HOME still needs a decision.
+        for line in (f'{self.b.home}/king/mnt ext4 - rw',
+                     f'{self.b.home}/king/other btrfs {U} rw,subvol=/@other',
+                     f'{self.b.home}/king/steam2 btrfs 22222222-2222-2222-2222-222222222222 rw,subvol=/@steam'):
+            self.b.update(nested_mounts=[steam, line])
+            q = self.source(id='test-' + str(abs(hash(line)) % 1000))
+            self.assertIn('nested mounts', q.stderr)
+            self.assertNotEqual(q.returncode, 0)
 
     def test_running_vm_refuses_before_snapshot(self):
         self.b.update(active_vm='running-guest\n')

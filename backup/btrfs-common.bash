@@ -1,4 +1,5 @@
 # Shared Btrfs boundary checks; deploy beside both helpers.
+# shellcheck disable=SC2154 # fs_uuid: set by the helper that sources it
 die() { printf 'wsbackup: %s\n' "$*" >&2; exit 1; }
 token() { [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$ ]] || die "invalid ID: $1"; }
 uuid() { [[ "$1" =~ ^[[:xdigit:]]{8}(-[[:xdigit:]]{4}){3}-[[:xdigit:]]{12}$ ]] || die 'invalid UUID'; }

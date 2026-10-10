@@ -11,6 +11,8 @@ volume: User Commands
 существующий Btrfs filesystem с прежним UUID, `@`, `@home` и сохранённые
 подтомы workstation, а также штатный rEFInd. Новый диск, форматирование,
 разметка, разблокировка LUKS и восстановление EFI в этот механизм не входят.
+Хосты с GRUB (legiongo) мастер не переключает: отказ ещё до приёма с NAS,
+ручной путь — раздел «Хосты с GRUB».
 
 Механизм проверен автоматическими тестами с подменой границ Btrfs/SSH.
 Реальная загрузка восстановленной системы и настоящий Unraid пока не проверены;
@@ -38,11 +40,16 @@ export не перезаписывает файл; явная замена — `
 ```sshconfig
 Host wsbackup-unraid
     HostName 192.0.2.10
-    User root
+    User wsbackup
     IdentitiesOnly yes
     UserKnownHostsFile /media/ubuntu/USB/known_hosts
     StrictHostKeyChecking yes
 ```
+
+Пользователь — тот, у кого forced command приёмника: `wsbackup` для mbp16,
+`wsbackup-HOST` для остальных машин (`helpws backup`, «Несколько
+workstation»). Мастер спрашивает его с ответом по умолчанию `wsbackup` и
+передаёт ssh через `-l`: это значение сильнее `User` из config.
 
 Пути в config должны существовать именно в Live-среде, включая Include,
 IdentityFile и UserKnownHostsFile. Host key проверить заранее по доверенному
@@ -218,6 +225,32 @@ sudo umount /mnt
 
 Текущие `@` и `@home` не трогать. Удалённые подтомы освобождают место после
 фоновой очистки Btrfs (`sudo btrfs subvolume sync /mnt` перед umount дождётся её).
+
+## Хосты с GRUB
+
+`ws-restore` переключает только хосты с rEFInd (`boot/refind_linux.conf` в
+`@`): на GRUB он отказывает, проверив текущий `@`, до подключения к NAS. Откат
+на самом устройстве — Timeshift: подменю GRUB «Timeshift snapshots» или
+`sudo timeshift --restore`. Дату с Unraid — вручную из Live USB, теми же
+шагами, что делает мастер (не проверено). В ssh config пользователь
+`wsbackup-HOST`, например `wsbackup-legiongo`:
+
+```console
+sudo mount -o subvolid=5 /dev/disk/by-uuid/FILESYSTEM_UUID /mnt
+ssh -F /media/ubuntu/USB/ssh_config wsbackup-unraid 'catalog-list legiongo'
+sudo mkdir /mnt/ws-recovery-manual
+ssh -F /media/ubuntu/USB/ssh_config wsbackup-unraid 'send legiongo system ID' \
+    | sudo btrfs receive /mnt/ws-recovery-manual
+sudo mv /mnt/@ /mnt/@before-restore
+sudo btrfs subvolume snapshot /mnt/ws-recovery-manual/ID /mnt/@
+sudo umount /mnt
+```
+
+`catalog-list` печатает по строке JSON на копию (`scope`, `id`,
+`timeshift_name`); `ID` — её `id`. HOME — так же, с `home` и `@home`.
+Загрузчик не меняется: stub GRUB на ESP читает `/@/boot/grub/grub.cfg` уже
+нового `@`, default subvolume остаётся top level. `@before-restore` и
+`ws-recovery-manual` удалить после проверки загрузки.
 
 ## Если даты NAS не видны
 

@@ -308,3 +308,7 @@ class RealHelpersContract(TransferFixture, unittest.TestCase):
         self.assertEqual((self.remote_root / 'mbp16/system' / record['id'] / 'payload').read_text(), 'first@')
         self.assertTrue((self.remote_root / 'mbp16/.catalog/system' / (record['id'] + '.json')).exists())
         self.assertEqual((self.managed / 'system' / record['id'] / 'payload').read_text(), 'first@')
+        # The next batch finds the record in the real receiver's catalog-list.
+        again = subprocess.run([str(ROOT / 'bin/ws'), 'backup'], env=env, text=True, capture_output=True)
+        self.assertEqual(again.returncode, 0, again.stderr)
+        self.assertEqual(json.loads(again.stdout)['catalog']['published'], [record['id']])

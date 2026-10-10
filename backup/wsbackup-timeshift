@@ -95,6 +95,7 @@ else
     src="$store/$name/$subvol"
     safe_path "$root/$scope/$id"
     [[ ! -e "$root/$scope/$id" ]] || die 'copy already exists'
+    # shellcheck disable=SC2174 # umask 077: the parents are 0700 as well
     mkdir -p -m0700 "$root/$scope"
     btrfs subvolume snapshot -r "$src" "$root/$scope/$id" >&2
     btrfs filesystem sync "$root" >&2

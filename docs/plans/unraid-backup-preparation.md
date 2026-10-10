@@ -1,3 +1,9 @@
+title: ws-plan-unraid
+section: 1
+date: 2026-10-04
+source: Workstation
+volume: User Commands
+
 # Подготовка Unraid для backup workstation
 
 Механизм реализован и перенесён в `main`; инструкция запуска — `helpws backup`.

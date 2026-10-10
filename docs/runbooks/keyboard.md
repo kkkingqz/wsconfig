@@ -68,7 +68,10 @@ workstation-xremap
 
 xremap работает только в сессии GNOME: в Game Mode (gamescope-session-plus
 тоже поднимает `graphical-session.target`) `ws-xremap` выходит с кодом 0, без
-перезапусков (`helpws plan-legion-go`).
+перезапусков (`helpws plan-legion-go`). Признак Game Mode — не только
+`XDG_CURRENT_DESKTOP`, но и запущенный `gamescope-session-plus`: окружение
+менеджера пользователя может остаться от GNOME; gamescope самой игры внутри
+GNOME xremap не выключает.
 
 ## Основные системные shortcuts
 

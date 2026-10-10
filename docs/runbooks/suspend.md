@@ -375,6 +375,11 @@ Hibernate в меню GNOME          hibernate                workstation-hibern
 кнопка питания (Touch ID)       hibernate                power-button-action (gnome/gnome.nix), вне сеанса logind
 ```
 
+Пункт Hibernate (`workstation-hibernate@local`) есть только на хостах с
+`resume=` в `kernelParams` (`gnome/gnome-extensions.nix`): systemd находит
+swapfile и без него, и на другом хосте CanHibernate предложил бы
+непроверенную гибернацию.
+
 Обычного S3 без перехода в hibernate больше нет: GNOME вызывает logind
 `SuspendWithFlags`, и `systemd-suspend.service` переопределена на
 `systemd-sleep suspend-then-hibernate`.

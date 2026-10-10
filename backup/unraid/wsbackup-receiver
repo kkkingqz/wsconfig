@@ -37,8 +37,10 @@ filesystem_check "$root"
 [[ "$(stat -c %u "$root")" == "$EUID" ]] || die 'receiver root has wrong owner'
 mode="$(stat -c %a "$root")"
 (( (8#$mode & 8#022) == 0 )) || die 'receiver root is group/world writable'
-safe_path "$root/.receiver.lock"
-exec 9>"$root/.receiver.lock"
+# One operation per workstation at a time; another workstation does not
+# wait (its own ROOT/HOST_ID, catalog and lock).
+safe_path "$root/.receiver-$host_id.lock"
+exec 9>"$root/.receiver-$host_id.lock"
 flock -n 9 || die 'receiver busy'
 if [[ "$action" == probe ]]; then
     version="$(btrfs --version)"
@@ -65,6 +67,7 @@ case "$action" in
         [[ ! -e "$dest" ]] || die 'snapshot already exists'
         stage="$dir/.partial-$id"; safe_path "$stage"
         [[ ! -e "$stage" ]] || die 'partial receive already exists; inspect it manually'
+        # shellcheck disable=SC2174 # umask 077: the parents are 0700 as well
         mkdir -p -m0700 "$dir"
         mkdir -m0700 "$stage"
         btrfs receive "$stage" >&2

@@ -64,25 +64,6 @@ set_key() {
     fi
 }
 
-link_repo_file() {
-    local src="$1" dst="$2"
-    mkdir -p "$(dirname "$dst")"
-
-    if [[ -L "$dst" ]]; then
-        if [[ "$(readlink -f "$dst")" == "$(readlink -f "$src")" ]]; then
-            return
-        fi
-        echo "refusing to replace foreign symlink: $dst" >&2
-        return 1
-    fi
-    if [[ -e "$dst" ]]; then
-        echo "refusing to replace existing file: $dst" >&2
-        return 1
-    fi
-    ln -s "$src" "$dst"
-    echo "linked $dst -> $src"
-}
-
 xremap_disable() {
     mkdir -p "$(dirname "$xremap_off")"
     touch "$xremap_off"
@@ -111,20 +92,6 @@ if [[ "${XDG_CURRENT_DESKTOP:-}" != *GNOME* ]]; then
     echo "ws-keyboard-apply: current desktop is not GNOME: ${XDG_CURRENT_DESKTOP:-unset}" >&2
     exit 69
 fi
-
-# Runtime paths are symlinks only. Sources stay in wsconfig.
-# Creating them is safe even if the runtime preflight below fails.
-link_repo_file "$repo/bin/ws-keyboard" "$HOME/.local/bin/ws-keyboard"
-link_repo_file "$repo/bin/ws-keyboard-apply" "$HOME/.local/bin/ws-keyboard-apply"
-link_repo_file "$repo/bin/ws-keyboard-status" "$HOME/.local/bin/ws-keyboard-status"
-link_repo_file "$repo/bin/ws-xremap" "$HOME/.local/bin/ws-xremap"
-link_repo_file "$repo/bin/ws-window" "$HOME/.local/bin/ws-window"
-link_repo_file "$repo/bin/ws-nautilus-current" "$HOME/.local/bin/ws-nautilus-current"
-link_repo_file "$repo/bin/ws-input-source" "$HOME/.local/bin/ws-input-source"
-link_repo_file "$repo/bin/ws-tiling-apply" "$HOME/.local/bin/ws-tiling-apply"
-link_repo_file "$repo/bin/ws-keyboard-install-extensions" "$HOME/.local/bin/ws-keyboard-install-extensions"
-link_repo_file "$repo/bin/ws-keyboard-system-apply" "$HOME/.local/bin/ws-keyboard-system-apply"
-link_repo_file "$repo/bin/ws-workstation-verify" "$HOME/.local/bin/ws-workstation-verify"
 
 # Full preflight BEFORE changing GNOME shortcuts. Some bindings (notably
 # Ctrl+Left/Right for workspaces) depend on xremap, so a partial apply is worse

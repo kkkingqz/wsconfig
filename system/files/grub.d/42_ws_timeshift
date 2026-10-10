@@ -32,6 +32,7 @@ json() {
 }
 
 entries=""
+# shellcheck disable=SC2045 # Timeshift names: dates without spaces, newest first
 for d in $(ls -1r "$snaps"); do
     boot="$snaps/$d/@/boot"
     [ -d "$boot" ] || continue

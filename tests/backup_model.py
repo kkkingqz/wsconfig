@@ -350,6 +350,21 @@ class HelperModel:
             else:
                 f.write_text(encoded + '\n')
             return encoded + '\n'
+        if action == 'catalog-list':
+            # catalog_list: records whose received snapshot is there.
+            lines = []
+            for scope in ('system', 'home'):
+                for f in sorted((root / host / '.catalog' / scope).glob('*.json')):
+                    record = json.loads(f.read_text())
+                    if record['scope'] != scope or f.name != record['id'] + '.json':
+                        raise Die('catalog filename identity mismatch')
+                    snapshot = root / host / scope / record['id']
+                    if not snapshot.is_dir():
+                        continue
+                    if self.inspect(snapshot)['received_uuid'] != record['source_uuid']:
+                        raise Die('catalog received UUID mismatch')
+                    lines.append(f.read_text().strip() + '\n')
+            return ''.join(lines)
         scope, id = words[2], words[3]
         directory = root / host / scope
         dest = directory / id

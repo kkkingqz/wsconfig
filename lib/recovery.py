@@ -28,7 +28,7 @@ def ssh_argv(options, words):
     try: ipaddress.ip_address(host)
     except ValueError:
         if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]{0,252}',host): raise ValueError('invalid SSH host')
-    user = options.get('user','root'); port = options.get('port',22)
+    user = options.get('user','wsbackup'); port = options.get('port',22)
     if not isinstance(user,str) or not TOKEN.fullmatch(user): raise ValueError('invalid SSH user')
     if type(port) is not int or not 1 <= port <= 65535: raise ValueError('invalid SSH port')
     args = ['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'ConnectTimeout=10']
@@ -216,7 +216,9 @@ def choose(values,reader,output,label):
 
 def connection(args,reader,output):
     options={}
-    for key,label,default in [('host','SSH host',''),('user','SSH user','root'),('port','SSH port','22'),
+    # The receiver's forced command belongs to wsbackup (mbp16) or
+    # wsbackup-HOST (backup/unraid/boot.sh); -l overrides User of the config.
+    for key,label,default in [('host','SSH host',''),('user','SSH user','wsbackup'),('port','SSH port','22'),
                               ('config','Absolute SSH config path',''),('key','Absolute SSH private key path','')]:
         value=getattr(args,key) or ask(reader,output,label+(f' [{default}]' if default else '')+':') or default
         options[key]=int(value) if key=='port' else value
@@ -276,6 +278,8 @@ def main(argv=None):
                 if action not in ('status','resume','rollback'): raise ValueError('unfinished transaction must be handled first')
                 options=connection(args,tty,tty) if action=='resume' and tx['phase']=='selected' else None
                 local_action(action,top,tx,p,tty,tty,options); return 0
+            # A GRUB host is refused before the long receive, not after it.
+            transaction.require_refind(top/'@')
             options=connection(args,tty,tty)
             host_id=args.host_id or ask(tty,tty,'Backup host ID [mbp16]:') or 'mbp16'
             selections=[s for s in build_selections(read_catalog(options,host_id,p)) if s['source_fs_uuid']==target['uuid']]

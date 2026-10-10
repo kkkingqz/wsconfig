@@ -65,6 +65,9 @@ Writable Timeshift-снимок фиксируется при первом им�
 HOME Distrobox/Wine и caches. Нативный btrfs send не исключает файлы.
 Вложенные subvolumes и отдельные mounts не копируются рекурсивно;
 при их обнаружении snapshot отказывает до явного решения о дополнительном scope.
+Одно решение уже принято: top-level `@steam` хоста с `nativeSteam = "yes"`
+(`~/.local/share/Steam`, `helpws plan-legion-go`) в backup не входит, и этот
+mount внутри `/home` snapshot пропускает.
 
 Scope `vms` есть только на хосте с `vm = "yes"` в `facts.nix` (`helpws virt`):
 иначе `plan|send vms` отказывают, а `plan|send all` — это только HOME.
@@ -221,9 +224,11 @@ restrict,command="sudo -n /usr/local/libexec/wsbackup/unraid/wsbackup-receiver /
 restrict,command="sudo -n /usr/local/libexec/wsbackup/unraid/wsbackup-receiver /usr/local/libexec/wsbackup/hosts/legiongo.conf" ssh-ed25519 PUBLIC_KEY legiongo
 ```
 
-`ROOT` может быть общим: у каждой машины свой подкаталог `ROOT/HOST_ID`,
-приём сериализован общим flock (одновременный второй получает «receiver
-busy» и повторяет в следующий раз). На workstation — alias с `User
+`ROOT` может быть общим: у каждой машины свой подкаталог `ROOT/HOST_ID` и
+свой flock (`ROOT/.receiver-HOST_ID.lock`): машины не ждут друг друга, а
+второй запуск той же машины получает «receiver busy». `ws-restore` (Live
+USB) умеет только rEFInd (mbp16); для GRUB-хостов — `helpws recovery`,
+«Хосты с GRUB». На workstation — alias с `User
 wsbackup-HOST` и `config.json` с `"remote_host_id": "HOST"`; остальные
 значения те же, что у mbp16. `boot.sh` с одной машиной пишет sshd и sudo
 байт в байт как прежний (`tests/test_unraid_boot.py`).
@@ -237,10 +242,14 @@ scope system/home/vms и безопасного snapshot ID. SSH_ORIGINAL_COMMAN
 старый receiver не поддерживает каталог восстановления. Probe должен вернуть
 scopes с system/home и capability recovery-catalog-v1. Metadata сохраняются
 в ROOT/HOST_ID/.catalog; Python/jq на NAS не требуются. Перед cleanup
-каждый batch подтверждает metadata, включая backfill успешных старых records.
+каждый batch подтверждает metadata, включая backfill успешных старых records:
+одним catalog-list (receiver выдаёт только records с живым snapshot), а
+catalog-put — только для тех, кого в нём нет; число вызовов SSH не растёт с
+историей. Records с `local_present: false` локально больше не проверяются:
+их копии удалены, ID не повторяются.
 При ошибке публикации локальная очистка не выполняется.
-Серверные права и directory UUID проверяются перед работой. Приём сериализован
-flock. Пример ручного probe после настройки alias:
+Серверные права и directory UUID проверяются перед работой. Операции одной
+машины сериализованы flock. Пример ручного probe после настройки alias:
 
 ```console
 ssh -T wsbackup-unraid 'probe mbp16'

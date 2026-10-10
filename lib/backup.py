@@ -355,13 +355,21 @@ def send(c, scope, state, vm):
             stage(name + ': parent check')
             parent = last.get(name)
             parent_id = None
+            reason = 'no common parent'
             if parent and parent.get('identity') == identity(c):
-                local = source(c, 'inspect', name, parent['id'])
-                validate_snapshot(local, parent['source_uuid'], False)
-                other = remote(c, ['inspect', c['remote_host_id'], name, parent['id']], missing=True)
-                if other is not None:
-                    validate_snapshot(other, parent['source_uuid'], True)
-                    parent_id = parent['id']
+                # A parent gone on either side means a full send, as in the
+                # Timeshift batch (backup_timeshift.send_copy).
+                local = inspect_copy(c, name, parent['id'])
+                if local is None:
+                    reason = 'local parent missing'
+                else:
+                    validate_snapshot(local, parent['source_uuid'], False)
+                    other = remote(c, ['inspect', c['remote_host_id'], name, parent['id']], missing=True)
+                    if other is None:
+                        reason = 'remote parent missing'
+                    else:
+                        validate_snapshot(other, parent['source_uuid'], True)
+                        parent_id = parent['id']
             stage(name + ': source snapshot')
             meta = source(c, 'snapshot', name, id)
             if not UUID.fullmatch(meta.get('uuid', '')) or meta.get('ro') is not True:
@@ -374,7 +382,7 @@ def send(c, scope, state, vm):
             validate_snapshot(other, meta['uuid'], True)
             record = {'id': id, 'source_uuid': meta['uuid'], 'identity': identity(c),
                       'scope': name, 'finished': now(), 'mode': 'incremental' if parent_id else 'full',
-                      'parent': parent_id}
+                      'parent': parent_id, 'full_reason': None if parent_id else reason}
             write_json(state / 'snapshots' / name / (id + '.json'), record)
             last[name] = record
             write_json(state / 'last-success.json', last)

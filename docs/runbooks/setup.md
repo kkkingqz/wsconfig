@@ -29,7 +29,9 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | ba
 1. Пароль sudo — в начале каждого запуска.
 2. Вход в GitHub: `gh auth login` в браузере по одноразовому коду; git
    получает `gh auth setup-git`, имя и email — из аккаунта, если их ещё нет.
-3. Хост. Есть `facts.nix` с этим `hostname` — он. Нет — имя: существующий
+3. Хост. Есть `facts.nix` с этим `hostname` — он. Нет — имя (строчные
+   латинские буквы, цифры, `-` и `_`, до 23 знаков: из него и пользователь
+   приёмника `wsbackup-HOST` на Unraid): существующий
    хост даёт ПК свой `hostname`; новое имя — новый хост из generic-pc
    (`hardware = "generic-pc"`, GRUB, `quiet splash`) с тремя вопросами: VM,
    Steam из apt, Game Mode. Новый хост коммитится и пушится сразу.
@@ -38,7 +40,8 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | ba
    хоста. `all=yes` и `ask` отмечены, `all=no` — нет; overrides — только
    приложений, которые на хосте будут. Ответ — `HOST=yes|no` на каждой
    показанной строке, коммит и пуш; `ws apply` потом ничего не спрашивает.
-   Esc — выход без записи.
+   Esc — выход без записи. При `nativeSteam = "yes"` Steam из Flatpak не
+   предлагается: `HOST=no` без вопроса (Steam там из apt).
 5. Лицензии пакетов, которые иначе спросил бы apt посреди `bootstrap.sh`:
    Microsoft core fonts (`ubuntu-restricted-extras`) и, при
    `nativeSteam = "yes"`, Steam (debconf).
@@ -86,6 +89,9 @@ create setup` при расхождении системы с деревом н�
   это работа на сервере с подтверждением. setup.sh готовит только сторону
   ПК (`@wsbackup`, ключ); `config.json` и alias SSH не пишет: адреса
   приёмника не хранятся в репозитории.
+- **Восстановление с Unraid на GRUB.** `ws-restore` (Live USB) умеет только
+  rEFInd; новый хост — Timeshift на месте или вручную с NAS (`helpws
+  recovery`, «Хосты с GRUB»).
 - **mbp16 (rEFInd).** setup.sh отказывает (`boot = "refind-grub-recovery"`);
   переустановка — по `helpws rebuild`. Вернуться позже:
   - значения диска в `facts.nix` после переустановки: `rootUuid`,

@@ -5,7 +5,6 @@ set -euo pipefail
 # plan-dgpu): the AMD dGPU of MacBookPro16,1 goes off through ACPI PWRD like
 # on macOS (CPU package PC7 with the card off) and can come back on.
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
 # REPO COMMIT, from system/kernel/t2gmux/t2gmux.nix (ws switch).
 source_file="$HOME/.local/share/workstation/t2gmux/source"
 # Build results per kernel: generated, not edited.

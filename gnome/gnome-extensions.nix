@@ -22,8 +22,13 @@
 # disabled by hand (Extension Manager, gnome-extensions) is reset by the next
 # switch; add or remove it here instead. New extensions load after
 # logout/login on Wayland.
-{ config, lib, pkgs, ... }:
+{ lib, pkgs, facts, ... }:
 let
+  # Hibernation is set up where facts.kernelParams has resume= (helpws
+  # suspend, Hibernate). systemd finds a swap file without it, so
+  # CanHibernate alone would offer an untested hibernate elsewhere.
+  hibernate = lib.any (lib.hasPrefix "resume=") facts.kernelParams;
+
   extensions = [
     { uuid = "ubuntu-dock@ubuntu.com"; source = "ubuntu"; }
     { uuid = "ubuntu-appindicators@ubuntu.com"; source = "ubuntu"; }
@@ -41,8 +46,10 @@ let
     { uuid = "workstation-smart-popup@local"; source = "local"; }
     { uuid = "workstation-input-source@local"; source = "local"; }
     { uuid = "workstation-dock-spring@local"; source = "local"; }
-    # Hibernate in the power menu where logind allows it (helpws suspend).
-    { uuid = "workstation-hibernate@local"; source = "local"; }
+  ]
+  # Hibernate in the power menu where logind allows it (helpws suspend).
+  ++ lib.optional hibernate { uuid = "workstation-hibernate@local"; source = "local"; }
+  ++ [
     { uuid = "workstation-widgets@local"; source = "local"; }
   ];
 

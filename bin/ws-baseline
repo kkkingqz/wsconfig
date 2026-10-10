@@ -238,9 +238,13 @@ cmd_capture() {
 
     if [[ "$with_sudo" == true ]]; then
         echo "== sudo"
+        # The outputs belong to the user (the baseline directory): only the
+        # commands need root.
+        # shellcheck disable=SC2024
         sudo dpkg --verify > "$dir/system/dpkg-verify.txt" 2>&1 || true
         # After a Timeshift restore the default must be the new @ (its restore
         # hook sets it; rEFInd boots from it; helpws rebuild, Recovery).
+        # shellcheck disable=SC2024
         sudo btrfs subvolume get-default / > "$dir/system/get-default.txt" 2>&1 || true
         sudo lsinitrd "/boot/initrd.img-$(uname -r)" 2>/dev/null \
             | awk '{ print $NF }' | grep -E 't2bce|appletb|modprobe\.d|modules-load' \

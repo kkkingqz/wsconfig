@@ -4,8 +4,6 @@ import os
 from pathlib import Path
 import shlex
 import shutil
-import subprocess
-import sys
 import tempfile
 
 import fast_tmp  # noqa: F401  (tmpfs for test files)
@@ -17,7 +15,11 @@ import json, os, pathlib, sys, uuid, shutil
 name = sys.argv[1]
 a = sys.argv[2:]
 c = json.loads(pathlib.Path(os.environ['BACKUP_FIXTURE']).read_text())
-if name == 'findmnt':
+if name == 'findmnt' and '-R' in a:
+    # TARGET,FSTYPE,UUID,OPTIONS of the source and the mounts inside it.
+    print(a[-1], 'btrfs', c.get('uuid'), 'rw,subvol=/@home')
+    for line in c.get('nested_mounts', []): print(line)
+elif name == 'findmnt':
     field = a[a.index('-nro') + 1] if '-nro' in a else 'TARGET'
     print({'FSTYPE': c.get('fstype', 'btrfs'), 'UUID': c.get('uuid'),
            'OPTIONS': 'rw,subvol=/@home' if a[-1] in ('/home', c.get('source_home')) else 'rw,subvol=/@vms',

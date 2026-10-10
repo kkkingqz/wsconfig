@@ -534,7 +534,7 @@ Tiling Assistant (Ubuntu UUID либо upstream fallback)
 workstation-smart-popup@local
 workstation-dock-spring@local
 workstation-input-source@local
-workstation-hibernate@local (пункт Hibernate; только где logind разрешает hibernate)
+workstation-hibernate@local (пункт Hibernate; хосты с resume= в kernelParams, где logind разрешает)
 ```
 
 Список всех расширений и источник каждого — `gnome/gnome-extensions.nix`;

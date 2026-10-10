@@ -91,7 +91,7 @@ Tiling Assistant
 workstation-smart-popup@local
 workstation-dock-spring@local
 workstation-input-source@local
-workstation-hibernate@local
+workstation-hibernate@local     (хосты с resume= в kernelParams)
 ```
 
 `Window Monitor Pro` используется и входит в baseline расширений; keyboard/Touch Bar
@@ -736,6 +736,8 @@ Micro help-viewer использует true-color scheme и Markdown syntax high
 ~/wsconfig/docs/runbooks/       как работает и что делать, по слоям
 ~/wsconfig/docs/plans/          roadmap и незавершённые планы
 ~/wsconfig/docs/history/        как строились завершённые слои
+~/wsconfig/docs/superpowers/    проекты (specs/) и планы реализации (plans/) backup,
+                                recovery и виджетов; без title:, не man-страницы
 ```
 
 `helpws` находит документ по `title:`, не по пути.
@@ -868,7 +870,7 @@ wsconfig/
 ├── lib/setup_marks.py   списки с галочками setup.sh (пометки хоста)
 ├── lib/btrfs_layout.py  fstab и stub GRUB для ws btrfs make
 ├── README.md
-└── docs/                architecture/, runbooks/, plans/, history/
+└── docs/                architecture/, runbooks/, plans/, history/, superpowers/
 ```
 
 Nix доставляет, владельцы слоёв не меняются (`helpws layers`):

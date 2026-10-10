@@ -111,7 +111,7 @@ subvolume_mount() {
     fi
     run sudo umount "$top"
     run sudo rmdir "$top"
-    if grep -Eq "^[^#]*[[:space:]]$dir[[:space:]]" /etc/fstab; then
+    if grep -Eq "^[^#]*[[:space:]]${dir}[[:space:]]" /etc/fstab; then
         echo "$dir already in fstab"
     else
         line="UUID=$root_uuid  $dir  btrfs  subvol=$name,$options  0 0"

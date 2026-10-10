@@ -32,8 +32,10 @@ Home Manager создаёт manifest/runtime JSON в
 для установки не требуется.
 Не активировать generation, ссылающуюся на основной checkout без этих файлов.
 
-Runtime запускается вместе с graphical-session.target только в GNOME Wayland,
-останавливается с сессией и ограничивает частоту рестартов. Quickshell и Mesa
+Runtime запускается вместе с graphical-session.target только в GNOME Wayland
+(`ExecCondition`: `XDG_CURRENT_DESKTOP` с GNOME, `WAYLAND_DISPLAY`, нет
+`gamescope-session-plus` — Game Mode, `helpws gaming`), останавливается с
+сессией и ограничивает частоту рестартов. Quickshell и Mesa
 из закреплённого nixpkgs находятся в отдельном closure; launcher задаёт EGL
 vendor только для своего процесса. Qt получает scale из Wayland. Дополнительный
 `QT_SCALE_FACTOR` не нужен.

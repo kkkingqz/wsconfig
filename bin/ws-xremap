@@ -13,8 +13,9 @@ watch="${XREMAP_WATCH:-}"
 
 # Game Mode (gamescope-session-plus, helpws plan-legion-go) starts
 # graphical-session.target too, and xremap is part of the GNOME layer: off
-# there, without a failure that would restart it.
-if [[ ":${XDG_CURRENT_DESKTOP:-}:" != *:GNOME:* ]] || pgrep -u "$(id -u)" -x gamescope >/dev/null 2>&1; then
+# there, without a failure that would restart it. The session script, not
+# gamescope: Steam may run a game in a nested gamescope inside GNOME.
+if [[ ":${XDG_CURRENT_DESKTOP:-}:" != *:GNOME:* ]] || pgrep -u "$(id -u)" -f gamescope-session-plus >/dev/null 2>&1; then
     echo "ws-xremap: not a GNOME session (XDG_CURRENT_DESKTOP=${XDG_CURRENT_DESKTOP:-unset}): xremap stays off"
     exit 0
 fi

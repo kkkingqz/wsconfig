@@ -1,5 +1,4 @@
 """Real recovery files; only block-device, mount and Btrfs kernel calls are fake."""
-from contextlib import contextmanager
 import json
 import os
 from pathlib import Path

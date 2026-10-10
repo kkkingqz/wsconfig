@@ -150,8 +150,10 @@ step_pull() {
     fi
 }
 
-# Host name as a directory and a mark can carry it (lib/ws_marks.py).
-valid_name() { [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ && "$1" != all ]]; }
+# Host name as a directory, a mark (lib/ws_marks.py) and the receiver user
+# wsbackup-HOST on Unraid (backup/unraid/boot.sh: lowercase, 23 at most) can
+# carry it.
+valid_name() { [[ "$1" =~ ^[a-z0-9][a-z0-9_-]{0,22}$ && "$1" != all ]]; }
 
 set_hostname() {
     local new="$1" old
@@ -232,7 +234,7 @@ step_host() {
                 read -r -p "Имя хоста (существующий или новый): " name || die "no answer"
             fi
             valid_name "$name" && break
-            echo "только буквы, цифры, - и _"
+            echo "только строчные латинские буквы, цифры, - и _, до 23 знаков"
         done
         if [[ -r "$repo/nix/hosts/$name/facts.nix" ]]; then
             check_facts "$name"

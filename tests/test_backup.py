@@ -1,4 +1,5 @@
 import json
+import shutil
 import os
 from pathlib import Path
 import subprocess
@@ -142,6 +143,16 @@ class TransferTests(SendFixture, unittest.TestCase):
         second = self.cli('send', 'home')
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertEqual(json.loads(second.stdout)['home']['mode'], 'full')
+
+    def test_missing_local_parent_is_explicit_full_backup(self):
+        first = self.cli('send', 'home')
+        self.assertEqual(first.returncode, 0, first.stderr)
+        id = json.loads(first.stdout)['home']['id']
+        shutil.rmtree(self.snapshots / 'home' / id)
+        second = self.cli('send', 'home')
+        self.assertEqual(second.returncode, 0, second.stderr)
+        result = json.loads(second.stdout)['home']
+        self.assertEqual((result['mode'], result['full_reason']), ('full', 'local parent missing'))
 
     def test_writable_remote_parent_is_rejected(self):
         first = self.cli('send', 'home')

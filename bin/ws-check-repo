@@ -167,15 +167,16 @@ while IFS= read -r -d '' path; do
 done < <(git -C "$repo" ls-files -z)
 [[ "$large_found" == false ]] && pass "no tracked files larger than 5 MiB"
 
+secrets="$(mktemp)"
 if git -C "$repo" grep -nEI -- \
     '-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}|github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{20,}' \
-    -- . ':(exclude)docs/**/*.md' >/tmp/ws-verify-secret.$$ 2>/dev/null; then
+    -- . ':(exclude)docs/**/*.md' >"$secrets" 2>/dev/null; then
     warn "possible secret/private-key marker in tracked files (inspect manually):"
-    sed 's/^/        /' /tmp/ws-verify-secret.$$
+    sed 's/^/        /' "$secrets"
 else
     pass "no obvious private-key/GitHub/AWS secret markers in tracked non-doc files"
 fi
-rm -f /tmp/ws-verify-secret.$$
+rm -f "$secrets"
 
 current_home_prefix="${HOME%/}/"
 other_hardcoded_home="$(git -C "$repo" grep -nF "$current_home_prefix" -- \
@@ -212,7 +213,6 @@ done < <(git -C "$repo" ls-files -z)
 
 section "3. Script / config syntax"
 
-bash_bad=false
 while IFS= read -r -d '' path; do
     full="$repo/$path"
     [[ -f "$full" ]] || continue
@@ -220,21 +220,17 @@ while IFS= read -r -d '' path; do
         if bash -n "$full" 2>/dev/null; then
             pass "bash syntax: $path"
         else
-            bash_bad=true
             fail "bash syntax error: $path"
         fi
     fi
 done < <(git -C "$repo" ls-files -z)
-[[ "$bash_bad" == false ]] || true
 
 if have fish; then
-    fish_bad=false
     while IFS= read -r -d '' path; do
         [[ "$path" == *.fish ]] || continue
         if fish -n "$repo/$path" >/dev/null 2>&1; then
             pass "fish syntax: $path"
         else
-            fish_bad=true
             fail "fish syntax error: $path"
         fi
     done < <(git -C "$repo" ls-files -z)
@@ -242,13 +238,11 @@ else
     warn "fish not installed; Fish syntax checks skipped"
 fi
 
-json_bad=false
 while IFS= read -r -d '' path; do
     [[ "$path" == *.json ]] || continue
     if python3 -m json.tool "$repo/$path" >/dev/null 2>&1; then
         pass "JSON syntax: $path"
     else
-        json_bad=true
         fail "JSON syntax error: $path"
     fi
 done < <(git -C "$repo" ls-files -z)
@@ -278,22 +272,26 @@ if have udevadm; then
 fi
 
 if have shellcheck; then
+    # As in CI (.github/workflows/check.yml): scripts by shebang and the
+    # sourced *.bash, following their sources.
     shellcheck_files=()
     while IFS= read -r -d '' path; do
         full="$repo/$path"
         [[ -f "$full" ]] || continue
-        if head -n1 "$full" 2>/dev/null | grep -Eq '^#!.*\b(bash|sh)([[:space:]]|$)'; then
+        if [[ "$path" == *.bash ]] \
+            || head -n1 "$full" 2>/dev/null | grep -Eq '^#!.*\b(bash|sh)([[:space:]]|$)'; then
             shellcheck_files+=("$full")
         fi
     done < <(git -C "$repo" ls-files -z)
     if ((${#shellcheck_files[@]})); then
-        if shellcheck -S warning "${shellcheck_files[@]}" >/tmp/ws-verify-shellcheck.$$ 2>&1; then
+        lint="$(mktemp)"
+        if shellcheck -x -P SCRIPTDIR -S warning "${shellcheck_files[@]}" >"$lint" 2>&1; then
             pass "shellcheck -S warning"
         else
             warn "shellcheck reported issues:"
-            sed 's/^/        /' /tmp/ws-verify-shellcheck.$$
+            sed 's/^/        /' "$lint"
         fi
-        rm -f /tmp/ws-verify-shellcheck.$$
+        rm -f "$lint"
     fi
 else
     info "shellcheck not installed; optional lint skipped"

@@ -1,4 +1,4 @@
-# shellcheck shell=bash
+# shellcheck shell=bash disable=SC2154 # dry_run, repo, host: bootstrap.sh's
 # Step 3 of bootstrap.sh on hosts with vm = "yes" (helpws virt): VM state on
 # @vms, libvirt pool and network. Sourced by bootstrap.sh: uses its run, die,
 # subvolume_mount, dry_run, repo, host.
@@ -48,7 +48,7 @@ if [[ "$old_layout" == true ]]; then
         echo "would drop the fstab line of $images"
     else
         sudo cp -a /etc/fstab "/etc/fstab.before-vms-layout-$(date +%Y%m%d-%H%M%S)"
-        sudo sed -i "\\|^[^#]*[[:space:]]$images[[:space:]]|d" /etc/fstab
+        sudo sed -i "\\|^[^#]*[[:space:]]${images}[[:space:]]|d" /etc/fstab
     fi
     run sudo systemctl daemon-reload
 fi
@@ -100,7 +100,7 @@ for b in "${binds[@]}"; do
             echo "old $target kept as $old"
         fi
     fi
-    if grep -Eq "^[^#]*[[:space:]]$target[[:space:]]" /etc/fstab; then
+    if grep -Eq "^[^#]*[[:space:]]${target}[[:space:]]" /etc/fstab; then
         echo "$target already in fstab"
     else
         line="$store  $target  none  bind,x-systemd.requires-mounts-for=$vms  0 0"

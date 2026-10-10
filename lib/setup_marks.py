@@ -5,7 +5,9 @@ yes or no of this workstation (an own ask is none), as checklists (lib/ws_select
 start checked, all=no unchecked; overrides are offered only for the apps
 this workstation has. Every line shown gets HOST=yes or HOST=no, so ws apply
 asks nothing afterwards; overrides of apps it does not have stay unmarked.
-Nothing is written until all three lists are answered.
+Nothing is written until all three lists are answered. On a host with
+nativeSteam = "yes" the Steam flatpak is no without a question: Steam is
+the apt one there (steam/apt.txt).
 
     setup_marks.py REPO HOST    prints the lists it changed; exit 2 when
                                 cancelled (nothing written), 3 without a
@@ -13,6 +15,7 @@ Nothing is written until all three lists are answered.
 """
 import os
 from pathlib import Path
+import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -21,6 +24,17 @@ from ws_marks import OVERRIDES, MarkedList, check_host  # noqa: E402
 import ws_select  # noqa: E402
 
 CANCELLED, NO_TERMINAL = 2, 3
+STEAM_FLATPAK = "com.valvesoftware.Steam"
+
+
+def fact(repo, host, name):
+    """A string fact of nix/hosts/HOST/facts.nix, as bin/ws reads it."""
+    try:
+        text = (Path(repo) / "nix/hosts" / host / "facts.nix").read_text()
+    except OSError:
+        return None
+    m = re.search(rf'^\s*{re.escape(name)} = "([^"]*)";', text, re.M)
+    return m[1] if m else None
 
 
 def name_of(marked, line):
@@ -60,6 +74,12 @@ def run(repo, host, term):
     apps = MarkedList(repo / "flatpak/apps.txt", key_fields={2})
     boxes = MarkedList(repo / "distrobox/hosts.txt")
     overrides = MarkedList(repo / "flatpak/overrides.txt", **OVERRIDES)
+
+    steam = apps.find(STEAM_FLATPAK)
+    if (fact(repo, host, "nativeSteam") == "yes" and steam is not None
+            and steam.marks.get(host) not in ("yes", "no")):
+        apps.set(STEAM_FLATPAK, host, "no")
+        term.write(f"\n{STEAM_FLATPAK}: {host}=no (nativeSteam = \"yes\": Steam из apt)\n")
 
     for marked, title in ((apps, f"Flatpak-приложения на {host}"),
                           (boxes, f"Контейнеры Distrobox на {host}")):

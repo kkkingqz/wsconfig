@@ -1,4 +1,4 @@
-# shellcheck shell=bash
+# shellcheck shell=bash disable=SC2154 # repo: the check's own
 # Result contract of the owner checks, sourced by them. ws check runs every
 # owner with --json and reads only the object printed by check_finish:
 #   {"status": "pass|warn|fail", "passes": N, "warnings": N, "failures": N,

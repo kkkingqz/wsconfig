@@ -406,6 +406,9 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
      аппаратного sink (`alsa_output.pci-0000_c2_00.6`) — 100% (`wpctl
      set-volume`); если звука нет — имя узла в `pw-cli ls Node` (адрес PCI
      в правилах — из Bazzite); после сна (известный шум первые ~30 с);
+     в наушниках: свёртка стоит на том же ALSA-узле, что и разъём, и
+     рассчитана на динамики — если звук в наушниках искажён, нужен
+     обход фильтра для порта наушников;
    - sysctl (`sysctl kernel.split_lock_mitigate`), планировщики
      (`cat /sys/block/nvme0n1/queue/scheduler` — kyber).
 6. **Game Mode.** `wsgame install` (пакеты, sddm и compositor для его
@@ -418,6 +421,9 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
    - QAM без ползунка TDP, режим PPD не сбрасывается; оверлей mangoapp;
      ограничитель FPS;
    - сон и кнопка питания в Game Mode;
+   - в Game Mode не работают xremap и `workstation-widgets` (`systemctl
+     --user status xremap workstation-widgets`): оба выходят без ошибки и
+     вне GNOME, и при запущенном gamescope;
    - контроллеры снятые и пристёгнутые: гироскоп, задние кнопки, Legion
      L/R; экран 60/144 Гц; внешний монитор по USB-C.
 7. **Рабочий стол на портативном.** GNOME 200%, экранная клавиатура,
@@ -429,11 +435,14 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
    приёмник умеет несколько машин (`hosts/legiongo/` на flash, пользователь
    `wsbackup-legiongo`; `helpws backup`), на tower его надо обновить — с
    подтверждением; ключ `~/.ssh/wsbackup_ed25519` сделал `setup.sh`, alias и
-   `config.json` — вручную; `@steam` в backup не входит.
+   `config.json` — вручную; `@steam` в backup не входит. `ws-restore` с
+   Live USB умеет только rEFInd: дату с Unraid на legiongo — вручную
+   (`helpws recovery`, «Хосты с GRUB»).
 9. **Опционально, каждое — с замером до и после.** Вентилятор сверх
    прошивки (3.7), режим `custom` TDP, swappiness и page-cluster, Decky
    Loader, scx_lavd, hibernate (`resume=`/`resume_offset` из swap-setup в
-   facts), Lutris или Heroic, эмуляторы.
+   facts; с `resume=` в `kernelParams` в меню GNOME появляется Hibernate —
+   `workstation-hibernate@local`), Lutris или Heroic, эмуляторы.
 
 # 6. Риски
 

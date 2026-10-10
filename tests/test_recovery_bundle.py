@@ -1,17 +1,16 @@
 import base64
 import hashlib
 import io
-import json
 import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
 from unittest.mock import patch
-from recovery_fixture import point,U
-from test_recovery_cli import TransportPlatform,OPTIONS
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'lib'))
 try:
     import recovery_bundle as bundle
 except ImportError:

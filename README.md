@@ -52,10 +52,11 @@ lib/check.bash  общий формат проверок (--json для ws check
 docs/           документация, из неё собираются man-страницы
 ```
 
-Хосты — `mbp16` (эта машина) и `wsvm` (проверочная VM фазы 6; сама VM
-удалена 2026-10-02, описание оставлено), выбираются по `hostname` в
-`facts.nix` (`ws host`); новый хост — каталог `nix/hosts/<name>/`
-(`facts.nix`, `apt.txt`).
+Хосты — `mbp16` (эта машина), `legiongo` (Lenovo Legion Go, Game Mode;
+`helpws plan-legion-go`) и `wsvm` (проверочная VM фазы 6; сама VM удалена
+2026-10-02, описание оставлено), выбираются по `hostname` в `facts.nix`
+(`ws host`). Хост — каталог `nix/hosts/<name>/` (`facts.nix`, `apt.txt`);
+новый на GRUB делает `setup.sh` из generic-pc (`helpws setup`).
 
 ## Документация
 
@@ -63,11 +64,14 @@ docs/           документация, из неё собираются man-�
 
 ```text
 docs/architecture/   layers (слои и правила), checks, workstation (подробно)
-docs/runbooks/       rebuild, keyboard, gnome, terminal, suspend, touchbar,
-                     flatpak, distrobox, windows, virt
+docs/runbooks/       setup, rebuild, keyboard, gnome, terminal, suspend,
+                     touchbar, flatpak, distrobox, windows, virt, gaming,
+                     backup, recovery
                      widgets (ws-widgets: сервис, проверка и добавление Item)
 docs/plans/          roadmap и незавершённые планы
 docs/history/        как строились завершённые слои
+docs/superpowers/    specs/ и plans/: проекты и планы реализации backup,
+                     recovery и виджетов (без man-страниц и helpws)
 ```
 
 ## Состояние и восстановление

@@ -1,9 +1,8 @@
 """Timeshift batch synchronization; original snapshots are never modified."""
-from pathlib import Path
 import json
 import uuid
 import backup as api
-from recovery_catalog import validate_record
+from recovery_catalog import parse_catalog, validate_record
 
 
 def helper_command(c, action, *args):
@@ -76,10 +75,30 @@ def catalog_record(c, record):
                             'source_fs_uuid': c['source_fs_uuid']})
 
 
+def catalog_on_nas(c):
+    """(scope, id) -> record of the NAS catalog. The receiver lists only
+    records whose received snapshot is there with that UUID (catalog_list)."""
+    p = api.run_result(api.ssh_command(c, ['catalog-list', c['remote_host_id']]))
+    if p.returncode:
+        raise ValueError(f'receiver failed ({p.returncode}): {p.stderr.strip()[:2000]}')
+    return {(r['scope'], r['id']): r for r in parse_catalog(p.stdout)}
+
+
 def publish_catalog(c, state, records):
+    # One listing instead of two SSH calls per record: the journal keeps
+    # every success, so a batch would grow with the whole history.
     result = {'published': [], 'missing': []}
+    listed = catalog_on_nas(c)
     for record in records:
         if record['status'] != 'success':
+            continue
+        if listed.get((record['scope'], record['id'])) == catalog_record(c, record):
+            # Already in the catalog (an earlier batch, or a put whose
+            # acknowledgement was lost).
+            if record.get('catalog_published') is not True:
+                record.update(catalog_published=True)
+                save_record(state, record)
+            result['published'].append(record['id'])
             continue
         if not confirm_pending(c, record):
             record.update(catalog_published=False)
@@ -150,7 +169,9 @@ def import_record(c, state, r):
 def select_retained(c, records):
     retained = {}
     for r in sorted(records, key=lambda r: (r['timestamp'], r['timeshift_name'], r.get('finished', ''))):
-        if r['status'] != 'success':
+        # local_present False: deleted by cleanup or found missing; IDs are
+        # never reused, so the copy cannot come back.
+        if r['status'] != 'success' or r.get('local_present') is False:
             continue
         local = inspect_copy(c, r['scope'], r['id'])
         if local is not None:
@@ -184,6 +205,8 @@ def cleanup_copies(c, state, retained):
             parent = retained.get(r['scope'])
             if parent and r['id'] == parent['id']:
                 result['skipped'].append(r['id']); continue
+            if r.get('local_present') is False:
+                continue
             local = inspect_copy(c, r['scope'], r['id'])
             if local is None:
                 r['local_present'] = False; save_record(state, r); continue

@@ -23,10 +23,23 @@ def build_plan(selection, target, include_home):
             'warning': 'Nix generations removed by GC may need rebuilding; no automatic reboot'}
 
 
+def require_refind(root):
+    """ws-restore switches rEFInd hosts only (refind_linux.conf in @; helpws
+    recovery): a GRUB host (legiongo) has no such file and is refused here,
+    before anything changes."""
+    if tree_path(root, 'boot/refind_linux.conf').is_file():
+        return
+    if tree_path(root, 'boot/grub/grub.cfg').is_file():
+        raise ValueError('GRUB host (no boot/refind_linux.conf): ws-restore restores only '
+                         'rEFInd hosts; GRUB hosts by hand (helpws recovery)')
+    raise ValueError('rEFInd configuration missing (boot/refind_linux.conf)')
+
+
 def boot_preflight(top, root, fs_uuid, home=None, platform=None):
+    require_refind(root)
     fstab_path = tree_path(root, 'etc/fstab')
     boot_path = tree_path(root, 'boot/refind_linux.conf')
-    if not fstab_path.is_file() or not boot_path.is_file():
+    if not fstab_path.is_file():
         raise ValueError('fstab/rEFInd configuration missing')
     lines = []; mountpoints = []; has_root = False; has_home = False; auxiliary = []
     seen_mounts = set()

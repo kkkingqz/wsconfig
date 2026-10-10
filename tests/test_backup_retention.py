@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 import shutil
 import unittest
 from test_backup_timeshift import TransferFixture
@@ -11,7 +10,6 @@ class RetentionTests(TransferFixture, unittest.TestCase):
         return run_batch(self.c, self.state)
 
     def test_success_keeps_one_copy_per_scope(self):
-        from backup_timeshift import cleanup_copies
         self.snapshot(); self.snapshot('2026-10-02_12-00-00')
         result = self.batch()
         self.assertEqual(len(list(self.managed.glob('*/*'))), 2)
@@ -19,7 +17,6 @@ class RetentionTests(TransferFixture, unittest.TestCase):
         self.assertEqual(len(list((self.state / 'timeshift/records').glob('*.json'))), 4)
 
     def test_failed_batch_never_calls_delete(self):
-        from backup_timeshift import cleanup_copies
         self.snapshot(); self.snapshot('2026-10-02_12-00-00')
         self.b.update(timeshift_top=str(self.top), send_fail_at=3)
         with self.assertRaisesRegex(ValueError, 'stream failed'):
@@ -42,7 +39,6 @@ class RetentionTests(TransferFixture, unittest.TestCase):
         self.assertTrue(any(not r['local_present'] for r in again['skipped']))
 
     def test_interrupted_cleanup_resumes_without_parent_loss(self):
-        from backup_timeshift import cleanup_copies
         self.snapshot(); self.snapshot('2026-10-02_12-00-00')
         self.b.update(timeshift_top=str(self.top), delete_fail_at=2)
         with self.assertRaisesRegex(ValueError, 'command failed'):
@@ -57,14 +53,12 @@ class RetentionTests(TransferFixture, unittest.TestCase):
         self.assertEqual({k: v['id'] for k, v in retained.items()}, {k: v['id'] for k, v in result['retained'].items()})
 
     def test_unchanged_batch_finishes_cleanup(self):
-        from backup_timeshift import cleanup_copies
-        self.snapshot(); first = self.batch(); again = self.batch()
+        self.snapshot(); self.batch(); again = self.batch()
         self.assertEqual(again['transferred'], [])
         self.assertEqual(again['cleanup']['deleted'], [])
         self.assertEqual(len(list(self.managed.glob('*/*'))), 2)
 
     def test_delete_refuses_retained_id(self):
-        from backup_timeshift import cleanup_copies
         u = self.copy()
         p = self.helper('delete', 'system', 'copy1', u, 'copy1', u)
         self.assertNotEqual(p.returncode, 0)
@@ -89,7 +83,6 @@ class RetentionTests(TransferFixture, unittest.TestCase):
         self.assertTrue(meta.exists())
 
     def test_timeshift_and_remote_snapshots_untouched(self):
-        from backup_timeshift import cleanup_copies
         self.snapshot(); self.snapshot('2026-10-02_12-00-00')
         self.batch()
         self.assertEqual(len(list(self.store.glob('*/@'))), 2)

@@ -92,6 +92,19 @@ class PreflightTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.preflight()
 
+    def test_grub_host_refused_before_anything_changes(self):
+        root = self.top / 'received/system/ts-system'
+        (root / 'boot/refind_linux.conf').unlink()
+        (root / 'boot/grub').mkdir(parents=True, exist_ok=True)
+        (root / 'boot/grub/grub.cfg').write_text('menuentry x {}\n')
+        with self.assertRaisesRegex(ValueError, 'GRUB host'):
+            self.preflight()
+        (root / 'boot/grub/grub.cfg').unlink()
+        with self.assertRaisesRegex(ValueError, 'rEFInd configuration missing'):
+            self.preflight()
+        # The current root decides before the receive (recovery.main).
+        transaction.require_refind(self.top / '@')
+
     def test_prepare_changes_only_writable_candidates(self):
         root = self.top / 'received/system/ts-system'
         fstab = root / 'etc/fstab'
@@ -175,7 +188,6 @@ class PreflightTests(unittest.TestCase):
         self.assertIn('rootflags=subvol=@', checked['boot']['refind'])
 
     def test_missing_root_or_home_refuses(self):
-        import shutil
         for name in ('@', '@home'):
             saved = self.top / (name + '-temporary')
             (self.top / name).rename(saved)

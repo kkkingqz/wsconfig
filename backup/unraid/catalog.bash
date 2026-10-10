@@ -1,5 +1,6 @@
 # Recovery catalog operations. Loaded only by the root-owned receiver.
 # Data is fixed-schema JSON, never executable shell or sourced configuration.
+# shellcheck disable=SC2154 # root, host_id, host, words: the receiver's; received_uuid: btrfs-common.bash
 catalog_token='[A-Za-z0-9][A-Za-z0-9_-]{0,63}'
 catalog_uuid='[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-[[:xdigit:]]{12}'
 catalog_name='[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}'

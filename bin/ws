@@ -195,14 +195,16 @@ tool_lists=(flatpak/apps.txt flatpak/overrides.txt distrobox/hosts.txt)
 
 commit_tool_lists() {
     local f changes old
+    local -a fixed
     for f in "${tool_lists[@]}"; do
         [[ -e "$repo/$f" ]] || continue
         git -C "$repo" diff --quiet HEAD -- "$f" 2>/dev/null && continue
         # +NAME, -NAME, NAME HOST=STATE; overrides.txt: NAME is APP KIND VALUE.
+        fixed=()
+        [[ "$f" != flatpak/overrides.txt ]] || fixed=(3)
         old="$(mktemp)"
         git -C "$repo" show "HEAD:$f" > "$old" 2>/dev/null || : > "$old"
-        changes="$(python3 "$repo/lib/ws_marks.py" "$repo/$f" summary "$old" \
-            $([[ "$f" != flatpak/overrides.txt ]] || echo 3))"
+        changes="$(python3 "$repo/lib/ws_marks.py" "$repo/$f" summary "$old" "${fixed[@]}")"
         rm -f "$old"
         git -C "$repo" commit -q -m "$f: ${changes:-edited} (ws switch)" -- "$f" || return
         echo "committed $f: ${changes:-edited}"

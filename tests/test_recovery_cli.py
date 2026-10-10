@@ -16,7 +16,7 @@ try:
 except ImportError:
     recovery = None
 
-OPTIONS = {'host': 'nas.example', 'user': 'root', 'port': 22, 'config': '/usb/ssh_config', 'key': '/usb/id_ed25519'}
+OPTIONS = {'host': 'nas.example', 'user': 'wsbackup', 'port': 22, 'config': '/usb/ssh_config', 'key': '/usb/id_ed25519'}
 NAS_UUID = '33333333-3333-3333-3333-333333333333'
 
 class TransportPlatform(FakePlatform):
@@ -53,6 +53,13 @@ class CLITests(unittest.TestCase):
         for field,value in [('host','nas;touch x'),('host','-oProxyCommand=evil'),('user','root@nas'),('port',True),('port',65536),('key','relative'),('config','~/config')]:
             with self.subTest(field=field,value=value), self.assertRaises(ValueError): recovery.ssh_argv(dict(OPTIONS, **{field:value}), ['probe','mbp16'])
         with self.assertRaises(ValueError): recovery.ssh_argv(OPTIONS,['send','mbp16','system','id;evil'])
+    def test_ssh_user_is_the_receiver_user_by_default(self):
+        # The forced command belongs to wsbackup; -l would override the config.
+        args = recovery.ssh_argv({k: v for k, v in OPTIONS.items() if k != 'user'}, ['probe','mbp16'])
+        self.assertEqual(args[args.index('-l')+1], 'wsbackup')
+        ns = SimpleNamespace(host='nas.example', user=None, port=None, config='/usb/ssh_config', key='/usb/id_ed25519')
+        options = recovery.connection(ns, io.StringIO('\n\n'), io.StringIO())
+        self.assertEqual((options['user'], options['port']), ('wsbackup', 22))
     def test_catalog_capability_and_identity(self):
         _,p,_ = self.fixture()
         records = recovery.read_catalog(OPTIONS,'mbp16',p)

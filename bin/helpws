@@ -32,11 +32,16 @@ case "$topic" in
     windows|wine|wswin|steam|proton) open_title ws-windows ;;
     virt|vm|vms|libvirt|kvm) open_title ws-virt ;;
     gaming|game|gamemode|wsgame) open_title ws-gaming ;;
+    backup|wsbackup) open_title ws-backup ;;
+    recovery|restore|ws-restore) open_title ws-recovery ;;
+    widgets|widget) open_title ws-widgets ;;
     roadmap|plans) open_title ws-roadmap ;;
     plan-t2) open_title ws-plan-t2 ;;
     plan-dgpu|dgpu|t2gmux) open_title ws-plan-dgpu ;;
     plan-final) open_title ws-plan-final ;;
+    plan-unraid|unraid) open_title ws-plan-unraid ;;
     plan-legion-go|legion-go|legiongo) open_title ws-plan-legion-go ;;
+    plan-hyprland|hyprland) open_title ws-plan-hyprland ;;
     history-gnome|plan-gnome) open_title ws-history-gnome ;;
     history-flatpak|plan-flatpak) open_title ws-history-flatpak ;;
     history-distrobox|plan-dev) open_title ws-history-distrobox ;;
@@ -74,13 +79,18 @@ Runbooks (docs/runbooks):
   windows          Windows programs, Wine, Proton, Steam (wswin)
   virt             Virtual machines: KVM, libvirt, virt-manager
   gaming           Game Mode: gamescope + Steam session (wsgame)
+  backup           Backup to Unraid: Timeshift snapshots, Btrfs send (wsbackup)
+  recovery         Restore a date from Unraid with ws-restore (Live USB)
+  widgets          Shared widget runtime (Quickshell, GNOME panel)
 
 Plans (docs/plans):
   roadmap          What is left
   plan-t2          T2 optional / power / auth
   plan-dgpu        AMD dGPU through t2gmux (power off like macOS)
   plan-final       Backup / inventory / finalization
+  plan-unraid      Unraid receiver: server survey, preparation
   plan-legion-go   Legion Go (gen 1): host, Game Mode from Bazzite parts
+  plan-hyprland    Hyprland + Caelestia next to GNOME (proposal)
 
 History (docs/history; old plan-* names work too):
   history-gnome    history-flatpak    history-distrobox

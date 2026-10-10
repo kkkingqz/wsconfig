@@ -1,5 +1,4 @@
 """Recovery catalog selection must never silently pair different snapshots."""
-import importlib.util
 from pathlib import Path
 import sys
 import unittest

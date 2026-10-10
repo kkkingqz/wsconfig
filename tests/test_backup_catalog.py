@@ -44,6 +44,22 @@ class BackupCatalog(TransferFixture, unittest.TestCase):
         self.assertEqual(result.get('catalog', {}).get('published'), ['ts-old'])
         self.assertEqual(result['transferred'], [])
 
+    def test_listed_records_are_not_put_again(self):
+        record = self.successful_remote_record()
+        batch.publish_catalog(self.c, self.state, [record])
+        calls = []
+        original = backup.remote
+
+        def counted(c, words, **kwargs):
+            calls.append(words[0])
+            return original(c, words, **kwargs)
+
+        with patch.object(backup, 'remote', side_effect=counted):
+            result = batch.publish_catalog(self.c, self.state, [record])
+        self.assertEqual(result['published'], ['ts-old'])
+        # One catalog-list for the whole history, no inspect or put per record.
+        self.assertEqual(calls, [])
+
     def test_missing_remote_is_never_published(self):
         import shutil
         record = self.successful_remote_record()

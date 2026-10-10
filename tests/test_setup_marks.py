@@ -95,6 +95,22 @@ class SetupMarksTests(unittest.TestCase):
         self.assertIn('org.example.Nowhere filesystem host mbp16=yes new=no all=yes\n', overrides)
         self.assertIn('org.example.Mine filesystem home new=yes\n', overrides)
 
+    def test_native_steam_host_gets_no_steam_flatpak(self):
+        apps = APPS + 'flathub com.valvesoftware.Steam mbp16=yes all=ask\n'
+        (self.repo / 'flatpak/apps.txt').write_text(apps)
+        (self.repo / 'nix/hosts/new').mkdir(parents=True)
+        (self.repo / 'nix/hosts/new/facts.nix').write_text('{\n  nativeSteam = "yes";\n}\n')
+        self.run_with([[], [], []])
+        self.assertNotIn('com.valvesoftware.Steam', self.asked[0][1])
+        self.assertIn('flathub com.valvesoftware.Steam mbp16=yes new=no all=ask\n',
+                      self.read('flatpak/apps.txt'))
+        # The flatpak elsewhere: offered as before.
+        (self.repo / 'nix/hosts/new/facts.nix').write_text('{\n  nativeSteam = "no";\n}\n')
+        (self.repo / 'flatpak/apps.txt').write_text(apps)
+        self.asked.clear()
+        self.run_with([[], [], []])
+        self.assertIn('com.valvesoftware.Steam', self.asked[0][1])
+
     def test_cancel_writes_nothing(self):
         self.assertIsNone(self.run_with([['org.example.Asked'], None]))
         self.assertEqual(self.read('flatpak/apps.txt'), APPS)

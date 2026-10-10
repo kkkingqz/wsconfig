@@ -7,7 +7,6 @@ import subprocess
 import sys
 import tempfile
 import json
-import select
 import time
 
 root = Path(__file__).resolve().parents[2]

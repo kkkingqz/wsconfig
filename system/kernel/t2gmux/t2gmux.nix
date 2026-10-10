@@ -8,7 +8,7 @@
 #
 # Built into ~/.local/share/workstation/t2gmux/source (REPO COMMIT), read by
 # ws-gmux.
-{ lib, ... }:
+{ ... }:
 let
   repo = "kaiT2en/KaiT2en-Fedora";
   commit = "398dd080cb1f382b975b133ec42394649eb9cccc"; # 2026-10-01, t2gmux 0.8
