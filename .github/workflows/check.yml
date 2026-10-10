@@ -11,8 +11,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - name: Install fish and shellcheck
-        run: sudo apt-get update && sudo apt-get install -y fish shellcheck
+      - name: Install fish
+        run: sudo apt-get update && sudo apt-get install -y fish
       - name: Unit, help and completion tests
         run: python3 -m unittest discover -s tests -v
       - name: Syntax of scripts by shebang, sourced *.bash, fish
@@ -36,17 +36,6 @@ jobs:
             fish -n "$f" || status=1
           done < <(git ls-files -z '*.fish')
           exit $status
-      - name: shellcheck (warnings; as ws check repo)
-        run: |
-          files=()
-          while IFS= read -r -d '' f; do
-            [ -f "$f" ] || continue
-            if [[ "$f" == *.bash ]] || head -n1 "$f" | grep -Eq '^#!.*\b(bash|sh)([[:space:]]|$)'; then
-              files+=("$f")
-            fi
-          done < <(git ls-files -z)
-          shellcheck --version | head -2
-          shellcheck -x -P SCRIPTDIR -S warning "${files[@]}"
 
   nix:
     runs-on: ubuntu-latest
@@ -56,3 +45,15 @@ jobs:
       - uses: cachix/install-nix-action@v31
       - name: nix flake check (builds every home configuration and system tree)
         run: nix flake check --print-build-logs
+      - name: shellcheck (warnings, as ws check repo; version pinned by flake.lock)
+        run: |
+          files=()
+          while IFS= read -r -d '' f; do
+            [ -f "$f" ] || continue
+            if [[ "$f" == *.bash ]] || head -n1 "$f" | grep -Eq '^#!.*\b(bash|sh)([[:space:]]|$)'; then
+              files+=("$f")
+            fi
+          done < <(git ls-files -z)
+          sc=(nix shell --inputs-from . nixpkgs#shellcheck -c shellcheck)
+          "${sc[@]}" --version | head -2
+          "${sc[@]}" -x -P SCRIPTDIR -S warning "${files[@]}"
