@@ -57,8 +57,9 @@ volume: User Commands
    Legion Go 1 третьим хостом `legiongo` (план 2026-10-10): Ubuntu и
    wsconfig как на mbp16, ядро XanMod, загрузка в GNOME, Game Mode из
    компонентов Bazzite (InputPlumber, steamos-manager, gamescope-session,
-   нативный Steam, SDDM), питание — PPD, swap — zswap. Решения приняты; до
-   этапа 1 нужен набор слоёв хоста. На устройстве ничего не начато.
+   нативный Steam, SDDM), питание — PPD, swap — zswap. Слои хоста —
+   пометками Flatpak и Distrobox и фактом `vm` (его значение не выбрано).
+   На устройстве ничего не начато.
 
 Отложено:
 

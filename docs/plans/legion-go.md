@@ -14,8 +14,7 @@ home-manager поверх неё. Устройство загружается в
 (`ublue-os/bazzite` `7f903b9`, изучен 2026-10-10) и перенесены на Ubuntu.
 
 Состояние: план. На устройстве ничего не делалось, в репозитории есть только
-этот документ. До установки нужен набор слоёв для хоста — он готовится
-отдельно (раздел 2).
+этот документ.
 
 # 1. Устройство
 
@@ -67,8 +66,10 @@ swap        swapfile 16 ГБ в @swap
 сессия      ubuntu.desktop (сессия GNOME в Ubuntu)
 ```
 
-Открыто: набор слоёв хоста (Distrobox, Windows-боксы, VM, Flatpak, backup) —
-готовится отдельно и должен быть готов до этапа 1.
+Набор слоёв хоста задаётся механизмами, которые уже есть (4.5):
+Flatpak и Distrobox — пометками машины в `flatpak/apps.txt` и
+`distrobox/hosts.txt`, VM — фактом `vm`. Открыто: значение `vm` для
+`legiongo` (рекомендация — `"no"`).
 
 # 3. Компоненты
 
@@ -206,6 +207,7 @@ udev-правило на появление светодиода пережив�
 ```text
 facts.nix  hostname = "legiongo", user king, wsconfig,
            hardware = "legion-go", boot = "grub", rootUuid, gaming,
+           vm = "no" (рекомендация; факт обязателен, 4.5),
            kernelParams = quiet splash bluetooth.disable_ertm=1
                           cpufreq.default_governor=powersave
                           zswap.enabled=1 zswap.compressor=zstd
@@ -224,7 +226,6 @@ apt.txt    source:xanmod, arch:i386,
   на хостах с фактом `gaming`. Факт появляется на этапе 6, поэтому там
   `bootstrap.sh` запускается повторно (шаги идемпотентны), до первого
   запуска Steam.
-- Без `@vms` и libvirt, если VM не войдут в набор слоёв.
 - Пакеты из локальных `.deb` `ws check apt` получает от `wsgame`, а не из
   списка.
 
@@ -250,7 +251,8 @@ system/gaming.nix               этап 6, при факте gaming: sddm.conf.
 остаются»):
 
 ```text
-wsgame build     podman, Ubuntu 26.04 (как t2bce и i915-psr):
+wsgame build     в сборочном контейнере gaming-build (distrobox.nix,
+                 образ — Ubuntu релиза host, как t2bce-build):
                  steamos-manager (device-файл 83E1 без TDP и профиля),
                  MangoHud с mangoapp, powerbuttond → .deb
 wsgame fetch     по sha256: InputPlumber .deb; extest и gamescope-session
@@ -277,8 +279,27 @@ wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
 - **GNOME.** Масштаб 2.0, экранная клавиатура, ярлык «Return to Game Mode»;
   режимы питания — штатный переключатель (PPD).
 - **Steam в GNOME** — со своим launcher и extest (LD_PRELOAD).
-- **Факты масштаба.** DPI Wine (LogPixels 192 при 200%), масштаб Claude и
-  AnyDesk — если эти программы войдут в набор слоёв.
+- **Flatpak — пометки в `flatpak/apps.txt`.** Заранее, на этапе 1:
+  `com.valvesoftware.Steam legiongo=no` (Steam нативный). Остальное — с
+  `all=ask`: первый `ws apply` на устройстве спрашивает «Поставить все?
+  [Y/n]» или даёт список с галочками, ответы становятся пометками
+  `legiongo=yes|no`. Пересмотреть потом — `wsflatpak apply --select`.
+- **Свои `.desktop` Flatpak** (`flatpak/desktop/`: Steam, Claude, ChatGPT)
+  `ws switch` сейчас ставит на всех машинах. На `legiongo` flatpak-Steam
+  стал бы неработающим пунктом рядом с нативным — ставить их только для
+  приложений с пометкой `yes` на этой машине.
+- **Distrobox — пометки в `distrobox/hosts.txt`.** `t2bce-build` и
+  `touchbar-build` нужны только на mbp16 — `all=no`. Новый `gaming-build` —
+  `mbp16=yes legiongo=yes all=no` (собирать можно на обеих). `arch`,
+  `wine-wayland`, `wine`, `proton` — вопрос на первом `ws apply`.
+- **VM** — факт `vm` в `facts.nix`: при `"no"` `bootstrap.sh` не ставит
+  `virt/apt.txt`, `@vms`, libvirt и группу `libvirt`, `ws check virt` молчит.
+- **Факты масштаба** — DPI Wine (LogPixels 192 при 200%), масштаб Claude и
+  AnyDesk — нужны, только если эти боксы и приложения получат
+  `legiongo=yes`.
+- **git на устройстве.** `ws switch` коммитит пометки локально. Чтобы они
+  дошли до mbp16, на `legiongo` нужен доступ к GitHub (`gh auth login` —
+  вводит пользователь), а перед `ws switch` на любой машине — `git pull`.
 - **Проверки.** `ws check gaming`; verify — связи InputPlumber ↔
   steamos-manager ↔ SDDM ↔ xremap.
 
@@ -303,12 +324,13 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
    - Прошивка контроллеров остаётся как есть.
    - USB-C хаб, клавиатура, флешка с Ubuntu 26.04.
 1. **Репозиторий на mbp16.** Хост `legiongo` (4.1), `bootstrap.sh` (4.2),
-   обе системные части (4.3), каркас `gaming/` и `wsgame` (4.4), xremap и
-   прочее из 4.5, набор слоёв, `helpws gaming`. На mbp16 ничего не
-   меняется: те же пути store для home, system и man, `ws check` без FAIL,
-   CI зелёный.
-2. **Пакеты в podman на mbp16.** `wsgame build` и `wsgame fetch`; пакеты
-   ставятся и снимаются в чистом контейнере Ubuntu 26.04.
+   обе системные части (4.3), каркас `gaming/`, `wsgame` и контейнер
+   `gaming-build` (4.4), пометки и `.desktop` Flatpak, xremap и прочее из
+   4.5, `helpws gaming`. На mbp16 ничего не меняется: те же пути store для
+   home, system и man, `ws check` без FAIL, CI зелёный.
+2. **Пакеты на mbp16.** `wsbox apply gaming-build`, `wsgame build` и
+   `wsgame fetch`; пакеты ставятся и снимаются в чистом контейнере Ubuntu
+   26.04.
 3. **Ubuntu.** Установка 26.04 с USB на весь диск, hostname `legiongo`,
    пользователь `king`, Btrfs и subvolumes, как в фазе 6 (`helpws
    history-nix`). Инвентарь в `docs/history/`:
@@ -319,8 +341,10 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
    - `fwupdmgr get-devices`: видит ли fwupd BIOS (Windows нет — других
      способов обновить BIOS, кроме Windows с USB, не остаётся).
 4. **База wsconfig.** `bootstrap.sh` (ставит XanMod и Steam) → reboot в
-   XanMod → `ws system apply` → `ws apply` →
-   `ws check`, как в `helpws rebuild`. GDM ещё работает. Проверить:
+   XanMod → `ws system apply` → `ws apply` (шаги flatpak и distrobox
+   спрашивают о не помеченных) → `ws switch` (коммитит пометки
+   `legiongo`) → `git push` → `ws check`, как в `helpws rebuild`. GDM ещё
+   работает. Проверить:
    `uname -r`, параметры ядра, AppArmor не активен, governor `powersave` до
    PPD, поворот, касания, Wi-Fi, Bluetooth.
 5. **Железо.** `system/hardware/legion-go.nix`, `ws-suspend swap-setup 16g`.
@@ -344,8 +368,8 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
      L/R; экран 60/144 Гц; внешний монитор по USB-C.
 7. **Рабочий стол на портативном.** GNOME 200%, экранная клавиатура,
    контроллер как мышь (InputPlumber или Steam с extest), xremap только в
-   GNOME и без виртуальных устройств, RGB стиков выключен (3.7), слои из
-   набора хоста.
+   GNOME и без виртуальных устройств, RGB стиков выключен (3.7); Flatpak и
+   Distrobox — по пометкам `legiongo` (этап 4).
 8. **Recovery и backup.** Timeshift и пункты GRUB (XanMod и generic),
    проверка отката. `wsbackup` на Unraid без `@steam` — отдельным шагом.
 9. **Опционально, каждое — с замером до и после.** Вентилятор сверх
@@ -372,6 +396,9 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
 - `hid-lenovo-go` вместе с InputPlumber: проверить гироскоп и кнопки (в
   Bazzite Deck 44 у Go 1 не работает гироскоп).
 - xremap может захватить виртуальные устройства InputPlumber (4.5).
+- Пометки двух машин в одних файлах: если `ws switch` на mbp16 и на
+  `legiongo` закоммитит `apps.txt` или `hosts.txt` без `git pull`, при
+  слиянии будет конфликт.
 - На generic-ядре AppArmor ограничивает user namespaces: при загрузке в
   него Steam (pressure-vessel) может не стартовать.
 - Звук после сна и автояркость — известные недочёты Go 1 на Linux.
