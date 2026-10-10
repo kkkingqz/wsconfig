@@ -41,6 +41,7 @@ Root работает на **Btrfs**.
 @nix          /nix: Nix store, отдельно от @ (откат @ не трогает /nix)
 @vms          /var/lib/vms: состояние VM (диски, UEFI, TPM, XML), вне snapshots @
 @steam        ~/.local/share/Steam: Steam из apt (nativeSteam = "yes"), вне snapshots @home
+@wsbackup     /var/lib/workstation-backup: локальные копии backup (helpws backup)
 @swap         /swap: swapfile 32G для hibernate (swapfile нельзя в томе со snapshots)
 timeshift-btrfs  snapshots Timeshift (@, @home); создаёт Timeshift
 ```
@@ -810,7 +811,8 @@ Shebang:
 
 ```text
 wsconfig/
-├── bootstrap.sh          новая машина (после ws btrfs make): @nix → apt → @vms/libvirt → @steam → группы → fish → ws switch
+├── setup.sh              новый ПК с GRUB: GitHub, хост, пометки, ws btrfs make, bootstrap.sh, слои, Timeshift
+├── bootstrap.sh          новая машина (после ws btrfs make): @nix → apt → @vms/libvirt → @steam → @wsbackup → группы → fish → ws switch
 ├── flake.nix, flake.lock nixpkgs 26.05 + home-manager, обновляет ws update nix
 ├── nix/
 │   ├── hosts/            apt.txt всех хостов; <host>/facts.nix, apt.txt
@@ -860,6 +862,8 @@ wsconfig/
 │   ├── wswin-check       wswin check
 │   └── ws-gpu            AMD для Proton/Steam, если она есть
 ├── lib/check.bash       общий формат результата проверок (--json для ws check)
+├── lib/setup_marks.py   списки с галочками setup.sh (пометки хоста)
+├── lib/btrfs_layout.py  fstab и stub GRUB для ws btrfs make
 ├── README.md
 └── docs/                architecture/, runbooks/, plans/, history/
 ```

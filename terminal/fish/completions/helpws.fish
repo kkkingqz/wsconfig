@@ -1,7 +1,7 @@
 # Completions for helpws.
 complete -c helpws -f
 
-set -l helpws_topics readme layers architecture checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall install distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton virt vm vms libvirt kvm roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-virt plan-final history-gnome history-flatpak history-distrobox history-windows history-nix history-suspend history-touchbar history-virt plan-gnome plan-flatpak plan-dev plan-windows plan-nix man help
+set -l helpws_topics readme layers architecture checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall install setup new distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton virt vm vms libvirt kvm roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-virt plan-final history-gnome history-flatpak history-distrobox history-windows history-nix history-suspend history-touchbar history-virt plan-gnome plan-flatpak plan-dev plan-windows plan-nix man help
 
 function __helpws_topic -a name desc
     complete -c helpws -n "not __fish_seen_subcommand_from $helpws_topics" -a $name -d $desc
@@ -11,6 +11,7 @@ __helpws_topic readme 'README: entry point'
 __helpws_topic layers 'Layers, owners, rules'
 __helpws_topic checks 'ws check: owners, --json format'
 __helpws_topic workstation 'Current workstation in detail'
+__helpws_topic setup 'New PC on wsconfig: setup.sh'
 __helpws_topic rebuild 'Reinstall to the current state'
 __helpws_topic keyboard 'macOS-style keyboard layer'
 __helpws_topic gnome 'GNOME desktop'

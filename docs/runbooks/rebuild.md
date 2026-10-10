@@ -79,6 +79,8 @@ apply` — из них собираются `refind_linux.conf`, `refind.conf` �
 @vms       состояние VM в /var/lib/vms, создаёт bootstrap.sh; backup — отдельно
 @steam     Steam из apt в ~/.local/share/Steam (nativeSteam = "yes"), создаёт
            bootstrap.sh; вне snapshots и backup @home
+@wsbackup  локальные копии backup в /var/lib/workstation-backup, создаёт
+           bootstrap.sh (helpws backup)
 ```
 
 Root грузится с `rootflags=subvol=@`. Установщик Ubuntu 26.04 при ручной
@@ -212,8 +214,9 @@ systemctl --user is-active wireplumber
 
 # 6.0. Bootstrap и слои
 
-После разделов 2–5 (Ubuntu, Btrfs, T2, rEFInd) и штатного GNOME вся
-конфигурация ставится так (`helpws layers`):
+На хосте с GRUB разделы 3 и 6.0–12 (без ручных проверок раздела 11) проходит
+`setup.sh` (`helpws setup`). После разделов 2–5 (Ubuntu, Btrfs, T2, rEFInd)
+и штатного GNOME вся конфигурация ставится так (`helpws layers`):
 
 ```console
 # ~/wsconfig уже есть с раздела 3

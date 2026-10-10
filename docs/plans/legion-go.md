@@ -354,19 +354,20 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
    26.04.
 3. **Ubuntu.** Установка 26.04 с USB на весь диск, hostname `legiongo`,
    пользователь `king`; ESP и корень Btrfs без отдельного `/boot`. Затем
-   `git clone` и `ws btrfs make`: два запуска, между ними reboot через GRUB
-   (`helpws rebuild`, раздел 3). Инвентарь в `docs/history/`:
+   `setup.sh` (`helpws setup`): хост `legiongo` по имени, списки с
+   галочками для того, что не помечено `legiongo`, дальше сам — раскладка
+   Btrfs, этап 4, Timeshift. Инвентарь (до или после setup.sh) в
+   `docs/history/`:
    - `ws collect`; DMI, `lspci -nnk`, `lsusb`, `libinput list-devices`;
    - `/sys/class/firmware-attributes/lenovo-wmi-other-0/attributes/`,
      `platform_profile_choices`, hwmon, iio;
    - `aplay -l`, `pw-cli ls Node` (PCI-адрес аудио для 3.5);
    - `fwupdmgr get-devices`: видит ли fwupd BIOS (Windows нет — других
      способов обновить BIOS, кроме Windows с USB, не остаётся).
-4. **База wsconfig.** `bootstrap.sh` (ставит XanMod, Steam и `@steam`) → reboot в
-   XanMod → `ws system apply` → `ws apply` (шаги flatpak и distrobox
-   спрашивают о не помеченных) → `ws switch` (коммитит пометки
-   `legiongo`) → `git push` → `ws check`, как в `helpws rebuild`. GDM ещё
-   работает. Проверить:
+4. **База wsconfig** — внутри `setup.sh`: `bootstrap.sh` (ставит XanMod,
+   Steam и `@steam`) → reboot в XanMod → `ws system apply` → `ws apply` →
+   reboot → `ws apply` → `ws check`; пометки `legiongo` setup.sh записал и
+   запушил в начале. GDM ещё работает. Проверить:
    `uname -r`, параметры ядра, AppArmor не активен, governor `powersave` до
    PPD, поворот, касания, Wi-Fi, Bluetooth; `ws check steam` — `@steam`
    смонтирован.

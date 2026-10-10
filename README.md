@@ -8,7 +8,14 @@ home-manager доставляют конфигурацию поверх неё, 
 
 ## Установка
 
-После установки Ubuntu (`docs/runbooks/rebuild.md`, разделы 1–2):
+Новый ПК с GRUB — одной командой после установки Ubuntu (ESP и корень
+Btrfs): все вопросы в начале, дальше только перезагрузки (`helpws setup`):
+
+```console
+wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash
+```
+
+Вручную, и для mbp16 (`docs/runbooks/rebuild.md`, разделы 1–2):
 
 ```console
 sudo apt install git

@@ -19,7 +19,7 @@ Usage:
   ws baseline capture|diff|list ...
   ws checkpoint create|list|show|diff|remove ...
   ws collect [--no-firmware] [ARCHIVE]
-  ws btrfs make [--dry-run]
+  ws btrfs make [--dry-run] [--yes]
   ws backup [plan|status|list|check|send|restore-test|recovery-export ...]
   ws host
   ws fact NAME

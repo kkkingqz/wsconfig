@@ -25,7 +25,8 @@ case "$topic" in
     touchbar|touch-bar) open_title ws-touchbar ;;
     suspend|sleep|power) open_title ws-suspend ;;
     gnome|desktop) open_title ws-gnome ;;
-    rebuild|reinstall|install) open_title ws-rebuild ;;
+    rebuild|reinstall) open_title ws-rebuild ;;
+    setup|install|new) open_title ws-setup ;;
     distrobox|box|boxes|wsbox) open_title ws-distrobox ;;
     flatpak|wsflatpak) open_title ws-flatpak ;;
     windows|wine|wswin|steam|proton) open_title ws-windows ;;
@@ -60,6 +61,7 @@ Architecture (docs/architecture):
   workstation      Current workstation in detail, repository map
 
 Runbooks (docs/runbooks):
+  setup            New PC on wsconfig: setup.sh (GRUB hosts)
   rebuild          Reinstall to the current state
   keyboard         macOS-style keyboard layer
   gnome            GNOME desktop

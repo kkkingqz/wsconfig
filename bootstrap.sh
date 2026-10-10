@@ -5,8 +5,9 @@ set -euo pipefail
 # @nix subvolume at /nix → apt packages (nix/hosts/apt.txt, nix/hosts/<host>/apt.txt,
 # virt/apt.txt, steam/apt.txt, gaming/apt.txt) → VM state on @vms (images,
 # nvram, qemu XML bound into libvirt), pool and network (virt/bootstrap.bash)
-# → Steam data on @steam (steam/bootstrap.bash) → groups nix-users, libvirt,
-# input → fish as login shell → first `ws switch`. The VM parts only with
+# → Steam data on @steam (steam/bootstrap.bash) → local backup copies on
+# @wsbackup → groups nix-users, libvirt, input → fish as login shell → first
+# `ws switch`. The VM parts only with
 # vm = "yes" in facts.nix, the Steam parts with nativeSteam = "yes", the
 # Game Mode list with gameMode = "yes".
 #
@@ -224,7 +225,21 @@ else
 fi
 
 echo
-echo "== 5. Nix daemon and groups"
+echo "== 5. Local backup copies on @wsbackup (helpws backup)"
+# A top-level subvolume of its own, like @vms: nested in @, the parents of
+# the incremental backup would leave with @ on a Timeshift or Live USB
+# restore. Only the local side; the receiver is helpws backup.
+backup_root=/var/lib/workstation-backup
+subvolume_mount @wsbackup "$backup_root" noatime
+if [[ "$(stat -c %a "$backup_root" 2>/dev/null)" == 700 ]]; then
+    echo "$backup_root is 0700"
+else
+    run sudo chmod 0700 "$backup_root"
+fi
+run sudo bash "$repo/backup/wsbackup-source" --uuid "$root_uuid" --root "$backup_root" init
+
+echo
+echo "== 6. Nix daemon and groups"
 if systemctl is-enabled --quiet nix-daemon.socket 2>/dev/null; then
     echo "nix-daemon.socket enabled"
 else
@@ -252,7 +267,7 @@ for group in "${groups[@]}"; do
 done
 
 echo
-echo "== 6. Login shell"
+echo "== 7. Login shell"
 if [[ "$(getent passwd "$user" | cut -d: -f7)" == /usr/bin/fish ]]; then
     echo "login shell is fish"
 else
@@ -260,7 +275,7 @@ else
 fi
 
 echo
-echo "== 7. First ws switch"
+echo "== 8. First ws switch"
 # Before the first switch there is no ~/.config/nix/nix.conf yet, and the
 # nix-users membership applies only to new logins: sg (util-linux-extra on
 # Ubuntu 26.04) runs the switch with it when this session lacks the group.

@@ -117,7 +117,8 @@ Timeshift показывает только свои снимки и эти ко
 захватывает вложенные subvolumes. Live USB restore сохраняет `@wsbackup` и
 принимает её строку fstab.
 
-Создать один раз (ROOT_UUID — `findmnt -nro UUID -T /`):
+Создаёт `bootstrap.sh` (шаг 5, с `init`); вручную то же
+(ROOT_UUID — `findmnt -nro UUID -T /`):
 
 ```console
 sudo mount -o subvolid=5 /dev/disk/by-uuid/ROOT_UUID /mnt

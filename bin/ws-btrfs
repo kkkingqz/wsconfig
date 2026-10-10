@@ -21,19 +21,21 @@ set -euo pipefail
 # EFI/<dir>/grub.cfg.pre-btrfs-layout. Each run first checks the state, so a
 # second run of a finished step changes nothing.
 #
-#   ws btrfs make [--dry-run]
+#   ws btrfs make [--dry-run] [--yes]
 
 repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
 dry_run=false
+yes=false
 
 usage() {
     cat <<'USAGE'
-Usage: ws btrfs make [--dry-run]
+Usage: ws btrfs make [--dry-run] [--yes]
 
 make  the Btrfs layout of a fresh install (@, @home, @cache, @tmp, @log)
       from the installed system, before bootstrap.sh: run it, reboot
       through GRUB, run it again (helpws rebuild, section 3);
-      --dry-run only shows the steps
+      --dry-run only shows the steps, --yes answers its two questions
+      (start the layout, remove the old root) with yes (setup.sh)
 USAGE
 }
 
@@ -56,11 +58,24 @@ case "${1:-}" in
     -h|--help|help) usage; exit 0 ;;
     *) usage >&2; exit 64 ;;
 esac
-case "${1:-}" in
-    --dry-run) dry_run=true ;;
-    "") ;;
-    *) die "usage: ws btrfs make [--dry-run]" ;;
-esac
+for a in "$@"; do
+    case "$a" in
+        --dry-run) dry_run=true ;;
+        --yes) yes=true ;;
+        *) die "usage: ws btrfs make [--dry-run] [--yes]" ;;
+    esac
+done
+
+# A question of make; --yes answers it.
+confirm() {
+    local a
+    if [[ "$yes" == true ]]; then
+        echo "$1 [y/N] yes (--yes)"
+        return 0
+    fi
+    read -r -p "$1 [y/N] " a || a=
+    [[ "$a" == [yY]* ]]
+}
 
 [[ $EUID -ne 0 ]] || die "run as the desktop user, not root"
 for c in sudo python3 findmnt; do
@@ -162,8 +177,7 @@ step1() {
 
     echo "Writes after the snapshot stay in the old root: close programs, reboot right after this step."
     if [[ "$dry_run" == false ]]; then
-        read -r -p "Make the layout now? [y/N] " t || t=
-        [[ "$t" == [yY]* ]] || die "nothing changed"
+        confirm "Make the layout now?" || die "nothing changed"
     fi
 
     # An active swap file keeps Btrfs from snapshotting its subvolume.
@@ -254,7 +268,7 @@ step1() {
 
 # Step 2: / is @.
 step2() {
-    local entry sub dir id def top=/run/ws-btrfs-top name a
+    local entry sub dir id def top=/run/ws-btrfs-top name
     local -a old=() esp_old=()
 
     echo "== Step 2 of 2: / is @"
@@ -306,8 +320,7 @@ step2() {
         if [[ "$dry_run" == true ]]; then
             echo "would ask to remove them"
         else
-            read -r -p "Remove the old root? [y/N] " a || a=
-            if [[ "$a" == [yY]* ]]; then
+            if confirm "Remove the old root?"; then
                 for name in "${old[@]}"; do
                     sudo rm -rf --one-file-system -- "${top:?}/$name"
                 done
