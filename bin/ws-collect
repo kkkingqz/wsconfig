@@ -4,8 +4,9 @@ set -euo pipefail
 # Machine state that a rebuild needs and the repository does not hold:
 # the functional baseline, boot and disk layout, apt sources and package
 # choices, the Apple Wi-Fi/Bluetooth firmware taken from macOS, machine-local
-# state. Read-only on the system; writes one archive. Asks sudo (baseline
-# --with-sudo, Btrfs subvolumes). helpws rebuild, section 0.
+# state, and the hardware inventory of a new machine (helpws plan-legion-go,
+# stage 3). Read-only on the system; writes one archive. Asks sudo (baseline
+# --with-sudo, Btrfs subvolumes, input devices). helpws rebuild, section 0.
 
 repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
 state="${XDG_STATE_HOME:-$HOME/.local/state}/workstation"
@@ -25,6 +26,11 @@ laptop before reinstalling.
   apt/        sources, manual and held packages, dpkg -l
   firmware/   files of /lib/firmware/brcm that no package owns (taken from
               macOS by get-apple-firmware); --no-firmware skips them
+  hardware/   inventory: DMI and BIOS, CPU, memory, lspci -nnk, lsusb,
+              input devices, sensors, hwmon, iio, LEDs, power supplies,
+              platform_profile, firmware-attributes, displays, audio (ALSA,
+              PipeWire), fwupd devices, modules, kernel warnings; no serial
+              numbers
   state/      ~/.local/state/workstation without baseline/ (keyboard backup,
               checkpoints)
   virt/       libvirt definitions (virsh dumpxml of VMs, networks, pools),
@@ -58,7 +64,7 @@ archive="${archive:-$PWD/$name.tar.gz}"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 dir="$work/$name"
-mkdir -p "$dir"/{meta,boot,apt,firmware,state,virt}
+mkdir -p "$dir"/{meta,boot,apt,firmware,state,virt,hardware}
 
 run_to() {
     local out="$1"
@@ -118,6 +124,72 @@ if [[ "$firmware" == true ]]; then
     done < <(find /lib/firmware/brcm -maxdepth 1 \( -type f -o -type l \) -print0)
     echo "$n files"
 fi
+
+echo "== hardware"
+# What the profile of a machine is written from (system/hardware/*.nix):
+# drivers, quirks, sensors, firmware knobs. Serial numbers stay out.
+hw="$dir/hardware"
+have() { command -v "$1" >/dev/null 2>&1; }
+{
+    for f in sys_vendor product_name product_version product_family board_vendor \
+        board_name board_version bios_vendor bios_version bios_date bios_release; do
+        printf '%s: %s\n' "$f" "$(cat "/sys/class/dmi/id/$f" 2>/dev/null || echo '?')"
+    done
+} > "$hw/dmi.txt"
+run_to "$hw/lscpu.txt" lscpu
+run_to "$hw/memory.txt" free -h
+run_to "$hw/lspci.txt" lspci -nnk
+run_to "$hw/lsusb.txt" lsusb
+run_to "$hw/lsusb-tree.txt" lsusb -t
+# Uniq: serials and Bluetooth addresses.
+sed 's/^U: Uniq=..*/U: Uniq=(removed)/' /proc/bus/input/devices > "$hw/input-devices.txt"
+have libinput && run_to "$hw/libinput.txt" sudo libinput list-devices
+have sensors && run_to "$hw/sensors.txt" sensors
+run_to "$hw/lsmod.txt" lsmod
+# sysfs: NAME: VALUE of the readable files of each device (one level).
+sysfs_values() {
+    local d f
+    for d in "$@"; do
+        [[ -d "$d" ]] || continue
+        echo "== $d"
+        for f in "$d"/*; do
+            # edid: binary, with the serial of the display.
+            [[ -f "$f" && -r "$f" && "${f##*/}" != edid ]] || continue
+            printf '%s: %s\n' "${f##*/}" "$(head -c 300 "$f" 2>/dev/null | tr '\n' ' ')"
+        done
+    done
+}
+sysfs_values /sys/class/hwmon/hwmon* > "$hw/hwmon.txt" 2>&1
+sysfs_values /sys/bus/iio/devices/* > "$hw/iio.txt" 2>&1
+sysfs_values /sys/class/leds/* > "$hw/leds.txt" 2>&1
+sysfs_values /sys/class/drm/card*-* > "$hw/drm.txt" 2>&1
+# Power supplies without their serial numbers.
+sysfs_values /sys/class/power_supply/* | grep -vi 'serial' > "$hw/power-supply.txt" 2>&1 || true
+{
+    printf 'platform_profile: %s\n' "$(cat /sys/firmware/acpi/platform_profile 2>/dev/null || echo '-')"
+    printf 'platform_profile_choices: %s\n' "$(cat /sys/firmware/acpi/platform_profile_choices 2>/dev/null || echo '-')"
+    sysfs_values /sys/class/platform-profile/*
+} > "$hw/platform-profile.txt" 2>&1
+# Firmware attributes (Lenovo WMI: PPT, fan, charge): some values are root only.
+if compgen -G '/sys/class/firmware-attributes/*/attributes/*' >/dev/null; then
+    run_to "$hw/firmware-attributes.txt" sudo sh -c '
+        for d in /sys/class/firmware-attributes/*/attributes/*; do
+            echo "== $d"
+            for f in "$d"/*; do
+                [ -f "$f" ] && printf "%s: %s\n" "${f##*/}" "$(head -c 300 "$f" 2>/dev/null | tr "\n" " ")"
+            done
+        done'
+fi
+run_to "$hw/aplay.txt" aplay -l
+have pw-cli && run_to "$hw/pipewire-nodes.txt" pw-cli ls Node
+have wpctl && run_to "$hw/wpctl.txt" wpctl status
+# No prompts (the output goes into a file), no serial numbers.
+if have fwupdmgr; then
+    { fwupdmgr get-devices --no-unreported-check --no-metadata-check </dev/null 2>&1 || echo "[exit $?]"; } \
+        | grep -av 'Serial Number' > "$hw/fwupd.txt" || true
+fi
+run_to "$hw/kernel-warnings.txt" sudo dmesg --level=emerg,alert,crit,err,warn
+run_to "$hw/cmdline.txt" cat /proc/cmdline
 
 if command -v virsh >/dev/null 2>&1; then
     echo "== virt"

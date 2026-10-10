@@ -365,14 +365,12 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
    `/boot`. Затем
    `setup.sh` (`helpws setup`): хост `legiongo` по имени, списки с
    галочками для того, что не помечено `legiongo`, дальше сам — раскладка
-   Btrfs, этап 4, Timeshift. Инвентарь (до или после setup.sh) в
-   `docs/history/`:
-   - `ws collect`; DMI, `lspci -nnk`, `lsusb`, `libinput list-devices`;
-   - `/sys/class/firmware-attributes/lenovo-wmi-other-0/attributes/`,
-     `platform_profile_choices`, hwmon, iio;
-   - `aplay -l`, `pw-cli ls Node` (PCI-адрес аудио для 3.5);
-   - `fwupdmgr get-devices`: видит ли fwupd BIOS (Windows нет — других
-     способов обновить BIOS, кроме Windows с USB, не остаётся).
+   Btrfs, этап 4, Timeshift. Инвентарь — после setup.sh, `ws collect`
+   (раздел `hardware/`: DMI и BIOS, `lspci -nnk`, `lsusb`, `libinput`,
+   firmware-attributes `lenovo-wmi-other-0`, `platform_profile_choices`,
+   hwmon, iio, `aplay -l`, `pw-cli ls Node` — PCI-адрес аудио для 3.5,
+   `fwupdmgr get-devices` — видит ли fwupd BIOS), выжимка — в
+   `docs/history/`.
 4. **База wsconfig** — внутри `setup.sh`: `bootstrap.sh` (ставит XanMod,
    Steam и `@steam`) → reboot в XanMod → `ws system apply` → `ws apply` →
    reboot → `ws apply` → `ws check`; пометки `legiongo` setup.sh записал и

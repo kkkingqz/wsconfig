@@ -25,6 +25,10 @@ ws checkpoint create before-reinstall
 - `apt/` — sources, ручные и held пакеты, `dpkg -l`;
 - `firmware/` — файлы `/lib/firmware/brcm` без пакета: Wi-Fi/Bluetooth
   Apple, взятые из macOS (без macOS их больше не получить);
+- `hardware/` — инвентарь железа: DMI и BIOS, CPU, память, `lspci -nnk`,
+  `lsusb`, устройства ввода, датчики, hwmon, iio, светодиоды, батарея,
+  `platform_profile`, firmware-attributes, экраны, звук (ALSA, PipeWire),
+  устройства fwupd, модули, предупреждения ядра; без серийных номеров;
 - `state/` — `~/.local/state/workstation` (backup сочетаний, checkpoints);
 - `virt/` — описания VM, сетей и пулов, NVRAM и TPM (без дисков: backup
   `@vms` — `helpws plan-final`);
