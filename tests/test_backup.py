@@ -12,6 +12,7 @@ import pty
 import select
 import errno
 from backup_fixture import Boundary, U
+from backup_model import HelperModel, run_main
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'lib'))
 import backup
 
@@ -50,7 +51,7 @@ class ConfigurationTests(unittest.TestCase):
                 backup.load_config(p)
 
 
-class TransferTests(unittest.TestCase):
+class SendFixture:
     def setUp(self):
         self.b = Boundary()
         self.addCleanup(self.b.close)
@@ -78,81 +79,15 @@ class TransferTests(unittest.TestCase):
                         XDG_STATE_HOME=str(self.b.root / 'state'))
 
     def cli(self, *args):
-        return subprocess.run([str(ROOT / 'bin/wsbackup'), *args], env=self.env,
-                              text=True, capture_output=True)
+        return run_main(self.env, args)
 
-    def test_sudo_authenticates_on_terminal_before_streaming(self):
-        # Fake only the privilege boundary; controlling terminal and pipeline
-        # remain real. No system sudo credentials or password are used.
-        marker = self.b.root / 'authorized'
-        sudo = self.b.bin / 'sudo'
-        sudo.write_text('''#!/usr/bin/env python3
-import os, pathlib, sys
-a = sys.argv[1:]
-marker = pathlib.Path(''' + repr(str(marker)) + ''')
-try:
-    with open('/dev/tty', 'r') as terminal, open('/dev/tty', 'w') as prompt:
-        if a == ['-v']:
-            prompt.write('AUTHORIZE\\n'); prompt.flush()
-            if terminal.readline().strip() != 'approved': sys.exit(1)
-            marker.write_text('authorized')
-            sys.exit(0)
-        if not marker.exists() or a[0] != '-n':
-            print('no separate authorization', file=sys.stderr); sys.exit(1)
-except OSError:
-    print('missing controlling terminal', file=sys.stderr); sys.exit(1)
-os.execvp(a[1], a[1:])
-''')
-        pid, fd = pty.fork()
-        if pid == 0:
-            program = (
-                'import json,sys; from pathlib import Path; '
-                f'sys.path.insert(0,{str(ROOT / "lib")!r}); import backup; '
-                'backup.main(["send","home"]); '
-                'id=json.loads((backup.state_path()/"last-success.json").read_text())["home"]["id"]; '
-                f'target=Path({str(self.b.root / "restore")!r}); target.mkdir(); '
-                'backup.main(["restore-test","home",id,str(target),"--verify","payload"])'
-            )
-            os.execve(sys.executable, [sys.executable, '-c', program], self.env)
-        output = b''
-        deadline = time.monotonic() + 20
-        try:
-            while time.monotonic() < deadline:
-                if not select.select([fd], [], [], .2)[0]:
-                    continue
-                try:
-                    data = os.read(fd, 65536)
-                except OSError as e:
-                    if e.errno == errno.EIO:
-                        break
-                    raise
-                if not data:
-                    break
-                output += data
-                for _ in range(data.count(b'AUTHORIZE')):
-                    os.write(fd, b'approved\n')
-            else:
-                self.fail('terminal backup timed out: ' + output.decode(errors='replace'))
-            _, status = os.waitpid(pid, 0)
-            pid = None
-            self.assertEqual(os.waitstatus_to_exitcode(status), 0, output.decode(errors='replace'))
-            self.assertTrue(marker.exists())
-            last = json.loads((self.b.root / 'state/workstation/backup/last-success.json').read_text())
-            self.assertEqual((self.remote / 'mbp16/home' / last['home']['id'] / 'payload').read_text(), 'preserved data')
-            self.assertEqual((self.b.root / 'restore' / last['home']['id'] / 'payload').read_text(), 'preserved data')
-        finally:
-            os.close(fd)
-            if pid is not None:
-                os.kill(pid, signal.SIGKILL)
-                os.waitpid(pid, 0)
 
-    def test_failed_authorization_never_starts_snapshot(self):
-        (self.b.bin / 'sudo').write_text('#!/bin/sh\nexit 1\n')
-        p = self.cli('send', 'home')
-        self.assertNotEqual(p.returncode, 0)
-        self.assertIn('sudo authorization failed', p.stderr)
-        self.assertEqual(list(self.snapshots.iterdir()), [])
-        self.assertFalse((self.remote / 'mbp16').exists())
+class TransferTests(SendFixture, unittest.TestCase):
+    """The coordinator against HelperModel (tests/backup_model.py)."""
+
+    def setUp(self):
+        super().setUp()
+        HelperModel(self.b, self.rcfg).install(self)
 
     def test_successful_send_records_verified_parent_and_payload(self):
         p = self.cli('send', 'home')
@@ -241,6 +176,111 @@ os.execvp(a[1], a[1:])
         p = self.cli('send', 'home')
         self.assertEqual(p.returncode, 0, p.stderr)
 
+    def test_restore_checks_files_in_separate_empty_directory(self):
+        first = self.cli('send', 'home')
+        self.assertEqual(first.returncode, 0, first.stderr)
+        id = json.loads(first.stdout)['home']['id']
+        target = self.b.root / 'restore'
+        target.mkdir(mode=0o700)
+        p = self.cli('restore-test', 'home', id, str(target), '--verify', 'payload')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual((target / id / 'payload').read_text(), 'preserved data')
+        self.assertTrue(json.loads(self.cli('status').stdout)['restore_tests'])
+
+    def test_checksum_mismatch_does_not_record_verified_restore(self):
+        first = self.cli('send', 'home')
+        self.assertEqual(first.returncode, 0, first.stderr)
+        id = json.loads(first.stdout)['home']['id']
+        (self.remote / 'mbp16/home' / id / 'payload').write_text('corrupted')
+        target = self.b.root / 'restore'
+        target.mkdir(mode=0o700)
+        p = self.cli('restore-test', 'home', id, str(target), '--verify', 'payload')
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('checksum mismatch', p.stderr)
+        self.assertFalse(json.loads(self.cli('status').stdout)['restore_tests'])
+
+
+class RealProcessTests(SendFixture, unittest.TestCase):
+    """What needs real processes: sudo on the controlling terminal, the
+    stream pipeline, SIGTERM. Real helpers and receiver."""
+
+    def cli(self, *args):
+        return subprocess.run([str(ROOT / 'bin/wsbackup'), *args], env=self.env,
+                              text=True, capture_output=True)
+
+    def test_sudo_authenticates_on_terminal_before_streaming(self):
+        # Fake only the privilege boundary; controlling terminal and pipeline
+        # remain real. No system sudo credentials or password are used.
+        marker = self.b.root / 'authorized'
+        sudo = self.b.bin / 'sudo'
+        sudo.write_text('''#!/usr/bin/env python3
+import os, pathlib, sys
+a = sys.argv[1:]
+marker = pathlib.Path(''' + repr(str(marker)) + ''')
+try:
+    with open('/dev/tty', 'r') as terminal, open('/dev/tty', 'w') as prompt:
+        if a == ['-v']:
+            prompt.write('AUTHORIZE\\n'); prompt.flush()
+            if terminal.readline().strip() != 'approved': sys.exit(1)
+            marker.write_text('authorized')
+            sys.exit(0)
+        if not marker.exists() or a[0] != '-n':
+            print('no separate authorization', file=sys.stderr); sys.exit(1)
+except OSError:
+    print('missing controlling terminal', file=sys.stderr); sys.exit(1)
+os.execvp(a[1], a[1:])
+''')
+        pid, fd = pty.fork()
+        if pid == 0:
+            program = (
+                'import json,sys; from pathlib import Path; '
+                f'sys.path.insert(0,{str(ROOT / "lib")!r}); import backup; '
+                'backup.main(["send","home"]); '
+                'id=json.loads((backup.state_path()/"last-success.json").read_text())["home"]["id"]; '
+                f'target=Path({str(self.b.root / "restore")!r}); target.mkdir(); '
+                'backup.main(["restore-test","home",id,str(target),"--verify","payload"])'
+            )
+            os.execve(sys.executable, [sys.executable, '-c', program], self.env)
+        output = b''
+        deadline = time.monotonic() + 20
+        try:
+            while time.monotonic() < deadline:
+                if not select.select([fd], [], [], .2)[0]:
+                    continue
+                try:
+                    data = os.read(fd, 65536)
+                except OSError as e:
+                    if e.errno == errno.EIO:
+                        break
+                    raise
+                if not data:
+                    break
+                output += data
+                for _ in range(data.count(b'AUTHORIZE')):
+                    os.write(fd, b'approved\n')
+            else:
+                self.fail('terminal backup timed out: ' + output.decode(errors='replace'))
+            _, status = os.waitpid(pid, 0)
+            pid = None
+            self.assertEqual(os.waitstatus_to_exitcode(status), 0, output.decode(errors='replace'))
+            self.assertTrue(marker.exists())
+            last = json.loads((self.b.root / 'state/workstation/backup/last-success.json').read_text())
+            self.assertEqual((self.remote / 'mbp16/home' / last['home']['id'] / 'payload').read_text(), 'preserved data')
+            self.assertEqual((self.b.root / 'restore' / last['home']['id'] / 'payload').read_text(), 'preserved data')
+        finally:
+            os.close(fd)
+            if pid is not None:
+                os.kill(pid, signal.SIGKILL)
+                os.waitpid(pid, 0)
+
+    def test_failed_authorization_never_starts_snapshot(self):
+        (self.b.bin / 'sudo').write_text('#!/bin/sh\nexit 1\n')
+        p = self.cli('send', 'home')
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('sudo authorization failed', p.stderr)
+        self.assertEqual(list(self.snapshots.iterdir()), [])
+        self.assertFalse((self.remote / 'mbp16').exists())
+
     def test_sigterm_records_failure_and_releases_lock(self):
         self.b.update(receive_delay=10)
         p = subprocess.Popen([str(ROOT / 'bin/wsbackup'), 'send', 'home'],
@@ -264,29 +304,6 @@ os.execvp(a[1], a[1:])
         finally:
             if p.poll() is None:
                 p.kill(); p.communicate()
-
-    def test_restore_checks_files_in_separate_empty_directory(self):
-        first = self.cli('send', 'home')
-        self.assertEqual(first.returncode, 0, first.stderr)
-        id = json.loads(first.stdout)['home']['id']
-        target = self.b.root / 'restore'
-        target.mkdir(mode=0o700)
-        p = self.cli('restore-test', 'home', id, str(target), '--verify', 'payload')
-        self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertEqual((target / id / 'payload').read_text(), 'preserved data')
-        self.assertTrue(json.loads(self.cli('status').stdout)['restore_tests'])
-
-    def test_checksum_mismatch_does_not_record_verified_restore(self):
-        first = self.cli('send', 'home')
-        self.assertEqual(first.returncode, 0, first.stderr)
-        id = json.loads(first.stdout)['home']['id']
-        (self.remote / 'mbp16/home' / id / 'payload').write_text('corrupted')
-        target = self.b.root / 'restore'
-        target.mkdir(mode=0o700)
-        p = self.cli('restore-test', 'home', id, str(target), '--verify', 'payload')
-        self.assertNotEqual(p.returncode, 0)
-        self.assertIn('checksum mismatch', p.stderr)
-        self.assertFalse(json.loads(self.cli('status').stdout)['restore_tests'])
 
 
 class BackupCLI(unittest.TestCase):

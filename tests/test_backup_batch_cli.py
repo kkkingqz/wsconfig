@@ -1,7 +1,6 @@
 import json
-from pathlib import Path
-import subprocess
 import unittest
+from backup_model import run_main
 from test_backup_timeshift import TransferFixture, ROOT
 
 
@@ -18,8 +17,9 @@ class BatchCLI(TransferFixture, unittest.TestCase):
                             XDG_STATE_HOME=str(self.b.root / 'state'))
 
     def cli(self, *args):
-        return subprocess.run([str(ROOT / 'bin/ws'), 'backup', *args],
-                              env=self.cli_env, text=True, capture_output=True)
+        """ws backup ARGS in this process, so it talks to the helper model;
+        the wrappers bin/ws and bin/wsbackup run in RealHelpersContract."""
+        return run_main(self.cli_env, args)
 
     def test_default_cli_runs_batch(self):
         self.snapshot()
@@ -84,13 +84,12 @@ class BatchCLI(TransferFixture, unittest.TestCase):
         # Crash window: deletion succeeded, but its journal update did not.
         record['local_present'] = True
         path.write_text(json.dumps(record))
-        marker = self.b.root / 'network-called'
-        (self.b.bin / 'ssh').write_text('#!/bin/sh\ntouch ' + str(marker) + '\nexit 255\n')
+        calls = len(self.helpers.calls)
         target = self.b.root / 'restore'; target.mkdir()
         p = self.cli('restore-test', old['scope'], old['id'], str(target), '--verify', 'payload')
         self.assertNotEqual(p.returncode, 0)
         self.assertIn('local baseline removed', p.stderr)
-        self.assertFalse(marker.exists())
+        self.assertFalse([c for c in self.helpers.calls[calls:] if c[0] == 'ssh'])
         self.assertEqual(list(target.iterdir()), [])
         self.assertFalse((self.state / 'restore-tests').exists())
 

@@ -7,6 +7,7 @@ import unittest
 import uuid
 from unittest.mock import patch
 from backup_fixture import Boundary, U
+from backup_model import HelperModel
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -103,6 +104,10 @@ class TimeshiftBoundary(TimeshiftFixture, unittest.TestCase):
 
 
 class TransferFixture(TimeshiftFixture):
+    # The coordinator talks to HelperModel (tests/backup_model.py): the real
+    # helpers cost ~1700 processes per batch. RealHelpersContract sets False.
+    model = True
+
     def setUp(self):
         super().setUp()
         self.remote_root = self.b.root / 'remote'
@@ -121,11 +126,22 @@ class TransferFixture(TimeshiftFixture):
         self.environment = patch.dict(os.environ, self.env)
         self.environment.start(); self.addCleanup(self.environment.stop)
         sys.path.insert(0, str(ROOT / 'lib'))
+        if self.model:
+            self.helpers = HelperModel(self.b, cfg)
+            self.helpers.install(self)
 
     def copy(self):
+        """A frozen system copy 'copy1' (setup: through the model when the
+        test uses it; self.helper always runs the real helper)."""
         self.snapshot()
-        row = next(r for r in self.inventory()['snapshots'] if r['scope'] == 'system')
-        p = self.helper('import', 'system', 'copy1', row['timeshift_name'], row['origin_uuid'])
+        run = self.helper
+        if self.model:
+            from backup_timeshift import helper_command
+            run = lambda *args: self.helpers.run_result(helper_command(self.c, *args))
+        p = run('inventory')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        row = next(r for r in json.loads(p.stdout)['snapshots'] if r['scope'] == 'system')
+        p = run('import', 'system', 'copy1', row['timeshift_name'], row['origin_uuid'])
         self.assertEqual(p.returncode, 0, p.stderr)
         return json.loads(p.stdout)['uuid']
 
@@ -264,12 +280,31 @@ class BatchTests(TransferFixture, unittest.TestCase):
 
     def test_disconnect_after_publish_resumes_without_duplicate(self):
         self.snapshot(home=False)
-        os.environ['FIXTURE_DISCONNECT_ONCE'] = str(self.b.root / 'disconnected')
-        ssh = self.b.bin / 'ssh'
-        cfg = self.b.root / 'receiver.conf'
-        ssh.write_text('#!/usr/bin/env python3\nimport os,sys,subprocess,pathlib\nos.environ["SSH_ORIGINAL_COMMAND"]=sys.argv[-1]\np=subprocess.run(["bash",' + repr(str(ROOT / 'backup/unraid/wsbackup-receiver')) + ',' + repr(str(cfg)) + '])\nmark=pathlib.Path(os.environ["FIXTURE_DISCONNECT_ONCE"])\nif sys.argv[-1].startswith("receive ") and p.returncode==0 and not mark.exists():\n mark.touch();sys.exit(255)\nsys.exit(p.returncode)\n')
+        self.helpers.disconnect_after_receive = True
         with self.assertRaisesRegex(ValueError, 'stream failed'):
             self.batch()
         result = self.batch()
         self.assertEqual(len(list((self.remote_root / 'mbp16/system').glob('ts-*'))), 1)
         self.assertEqual(result['retained']['system']['status'], 'success')
+
+
+class RealHelpersContract(TransferFixture, unittest.TestCase):
+    """The model's contract: one batch through the real wsbackup-timeshift,
+    wsbackup-source and receiver, started like the user does (ws backup)."""
+    model = False
+
+    def test_ws_backup_batch_through_real_helpers(self):
+        self.snapshot(home=False)
+        state = self.b.root / 'state/workstation/backup'
+        state.mkdir(parents=True)
+        (state / 'config.json').write_text(json.dumps(self.c))
+        env = dict(self.env, WSCONFIG=str(ROOT), XDG_STATE_HOME=str(self.b.root / 'state'))
+        p = subprocess.run([str(ROOT / 'bin/ws'), 'backup'], env=env, text=True, capture_output=True)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        result = json.loads(p.stdout)
+        [record] = result['transferred']
+        self.assertEqual(record['mode'], 'full')
+        self.assertEqual(result['catalog']['published'], [record['id']])
+        self.assertEqual((self.remote_root / 'mbp16/system' / record['id'] / 'payload').read_text(), 'first@')
+        self.assertTrue((self.remote_root / 'mbp16/.catalog/system' / (record['id'] + '.json')).exists())
+        self.assertEqual((self.managed / 'system' / record['id'] / 'payload').read_text(), 'first@')

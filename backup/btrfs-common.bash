@@ -9,7 +9,9 @@ safe_path() {
     local p="$1"
     while [[ "$p" != / ]]; do
         [[ ! -L "$p" ]] || die "symlink path: $p"
-        p="$(dirname -- "$p")"
+        # dirname without a process: the path is canonical (checked above).
+        p="${p%/*}"
+        [[ -n "$p" ]] || p=/
     done
 }
 filesystem_check() {

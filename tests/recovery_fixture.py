@@ -8,6 +8,8 @@ import stat
 import sys
 import uuid
 
+import fast_tmp  # noqa: F401  (tmpfs for test files)
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'lib'))
 try:
     from recovery_platform import RecoveryPlatform

@@ -57,7 +57,10 @@ else: sys.exit(99) # invoking Quickshell from CLI is always a failure
                         reader = connection.makefile('rb')
                         hello = json.loads(reader.readline())
                         if hello.get('protocolVersion') != 2 or hello.get('role') != 'cli': continue
-                        if self.mode == 'disconnect': continue
+                        if self.mode == 'disconnect':
+                            # The file object holds the socket open: close both,
+                            # or the client waits for its 3 s timeout.
+                            reader.close(); continue
                         def send(frame): connection.sendall((json.dumps({'protocolVersion':2, **frame})+'\n').encode())
                         send({'type':'hello', 'pid':os.getpid(), 'instanceId':'test'})
                         request = json.loads(reader.readline()); self.requests.append(request)

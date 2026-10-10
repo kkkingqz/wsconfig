@@ -8,12 +8,14 @@ import subprocess
 import sys
 import tempfile
 
+import fast_tmp  # noqa: F401  (tmpfs for test files)
+
 U = '11111111-1111-1111-1111-111111111111'
 
 PROGRAM = r'''#!/usr/bin/env python3
 import json, os, pathlib, sys, uuid, shutil
-name = pathlib.Path(sys.argv[0]).name
-a = sys.argv[1:]
+name = sys.argv[1]
+a = sys.argv[2:]
 c = json.loads(pathlib.Path(os.environ['BACKUP_FIXTURE']).read_text())
 if name == 'findmnt':
     field = a[a.index('-nro') + 1] if '-nro' in a else 'TARGET'
@@ -124,6 +126,81 @@ else:
     print('unexpected fixture command', file=sys.stderr); sys.exit(1)
 '''
 
+# Every fake command: the read-only calls a test makes hundreds of times are
+# answered here, the rest runs PROGRAM. One Python start costs 40-60 ms on a
+# slow machine, a batch test makes ~500 such calls (findmnt, subvolume show,
+# property get, filesystem sync). The answers equal PROGRAM's; a case not
+# matched exactly falls through to it.
+STUB = r'''#!/usr/bin/env bash
+shopt -s extglob
+name="${0##*/}"
+program() { exec python3 "${0%/*}/.fixture-program" "$name" "$@"; }
+# FX_* values of fixture.json, written next to it by Boundary.update().
+. "${BACKUP_FIXTURE%.json}.sh" || program "$@"
+
+# value=VALUE of KEY in the .fixture-meta FILE (json.dumps output), as
+# Python prints it; returns 1 when the key is absent. No subshell: every
+# process counts here.
+meta_value() {
+    local text re
+    read -r -d '' text <"$1"
+    re='(^\{|, )"'"$2"'": ("([^"]*)"|true|false|null)'
+    [[ "$text" =~ $re ]] || return 1
+    case "${BASH_REMATCH[2]}" in
+        true) value=True ;;
+        false) value=False ;;
+        null) value=None ;;
+        *) value="${BASH_REMATCH[3]}" ;;
+    esac
+}
+
+if [[ "$name" == findmnt && "$1" == -nro && $# -ge 2 ]]; then
+    target="${!#}"
+    case "$2" in
+        FSTYPE) printf '%s\n' "$FX_FSTYPE"; exit ;;
+        UUID) printf '%s\n' "$FX_UUID"; exit ;;
+        TARGET) printf '%s\n' "$target"; exit ;;
+        FSROOT) printf '/\n'; exit ;;
+        OPTIONS)
+            if [[ "$target" == /home || ( -v FX_SOURCE_HOME && "$target" == "$FX_SOURCE_HOME" ) ]]; then
+                printf 'rw,subvol=/@home\n'
+            else
+                printf 'rw,subvol=/@vms\n'
+            fi
+            exit ;;
+    esac
+elif [[ "$name" == btrfs ]]; then
+    if [[ "$1 $2" == "filesystem sync" ]]; then
+        exit 0
+    elif [[ "$1 $2" == "subvolume show" && $# -eq 3 ]]; then
+        meta="$3/.fixture-meta"
+        if [[ ! -e "$meta" && "$FX_UUID" != None ]]; then
+            printf 'UUID: %s\nReceived UUID: -\nParent UUID: -\n' "$FX_UUID"
+            exit
+        fi
+        if [[ -e "$meta" ]] && meta_value "$meta" uuid; then
+            u="$value"
+            meta_value "$meta" received_uuid && r="$value" || r=-
+            meta_value "$meta" parent_uuid && pu="$value" || pu=-
+            # A null or boolean value makes PROGRAM fail: leave it to it.
+            if [[ " $u $r $pu " != *" "@(None|True|False)" "* ]]; then
+                printf 'UUID: %s\nReceived UUID: %s\nParent UUID: %s\n' "$u" "$r" "$pu"
+                exit
+            fi
+        fi
+    elif [[ "$1 $2" == "property get" && $# -ge 4 ]]; then
+        args=("$@")
+        meta="${args[-2]}/.fixture-meta"
+        if [[ -e "$meta" ]]; then
+            meta_value "$meta" ro && ro="$value" || ro=True
+            case "$ro" in False|None|'') echo ro=false ;; *) echo ro=true ;; esac
+            exit
+        fi
+    fi
+fi
+program "$@"
+'''
+
 
 class Boundary:
     def __init__(self):
@@ -148,15 +225,23 @@ class Boundary:
         shutil.copyfile(backup_dir / 'btrfs-common.bash', helper_dir / 'btrfs-common.bash')
         self.config = self.root / 'fixture.json'
         self.update()
+        (self.bin / '.fixture-program').write_text(PROGRAM)
         for name in ('btrfs', 'findmnt', 'virsh', 'blkid', 'mount', 'umount'):
             f = self.bin / name
-            f.write_text(PROGRAM)
+            f.write_text(STUB)
             f.chmod(0o755)
         self.env = dict(os.environ, PATH=str(self.bin) + ':' + os.environ['PATH'],
                         BACKUP_FIXTURE=str(self.config))
 
     def update(self, **changes):
-        self.config.write_text(json.dumps({'uuid': U, 'source_home': str(self.home), **changes}))
+        c = {'uuid': U, 'source_home': str(self.home), **changes}
+        self.config.write_text(json.dumps(c))
+        # The same values for the shell part of STUB, as PROGRAM prints them.
+        values = {'FX_UUID': c.get('uuid'), 'FX_FSTYPE': c.get('fstype', 'btrfs')}
+        if c.get('source_home') is not None:
+            values['FX_SOURCE_HOME'] = c['source_home']
+        self.config.with_suffix('.sh').write_text(
+            ''.join(f'{k}={shlex.quote(str(v))}\n' for k, v in values.items()))
 
     def install_sudo(self):
         sudo = self.bin / 'sudo'

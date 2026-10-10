@@ -7,7 +7,7 @@ on:
 jobs:
   scripts:
     runs-on: ubuntu-latest
-    # The suite takes about 7 minutes; a hung test must not hold the runner for 6 hours.
+    # The suite takes well under a minute; a hung test must not hold the runner for 6 hours.
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
