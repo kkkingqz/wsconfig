@@ -54,10 +54,11 @@ volume: User Commands
    также остаётся.
 
 3. `helpws plan-legion-go`
-   Legion Go 1 третьим хостом (план 2026-10-10): Ubuntu и wsconfig как на
-   mbp16, сверху Game Mode из компонентов Bazzite (InputPlumber,
-   steamos-manager, gamescope-session, нативный Steam, SDDM). На устройстве
-   ничего не начато; до этапа 0 нужны решения пользователя (раздел 5).
+   Legion Go 1 третьим хостом `legiongo` (план 2026-10-10): Ubuntu и
+   wsconfig как на mbp16, ядро XanMod, загрузка в GNOME, Game Mode из
+   компонентов Bazzite (InputPlumber, steamos-manager, gamescope-session,
+   нативный Steam, SDDM), питание — PPD, swap — zswap. Решения приняты; до
+   этапа 1 нужен набор слоёв хоста. На устройстве ничего не начато.
 
 Отложено:
 
