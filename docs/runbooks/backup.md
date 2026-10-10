@@ -201,6 +201,33 @@ restrict,command="sudo -n /usr/local/libexec/wsbackup/unraid/wsbackup-receiver /
 3. Запустить `bash /boot/config/wsbackup/boot.sh` и добавить эту же строку в конец
    `/boot/config/go`. Проверить после перезагрузки Unraid.
 
+### Несколько workstation
+
+У каждой workstation на Unraid свой пользователь, ключ, config приёмника
+(`HOST_ID`) и forced command: ключ одной машины не достаёт до копий другой.
+Первая (mbp16) остаётся как выше: пользователь `wsbackup`, `receiver.conf`
+и `authorized_keys` в корне flash. Каждая следующая — каталог
+`hosts/HOST/` на flash, `boot.sh` делает из него пользователя
+`wsbackup-HOST`:
+
+```text
+/boot/config/wsbackup/hosts/legiongo/receiver.conf     HOST_ID=legiongo, ROOT, FS_UUID; 0600
+/boot/config/wsbackup/hosts/legiongo/authorized_keys   ключ legiongo (~/.ssh/wsbackup_ed25519.pub)
+```
+
+Строка ключа — с config этой машины:
+
+```text
+restrict,command="sudo -n /usr/local/libexec/wsbackup/unraid/wsbackup-receiver /usr/local/libexec/wsbackup/hosts/legiongo.conf" ssh-ed25519 PUBLIC_KEY legiongo
+```
+
+`ROOT` может быть общим: у каждой машины свой подкаталог `ROOT/HOST_ID`,
+приём сериализован общим flock (одновременный второй получает «receiver
+busy» и повторяет в следующий раз). На workstation — alias с `User
+wsbackup-HOST` и `config.json` с `"remote_host_id": "HOST"`; остальные
+значения те же, что у mbp16. `boot.sh` с одной машиной пишет sshd и sudo
+байт в байт как прежний (`tests/test_unraid_boot.py`).
+
 После обновления файлов в репозитории скопировать их на flash заново и повторить
 `boot.sh`.
 

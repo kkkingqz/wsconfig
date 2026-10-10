@@ -389,7 +389,7 @@ PY
 }
 
 # Backup (helpws backup): the local side. @wsbackup is bootstrap.sh; the
-# key waits for the receiver, which takes only mbp16 so far.
+# key goes to the receiver as hosts/HOST/ on the Unraid flash, by hand.
 step_backup() {
     local key="$HOME/.ssh/wsbackup_ed25519"
     done_step backup && return 0
@@ -399,7 +399,8 @@ step_backup() {
         ssh-keygen -q -t ed25519 -N "" -C "workstation-backup $host" -f "$key"
     fi
     echo "Локальные копии: /var/lib/workstation-backup (@wsbackup). Ключ: $key.pub"
-    echo "Приёмник на Unraid пока принимает только mbp16: $host подключается отдельно (helpws setup)."
+    echo "На Unraid: hosts/$host/ с этим ключом (пользователь wsbackup-$host), затем alias и"
+    echo "config.json здесь — helpws backup, «Несколько workstation»."
     mark_step backup
 }
 

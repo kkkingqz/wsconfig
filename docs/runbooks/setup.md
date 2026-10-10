@@ -80,11 +80,12 @@ create setup` при расхождении системы с деревом н�
 
 ## Не сделано
 
-- **Backup на Unraid для нового хоста.** Приёмник принимает один `HOST_ID`
-  (`receiver.conf`, сейчас mbp16): другому хосту нужны свои config и ключ на
-  сервере — отдельная работа на tower с подтверждением. setup.sh готовит
-  только сторону ПК (`@wsbackup`, ключ); `config.json` и alias SSH
-  (`helpws backup`) не пишет.
+- **Backup на Unraid для нового хоста.** Приёмник умеет несколько машин
+  (`hosts/HOST/` на flash, пользователь `wsbackup-HOST`; `helpws backup`,
+  «Несколько workstation»), но на tower новый `boot.sh` ещё не стоит —
+  это работа на сервере с подтверждением. setup.sh готовит только сторону
+  ПК (`@wsbackup`, ключ); `config.json` и alias SSH не пишет: адреса
+  приёмника не хранятся в репозитории.
 - **mbp16 (rEFInd).** setup.sh отказывает (`boot = "refind-grub-recovery"`);
   переустановка — по `helpws rebuild`. Вернуться позже:
   - значения диска в `facts.nix` после переустановки: `rootUuid`,

@@ -426,9 +426,10 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
    Distrobox — по пометкам `legiongo` (этап 4).
 8. **Recovery и backup.** Timeshift настроил `setup.sh` (снимок «setup»);
    здесь — откат и пункты GRUB (XanMod и generic). Backup на Unraid:
-   приёмник пока принимает только mbp16 (`receiver.conf`, один `HOST_ID`) —
-   подключение `legiongo` на сервере отдельно и с подтверждением; ключ
-   `~/.ssh/wsbackup_ed25519` сделал `setup.sh`, `@steam` в backup не входит.
+   приёмник умеет несколько машин (`hosts/legiongo/` на flash, пользователь
+   `wsbackup-legiongo`; `helpws backup`), на tower его надо обновить — с
+   подтверждением; ключ `~/.ssh/wsbackup_ed25519` сделал `setup.sh`, alias и
+   `config.json` — вручную; `@steam` в backup не входит.
 9. **Опционально, каждое — с замером до и после.** Вентилятор сверх
    прошивки (3.7), режим `custom` TDP, swappiness и page-cluster, Decky
    Loader, scx_lavd, hibernate (`resume=`/`resume_offset` из swap-setup в
