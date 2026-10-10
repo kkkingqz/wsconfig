@@ -13,8 +13,9 @@ set -euo pipefail
 # Distrobox boxes and overrides without a mark of this host (checklists,
 # lib/setup_marks.py), package licenses, the go → ws btrfs make → reboot → ws btrfs
 # make → bootstrap.sh → reboot → ws system apply, ws apply → reboot → ws
-# apply, ws check → Timeshift and its first snapshot, the backup key → ws
-# switch, ws checkpoint create setup, git push.
+# apply, ws check (FAIL does not stop: listed at the end) → Timeshift and
+# its first snapshot, the backup key → ws switch, ws checkpoint create setup,
+# git push.
 #
 # Each run starts where the last one stopped: the state of the system and
 # the steps done in ~/.local/state/workstation/setup. Until the end a GNOME
@@ -338,10 +339,15 @@ step_layers() {
     fi
 }
 
+# FAIL does not stop setup: the snapshot is marked and the end lists them.
 step_check() {
     done_step check && return 0
     say "ws check"
-    ws check || die "ws check has FAIL: fix it, then setup.sh again"
+    rm -f "$state/check-fail.txt"
+    if ! ws check | tee "$state/check.txt"; then
+        grep -E '^ *FAIL ' "$state/check.txt" > "$state/check-fail.txt" \
+            || echo "  FAIL  ws check (exit status)" > "$state/check-fail.txt"
+    fi
     mark_step check
 }
 
@@ -372,7 +378,11 @@ PY
     else
         echo "$conf exists: kept"
     fi
-    sudo timeshift --create --scripted --comments "setup"
+    if [[ -s "$state/check-fail.txt" ]]; then
+        sudo timeshift --create --scripted --comments "setup, ws check FAIL"
+    else
+        sudo timeshift --create --scripted --comments "setup"
+    fi
     mark_step timeshift
 }
 
@@ -392,13 +402,24 @@ step_backup() {
 }
 
 step_finish() {
+    local checkpoint=true
     say "Готово"
     ws switch
-    git -C "$repo" rev-parse -q --verify refs/tags/checkpoint/setup >/dev/null \
-        || ws checkpoint create setup
+    # A checkpoint needs a live system that matches its tree (ws system check).
+    if ! git -C "$repo" rev-parse -q --verify refs/tags/checkpoint/setup >/dev/null; then
+        ws checkpoint create setup || checkpoint=false
+    fi
     [[ -z "$(git -C "$repo" log --oneline origin/main..HEAD 2>/dev/null)" ]] || push
     rm -f "$autostart"
-    echo "Хост $host настроен: ws check прошёл, снимок Timeshift «setup», checkpoint setup."
+    if [[ -s "$state/check-fail.txt" ]]; then
+        echo "Хост $host настроен, но ws check нашёл FAIL ($state/check.txt):"
+        cat "$state/check-fail.txt"
+        echo "Снимок Timeshift — «setup, ws check FAIL». После исправления: ws check,"
+        echo "sudo timeshift --create --comments checked, ws checkpoint create setup."
+    else
+        echo "Хост $host настроен: ws check без FAIL, снимок Timeshift «setup»."
+    fi
+    [[ "$checkpoint" == true ]] || echo "checkpoint setup не создан: ws checkpoint create setup после исправления."
 }
 
 sudo -v || die "sudo needed"

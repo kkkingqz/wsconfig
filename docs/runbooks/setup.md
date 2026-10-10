@@ -56,10 +56,10 @@ ws system apply
 ws apply                 первый проход: новые расширения GNOME — после входа
 reboot
 ws apply
-ws check                 FAIL останавливает: исправить, запустить снова
+ws check                 FAIL не останавливает: список — в конце
 Timeshift                /etc/timeshift/timeshift.json, если его нет: Btrfs,
                          @home, monthly 1, weekly 3, boot 3 (как mbp16);
-                         снимок «setup»
+                         снимок «setup» («setup, ws check FAIL» при FAIL)
 backup                   ключ ~/.ssh/wsbackup_ed25519 (@wsbackup — bootstrap.sh)
 ws switch, ws checkpoint create setup, git push
 ```
@@ -69,7 +69,14 @@ ws switch, ws checkpoint create setup, git push
 (`xdg-terminal-exec`); в конце файл удаляется. Пройденные шаги —
 `~/.local/state/workstation/setup/*.done`, остальное определяется по
 системе; повторный запуск начинает с первого непройденного. Ошибка
-останавливает с сообщением, окно автозапуска ждёт Enter.
+команды останавливает с сообщением, окно автозапуска ждёт Enter.
+
+FAIL в `ws check` setup.sh не останавливает: снимок Timeshift получает
+комментарий «setup, ws check FAIL», в конце печатаются строки FAIL (весь
+вывод — `~/.local/state/workstation/setup/check.txt`). `ws checkpoint
+create setup` при расхождении системы с деревом не создаётся. После
+исправления: `ws check`, `sudo timeshift --create --comments checked`,
+`ws checkpoint create setup`.
 
 ## Не сделано
 
