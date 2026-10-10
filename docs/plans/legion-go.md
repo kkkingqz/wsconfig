@@ -161,9 +161,8 @@ Go 1 (`lenovo-wmi-*`, `hid-lenovo-go`, quirk панели) у них одина�
 вытеснение         как Ubuntu: PREEMPT_LAZY        PREEMPT_LAZY (dynamic)
                    (dynamic)
 cpufreq по умолч.  как Ubuntu: schedutil →         performance → amd-pstate-epp
-                   amd-pstate-epp в powersave,     в policy performance: EPP
-                   EPP задаёт PPD                  зафиксирован, запись даёт
-                                                   EBUSY, PPD им не управляет
+                   amd-pstate-epp в powersave      в policy performance (до
+                                                   старта PPD; см. ниже)
 zswap              как Ubuntu: выключен            включён (lzo) — вдобавок к
                                                    zram
 THP                как Ubuntu: madvise             always
@@ -186,23 +185,43 @@ DKMS               нужен gcc на host               нужен clang на 
 обновления         apt, раз в неделю               apt (resolute), по выходу stable
 ```
 
-Под наши решения (PPD, zram, AppArmor Ubuntu) XanMod нужно поправить
-параметрами загрузки:
-
-- `cpufreq.default_governor=powersave` — иначе PPD не меняет EPP, а на
-  батарее это главное;
-- `zswap.enabled=0` — у нас zram;
-- `lsm=landlock,lockdown,yama,integrity,apparmor,bpf`, если AppArmor
-  нужен.
-
 Его плюсы — 250 Гц, le9uo, x86-64-v3, THP always — для Go 1 не измерены.
 Zabbly ведёт себя как ядро Ubuntu, только новее.
 
-**Мы (рекомендация):** Zabbly; generic-ядро Ubuntu остаётся запасным
-пунктом в GRUB. Когда для 26.04 выйдет HWE 7.3, можно вернуться на ядро
-Ubuntu. XanMod — эксперимент этапа 9 с теми же параметрами и замером
-батареи и FPS. Zabbly подключается своим источником apt с ключом и pin для
-`linux-libc-dev`: это файлы системного слоя, не строка в `apt.txt`.
+**Мы: XanMod MAIN x64v3 (решение 4).** Generic-ядро Ubuntu остаётся
+запасным пунктом в GRUB. XanMod подключается своим источником apt
+(`deb.xanmod.org`, `resolute`) с ключом: это файлы системного слоя, не
+строка в `apt.txt`. Его умолчания под наши решения:
+
+- **cpufreq.** Governor по умолчанию — `performance` (amd-pstate-epp:
+  MinPerf не ниже номинала, EPP 0). Он действует только до старта PPD.
+  PPD 0.30 при каждом переключении сам пишет `scaling_governor`, EPP,
+  boost и минимальную частоту:
+
+  ```text
+  режим PPD          governor     EPP                         boost  мин. частота
+  энергосбережение   powersave    power                       выкл   cpuinfo_min
+  баланс             powersave    balance_performance (сеть)  вкл    lowest_nonlinear
+                                  balance_power (батарея)
+  производительность performance  performance                 вкл    lowest_nonlinear
+  ```
+
+  Плюс `platform_profile` (quiet / balanced / performance) и amdgpu:
+  `power_dpm_force_performance_level` low в энергосбережении,
+  `panel_power_savings` только на батарее. Максимум без оглядки на батарею —
+  режим «Производительность», в GNOME или Legion L + Y. На батарее PPD его
+  не урезает и сохраняет режим между загрузками. Сверх режима прошивки
+  performance — только `custom` с PPT через firmware-attributes (до ~30 Вт),
+  мимо PPD. `cpufreq.default_governor=powersave` нужен лишь на время до PPD
+  и на случай, если PPD не запущен (решение ниже).
+- **zswap.** Включён по умолчанию (lzo), а у нас zram: `zswap.enabled=0`
+  (2.6).
+- **AppArmor** не нужен (решение пользователя): у XanMod его нет в списке
+  LSM, `lsm=` не задаём. Пакет `apparmor` без LSM ничего не делает;
+  ограничения Ubuntu на user namespaces нет, Steam (pressure-vessel),
+  bwrap и podman работают без профилей.
+- **DKMS** собирает модули clang'ом. Если понадобится `acpi_call`
+  (вентилятор, 2.8), на host нужен clang — это toolchain, решать отдельно.
 
 ## 2.2 Графика и игровые библиотеки
 
@@ -331,8 +350,40 @@ VRAM     dmemcg-booster / uresourced-dmemcg: приоритет памяти GPU
 ```
 
 **Мы:** берём sysctl, zram, I/O, nice и watchdog. NTSync уже есть
-(Distrobox). scx_lavd и dmemcg — этап 9: только с замером, на ядре Ubuntu
-без патчей TTM.
+(Distrobox). scx_lavd и dmemcg — этап 9: только с замером, на ядре без
+патчей TTM из OGC.
+
+### zram и zswap
+
+```text
+          zram                               zswap
+что       блочное устройство в RAM: swap     сжатый кэш перед дисковым swap:
+          прямо в памяти, сжатый             перехватывает выгружаемые страницы
+нужен     нет                                да (swapfile или раздел); без него
+диск                                         ничего не делает
+когда     растёт до заданного размера, дальше пул заполнен (по умолчанию 20%
+полон     — OOM                              RAM) — старые страницы пишутся на
+                                             диск
+диск      не пишет                           пишет при нехватке памяти
+сон в     нет: образ в RAM не сохранить      да, через тот же swapfile
+диск
+вместе    zswap поверх zram сжимает страницы второй раз и потом всё равно
+          отдаёт их в zram — смысла нет, выбирают одно
+```
+
+Памяти у Go 1 видно меньше 16 ГБ: из них BIOS отдаёт GPU UMA (6–8 ГБ).
+Сжатый swap здесь полезен. Варианты:
+
+1. **Только zram** (как Bazzite): zstd, `min(ram/2, 16 ГБ)`,
+   swappiness 180, `zswap.enabled=0`. SSD не изнашивается, но hibernate нет.
+2. **zswap + swapfile в `@swap`**: один механизм, при нехватке — на SSD;
+   hibernate возможен (swapfile ≥ RAM, `resume=`/`resume_offset`, как на
+   mbp16).
+3. **zram (высокий приоритет) + swapfile (низкий, только для hibernate)**,
+   zswap выключен.
+
+Рекомендация: вариант 1 сейчас. Если на этапе 9 понадобится hibernate —
+вариант 3: поведение днём то же, swapfile нужен только для образа.
 
 ## 2.7 Не берём
 
@@ -421,10 +472,11 @@ WMI (`acpi_call`).
 facts.nix  hostname = "legiongo", user king, wsconfig,
            hardware = "legion-go", boot = "grub", rootUuid,
            kernelParams: quiet splash bluetooth.disable_ertm=1
+                         zswap.enabled=0 (+ cpufreq.default_governor=powersave,
+                         если решим; 2.1) — для обоих ядер GRUB
 apt.txt    openssh-server, amd64-microcode, steam-installer (i386),
-           sddm, gamescope, lm-sensors, evtest, systemd-zram-generator
-           (+ linux-zabbly при решении 4; источник и ключ — файлы
-           системного слоя)
+           sddm, gamescope, lm-sensors, evtest, systemd-zram-generator,
+           linux-xanmod-x64v3 (источник и ключ — файлы системного слоя)
 ```
 
 i386 multiarch для Steam: `bootstrap.sh` должен уметь
@@ -581,8 +633,8 @@ steamos-manager) — позже.
 2. **Загрузка в GNOME** через SDDM с autologin. Game Mode включается из
    GNOME («Return to Game Mode»), обратно — «Switch to Desktop» в Steam.
 3. **Steam нативный.**
-4. **Своё ядро не собираем.** Выбор между Zabbly и XanMod ждёт решения
-   (2.1).
+4. **Ядро — XanMod MAIN x64v3**, своё не собираем; generic Ubuntu запасным
+   пунктом в GRUB. AppArmor не нужен (2.1).
 5. **Набор слоёв** выбирается в отдельной сессии, до установки.
 6. **Питание — PPD.** steamos-manager без TDP и профиля (2.4).
 7. **Отдельного backup сохранений нет.**
@@ -592,10 +644,12 @@ steamos-manager) — позже.
 
 Secure Boot на устройстве выключен.
 
-Ждёт выбора:
+Ждут выбора:
 
-- **Ядро (4):** рекомендация — Zabbly, generic-ядро Ubuntu запасным пунктом
-  в GRUB (2.1).
+- **`cpufreq.default_governor=powersave`:** рекомендация — да; PPD всё
+  равно включает `performance` в режиме «Производительность» (2.1).
+- **swap:** рекомендация — только zram, `zswap.enabled=0`; hibernate позже
+  через zram + swapfile (2.6).
 
 # 6. Риски
 
@@ -609,8 +663,8 @@ Secure Boot на устройстве выключен.
 - SDDM вместо GDM: экран входа и lock screen GNOME ведут себя иначе, а шаги
   клавиатурного слоя для GDM здесь не работают.
 - Ограничение AppArmor на user namespaces в generic-ядре (фаза 6): нативный
-  Steam (pressure-vessel) проверить в первую очередь. В Zabbly патчей
-  AppArmor от Ubuntu нет, поведение может отличаться.
+  Steam (pressure-vessel) проверить в первую очередь. На XanMod AppArmor не
+  активен, ограничения нет — касается только запасного generic-ядра.
 - `hid-lenovo-go` (ядро 7.1+) вместе с InputPlumber: проверить гироскоп и
   кнопки (в Bazzite Deck 44 у Go 1 не работает гироскоп).
 - xremap может захватить виртуальные устройства InputPlumber (3.4).
