@@ -196,14 +196,15 @@ ws check            # проверки всех владельцев и verify (
 `bootstrap.sh` (от пользователя, sudo вызывает сам; `--dry-run` только
 показывает шаги): subvolume `@nix` и строка `/nix` в fstab → пакеты из
 `nix/hosts/apt.txt` и `nix/hosts/<host>/apt.txt` (PPA fish и
-nautilus-my-computer; `purge:snapd` — без snap) → `@vms` в
-`/var/lib/vms` с bind-монтированиями в пути libvirt, пул и сеть `default` →
-группы `nix-users`,
-`libvirt`, `input` (xremap читает клавиатуры) → fish как login shell → первый `ws switch` (заменяемые файлы сохраняются как
-`*.pre-hm`). Хост определяется по `hostname` в `nix/hosts/*/facts.nix` (`ws
+nautilus-my-computer; `purge:snapd` — без snap) → при `vm = "yes"` в
+`facts.nix`: пакеты `virt/apt.txt`, `@vms` в `/var/lib/vms` с
+bind-монтированиями в пути libvirt, пул и сеть `default`
+(`virt/bootstrap.bash`) → группы `nix-users`, `input` (xremap читает
+клавиатуры), при `vm = "yes"` и `libvirt` → fish как login shell → первый
+`ws switch` (заменяемые файлы сохраняются как `*.pre-hm`). Хост определяется по `hostname` в `nix/hosts/*/facts.nix` (`ws
 host`, переопределяет `WS_HOST=<name>`); для новой машины — каталог
-`nix/hosts/<name>/` с `facts.nix` и `apt.txt`. Повторный запуск ничего не
-меняет.
+`nix/hosts/<name>/` с `facts.nix` (в том числе `vm = "yes"` или `"no"`) и
+`apt.txt`. Повторный запуск ничего не меняет.
 
 Шаг `ws apply`, чей preflight не прошёл (exit 69), выводится в конце как
 `PREFLIGHT`; отдельный шаг — `ws apply keyboard`.

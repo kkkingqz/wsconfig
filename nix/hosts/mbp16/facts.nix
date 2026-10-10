@@ -8,6 +8,10 @@
   # into it, bootstrap.sh insists on it; scripts find it from their own path.
   wsconfig = "wsconfig";
   hardware = "t2-mbp16";
+  # Virtual machines (helpws virt): "yes" sets up the VM layer — packages of
+  # virt/apt.txt, @vms with libvirt (bootstrap.sh), OVMF descriptor, ~/VMs,
+  # ws check virt; "no" leaves it out.
+  vm = "yes";
   boot = "refind-grub-recovery";
   kernelParams = [
     "quiet" "splash" "intel_iommu=on" "iommu=pt" "pm_async=off"

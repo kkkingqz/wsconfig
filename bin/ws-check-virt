@@ -18,6 +18,13 @@ case "${1:-}" in
     *) echo "ws-check-virt: unknown argument: $1" >&2; exit 64 ;;
 esac
 
+# Only hosts with vm = "yes" in facts.nix have the VM layer.
+if [[ "$(host_fact vm)" != yes ]]; then
+    info "vm = \"$(host_fact vm)\" in nix/hosts/$("$repo/bin/ws" host 2>/dev/null)/facts.nix: no VM layer, nothing to check"
+    check_finish
+    exit
+fi
+
 images=/var/lib/libvirt/images
 user="$(id -un)"
 

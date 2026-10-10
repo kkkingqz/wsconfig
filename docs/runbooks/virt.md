@@ -12,9 +12,16 @@ VM работают на host: KVM, QEMU и libvirt связаны с ядром
 
 ## Что где
 
+Слой VM есть только на машинах с `vm = "yes"` в
+`nix/hosts/<host>/facts.nix` (mbp16 — `yes`, wsvm — `no`). С `vm = "no"`
+пакеты, `@vms`, группа `libvirt`, описание прошивки и `~/VMs` не ставятся,
+`ws check virt` ничего не проверяет.
+
 ```text
-nix/hosts/apt.txt           qemu, libvirt, virt-manager, SPICE, OVMF, swtpm, virtiofsd
-bootstrap.sh, шаг 3         @vms и bind-монтирования, пул и сеть default, группа libvirt
+virt/apt.txt                qemu, libvirt, virt-manager, SPICE, OVMF, swtpm, virtiofsd
+virt/bootstrap.bash         шаг 3 bootstrap.sh: @vms и bind-монтирования, пул и сеть default
+bootstrap.sh                группа libvirt
+system/virt.nix             описание прошивки OVMF (qcow2-переменные)
 virt/virt.nix               ~/VMs -> /var/lib/libvirt/images
 bin/ws-check-virt           ws check virt
 ```
@@ -107,7 +114,8 @@ qcow2, а шаблон пакета `ovmf` — raw, и переводить ег
 /var/lib/vms/firmware/OVMF_VARS_4M.ms.qcow2      шаблон в qcow2 (bootstrap.sh)
 /etc/qemu/firmware/30-...-qcow2-vars.json        описание прошивки: код пакета
                                                  raw, шаблон qcow2; приоритет
-                                                 выше пакетных (ws system apply)
+                                                 выше пакетных (system/virt.nix,
+                                                 ws system apply)
 ```
 
 Новая VM с `--boot uefi` (virt-manager — тоже) получает NVRAM

@@ -61,9 +61,11 @@ check     run the owners' checks with --json and summarize their result
           shows WARN/FAIL messages, -v all;
           check repo: the checkout (Git, hygiene, syntax, bin/ executables);
           check home: home-manager generation, Nix, man pages, session;
-          check virt: KVM, libvirt, VM storage @vms, NAT network, OVMF/TPM;
+          check virt: KVM, libvirt, VM storage @vms, NAT network, OVMF/TPM
+          (hosts with vm = "yes" in facts.nix);
           check backup: local copy root on its own subvolume, SSH alias and key;
-          check apt compares nix/hosts/apt.txt and nix/hosts/<host>/apt.txt (the
+          check apt compares nix/hosts/apt.txt, nix/hosts/<host>/apt.txt and, with
+          vm = "yes", virt/apt.txt (the
           lists of bootstrap.sh) with the installed packages, report only;
           each takes --json (one result object, what ws check reads)
 system    build the host system file tree (system) and compare it
@@ -843,7 +845,10 @@ cmd_check_apt() {
     esac
 
     h="$(host)"
-    mapfile -t want < <(cat "$repo/nix/hosts/apt.txt" "$repo/nix/hosts/$h/apt.txt" 2>/dev/null \
+    local -a lists=("$repo/nix/hosts/apt.txt" "$repo/nix/hosts/$h/apt.txt")
+    # VM packages only on hosts with vm = "yes" (helpws virt).
+    [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" vm)" != yes ]] || lists+=("$repo/virt/apt.txt")
+    mapfile -t want < <(cat "${lists[@]}" 2>/dev/null \
         | sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' -e '/^ppa:/d' | sort -u)
     for pkg in $(printf '%s\n' "${want[@]}" | sed -n 's/^purge://p'); do
         if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q ' installed$'; then

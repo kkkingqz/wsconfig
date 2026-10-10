@@ -6,6 +6,8 @@
   user = "test";
   wsconfig = "wsconfig";
   hardware = "generic-pc";
+  # No VMs inside the test VM (helpws virt).
+  vm = "no";
   boot = "grub";
   kernelParams = [ "quiet" "splash" ];
 }

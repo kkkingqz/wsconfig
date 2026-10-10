@@ -18,7 +18,11 @@
       # Every directory of nix/hosts is a host: facts.nix and apt.txt.
       hosts = lib.attrNames (lib.filterAttrs (_: type: type == "directory")
         (builtins.readDir ./nix/hosts));
-      factsOf = host: import ./nix/hosts/${host}/facts.nix;
+      factsOf = host:
+        let facts = import ./nix/hosts/${host}/facts.nix; in
+        assert lib.assertMsg (lib.elem (facts.vm or null) [ "yes" "no" ])
+          "nix/hosts/${host}/facts.nix: vm must be \"yes\" or \"no\" (helpws virt)";
+        facts;
 
       mkHome = host: home-manager.lib.homeManagerConfiguration {
         inherit pkgs;

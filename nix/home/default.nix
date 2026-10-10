@@ -18,9 +18,10 @@
     ../../keyboard/keyboard.nix
     ../../distrobox/distrobox.nix
     ../../windows/apps.nix
-    ../../virt/virt.nix
     ../../widgets/widgets.nix
   ]
+  # ~/VMs (helpws virt) on hosts with VMs.
+  ++ lib.optionals (facts.vm == "yes") [ ../../virt/virt.nix ]
   # Pinned sources of the patched t2bce modules (helpws suspend) and of
   # t2gmux (helpws plan-dgpu).
   ++ lib.optionals (facts.hardware == "t2-mbp16") [

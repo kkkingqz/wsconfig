@@ -2,7 +2,8 @@
 # One package per line; `ppa:OWNER/NAME` adds an Ubuntu PPA first;
 # `purge:NAME` purges a package of the standard install (bootstrap.sh).
 # Installed by bootstrap.sh; `ws check apt` compares with apt-mark showmanual.
-# Host packages: nix/hosts/<name>/apt.txt.
+# Host packages: nix/hosts/<name>/apt.txt; virtual machines: virt/apt.txt
+# (hosts with vm = "yes" in facts.nix).
 
 # Nix: delivers the user layer (helpws history-nix)
 nix-bin
@@ -51,23 +52,6 @@ timeshift
 # sg: bootstrap.sh runs the first switch with nix-users before a new login
 # (Ubuntu 26.04 moved sg/newgrp from login to util-linux-extra)
 util-linux-extra
-
-# Virtual machines: KVM/QEMU, libvirt qemu:///system, virt-manager (helpws virt).
-# Recommends are not installed, so the SPICE console parts are listed.
-qemu-system-x86
-qemu-utils
-qemu-system-modules-spice
-qemu-system-modules-opengl
-libvirt-daemon-system
-libvirt-clients
-virt-manager
-gir1.2-spiceclientgtk-3.0
-gir1.2-spiceclientglib-2.0
-# UEFI (with Secure Boot variants) and TPM: a Windows 11 guest needs both
-ovmf
-swtpm-tools
-# Shared folders (virtiofs)
-virtiofsd
 
 # Desktop and command-line tools on top of the standard install
 # Space preview in Nautilus (org.gnome.NautilusPreviewer)

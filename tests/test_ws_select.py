@@ -44,7 +44,10 @@ class ChooseTests(unittest.TestCase):
             result = ws_select.choose(items, "тест", unchecked, tty=slave)
             typist.join()
         finally:
+            # Closing the slave ends the reader (EIO) once it has read
+            # everything; the master goes last.
             os.close(slave)
+            reader.join(timeout=5)
             os.close(master)
         self.screen = b"".join(output).decode(errors="replace")
         return result

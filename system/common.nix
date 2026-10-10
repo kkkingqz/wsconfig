@@ -1,6 +1,5 @@
 # Every machine: uinput access for xremap, ntsync for Proton in distrobox,
-# UEFI for VMs with variables in qcow2 (helpws virt), Timeshift snapshots in
-# GRUB.
+# Timeshift snapshots in GRUB. VM files: system/virt.nix (vm = "yes").
 # watch: system files the workstation depends on but does not install;
 # ws-baseline records them with the installed ones.
 { file, ... }:
@@ -13,7 +12,6 @@
   files = [
     (file "/etc/udev/rules.d/99-workstation-uinput.rules" "system/files/udev/99-workstation-uinput.rules" "0644")
     (file "/etc/modules-load.d/ntsync.conf" "system/files/modules-load.d/ntsync.conf" "0644")
-    (file "/etc/qemu/firmware/30-edk2-x86_64-secure-enrolled-qcow2-vars.json" "system/files/qemu/firmware/30-edk2-x86_64-secure-enrolled-qcow2-vars.json" "0644")
 
     # No snaps: snapd is purged (nix/hosts/apt.txt) and pinned out.
     (file "/etc/apt/preferences.d/ws-no-snapd" "system/files/apt/ws-no-snapd" "0644")
