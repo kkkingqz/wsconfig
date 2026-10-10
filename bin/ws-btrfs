@@ -9,12 +9,15 @@ set -euo pipefail
 #
 #   1. / on the top level: snapshot / as @; /home, /var/cache and /var/log
 #      into @home, @cache and @log by reflink copies, @tmp empty; fstab of @
-#      (the installer's swap file goes: swap is @swap); update-grub in a
-#      chroot of @; the GRUB stub on the ESP to the grub.cfg of @. Writes
-#      after the snapshot stay in the old root: reboot right away.
-#   2. / is @: checks the mounts; on rEFInd hosts (boot = "refind-...") makes
-#      @ the default subvolume, rEFInd loads the kernel from it; removes the
-#      old root from the top level after a confirmation.
+#      (the installer's swap file goes: a swap file cannot live in a
+#      subvolume with snapshots); update-grub in a chroot of @; the GRUB
+#      stub on the ESP to the grub.cfg of @. Writes after the snapshot stay
+#      in the old root: reboot right away.
+#   2. / is @: checks the mounts; a swap file of the installer comes back
+#      with its size on @swap (ws-suspend swap-setup); on rEFInd hosts
+#      (boot = "refind-...") makes @ the default subvolume, rEFInd loads the
+#      kernel from it; removes the old root from the top level after a
+#      confirmation.
 #
 # Until step 2 removes it the old root still boots: in GRUB press c, then
 # configfile /boot/grub/grub.cfg (the old menu); the old stub is
@@ -92,6 +95,8 @@ layout=("@home /home" "@cache /var/cache" "@log /var/log" "@tmp /tmp")
 snap=/@
 # What was on the top level before the snapshot: step 2 removes exactly that.
 old_list=/var/lib/ws-btrfs-layout/old-root
+# Size of the installer's swap file: step 2 makes it again on @swap.
+swap_size=/var/lib/ws-btrfs-layout/swap-size
 
 helper() { python3 "$repo/lib/btrfs_layout.py" "$@"; }
 
@@ -189,12 +194,18 @@ step1() {
 
     echo
     echo "== / -> @"
-    # The list lands in @ through the snapshot.
+    # The lists land in @ through the snapshot.
+    t=""
+    if ((${#swaps[@]})) && [[ -f "${swaps[0]}" ]]; then
+        t="$(( $(stat -c %s "${swaps[0]}") / 1048576 ))m"
+    fi
     if [[ "$dry_run" == true ]]; then
         echo "would record the top level in $snap$old_list: $(ls -A / | tr '\n' ' ')"
+        [[ -z "$t" ]] || echo "would record the swap file size for step 2: $t"
     else
         sudo install -d "$(dirname "$old_list")"
         ls -A / | sudo tee "$old_list" >/dev/null
+        [[ -z "$t" ]] || echo "$t" | sudo tee "$swap_size" >/dev/null
     fi
     run sudo btrfs subvolume snapshot / "$snap"
     run sudo rm -rf "$(dirname "$old_list")"
@@ -232,10 +243,12 @@ step1() {
     echo "== update-grub in a chroot of @"
     local mnt=/run/ws-btrfs-root
     if [[ "$dry_run" == true ]]; then
-        echo "would mount @ at $mnt with /dev, /dev/pts, /proc, /sys, /run and run update-grub there"
+        echo "would mount @ at $mnt with /dev, /dev/pts, /proc, /sys, efivars, /run and run update-grub there"
     else
         mount_now -o subvol=@ "$root_dev" "$mnt"
-        for f in /dev /dev/pts /proc /sys /run; do
+        for f in /dev /dev/pts /proc /sys /sys/firmware/efi/efivars /run; do
+            # efivars: 30_uefi-firmware adds the firmware settings entry.
+            [[ "$f" != */efivars ]] || findmnt -n "$f" >/dev/null || continue
             mount_now --bind "$f" "$mnt$f"
         done
         sudo chroot "$mnt" update-grub
@@ -291,6 +304,16 @@ step2() {
         fi
     else
         echo "boot = \"$boot\": default subvolume stays ID $def"
+    fi
+
+    # The installer's swap file, now on @swap where snapshots do not reach.
+    if [[ -r "$swap_size" ]]; then
+        if grep -Eq '^[^#]*[[:space:]]/swap[[:space:]]' /etc/fstab; then
+            echo "/swap in fstab: swap file kept as it is"
+        else
+            run "$repo/bin/ws-suspend" swap-setup "$(cat "$swap_size")"
+        fi
+        run sudo rm -f "$swap_size"
     fi
 
     mount_now -o subvolid=5 "$root_dev" "$top"

@@ -16,6 +16,7 @@ flathub org.example.Everywhere all=yes
 flathub org.example.Nowhere all=no
 flathub org.example.Plain
 flathub org.example.Mine new=no all=yes
+flathub org.example.Later new=ask all=no
 '''
 BOXES = '''arch mbp16=yes all=ask
 t2bce-build mbp16=yes all=no
@@ -64,8 +65,10 @@ class SetupMarksTests(unittest.TestCase):
     def test_offers_lines_without_own_mark_preselected_by_all(self):
         self.run_with([['org.example.Asked', 'org.example.Plain'], ['arch'], []])
         apps, boxes, overrides = (dict(a[1]) for a in self.asked)
+        # An own ask is no answer: offered, checked by its own state.
         self.assertEqual(apps, {'org.example.Asked': True, 'org.example.Everywhere': True,
-                                'org.example.Nowhere': False, 'org.example.Plain': True})
+                                'org.example.Nowhere': False, 'org.example.Plain': True,
+                                'org.example.Later': True})
         self.assertEqual(boxes, {'arch': True, 't2bce-build': False})
         # Only overrides of apps the workstation has, without its own mark.
         self.assertEqual(overrides, {'org.example.Asked env GDK_SCALE=2': True,
@@ -81,6 +84,7 @@ class SetupMarksTests(unittest.TestCase):
         self.assertIn('flathub org.example.Nowhere new=yes all=no\n', apps)
         self.assertIn('flathub org.example.Plain new=no\n', apps)
         self.assertIn('flathub org.example.Mine new=no all=yes\n', apps)
+        self.assertIn('flathub org.example.Later new=no all=no\n', apps)
         self.assertIn('# managed apps\n', apps)
         self.assertEqual(self.read('distrobox/hosts.txt'),
                          'arch mbp16=yes new=no all=ask\nt2bce-build mbp16=yes new=no all=no\n')
@@ -97,7 +101,7 @@ class SetupMarksTests(unittest.TestCase):
         self.assertEqual(self.read('distrobox/hosts.txt'), BOXES)
 
     def test_nothing_to_ask_changes_nothing(self):
-        self.run_with([['org.example.Asked', 'org.example.Everywhere'], ['arch'], []])
+        self.run_with([['org.example.Asked', 'org.example.Everywhere', 'org.example.Later'], ['arch'], []])
         self.asked.clear()
         self.assertEqual(self.run_with([]), [])
         self.assertEqual(self.asked, [])

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The choices of setup.sh on a workstation (helpws setup): every line of
 flatpak/apps.txt, distrobox/hosts.txt and flatpak/overrides.txt without a
-mark of this workstation, as checklists (lib/ws_select.py). all=yes and ask
+yes or no of this workstation (an own ask is none), as checklists (lib/ws_select.py). all=yes and ask
 start checked, all=no unchecked; overrides are offered only for the apps
 this workstation has. Every line shown gets HOST=yes or HOST=no, so ws apply
 asks nothing afterwards; overrides of apps it does not have stay unmarked.
@@ -30,10 +30,11 @@ def name_of(marked, line):
 
 
 def offer(marked, host, keep=lambda line: True):
-    """[(name, label, checked)] of the lines without a mark of HOST."""
+    """[(name, label, checked)] of the lines without a yes or no of HOST
+    (an own ask counts as none: apply would ask about it)."""
     items = []
     for line in marked.entries():
-        if host in line.marks or not keep(line):
+        if line.marks.get(host) in ("yes", "no") or not keep(line):
             continue
         label = line.key[0] if len(line.key) > 1 and not marked.fixed else ""
         items.append((name_of(marked, line), label, marked.line_state(line, host) != "no"))

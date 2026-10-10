@@ -211,8 +211,11 @@ cmd_capture() {
                     continue
                 fi
                 if [[ "$pkg" == source:* ]]; then
+                    # The repository and its key, as bootstrap.sh installs them.
                     cmp -s "$repo/nix/hosts/$h/apt/${pkg#source:}.sources" \
                         "/etc/apt/sources.list.d/ws-${pkg#source:}.sources" \
+                        && cmp -s "$repo/nix/hosts/$h/apt/${pkg#source:}.asc" \
+                            "/etc/apt/keyrings/ws-${pkg#source:}.asc" \
                         && printf 'source\t%s\tpresent\n' "${pkg#source:}" \
                         || printf 'source\t%s\tMISSING\n' "${pkg#source:}"
                     continue

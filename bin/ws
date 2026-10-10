@@ -836,7 +836,7 @@ check_steps=(
 # A listed package that is missing or only auto-installed (apt autoremove
 # could take it) is a WARN; manual packages outside the lists are listed.
 cmd_check_apt() {
-    local h pkg status name
+    local h pkg status name f
     local -a want=() extra=()
     local -A listed=() manual=()
 
@@ -872,6 +872,14 @@ cmd_check_apt() {
         else
             warn "apt source $name missing or not as nix/hosts/$h/apt/$name.* (bootstrap.sh)"
         fi
+    done
+    # ws-NAME without its source: line: bootstrap.sh removes it.
+    for f in /etc/apt/sources.list.d/ws-*.sources; do
+        [[ -e "$f" ]] || continue
+        name="${f##*/ws-}"
+        name="${name%.sources}"
+        printf '%s\n' "${want[@]}" | grep -qx "source:$name" \
+            || warn "apt source ws-$name is in no apt list: apt still installs from it (bootstrap.sh removes it)"
     done
     for name in $(printf '%s\n' "${want[@]}" | sed -n 's/^arch://p'); do
         if dpkg --print-foreign-architectures | grep -qx "$name"; then

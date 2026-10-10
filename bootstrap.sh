@@ -166,6 +166,16 @@ for name in "${sources[@]}"; do
         added=true
     fi
 done
+# ws-NAME belongs to bootstrap.sh: one whose source: line is gone goes too,
+# or apt would keep installing from it.
+for f in /etc/apt/sources.list.d/ws-*.sources; do
+    [[ -e "$f" ]] || continue
+    name="${f##*/ws-}"
+    name="${name%.sources}"
+    [[ " ${sources[*]} " == *" $name "* ]] && continue
+    run sudo rm -f "$f" "/etc/apt/keyrings/ws-$name.asc"
+    added=true
+done
 for arch in "${archs[@]}"; do
     if dpkg --print-foreign-architectures | grep -qx "$arch"; then
         echo "architecture present: $arch"

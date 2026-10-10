@@ -371,7 +371,9 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
    `uname -r`, параметры ядра, AppArmor не активен, governor `powersave` до
    PPD, поворот, касания, Wi-Fi, Bluetooth; `ws check steam` — `@steam`
    смонтирован.
-5. **Железо.** `system/hardware/legion-go.nix`, `ws-suspend swap-setup 16g`.
+5. **Железо.** `system/hardware/legion-go.nix`, `ws-suspend swap-setup 16g`
+   (если `ws btrfs make` уже перенёс swapfile установщика другого размера:
+   `sudo swapoff /swap/swapfile`, `sudo rm /swap/swapfile`, затем swap-setup).
    Проверить:
    - s2idle (`amd_s2idle.py`), яркость, автоповорот, батарея;
    - режимы PPD → `platform_profile`, governor, EPP → вентилятор;

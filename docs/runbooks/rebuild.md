@@ -106,13 +106,16 @@ git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
    Затем: снимок `/` → `@`; `/home`, `/var/cache`, `/var/log` переносятся
    в `@home`, `@cache`, `@log` reflink-копиями (места почти не занимают),
    `@tmp` пустой; fstab в `@` (установщика — `/etc/fstab.pre-btrfs-layout`),
-   swapfile установщика убирается (swap — `@swap`, `helpws suspend`);
+   swapfile установщика из `@` убирается (swapfile нельзя в томе со
+   снимками), его размер записывается для шага 2;
    `update-grub` в chroot `@` (Ubuntu сам добавляет `rootflags=subvol=@`, пути
    `/@/boot/...`; без них — отказ до изменения ESP); stub на ESP — на
    `/@/boot/grub`, прежний — `grub.cfg.pre-btrfs-layout` рядом. NVRAM и
    `grub-install` не трогаются, initramfs не пересобирается (dracut Ubuntu
    generic, корень берёт из командной строки ядра).
-2. `/` — `@`: проверяет, что все пять смонтированы из своих subvolumes; при
+2. `/` — `@`: проверяет, что все пять смонтированы из своих subvolumes;
+   swapfile установщика, если он был, создаётся заново того же размера в
+   `@swap` (`ws-suspend swap-setup`, `helpws suspend`); при
    `boot = "refind-…"` в `facts.nix` (mbp16) делает `@` default subvolume —
    rEFInd берёт ядро из него, хост только с GRUB оставляет default 5;
    показывает старый корень на верхнем уровне (ровно то, что там было до
