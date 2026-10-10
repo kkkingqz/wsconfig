@@ -63,7 +63,12 @@ workstation-xremap
 
 `Dynamic Function Row Virtual Input Device` исключён из xremap как защита от
 петли между xremap и Touch Bar daemon. В текущем родном режиме Touch Bar такого
-устройства нет.
+устройства нет. Свои исключения хоста — `xremapIgnore` в `facts.nix`
+(legiongo: `InputPlumber Keyboard`, виртуальная клавиатура контроллера).
+
+xremap работает только в сессии GNOME: в Game Mode (gamescope-session-plus
+тоже поднимает `graphical-session.target`) `ws-xremap` выходит с кодом 0, без
+перезапусков (`helpws plan-legion-go`).
 
 ## Основные системные shortcuts
 

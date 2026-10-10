@@ -8,10 +8,14 @@
 #   whether xremap runs: `ws-keyboard restore` and a failed apply create
 #   ~/.local/state/workstation/keyboard/xremap.disabled, apply/start remove it.
 # - ~/.local/bin/xremap stays for `ws-keyboard devices` and the status tools.
-{ config, pkgs, xremap, facts, ... }:
+{ config, lib, pkgs, xremap, facts, ... }:
 let
   home = config.home.homeDirectory;
   repo = "${home}/${facts.wsconfig}";
+  # Input devices of the host xremap must not grab (facts.nix
+  # xremapIgnore): virtual keyboards of other remappers, e.g. InputPlumber
+  # on legiongo. ";" between names, which may hold spaces.
+  ignore = facts.xremapIgnore or [ ];
 
   xremapYml = pkgs.writeText "xremap.yml"
     (builtins.replaceStrings [ "@repo@" ] [ repo ]
@@ -38,7 +42,9 @@ in
         # xremap --desktop and --watch (formerly config/keyboard/settings.conf).
         "XREMAP_DESKTOP=gnome"
         "XREMAP_WATCH=config,device"
-      ];
+      ] ++ lib.optional (ignore != [ ])
+        # Quoted: systemd splits Environment= at spaces.
+        ("\"XREMAP_IGNORE=" + lib.concatStringsSep ";" ignore + "\"");
       ExecStart = "/usr/bin/bash ${repo}/bin/ws-xremap";
       Restart = "on-failure";
       RestartSec = 5;

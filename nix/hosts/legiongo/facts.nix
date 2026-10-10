@@ -14,6 +14,10 @@
   nativeSteam = "yes";
   gameMode = "yes";
   boot = "grub";
+  # Not for xremap (keyboard/xremap.nix): the virtual keyboard InputPlumber
+  # makes of the controller (src/input/target/keyboard.rs). The controllers
+  # themselves InputPlumber hides.
+  xremapIgnore = [ "InputPlumber Keyboard" ];
   kernelParams = [
     "quiet" "splash"
     # Xbox controllers over Bluetooth (as Bazzite does everywhere).

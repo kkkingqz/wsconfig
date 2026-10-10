@@ -11,6 +11,23 @@ watch="${XREMAP_WATCH:-}"
 [[ -n "$config" && -n "$desktop" && -n "$watch" ]] || { echo "ws-xremap: XREMAP_CONFIG/DESKTOP/WATCH unset; start it as xremap.service (ws-keyboard start)" >&2; exit 64; }
 [[ -r "$config" ]] || { echo "ws-xremap: missing config: $config" >&2; exit 66; }
 
+# Game Mode (gamescope-session-plus, helpws plan-legion-go) starts
+# graphical-session.target too, and xremap is part of the GNOME layer: off
+# there, without a failure that would restart it.
+if [[ ":${XDG_CURRENT_DESKTOP:-}:" != *:GNOME:* ]] || pgrep -u "$(id -u)" -x gamescope >/dev/null 2>&1; then
+    echo "ws-xremap: not a GNOME session (XDG_CURRENT_DESKTOP=${XDG_CURRENT_DESKTOP:-unset}): xremap stays off"
+    exit 0
+fi
+
+# The Touch Bar of mbp16 always; the host's own (facts.nix xremapIgnore).
+ignore=(--ignore "Dynamic Function Row Virtual Input Device")
+if [[ -n "${XREMAP_IGNORE:-}" ]]; then
+    IFS=';' read -r -a names <<<"$XREMAP_IGNORE"
+    for name in "${names[@]}"; do
+        [[ -z "$name" ]] || ignore+=(--ignore "$name")
+    done
+fi
+
 xremap_bin="${XREMAP_BIN:-$(command -v xremap || true)}"
 [[ -n "$xremap_bin" ]] || { echo "ws-xremap: xremap is not installed or not in PATH" >&2; exit 127; }
 
@@ -41,5 +58,5 @@ exec "$xremap_bin" \
     "--watch=$watch" \
     --desktop "$desktop" \
     --allow-launch true \
-    --ignore "Dynamic Function Row Virtual Input Device" --output-device-name workstation-xremap \
+    "${ignore[@]}" --output-device-name workstation-xremap \
     "$config"

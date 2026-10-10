@@ -288,10 +288,13 @@ wsgame mode game|desktop   то же, что steamosctl (терминал, ssh)
 
 ## 4.5 Зависящее от хоста в других слоях
 
-- **xremap.** Не запускать в gamescope-сессии: его тянет
-  `graphical-session.target`, а её поднимает и `gamescope-session-plus`. В
-  `--ignore` — виртуальные устройства InputPlumber и Steam и клавиатура
-  FPS-режима контроллера.
+- **xremap** (сделано 2026-10-10). В gamescope-сессии не работает: его
+  тянет `graphical-session.target`, а её поднимает и
+  `gamescope-session-plus`, поэтому `ws-xremap` вне GNOME выходит с кодом 0.
+  `--ignore` из `xremapIgnore` в `facts.nix`: `InputPlumber Keyboard`
+  (исходные устройства контроллера InputPlumber скрывает). Клавиатуру
+  FPS-режима и виртуальные устройства Steam — сверить на этапе 7 (`ws-keyboard
+  devices`) и дописать.
 - **Клавиатура.** Шаги для GDM (EN на экране входа) после перехода на SDDM
   не применять.
 - **GNOME.** Масштаб 2.0, экранная клавиатура, ярлык «Return to Game Mode»;
