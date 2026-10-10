@@ -33,15 +33,19 @@ fi
 # windows/apps.nix); the programs of other boxes are not checked here.
 hosts_file="${WSBOX_HOSTS:-$repo/distrobox/hosts.txt}"
 declare -A box_state=()
+# Errors apart from the BOX STATE lines: a warning must not become a box.
+marks_err="$(mktemp)"
 if host="$("$repo/bin/ws" host 2>/dev/null)" \
-    && states="$(python3 "$repo/lib/ws_marks.py" "$hosts_file" states "$host" $win_boxes 2>&1)"; then
+    && states="$(python3 "$repo/lib/ws_marks.py" "$hosts_file" states "$host" $win_boxes 2>"$marks_err")"; then
     while read -r box state; do
         [[ -n "$box" ]] && box_state[$box]="$state"
     done <<<"$states"
 else
-    fail "workstation marks of $hosts_file: ${states:-unknown workstation (ws host)}"
+    err="$(tr '\n' ' ' < "$marks_err")"
+    fail "workstation marks of $hosts_file: ${err:-unknown workstation (ws host)}"
     host=unknown
 fi
+rm -f "$marks_err"
 on_host() { [[ "${box_state[$1]:-ask}" == yes ]]; }
 
 default_box="$(sed -nE 's/^default_box=//p' "$apps_ini" 2>/dev/null)"

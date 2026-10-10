@@ -184,6 +184,13 @@ class WsboxTests(unittest.TestCase):
                 self.assertEqual(self.containers(), {"a"})
                 self.assertEqual(self.hosts.read_text(), marks)
 
+    def test_update_without_containers_has_nothing_to_do(self):
+        # Every container declined here: not an error for ws update.
+        self.marks("a test=no\nb test=no\nc test=no\n")
+        result = self.wsbox("update")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("nothing to update", result.stdout)
+
     def test_check_reports_by_mark(self):
         self.marks("a test=yes all=ask\nb test=no all=ask\nghost test=yes\n")
         self.exists("b")

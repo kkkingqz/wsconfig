@@ -67,6 +67,11 @@ class ChooseTests(unittest.TestCase):
     def test_toggle_all_off_then_one_on(self):
         self.assertEqual(self.choose(["n\n", "a", DOWN, DOWN, " ", "\n"]), ["c.App"])
 
+    def test_russian_layout_letters(self):
+        # ф and й are the a and q keys in the ЙЦУКЕН layout.
+        self.assertEqual(self.choose(["n\n", "ф", DOWN, DOWN, " ", "\n"]), ["c.App"])
+        self.assertIsNone(self.choose(["n\n", "й"]))
+
     def test_escape_cancels(self):
         self.assertIsNone(self.choose(["n\n", " ", "\x1b"]))
 

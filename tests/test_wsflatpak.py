@@ -173,6 +173,12 @@ class UserRuntimeTests(unittest.TestCase):
     def marks(self, line):
         self.g["APPS_LIST"].write_text(line + "\n")
 
+    def test_managed_line_needs_remote_and_app(self):
+        # flatpak.nix reads REMOTE APP only; a lone APP would break ws switch.
+        self.assertEqual(self.g["parse_managed_line"](f"flathub {APP} test=yes"), ("flathub", APP))
+        with self.assertRaises(SystemExit):
+            self.g["parse_managed_line"](APP)
+
     def test_apply_installs_app_marked_yes_for_this_host(self):
         state = FlatpakState(system_runtime=True)
         self.marks(f"flathub {APP} test=yes all=ask")

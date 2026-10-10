@@ -494,7 +494,7 @@ cmd_check() {
     local expected_image
     local actual_image
     local expected_home
-    local repo hook path pkgbuild readme_sum ntsync_hook host state box_state
+    local repo hook path pkgbuild readme_sum ntsync_hook host state box_state marks_err
     local -A states=()
 
     # Result contract of ws check (--json): lib/check.bash.
@@ -535,7 +535,9 @@ cmd_check() {
         fail "manifest missing"
     fi
 
-    if host="$(this_host 2>&1)" && box_state="$(box_states 2>&1)"; then
+    # Errors apart from the NAME STATE lines: a warning must not become a box.
+    marks_err="$(mktemp)"
+    if host="$(this_host 2>"$marks_err")" && box_state="$(box_states 2>"$marks_err")"; then
         while read -r name state; do
             [[ -n "$name" ]] && states[$name]="$state"
         done <<<"$box_state"
@@ -545,9 +547,10 @@ cmd_check() {
             is_managed "$name" || warn "distrobox/hosts.txt marks an undeclared container: $name"
         done < <(sed -e 's/#.*//' "$hosts_file" 2>/dev/null | awk 'NF {print $1}')
     else
-        fail "workstation marks: ${box_state:-$host}"
+        fail "workstation marks: $(tr '\n' ' ' < "$marks_err")"
         host=unknown
     fi
+    rm -f "$marks_err"
 
     if [[ -r "$boxes_manifest" ]]; then
         pass "boxes manifest present"
@@ -798,7 +801,11 @@ cmd_update() {
         done < <(managed_boxes)
     fi
 
-    ((${#names[@]})) || die "no managed container exists (wsbox apply)"
+    # A workstation may have none (distrobox/hosts.txt): nothing to update.
+    if ((${#names[@]} == 0)); then
+        echo "no managed container on this workstation: nothing to update (wsbox apply)"
+        return 0
+    fi
 
     for name in "${names[@]}"; do
         printf '\n== %s\n' "$name"

@@ -13,7 +13,7 @@ Used by wsbox as a command:
     ws_select.py --what TEXT [--unchecked NAME]... -- NAME<TAB>LABEL...
 
 prints the chosen names, one per line; exit 2 when cancelled, 3 without a
-terminal.
+terminal, 130 on Ctrl+C.
 """
 import argparse
 import os
@@ -23,6 +23,7 @@ import termios
 
 CANCELLED = 2
 NO_TERMINAL = 3
+INTERRUPTED = 130
 
 
 class NoTerminal(Exception):
@@ -36,6 +37,10 @@ def open_tty():
         return os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)
     except OSError:
         return None
+
+
+# The letter keys in the Russian layout (ЙЦУКЕН): the same physical keys.
+LAYOUT = {"ф": "a", "й": "q", "о": "j", "л": "k"}
 
 
 class Terminal:
@@ -58,6 +63,11 @@ class Terminal:
         b = os.read(self.fd, 1)
         if not b:
             return "eof"
+        if b[0] >= 0xC0:
+            # A multibyte UTF-8 character (a Cyrillic letter): the rest of it.
+            b += os.read(self.fd, 1 if b[0] < 0xE0 else 2 if b[0] < 0xF0 else 3)
+            k = b.decode(errors="replace")
+            return LAYOUT.get(k.lower(), k)
         if b != b"\x1b":
             return b.decode(errors="replace")
         # A bare Esc or a key sequence: CSI (ESC [ ... A) or, in application
@@ -199,6 +209,10 @@ def main():
         chosen = choose(items, ns.what, ns.unchecked)
     except NoTerminal:
         return NO_TERMINAL
+    except KeyboardInterrupt:
+        # Ctrl+C: the terminal is restored (checklist), no traceback.
+        sys.stderr.write("\n")
+        return INTERRUPTED
     if chosen is None:
         return CANCELLED
     for n in chosen:

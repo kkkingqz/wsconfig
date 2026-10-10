@@ -57,7 +57,7 @@ def ask(term, title, items):
 
 def run(repo, host, term):
     repo = Path(repo)
-    apps = MarkedList(repo / "flatpak/apps.txt", key_fields={1, 2})
+    apps = MarkedList(repo / "flatpak/apps.txt", key_fields={2})
     boxes = MarkedList(repo / "distrobox/hosts.txt")
     overrides = MarkedList(repo / "flatpak/overrides.txt", **OVERRIDES)
 
@@ -95,6 +95,9 @@ def main(argv):
         return NO_TERMINAL
     try:
         changed = run(argv[1], host, ws_select.Terminal(fd))
+    except KeyboardInterrupt:
+        sys.stderr.write("\nsetup_marks: interrupted, nothing written\n")
+        return ws_select.INTERRUPTED
     finally:
         os.close(fd)
     if changed is None:

@@ -60,7 +60,7 @@ def this_host():
 
 def app_marks():
     try:
-        return ws_marks.MarkedList(APPS_LIST, key_fields={1, 2})
+        return ws_marks.MarkedList(APPS_LIST, key_fields={2})
     except ValueError as e:
         raise SystemExit(f"wsflatpak: {e}")
 
@@ -103,14 +103,11 @@ def parse_managed_line(raw):
     if not parts:
         return None
 
-    if len(parts) == 1:
-        # Backward compatibility with the original one-column format.
-        return "flathub", parts[0]
-
+    # REMOTE APP only: flatpak.nix (ws switch) reads the same lines.
     if len(parts) == 2:
         return parts[0], parts[1]
 
-    raise SystemExit(f"wsflatpak: invalid managed app line: {raw}")
+    raise SystemExit(f"wsflatpak: invalid managed app line (REMOTE APP): {raw}")
 
 
 def managed_entries():
@@ -1693,4 +1690,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Ctrl+C (the apply checklist restores the terminal): no traceback.
+        print(file=sys.stderr)
+        raise SystemExit(130)
