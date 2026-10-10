@@ -353,8 +353,9 @@ Timeshift и backup. Сохранения, которых нет в Steam Cloud,
    `wsgame fetch`; пакеты ставятся и снимаются в чистом контейнере Ubuntu
    26.04.
 3. **Ubuntu.** Установка 26.04 с USB на весь диск, hostname `legiongo`,
-   пользователь `king`, Btrfs и subvolumes, как в фазе 6 (`helpws
-   history-nix`). Инвентарь в `docs/history/`:
+   пользователь `king`; ESP и корень Btrfs без отдельного `/boot`. Затем
+   `git clone` и `ws btrfs make`: два запуска, между ними reboot через GRUB
+   (`helpws rebuild`, раздел 3). Инвентарь в `docs/history/`:
    - `ws collect`; DMI, `lspci -nnk`, `lsusb`, `libinput list-devices`;
    - `/sys/class/firmware-attributes/lenovo-wmi-other-0/attributes/`,
      `platform_profile_choices`, hwmon, iio;

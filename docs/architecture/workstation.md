@@ -810,7 +810,7 @@ Shebang:
 
 ```text
 wsconfig/
-├── bootstrap.sh          новая машина: @nix → apt → @vms/libvirt → @steam → группы → fish → ws switch
+├── bootstrap.sh          новая машина (после ws btrfs make): @nix → apt → @vms/libvirt → @steam → группы → fish → ws switch
 ├── flake.nix, flake.lock nixpkgs 26.05 + home-manager, обновляет ws update nix
 ├── nix/
 │   ├── hosts/            apt.txt всех хостов; <host>/facts.nix, apt.txt
@@ -845,6 +845,7 @@ wsconfig/
 │   ├── ws-check-repo, ws-check-home  ws check repo / home
 │   ├── ws-suspend, ws-suspend-check
 │   ├── ws-baseline, ws-checkpoint, ws-collect
+│   ├── ws-btrfs          ws btrfs make: раскладка Btrfs свежей установки
 │   ├── ws-gnome
 │   ├── ws-gnome-check
 │   ├── ws-gnome-status

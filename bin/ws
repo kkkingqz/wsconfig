@@ -19,6 +19,7 @@ Usage:
   ws baseline capture|diff|list ...
   ws checkpoint create|list|show|diff|remove ...
   ws collect [--no-firmware] [ARCHIVE]
+  ws btrfs make [--dry-run]
   ws backup [plan|status|list|check|send|restore-test|recovery-export ...]
   ws host
   ws fact NAME
@@ -94,6 +95,10 @@ baseline  functional baseline, see ws-baseline --help
 collect   archive of the machine state a rebuild needs and the repository
           does not hold (baseline, boot and disks, apt, Apple firmware,
           ~/.local/state/workstation), see ws-collect --help; asks sudo
+btrfs     make: the Btrfs layout of a fresh install (@, @home, @cache, @tmp,
+          @log) from the installed system, before bootstrap.sh: run it,
+          reboot through GRUB, run it again; see ws-btrfs --help and
+          helpws rebuild, section 3
 backup    Timeshift snapshots to Unraid, then retain final local ro parents;
           plan/status work before SSH is configured; list shows the local
           copies (asks sudo);
@@ -988,6 +993,7 @@ case "${1:-}" in
     baseline) shift; exec "$repo/bin/ws-baseline" "$@" ;;
     checkpoint) shift; exec "$repo/bin/ws-checkpoint" "$@" ;;
     collect) shift; exec "$repo/bin/ws-collect" "$@" ;;
+    btrfs) shift; exec "$repo/bin/ws-btrfs" "$@" ;;
     backup) shift; exec "$repo/bin/wsbackup" "$@" ;;
     host) host ;;
     fact) shift; cmd_fact "$@" ;;

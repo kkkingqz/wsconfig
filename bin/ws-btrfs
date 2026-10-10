@@ -1,0 +1,333 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Btrfs layout of a fresh Ubuntu from the installed system itself, before
+# bootstrap.sh (helpws rebuild, section 3). The installer puts / on the top
+# level of Btrfs (subvolid=5) and makes no subvolumes; ws btrfs make moves
+# the system onto @, @home, @cache, @tmp and @log in two runs with a reboot
+# through GRUB between them (mbp16 as well: rEFInd comes later):
+#
+#   1. / on the top level: snapshot / as @; /home, /var/cache and /var/log
+#      into @home, @cache and @log by reflink copies, @tmp empty; fstab of @
+#      (the installer's swap file goes: swap is @swap); update-grub in a
+#      chroot of @; the GRUB stub on the ESP to the grub.cfg of @. Writes
+#      after the snapshot stay in the old root: reboot right away.
+#   2. / is @: checks the mounts; on rEFInd hosts (boot = "refind-...") makes
+#      @ the default subvolume, rEFInd loads the kernel from it; removes the
+#      old root from the top level after a confirmation.
+#
+# Until step 2 removes it the old root still boots: in GRUB press c, then
+# configfile /boot/grub/grub.cfg (the old menu); the old stub is
+# EFI/<dir>/grub.cfg.pre-btrfs-layout. Each run first checks the state, so a
+# second run of a finished step changes nothing.
+#
+#   ws btrfs make [--dry-run]
+
+repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+dry_run=false
+
+usage() {
+    cat <<'USAGE'
+Usage: ws btrfs make [--dry-run]
+
+make  the Btrfs layout of a fresh install (@, @home, @cache, @tmp, @log)
+      from the installed system, before bootstrap.sh: run it, reboot
+      through GRUB, run it again (helpws rebuild, section 3);
+      --dry-run only shows the steps
+USAGE
+}
+
+die() {
+    echo "ws btrfs: $*" >&2
+    exit 1
+}
+
+# Commands that change the system; --dry-run only prints them.
+run() {
+    if [[ "$dry_run" == true ]]; then
+        printf 'would run: %s\n' "$*"
+    else
+        "$@"
+    fi
+}
+
+case "${1:-}" in
+    make) shift ;;
+    -h|--help|help) usage; exit 0 ;;
+    *) usage >&2; exit 64 ;;
+esac
+case "${1:-}" in
+    --dry-run) dry_run=true ;;
+    "") ;;
+    *) die "usage: ws btrfs make [--dry-run]" ;;
+esac
+
+[[ $EUID -ne 0 ]] || die "run as the desktop user, not root"
+for c in sudo python3 findmnt; do
+    command -v "$c" >/dev/null 2>&1 || die "$c not found"
+done
+[[ "$(findmnt -no FSTYPE /)" == btrfs ]] || die "/ is not Btrfs (helpws rebuild, section 2)"
+root_dev="$(findmnt -no SOURCE / | sed 's/\[.*$//')"
+uuid="$(findmnt -no UUID /)"
+[[ -n "$uuid" ]] || die "cannot determine the UUID of /"
+boot="$("$repo/bin/ws" fact boot)" || die "no boot in the facts.nix of this host"
+
+# Subvolumes of the layout and where they are mounted; @ is /.
+layout=("@home /home" "@cache /var/cache" "@log /var/log" "@tmp /tmp")
+snap=/@
+# What was on the top level before the snapshot: step 2 removes exactly that.
+old_list=/var/lib/ws-btrfs-layout/old-root
+
+helper() { python3 "$repo/lib/btrfs_layout.py" "$@"; }
+
+mounts=()
+cleanup() {
+    local i
+    for ((i = ${#mounts[@]} - 1; i >= 0; i--)); do
+        sudo umount "${mounts[i]}" 2>/dev/null || true
+    done
+    mounts=()
+}
+trap cleanup EXIT
+
+# Mounts that also --dry-run needs (reading only).
+mount_now() {
+    sudo install -d "${@: -1}"
+    sudo mount "$@"
+    mounts+=("${@: -1}")
+}
+
+# The GRUB stubs on the ESP that load this root (EFI/ubuntu, EFI/BOOT).
+stubs() {
+    local f
+    while IFS= read -r -d '' f; do
+        if sudo cat "$f" | helper prefix "$uuid" >/dev/null 2>&1; then
+            echo "$f"
+        fi
+    done < <(sudo find /boot/efi/EFI -mindepth 2 -maxdepth 2 -iname grub.cfg -print0 2>/dev/null)
+}
+
+stub_prefix() { sudo cat "$1" | helper prefix "$uuid"; }
+
+# Step 1: / is still the top level of Btrfs.
+step1() {
+    local entry sub dir f new t tmp_tmpfs=false done_before=true
+    local -a esp=() existing=() swaps=()
+
+    echo "== Step 1 of 2: / is the top level of Btrfs $uuid"
+    # Every check before the first change.
+    [[ "$(findmnt -no FSTYPE /boot/efi 2>/dev/null)" == vfat ]] \
+        || die "/boot/efi is not mounted: the GRUB stub is there"
+    [[ "$(findmnt -no TARGET -T /boot)" == / ]] || die "/boot is its own mount: not supported"
+    for entry in "${layout[@]}"; do
+        read -r sub dir <<<"$entry"
+        t="$(findmnt -no TARGET -T "$dir")"
+        if [[ "$t" == / ]]; then
+            continue
+        elif [[ "$dir" == /tmp && "$t" == /tmp && "$(findmnt -no FSTYPE /tmp)" == tmpfs ]]; then
+            tmp_tmpfs=true
+        else
+            die "$dir is on its own mount $t: not supported"
+        fi
+    done
+    command -v update-grub >/dev/null 2>&1 || die "update-grub not found (grub-efi-amd64)"
+    mapfile -t esp < <(stubs)
+    ((${#esp[@]})) || die "no GRUB stub for $uuid in /boot/efi/EFI/*/grub.cfg: only the signed GRUB of Ubuntu is supported"
+
+    for sub in @ @home @cache @log @tmp; do
+        if sudo btrfs subvolume show "/$sub" >/dev/null 2>&1; then
+            existing+=("$sub")
+        fi
+    done
+    if ((${#existing[@]})); then
+        for f in "${esp[@]}"; do
+            [[ "$(stub_prefix "$f")" == /@/boot/grub ]] || done_before=false
+        done
+        if ((${#existing[@]} == 5)) && [[ "$done_before" == true ]] \
+            && awk '$1 !~ /^#/ && $2 == "/" && $4 ~ /(^|,)subvol=@(,|$)/' "$snap/etc/fstab" 2>/dev/null | grep -q .; then
+            echo "Step 1 is done: reboot through GRUB, then ws btrfs make again"
+            return
+        fi
+        die "an earlier ws btrfs make stopped halfway (${existing[*]} exist): remove them (sudo btrfs subvolume delete /@ ...), then run it again"
+    fi
+    # A snapshot of / leaves nested subvolumes behind as empty directories.
+    t="$(sudo btrfs subvolume list / | awk '{ print $NF }' | tr '\n' ' ')"
+    [[ -z "$t" ]] || die "subvolumes already exist, a snapshot of / would lose them: $t"
+
+    new="$(helper fstab "$uuid" < /etc/fstab)" || die "/etc/fstab is not the installer's one"
+    mapfile -t swaps < <(helper swapfiles < /etc/fstab)
+    for f in "${esp[@]}"; do
+        sudo cat "$f" | helper stub "$uuid" >/dev/null || die "$f: unknown GRUB stub"
+    done
+
+    echo "Writes after the snapshot stay in the old root: close programs, reboot right after this step."
+    if [[ "$dry_run" == false ]]; then
+        read -r -p "Make the layout now? [y/N] " t || t=
+        [[ "$t" == [yY]* ]] || die "nothing changed"
+    fi
+
+    # An active swap file keeps Btrfs from snapshotting its subvolume.
+    while read -r f t; do
+        if [[ "$t" == file ]]; then
+            run sudo swapoff "$f"
+        fi
+    done < <(swapon --show=NAME,TYPE --noheadings 2>/dev/null)
+
+    echo
+    echo "== / -> @"
+    # The list lands in @ through the snapshot.
+    if [[ "$dry_run" == true ]]; then
+        echo "would record the top level in $snap$old_list: $(ls -A / | tr '\n' ' ')"
+    else
+        sudo install -d "$(dirname "$old_list")"
+        ls -A / | sudo tee "$old_list" >/dev/null
+    fi
+    run sudo btrfs subvolume snapshot / "$snap"
+    run sudo rm -rf "$(dirname "$old_list")"
+
+    for entry in "${layout[@]}"; do
+        read -r sub dir <<<"$entry"
+        echo
+        echo "== $dir -> $sub"
+        run sudo btrfs subvolume create "/$sub"
+        run sudo chown --reference="$snap$dir" "/$sub"
+        run sudo chmod --reference="$snap$dir" "/$sub"
+        if [[ "$dir" == /tmp ]]; then
+            run sudo chmod 1777 "/$sub"
+            [[ "$tmp_tmpfs" == false ]] || echo "/tmp is a tmpfs: @tmp replaces it"
+        else
+            run sudo cp -a --reflink=always "$snap$dir/." "/$sub/"
+        fi
+        # Inside @ the directory becomes the mount point.
+        run sudo find "$snap$dir" -mindepth 1 -maxdepth 1 -exec rm -rf --one-file-system -- {} +
+    done
+
+    echo
+    echo "== fstab of @"
+    for f in "${swaps[@]}"; do
+        run sudo rm -f "$snap$f"
+    done
+    run sudo cp -a "$snap/etc/fstab" "$snap/etc/fstab.pre-btrfs-layout"
+    if [[ "$dry_run" == true ]]; then
+        printf 'would write %s/etc/fstab:\n%s\n' "$snap" "$new"
+    else
+        printf '%s\n' "$new" | sudo tee "$snap/etc/fstab" >/dev/null
+    fi
+
+    echo
+    echo "== update-grub in a chroot of @"
+    local mnt=/run/ws-btrfs-root
+    if [[ "$dry_run" == true ]]; then
+        echo "would mount @ at $mnt with /dev, /dev/pts, /proc, /sys, /run and run update-grub there"
+    else
+        mount_now -o subvol=@ "$root_dev" "$mnt"
+        for f in /dev /dev/pts /proc /sys /run; do
+            mount_now --bind "$f" "$mnt$f"
+        done
+        sudo chroot "$mnt" update-grub
+        # 10_linux adds rootflags=subvol=@ itself when / is a subvolume.
+        grep -Eq 'rootflags=subvol=@([[:space:]]|$)' "$mnt/boot/grub/grub.cfg" \
+            && grep -Eq 'linux[[:space:]]+/@/boot/vmlinuz' "$mnt/boot/grub/grub.cfg" \
+            || die "update-grub in @ wrote no rootflags=subvol=@ or no /@/boot paths ($snap/boot/grub/grub.cfg); the ESP is unchanged, the old root still boots"
+        cleanup
+        sudo rmdir "$mnt" 2>/dev/null || true
+    fi
+
+    echo
+    echo "== GRUB stub on the ESP -> grub.cfg of @"
+    for f in "${esp[@]}"; do
+        new="$(sudo cat "$f" | helper stub "$uuid")"
+        run sudo cp "$f" "$f.pre-btrfs-layout"
+        if [[ "$dry_run" == true ]]; then
+            printf 'would write %s:\n%s\n' "$f" "$new"
+        else
+            printf '%s\n' "$new" | sudo tee "$f.ws-new" >/dev/null
+            sudo mv -f "$f.ws-new" "$f"
+        fi
+    done
+    run sync
+
+    echo
+    echo "Step 1 done. Reboot now (on mbp16 too through GRUB, the Ubuntu entry), then: ~/wsconfig/bin/ws btrfs make"
+    echo "If @ does not boot: in GRUB press c, then configfile /boot/grub/grub.cfg (the old root)."
+}
+
+# Step 2: / is @.
+step2() {
+    local entry sub dir id def top=/run/ws-btrfs-top name a
+    local -a old=() esp_old=()
+
+    echo "== Step 2 of 2: / is @"
+    for entry in "@ /" "${layout[@]}"; do
+        read -r sub dir <<<"$entry"
+        findmnt -no OPTIONS "$dir" | tr ',' '\n' | grep -qx "subvol=/$sub" \
+            || die "$dir is not mounted from $sub (/etc/fstab)"
+        echo "$dir: $sub"
+    done
+
+    id="$(sudo btrfs subvolume show / | awk '/Subvolume ID:/ { print $3 }')"
+    def="$(sudo btrfs subvolume get-default / | awk '{ print $2 }')"
+    # rEFInd loads the kernel and initrd from the default subvolume (helpws
+    # rebuild, section 5); GRUB reads its paths from the top level.
+    if [[ "$boot" == refind* ]]; then
+        if [[ "$def" == "$id" ]]; then
+            echo "default subvolume: @ (ID $id)"
+        else
+            run sudo btrfs subvolume set-default "$id" /
+        fi
+    else
+        echo "boot = \"$boot\": default subvolume stays ID $def"
+    fi
+
+    mount_now -o subvolid=5 "$root_dev" "$top"
+    findmnt -no OPTIONS "$top" | tr ',' '\n' | grep -qx subvolid=5 \
+        || die "$top is not the top level of Btrfs"
+    if [[ -r "$old_list" ]]; then
+        while IFS= read -r name; do
+            [[ -n "$name" && "$name" != */* && "$name" != . && "$name" != .. ]] || continue
+            [[ -e "$top/$name" || -L "$top/$name" ]] || continue
+            # Subvolumes (inode 256) are the layout, never the old root.
+            if [[ "$(sudo stat -c %i "$top/$name")" != 256 ]]; then
+                old+=("$name")
+            fi
+        done < "$old_list"
+    fi
+    mapfile -t esp_old < <(sudo find /boot/efi/EFI -mindepth 2 -maxdepth 2 -iname grub.cfg.pre-btrfs-layout 2>/dev/null)
+    if ((${#old[@]} == 0)); then
+        echo "no old root on the top level"
+        if [[ -e "$old_list" ]]; then
+            ((${#esp_old[@]} == 0)) || run sudo rm -f -- "${esp_old[@]}"
+            run sudo rm -rf "$(dirname "$old_list")"
+        fi
+    else
+        echo
+        echo "Old root on the top level (the way back of step 1):"
+        printf '  %s\n' "${old[@]}" "${esp_old[@]}"
+        if [[ "$dry_run" == true ]]; then
+            echo "would ask to remove them"
+        else
+            read -r -p "Remove the old root? [y/N] " a || a=
+            if [[ "$a" == [yY]* ]]; then
+                for name in "${old[@]}"; do
+                    sudo rm -rf --one-file-system -- "${top:?}/$name"
+                done
+                ((${#esp_old[@]} == 0)) || sudo rm -f -- "${esp_old[@]}"
+                sudo rm -rf "$(dirname "$old_list")"
+                echo "removed"
+            else
+                echo "kept; ws btrfs make again removes it"
+            fi
+        fi
+    fi
+    cleanup
+    sudo rmdir "$top" 2>/dev/null || true
+
+    echo
+    echo "Btrfs layout done; next: ~/wsconfig/bootstrap.sh (helpws rebuild, section 6.0)"
+}
+
+case "$(findmnt -no OPTIONS / | tr ',' '\n' | sed -n 's/^subvol=//p')" in
+    /) step1 ;;
+    /@) step2 ;;
+    *) die "/ is neither the top level nor @: $(findmnt -no OPTIONS /)" ;;
+esac

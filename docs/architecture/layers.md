@@ -13,6 +13,7 @@ Ubuntu остаётся базовой системой; Nix и home-manager д�
 ## Порядок
 
 ```text
+ws btrfs make      раскладка Btrfs свежей установки: @, @home, @cache, @tmp, @log
 bootstrap.sh       @nix, apt-списки, @vms и libvirt, @steam, группы, fish, первый ws switch
 ws switch          home-manager: пользовательский слой, собранные списки
 ws system apply    системные файлы из system/ (sudo)

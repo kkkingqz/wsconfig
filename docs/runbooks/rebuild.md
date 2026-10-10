@@ -61,7 +61,7 @@ MacBookPro16,1 / T2
 ```text
 Apple EFI     /boot/efi, не форматировать
 ESP rEFInd    отдельный раздел (сейчас nvme0n1p3), не монтируется
-Linux root    Btrfs
+Linux root    Btrfs, без отдельного /boot (раздел 3)
 ```
 
 UUID и PARTUUID новой установки другие: их записать в
@@ -84,9 +84,42 @@ apply` — из них собираются `refind_linux.conf`, `refind.conf` �
 Root грузится с `rootflags=subvol=@`. Установщик Ubuntu 26.04 при ручной
 разметке Btrfs subvolumes не создаёт вовсе: `/` оказывается в корне
 файловой системы (subvolid=5; проверено в VM, фаза 6 в `helpws
-history-nix`). Проверенного скрипта раскладки нет: subvolumes создают из
-live-системы (`btrfs subvolume create`, перенос каталогов, строки в fstab) —
-прежняя раскладка и fstab есть в `boot/` архива.
+history-nix`). Раскладку делает `ws btrfs make` из самой установленной
+системы, до `bootstrap.sh`, в два запуска; между ними reboot через GRUB (на
+mbp16 тоже: rEFInd — позже, раздел 5):
+
+```console
+sudo apt install git
+git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
+~/wsconfig/bin/ws btrfs make --dry-run   # только показывает шаги
+~/wsconfig/bin/ws btrfs make             # шаг 1, спрашивает подтверждение
+# reboot сразу: записанное после снимка остаётся в старом корне
+~/wsconfig/bin/ws btrfs make             # шаг 2
+```
+
+1. `/` в корне Btrfs. Сначала проверки, до первого изменения: `/boot/efi`
+   смонтирован, `/boot`, `/home`, `/var/cache`, `/var/log` — не отдельные
+   монтирования (`/tmp` может быть tmpfs), subvolumes ещё нет, на ESP есть
+   stub GRUB этого корня (`EFI/<dir>/grub.cfg` подписанного GRUB Ubuntu).
+   Затем: снимок `/` → `@`; `/home`, `/var/cache`, `/var/log` переносятся
+   в `@home`, `@cache`, `@log` reflink-копиями (места почти не занимают),
+   `@tmp` пустой; fstab в `@` (установщика — `/etc/fstab.pre-btrfs-layout`),
+   swapfile установщика убирается (swap — `@swap`, `helpws suspend`);
+   `update-grub` в chroot `@` (Ubuntu сам добавляет `rootflags=subvol=@`, пути
+   `/@/boot/...`; без них — отказ до изменения ESP); stub на ESP — на
+   `/@/boot/grub`, прежний — `grub.cfg.pre-btrfs-layout` рядом. NVRAM и
+   `grub-install` не трогаются, initramfs не пересобирается (dracut Ubuntu
+   generic, корень берёт из командной строки ядра).
+2. `/` — `@`: проверяет, что все пять смонтированы из своих subvolumes; при
+   `boot = "refind-…"` в `facts.nix` (mbp16) делает `@` default subvolume —
+   rEFInd берёт ядро из него, хост только с GRUB оставляет default 5;
+   показывает старый корень на верхнем уровне (ровно то, что там было до
+   снимка) и после подтверждения удаляет его вместе с прежним stub.
+
+До удаления на шаге 2 старый корень загружается: в GRUB `c`, затем
+`configfile /boot/grub/grub.cfg` — его меню. Повторный запуск проверяет
+состояние и ничего не повторяет; `bootstrap.sh` без `@` отказывается.
+Сценарий проверен только тестами текста fstab и stub, в VM не прогонялся.
 
 ```bash
 findmnt /
@@ -183,8 +216,7 @@ systemctl --user is-active wireplumber
 конфигурация ставится так (`helpws layers`):
 
 ```console
-sudo apt install git
-git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
+# ~/wsconfig уже есть с раздела 3
 ~/wsconfig/bootstrap.sh
 # reboot: группы nix-users, libvirt, input, PATH из 00-nix.fish, fish как login shell
 #   (logout/login не хватает, пока открыта другая сессия пользователя, например ssh)

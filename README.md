@@ -8,12 +8,14 @@ home-manager доставляют конфигурацию поверх неё, 
 
 ## Установка
 
-После Ubuntu, Btrfs, ядра T2 и rEFInd (`docs/runbooks/rebuild.md`, разделы
-1–5):
+После установки Ubuntu (`docs/runbooks/rebuild.md`, разделы 1–2):
 
 ```console
 sudo apt install git
 git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
+~/wsconfig/bin/ws btrfs make  # раскладка Btrfs: @, @home, @cache, @tmp, @log
+# reboot через GRUB, ещё раз ~/wsconfig/bin/ws btrfs make (раздел 3)
+# mbp16: ядро T2 и rEFInd (разделы 4–5)
 ~/wsconfig/bootstrap.sh     # @nix, apt-списки, @vms и libvirt, @steam, группы, fish, первый ws switch
 # logout/login
 ws system apply             # системные файлы (sudo)

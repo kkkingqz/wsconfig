@@ -46,7 +46,9 @@ run() {
 command -v sudo >/dev/null 2>&1 || die "sudo not found"
 [[ "$(findmnt -no FSTYPE /)" == btrfs ]] || die "/ is not Btrfs (rebuild.md, section 3)"
 findmnt -no OPTIONS / | tr ',' '\n' | grep -qx 'subvol=/@' \
-    || die "/ is not the subvolume @ (rebuild.md, section 3)"
+    || die "/ is not the subvolume @: first ~/wsconfig/bin/ws btrfs make (helpws rebuild, section 3)"
+[[ ! -e /var/lib/ws-btrfs-layout/old-root ]] \
+    || echo "The old root is still on the top level of Btrfs: ws btrfs make removes it."
 
 host="$("$repo/bin/ws" host)"
 host_list="$repo/nix/hosts/$host/apt.txt"
