@@ -136,6 +136,8 @@ echo "== 2. apt"
 mapfile -t ppas < <(apt_lines | sed -n 's/^ppa://p')
 mapfile -t sources < <(apt_lines | sed -n 's/^source://p')
 mapfile -t archs < <(apt_lines | sed -n 's/^arch://p')
+# rec:NAME lines keep their prefix here: the install below takes their
+# recommends.
 mapfile -t packages < <(apt_lines | grep -v '^ppa:\|^purge:\|^source:\|^arch:')
 mapfile -t purges < <(apt_lines | sed -n 's/^purge://p')
 added=false
@@ -187,15 +189,30 @@ done
 # Right after the first boot of a fresh install unattended-upgrades holds
 # the dpkg lock for minutes: wait for it instead of failing (phase 6, wsvm).
 apt_get=(sudo apt-get -o DPkg::Lock::Timeout=600)
+# Packages come without their recommends: what a host needs is listed.
+# A rec:NAME line is the exception (metapackages whose content is
+# Recommends, Steam's 32-bit libraries); apt takes recommends only when it
+# installs a package, so these go first, in their own install, before
+# anything else can pull them in as a plain dependency.
 missing=()
-for pkg in "${packages[@]}"; do
+missing_rec=()
+for line in "${packages[@]}"; do
+    pkg="${line#rec:}"
     # "hold ok installed" counts too (linux-t2 is held).
-    dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q ' ok installed$' \
-        || missing+=("$pkg")
+    dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q ' ok installed$' && continue
+    if [[ "$line" == rec:* ]]; then
+        missing_rec+=("$pkg")
+    else
+        missing+=("$pkg")
+    fi
 done
-if ((${#missing[@]})); then
+packages=("${packages[@]#rec:}")
+if ((${#missing_rec[@]} + ${#missing[@]})); then
     run "${apt_get[@]}" update
-    run "${apt_get[@]}" install -y --no-install-recommends "${missing[@]}"
+    ((${#missing_rec[@]} == 0)) \
+        || run "${apt_get[@]}" install -y --install-recommends "${missing_rec[@]}"
+    ((${#missing[@]} == 0)) \
+        || run "${apt_get[@]}" install -y --no-install-recommends "${missing[@]}"
 else
     [[ "$added" == false ]] || run "${apt_get[@]}" update
     echo "all ${#packages[@]} packages installed"

@@ -1,6 +1,10 @@
 # apt packages every host needs on top of a standard Ubuntu desktop.
 # One package per line; `ppa:OWNER/NAME` adds an Ubuntu PPA first;
 # `purge:NAME` purges a package of the standard install (bootstrap.sh).
+# Packages are installed without their recommends; `rec:NAME` installs NAME
+# with them (a metapackage whose content is Recommends). apt takes
+# recommends only when it installs a package: on a host that already has
+# NAME, remove it and run bootstrap.sh again.
 # Host lists also take `source:NAME` (the repository
 # nix/hosts/<host>/apt/NAME.sources with its key NAME.asc, installed as
 # /etc/apt/sources.list.d/ws-NAME.sources and /etc/apt/keyrings/ws-NAME.asc)
@@ -74,5 +78,7 @@ pulseaudio-utils
 # Crash dumps (coredumpctl)
 systemd-coredump
 # Non-free codecs and Microsoft fonts (multiverse); the font installer asks
-# to accept its EULA during bootstrap.sh
-ubuntu-restricted-extras
+# to accept its EULA during bootstrap.sh. Everything of it and of
+# ubuntu-restricted-addons is Recommends: gstreamer libav/bad/ugly,
+# ttf-mscorefonts-installer, unrar, the localsearch extractors.
+rec:ubuntu-restricted-extras

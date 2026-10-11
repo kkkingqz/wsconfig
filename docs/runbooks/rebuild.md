@@ -242,7 +242,11 @@ ws check            # проверки всех владельцев и verify (
 `nix/hosts/apt.txt` и `nix/hosts/<host>/apt.txt` (PPA fish и
 nautilus-my-computer; `purge:snapd` — без snap; в списке хоста
 `source:NAME` — репозиторий `nix/hosts/<host>/apt/NAME.sources` с ключом
-`NAME.asc`, `arch:NAME` — архитектура dpkg, оба до пакетов) → при
+`NAME.asc`, `arch:NAME` — архитектура dpkg, оба до пакетов; пакеты
+ставятся без Recommends, кроме строк `rec:NAME` — метапакеты, у которых
+всё в Recommends: `ubuntu-restricted-extras`, Steam; apt берёт Recommends
+только при установке пакета, так что на хосте, где он уже стоит, его
+снимают и запускают `bootstrap.sh` заново) → при
 `vm = "yes"` в
 `facts.nix`: пакеты `virt/apt.txt`, `@vms` в `/var/lib/vms` с
 bind-монтированиями в пути libvirt, пул и сеть `default`

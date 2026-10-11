@@ -867,7 +867,7 @@ cmd_check_apt() {
     [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" nativeSteam)" != yes ]] || lists+=("$repo/steam/apt.txt")
     [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" gameMode)" != yes ]] || lists+=("$repo/gaming/apt.txt")
     mapfile -t want < <(cat "${lists[@]}" 2>/dev/null \
-        | sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' -e '/^ppa:/d' | sort -u)
+        | sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' -e '/^ppa:/d' -e 's/^rec://' | sort -u)
     for pkg in $(printf '%s\n' "${want[@]}" | sed -n 's/^purge://p'); do
         if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q ' installed$'; then
             warn "installed, the host list purges it: $pkg (bootstrap.sh)"

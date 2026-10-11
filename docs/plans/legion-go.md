@@ -241,6 +241,14 @@ apt.txt    source:xanmod, linux-xanmod-x64v3; linux-generic (запасное
 - `source:NAME` — ставит `nix/hosts/<host>/apt/NAME.sources` и ключ из
   репозитория до установки пакетов, как `ppa:` (XanMod).
 - `arch:i386` — `dpkg --add-architecture i386` до `apt-get update` (Steam).
+- `rec:NAME` (2026-10-11) — пакет с его Recommends, остальное без них.
+  Симуляция на 26.04: со всеми Recommends набор legiongo — +315 пакетов,
+  ~800 МБ, среди них seatd (включает сервис; libseat берёт его раньше
+  logind — gamescope ушёл бы с пути SteamOS), `qt*-gtk-platformtheme`
+  (Qt под GNOME выбирает gtk3 раньше QGnomePlatform), mangoplot с
+  matplotlib (~190 МБ), buildah. Поэтому `rec:` только у
+  `ubuntu-restricted-extras` (без Recommends он пустой: ни кодеков, ни
+  шрифтов MS) и `steam-installer` (32-битные библиотеки Steam).
 - Subvolume `@steam` в `~/.local/share/Steam` (строка fstab, как `@vms`) —
   при `nativeSteam = "yes"`, шаг 4 (`steam/bootstrap.bash`), до первого
   запуска Steam; проверяет `ws check steam`. Сделано 2026-10-10.

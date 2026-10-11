@@ -202,7 +202,7 @@ cmd_capture() {
     done
     {
         cat "${lists[@]}" 2>/dev/null \
-            | sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' -e '/^ppa:/d' | sort -u \
+            | sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' -e '/^ppa:/d' -e 's/^rec://' | sort -u \
             | while read -r pkg; do
                 if [[ "$pkg" == purge:* ]]; then
                     dpkg-query -W -f='${Status}' "${pkg#purge:}" 2>/dev/null | grep -q ' installed$' \
