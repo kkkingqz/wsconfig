@@ -41,6 +41,7 @@ case "$topic" in
     plan-final) open_title ws-plan-final ;;
     plan-unraid|unraid) open_title ws-plan-unraid ;;
     plan-legion-go|legion-go|legiongo) open_title ws-plan-legion-go ;;
+    plan-legion-go-agent|legion-go-agent) open_title ws-plan-legion-go-agent ;;
     plan-hyprland|hyprland) open_title ws-plan-hyprland ;;
     history-gnome|plan-gnome) open_title ws-history-gnome ;;
     history-flatpak|plan-flatpak) open_title ws-history-flatpak ;;
@@ -90,6 +91,7 @@ Plans (docs/plans):
   plan-final       Backup / inventory / finalization
   plan-unraid      Unraid receiver: server survey, preparation
   plan-legion-go   Legion Go (gen 1): host, Game Mode from Bazzite parts
+  plan-legion-go-agent  Legion Go: instructions for Claude on the device
   plan-hyprland    Hyprland + Caelestia next to GNOME (proposal)
 
 History (docs/history; old plan-* names work too):

@@ -362,6 +362,9 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
 
 # 5. Этапы
 
+На устройстве этапы с 4-го ведёт Claude по
+`docs/plans/legion-go-agent.md` (`helpws plan-legion-go-agent`).
+
 Каждый этап заканчивается `ws checkpoint create NAME`. Перед изменением
 ядра, загрузки и питания делается снимок Timeshift.
 
