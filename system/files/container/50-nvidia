@@ -1,0 +1,22 @@
+#!/bin/bash
+# NVIDIA through the container runtime (hardware container-nvidia; called
+# by ws-container-init on every start, the runtime injects the driver then).
+set -eu
+
+# GBM of the NVIDIA driver for mutter: the toolkit puts libnvidia-allocator
+# into /usr/lib64 or the multiarch directory, the Mesa GBM loader looks in
+# /usr/lib/x86_64-linux-gnu/gbm.
+gbm=/usr/lib/x86_64-linux-gnu/gbm
+install -d "$gbm"
+if [[ -e /usr/lib64/libnvidia-allocator.so.1 ]]; then
+    ln -sfn /usr/lib64/libnvidia-allocator.so.1 "$gbm/nvidia-drm_gbm.so"
+elif [[ -e /usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.1 ]]; then
+    ln -sfn ../libnvidia-allocator.so.1 "$gbm/nvidia-drm_gbm.so"
+fi
+
+# The toolkit mounts over /proc/driver/nvidia/params; with that nested
+# mount bubblewrap (Flatpak) and rootless podman cannot mount a new procfs
+# in a user namespace.
+if findmnt -rn /proc/driver/nvidia/params >/dev/null 2>&1; then
+    umount /proc/driver/nvidia/params
+fi

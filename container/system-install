@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# The system tree of the host (ws system tree) into the image, as root at
+# image build (container/Dockerfile, helpws plan-wsgnomebox): its files and
+# unit states. ws system check compares the running container with the
+# same tree; ws system apply installs a newer one until the next image.
+#
+#   container/system-install TREE
+
+[[ $# -eq 1 && -r "$1/manifest" ]] || { echo "usage: container/system-install TREE" >&2; exit 1; }
+tree="$1"
+
+while IFS=$'\t' read -r kind a b; do
+    case "$kind" in
+        file)
+            install -D -m"$a" -o root -g root "$tree/files$b" "$b"
+            echo "installed: $b"
+            ;;
+        unit)
+            case "$a" in
+                enabled) systemctl enable "$b" ;;
+                masked) systemctl mask "$b" ;;
+            esac
+            echo "$a: $b"
+            ;;
+    esac
+done < "$tree/manifest"
+
+systemctl set-default graphical.target

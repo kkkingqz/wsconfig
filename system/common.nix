@@ -1,21 +1,26 @@
 # Every machine: uinput access for xremap, ntsync for Proton in distrobox,
 # Timeshift snapshots in GRUB. VM files: system/virt.nix (vm = "yes").
+# A container (boot = "container", helpws plan-wsgnomebox) has no udev,
+# kernel modules, GRUB or Timeshift of its own: only the snapd pin.
 # watch: system files the workstation depends on but does not install;
 # ws-baseline records them with the installed ones.
-{ file, ... }:
+{ lib, facts, file, ... }:
+let
+  machine = facts.boot != "container";
+in
 {
   watch = [
     "/etc/default/keyboard" # edited by ws system apply (GDM/login: EN only)
     "/etc/fstab"
   ];
 
-  files = [
+  files = lib.optionals machine [
     (file "/etc/udev/rules.d/99-workstation-uinput.rules" "system/files/udev/99-workstation-uinput.rules" "0644")
     (file "/etc/modules-load.d/ntsync.conf" "system/files/modules-load.d/ntsync.conf" "0644")
-
+  ] ++ [
     # No snaps: snapd is purged (nix/hosts/apt.txt) and pinned out.
     (file "/etc/apt/preferences.d/ws-no-snapd" "system/files/apt/ws-no-snapd" "0644")
-
+  ] ++ lib.optionals machine [
     # Timeshift (@ and @home): its snapshots in the GRUB menu, refreshed after
     # every snapshot; after a restore the default subvolume follows the new @
     # (rEFInd boots from it). Settings stay Timeshift's (GUI).

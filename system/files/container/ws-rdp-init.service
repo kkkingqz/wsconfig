@@ -1,0 +1,9 @@
+[Unit]
+Description=GNOME Remote Login: TLS and credentials (ws-rdp-init)
+After=dbus.service
+Before=gnome-remote-desktop.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ws-rdp-init
+RemainAfterExit=yes

@@ -72,12 +72,20 @@ section "2. Nix"
 
 if [[ -d /nix/var/nix ]]; then
     nix_source="$(findmnt -rno SOURCE /nix 2>/dev/null || true)"
-    [[ "$nix_source" == *"[/@nix]" ]] \
-        && pass "/nix is mounted from subvolume @nix" \
-        || fail "/nix is not a separate @nix mount (${nix_source:-not mounted}); @ rollback would lose it"
-    grep -Eq '^[^#]*[[:space:]]/nix[[:space:]].*subvol=@nix' /etc/fstab \
-        && pass "fstab mounts @nix at /nix" \
-        || fail "fstab has no @nix entry for /nix"
+    if [[ "$("$repo/bin/ws" fact boot 2>/dev/null)" == container ]]; then
+        # A container host: /nix is a directory of the server, outside the
+        # image (helpws plan-wsgnomebox).
+        mountpoint -q /nix \
+            && pass "/nix is a mount of the server (container)" \
+            || fail "/nix is not a mount: a new container would lose it (ws container run)"
+    else
+        [[ "$nix_source" == *"[/@nix]" ]] \
+            && pass "/nix is mounted from subvolume @nix" \
+            || fail "/nix is not a separate @nix mount (${nix_source:-not mounted}); @ rollback would lose it"
+        grep -Eq '^[^#]*[[:space:]]/nix[[:space:]].*subvol=@nix' /etc/fstab \
+            && pass "fstab mounts @nix at /nix" \
+            || fail "fstab has no @nix entry for /nix"
+    fi
 
     id -nG | tr ' ' '\n' | grep -Fxq nix-users \
         && pass "user session is in group nix-users" \

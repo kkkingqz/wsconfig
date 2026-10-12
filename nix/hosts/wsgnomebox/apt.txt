@@ -1,0 +1,26 @@
+# apt packages of wsgnomebox (GNOME in a container on tower) on top of
+# nix/hosts/apt.txt (helpws plan-wsgnomebox). The image installs them
+# (container/Dockerfile), bootstrap.sh then finds them present. rec: lines
+# are described in nix/hosts/apt.txt.
+
+# What the installer puts on a real machine and ubuntu:26.04 lacks:
+# systemd as init, sudo, locales, the GNOME desktop with GDM. The desktop
+# metapackage is mostly Recommends.
+ubuntu-minimal
+rec:ubuntu-desktop-minimal
+dbus-user-session
+locales
+less
+man-db
+bash-completion
+openssh-client
+
+# GNOME Remote Login over RDP (system mode, through GDM)
+gnome-remote-desktop
+# TLS certificate of the RDP server (ws-rdp-init)
+openssl
+
+# GPU checks: glxinfo -B, vulkaninfo --summary (NVIDIA through the runtime)
+mesa-utils
+vulkan-tools
+pciutils

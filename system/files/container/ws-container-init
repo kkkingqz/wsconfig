@@ -1,0 +1,54 @@
+#!/bin/bash
+# Entrypoint of a container host (boot = "container", helpws
+# plan-wsgnomebox): prepares what the image cannot hold, then execs the
+# command (/sbin/init). Runs on every start as root, before systemd.
+#
+# - the password of the user from /config/password (the image has none);
+# - the skeleton of /nix: it is a directory of the server, empty at first;
+# - the home: owned by the user, /etc/skel on the first start, never a
+#   recursive chown (rootless podman keeps subordinate IDs there);
+# - groups of the device nodes the runtime passed in (/dev/dri, /dev/fuse);
+# - /usr/local/lib/ws-container/init.d/*: hooks of the hardware profile
+#   (system/hardware/container-*.nix), in name order.
+set -eu
+
+user="$(id -nu 1000)"
+home="$(getent passwd "$user" | cut -d: -f6)"
+
+if [[ -s /config/password ]]; then
+    hash="$(openssl passwd -6 -stdin < /config/password)"
+    usermod --password "$hash" "$user"
+    unset hash
+else
+    echo "ws-container-init: no /config/password; $user cannot log in" >&2
+fi
+
+# What nix-setup-systemd creates; nix-daemon.socket needs daemon-socket.
+install -d -m0755 /nix/var/nix/daemon-socket /nix/var/nix/gcroots/per-user \
+    /nix/var/nix/profiles/per-user
+
+install -d "$home"
+if [[ "$(stat -c %u "$home")" != 1000 ]]; then
+    chown 1000:1000 "$home"
+fi
+if [[ ! -e "$home/.profile" && ! -e "$home/.config" ]]; then
+    runuser -u "$user" -- cp -a --update=none /etc/skel/. "$home/"
+fi
+
+for dev in /dev/dri/card* /dev/dri/renderD* /dev/fuse; do
+    [[ -e "$dev" ]] || continue
+    gid="$(stat -c %g "$dev")"
+    group="$(getent group "$gid" | cut -d: -f1 || true)"
+    if [[ -z "$group" ]]; then
+        group="hostdev$gid"
+        groupadd -g "$gid" "$group"
+    fi
+    usermod -aG "$group" "$user"
+done
+
+for hook in /usr/local/lib/ws-container/init.d/*; do
+    [[ -x "$hook" ]] || continue
+    "$hook" || echo "ws-container-init: $hook failed" >&2
+done
+
+exec "$@"

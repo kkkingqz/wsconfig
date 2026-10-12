@@ -171,7 +171,9 @@ fi
 
 newest_kernel="$(ls /boot/vmlinuz-* 2>/dev/null | sort -V | tail -n1)"
 newest_version="${newest_kernel#/boot/vmlinuz-}"
-if [[ -z "$newest_kernel" ]]; then
+if [[ "$boot" == container ]]; then
+    info "container: the kernel of the server, $(uname -r)"
+elif [[ -z "$newest_kernel" ]]; then
     fail "no /boot/vmlinuz-* found"
 elif [[ "$boot" == refind-grub-recovery ]]; then
     # /boot/ws: the kernel of "Ubuntu (AMD)", relinked by ws-boot-links.
@@ -191,15 +193,24 @@ section "5. Distrobox <-> host NTSync"
 # Boxes whose manifest runs the NTSync hook use the host module through
 # wsbox-host-ntsync (it provides NTSYNC-MODULE); wsbox check checks the
 # package, this the device end to end.
-if lsmod 2>/dev/null | awk '$1 == "ntsync" { found=1 } END { exit !found }'; then
-    pass "host ntsync module loaded"
+if [[ "$boot" == container ]]; then
+    # The server's kernel decides, its /dev/ntsync is not passed in
+    # (helpws plan-wsgnomebox; Unraid 6.18 has no ntsync).
+    if [[ -c /dev/ntsync ]]; then
+        pass "/dev/ntsync character device present (from the server)"
+    else
+        info "container: no /dev/ntsync from the server; Wine runs without NTSync"
+    fi
 else
-    fail "host ntsync module not loaded"
+    if lsmod 2>/dev/null | awk '$1 == "ntsync" { found=1 } END { exit !found }'; then
+        pass "host ntsync module loaded"
+    else
+        fail "host ntsync module not loaded"
+    fi
+    [[ -c /dev/ntsync ]] \
+        && pass "/dev/ntsync character device present" \
+        || fail "/dev/ntsync character device missing"
 fi
-
-[[ -c /dev/ntsync ]] \
-    && pass "/dev/ntsync character device present" \
-    || fail "/dev/ntsync character device missing"
 
 ntsync_hook="$repo/distrobox/arch/wsbox-host-ntsync/install-hook"
 ntsync_boxes="$(
@@ -218,6 +229,9 @@ for box in $ntsync_boxes; do
     [[ -z "$ntsync_missing" ]] \
         && pass "$box: NTSYNC-MODULE dependency satisfied" \
         || fail "$box: NTSYNC-MODULE dependency unsatisfied: $ntsync_missing"
+    if [[ "$boot" == container && ! -c /dev/ntsync ]]; then
+        continue
+    fi
     podman exec "$box" test -c /dev/ntsync >/dev/null 2>&1 \
         && pass "$box: /dev/ntsync visible inside" \
         || fail "$box: /dev/ntsync not visible inside"

@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Image of a container host, as root at image build (container/Dockerfile,
+# helpws plan-wsgnomebox): what the installer and bootstrap.sh do on a real
+# machine and a container would lose on every recreate.
+#
+# - the apt step of bootstrap.sh (lib/apt.bash) with the lists of the host;
+# - the user of facts.nix with UID 1000, groups and fish as bootstrap.sh
+#   sets them (steps 6 and 7);
+# - LANG (C.UTF-8, as the Ubuntu installer) and the timezone of facts.nix.
+#
+#   container/image-setup HOST
+
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../lib/apt.bash
+. "$repo/lib/apt.bash"
+
+die() {
+    echo "image-setup: $*" >&2
+    exit 1
+}
+
+run() {
+    "$@"
+}
+
+[[ $# -eq 1 ]] || die "usage: container/image-setup HOST"
+host="$1"
+facts="$repo/nix/hosts/$host/facts.nix"
+host_list="$repo/nix/hosts/$host/apt.txt"
+[[ -r "$facts" ]] || die "no nix/hosts/$host/facts.nix"
+
+# A string fact, as bin/ws reads it (fact_in).
+fact() {
+    sed -nE "s/^[[:space:]]*$1 = \"([^\"]*)\";.*/\1/p" "$facts" | head -n1
+}
+
+[[ "$(fact boot)" == container ]] || die "nix/hosts/$host: boot is not \"container\""
+vm="$(fact vm)"
+native_steam="$(fact nativeSteam)"
+game_mode="$(fact gameMode)"
+[[ "$vm$native_steam$game_mode" == nonono ]] \
+    || die "nix/hosts/$host: a container has no vm, nativeSteam or gameMode"
+user="$(fact user)"
+timezone="$(fact timezone)"
+[[ -n "$user" && -n "$timezone" ]] || die "nix/hosts/$host: user and timezone are needed"
+
+echo "== apt ($host)"
+apt_install
+
+echo "== user $user"
+# ubuntu:26.04 has the user ubuntu with UID 1000.
+if old="$(id -nu 1000 2>/dev/null)" && [[ "$old" != "$user" ]]; then
+    userdel -r "$old" 2>/dev/null || userdel "$old"
+fi
+id "$user" >/dev/null 2>&1 \
+    || useradd --no-create-home --uid 1000 --user-group --home-dir "/home/$user" "$user"
+usermod --shell /usr/bin/fish -aG sudo,nix-users "$user"
+# Subordinate IDs for rootless podman: useradd adds them, but only when the
+# user is created after shadow is set up.
+grep -q "^$user:" /etc/subuid || echo "$user:100000:65536" >> /etc/subuid
+grep -q "^$user:" /etc/subgid || echo "$user:100000:65536" >> /etc/subgid
+
+echo "== locale and timezone"
+echo 'LANG=C.UTF-8' > /etc/default/locale
+ln -sfn "/usr/share/zoneinfo/$timezone" /etc/localtime
+echo "$timezone" > /etc/timezone

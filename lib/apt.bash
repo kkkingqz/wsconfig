@@ -1,0 +1,124 @@
+# shellcheck shell=bash disable=SC2154 # repo, host, host_list, vm, native_steam, game_mode: the caller's
+# apt step of bootstrap.sh (helpws rebuild): PPAs, source: repositories,
+# arch:, the packages of the apt lists (rec: with their recommends), manual
+# marks, purge:. Also run as root by the image build of a container host
+# (container/apt-install, helpws plan-wsgnomebox).
+#
+# Needs: those variables, run (prints instead with --dry-run) and die.
+
+# Package and PPA lines of the apt lists, without comments.
+apt_lines() {
+    local f
+    local lists=("$repo/nix/hosts/apt.txt" "$host_list")
+    [[ "$vm" == no ]] || lists+=("$repo/virt/apt.txt")
+    [[ "$native_steam" == no ]] || lists+=("$repo/steam/apt.txt")
+    [[ "$game_mode" == no ]] || lists+=("$repo/gaming/apt.txt")
+    for f in "${lists[@]}"; do
+        [[ -r "$f" ]] && sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' "$f"
+    done
+    return 0
+}
+
+apt_install() {
+    mapfile -t ppas < <(apt_lines | sed -n 's/^ppa://p')
+    mapfile -t sources < <(apt_lines | sed -n 's/^source://p')
+    mapfile -t archs < <(apt_lines | sed -n 's/^arch://p')
+    # rec:NAME lines keep their prefix here: the install below takes their
+    # recommends.
+    mapfile -t packages < <(apt_lines | grep -v '^ppa:\|^purge:\|^source:\|^arch:')
+    mapfile -t purges < <(apt_lines | sed -n 's/^purge://p')
+    added=false
+    for ppa in "${ppas[@]}"; do
+        if grep -rqsF "ppa.launchpadcontent.net/$ppa/" /etc/apt/sources.list.d/; then
+            echo "PPA present: $ppa"
+        else
+            run sudo add-apt-repository -y --no-update "ppa:$ppa"
+            added=true
+        fi
+    done
+    # Other repositories of the host: nix/hosts/<host>/apt/NAME.sources (deb822)
+    # with its key NAME.asc, installed as ws-NAME; the file must point
+    # Signed-By at the installed key.
+    for name in "${sources[@]}"; do
+        src="$repo/nix/hosts/$host/apt/$name.sources"
+        key="$repo/nix/hosts/$host/apt/$name.asc"
+        [[ -r "$src" && -r "$key" ]] \
+            || die "source:$name needs nix/hosts/$host/apt/$name.sources and $name.asc"
+        grep -qx "Signed-By: /etc/apt/keyrings/ws-$name.asc" "$src" \
+            || die "nix/hosts/$host/apt/$name.sources: Signed-By must be /etc/apt/keyrings/ws-$name.asc"
+        if cmp -s "$src" "/etc/apt/sources.list.d/ws-$name.sources" \
+            && cmp -s "$key" "/etc/apt/keyrings/ws-$name.asc"; then
+            echo "source present: $name"
+        else
+            run sudo install -D -m0644 "$key" "/etc/apt/keyrings/ws-$name.asc"
+            run sudo install -D -m0644 "$src" "/etc/apt/sources.list.d/ws-$name.sources"
+            added=true
+        fi
+    done
+    # ws-NAME belongs to bootstrap.sh: one whose source: line is gone goes too,
+    # or apt would keep installing from it.
+    for f in /etc/apt/sources.list.d/ws-*.sources; do
+        [[ -e "$f" ]] || continue
+        name="${f##*/ws-}"
+        name="${name%.sources}"
+        [[ " ${sources[*]} " == *" $name "* ]] && continue
+        run sudo rm -f "$f" "/etc/apt/keyrings/ws-$name.asc"
+        added=true
+    done
+    for arch in "${archs[@]}"; do
+        if dpkg --print-foreign-architectures | grep -qx "$arch"; then
+            echo "architecture present: $arch"
+        else
+            run sudo dpkg --add-architecture "$arch"
+            added=true
+        fi
+    done
+    # Right after the first boot of a fresh install unattended-upgrades holds
+    # the dpkg lock for minutes: wait for it instead of failing (phase 6, wsvm).
+    apt_get=(sudo apt-get -o DPkg::Lock::Timeout=600)
+    # Packages come without their recommends: what a host needs is listed.
+    # A rec:NAME line is the exception (metapackages whose content is
+    # Recommends, Steam's 32-bit libraries); apt takes recommends only when it
+    # installs a package, so these go first, in their own install, before
+    # anything else can pull them in as a plain dependency.
+    missing=()
+    missing_rec=()
+    for line in "${packages[@]}"; do
+        pkg="${line#rec:}"
+        # "hold ok installed" counts too (linux-t2 is held).
+        dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q ' ok installed$' && continue
+        if [[ "$line" == rec:* ]]; then
+            missing_rec+=("$pkg")
+        else
+            missing+=("$pkg")
+        fi
+    done
+    packages=("${packages[@]#rec:}")
+    if ((${#missing_rec[@]} + ${#missing[@]})); then
+        run "${apt_get[@]}" update
+        ((${#missing_rec[@]} == 0)) \
+            || run "${apt_get[@]}" install -y --install-recommends "${missing_rec[@]}"
+        ((${#missing[@]} == 0)) \
+            || run "${apt_get[@]}" install -y --no-install-recommends "${missing[@]}"
+    else
+        [[ "$added" == false ]] || run "${apt_get[@]}" update
+        echo "all ${#packages[@]} packages installed"
+    fi
+    # A listed package the standard install already has as a dependency
+    # (python3-gi) stays auto-installed: apt autoremove could take it.
+    mapfile -t auto < <(apt-mark showauto "${packages[@]}" 2>/dev/null)
+    if ((${#auto[@]})); then
+        run sudo apt-mark -o DPkg::Lock::Timeout=600 manual "${auto[@]}"
+    else
+        echo "all listed packages marked manual"
+    fi
+    present=()
+    for pkg in "${purges[@]}"; do
+        if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q ' installed$'; then
+            present+=("$pkg")
+        else
+            echo "not installed: $pkg"
+        fi
+    done
+    ((${#present[@]} == 0)) || run "${apt_get[@]}" purge -y "${present[@]}"
+}

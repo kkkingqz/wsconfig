@@ -21,6 +21,7 @@ Usage:
   ws collect [--no-firmware] [ARCHIVE]
   ws btrfs make [--dry-run] [--yes]
   ws backup [plan|status|list|check|send|restore-test|recovery-export ...]
+  ws container build|run|status HOST [--dry-run]
   ws host
   ws fact NAME
   ws news
@@ -109,6 +110,8 @@ backup    Timeshift snapshots to Unraid, then retain final local ro parents;
           see wsbackup --help and helpws backup / helpws recovery
 checkpoint  which commit matched which working state (home-manager
           generation, system tree, kernel, baseline), see ws-checkpoint --help
+container  image and container of a container host (boot = "container",
+          helpws plan-wsgnomebox) on its server, see ws-container --help
 host      print the flake host name used for this machine: WS_HOST, else
           the nix/hosts/<host> whose facts.nix has hostname = "$(hostname)"
 fact      print a string fact of this host (hardware, boot, user, wsconfig,
@@ -422,8 +425,10 @@ system_compare() {
 system_check_extra() {
     local mounts layout
     # /etc/default/grub belongs to the grub package (ucf); workstation
-    # settings live only in grub.d drop-ins.
-    if cmp -s /usr/share/grub/default/grub /etc/default/grub; then
+    # settings live only in grub.d drop-ins. A container has no GRUB.
+    if [[ "$(cmd_fact boot)" == container ]]; then
+        info "container: no GRUB (helpws plan-wsgnomebox)"
+    elif cmp -s /usr/share/grub/default/grub /etc/default/grub; then
         pass "/etc/default/grub is the package template"
     else
         warn "/etc/default/grub differs from /usr/share/grub/default/grub; settings belong in grub.d (ws system apply resets it)"
@@ -711,9 +716,12 @@ cmd_system_apply() {
     echo "== Units"
     sudo systemctl daemon-reload
     while IFS=$'\t' read -r kind a b; do
-        [[ "$kind" == unit && "$a" == enabled ]] || continue
-        sudo systemctl enable --quiet "$b"
-        echo "enabled: $b"
+        [[ "$kind" == unit ]] || continue
+        case "$a" in
+            enabled) sudo systemctl enable --quiet "$b"; echo "enabled: $b" ;;
+            # Units a container host has no use for (system/boot/container.nix).
+            masked) sudo systemctl mask --quiet "$b"; echo "masked: $b" ;;
+        esac
     done < "$tree/manifest"
     for unit in "${restart[@]}"; do
         sudo systemctl restart "$unit"
@@ -729,11 +737,14 @@ cmd_system_apply() {
         echo "reloaded: systemd-logind"
     fi
 
-    echo
-    echo "== udev"
-    sudo udevadm control --reload-rules
-    sudo udevadm trigger --subsystem-match=input --action=change || true
-    sudo udevadm settle || true
+    # A container has no udev of its own (system/boot/container.nix).
+    if [[ "$(cmd_fact boot)" != container ]]; then
+        echo
+        echo "== udev"
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --subsystem-match=input --action=change || true
+        sudo udevadm settle || true
+    fi
 
     # The hooks keep /boot/ws current from now on; create it the first time.
     if [[ "$has_bootlinks" == true ]] && [[ "$bootlinks" == true || ! -e /boot/ws/vmlinuz ]]; then
@@ -1013,6 +1024,7 @@ case "${1:-}" in
     baseline) shift; exec "$repo/bin/ws-baseline" "$@" ;;
     checkpoint) shift; exec "$repo/bin/ws-checkpoint" "$@" ;;
     collect) shift; exec "$repo/bin/ws-collect" "$@" ;;
+    container) shift; exec "$repo/bin/ws-container" "$@" ;;
     btrfs) shift; exec "$repo/bin/ws-btrfs" "$@" ;;
     backup) shift; exec "$repo/bin/wsbackup" "$@" ;;
     host) host ;;

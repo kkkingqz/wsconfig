@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Container hosts (boot = "container" in facts.nix, helpws plan-wsgnomebox):
+# the image is built on the server from a commit of this checkout, the
+# container runs there with the spec of facts.nix `container`. Run from any
+# machine with SSH to the server; nothing is copied to it but the build
+# context.
+
+repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  ws container build HOST [--dry-run]
+  ws container run HOST [--dry-run]
+  ws container status HOST
+
+build     docker build on the server from `git archive HEAD` (clean checkout
+          only): image IMAGE:COMMIT and IMAGE:latest of facts.nix container
+run       replace the container HOST on the server with one from
+          IMAGE:latest: mounts, devices and port of facts.nix container; the
+          directories of the mounts must exist (shares of the server)
+status    the container and its image commit against HEAD
+
+--dry-run prints the docker command instead of running it.
+USAGE
+}
+
+die() {
+    echo "ws container: $*" >&2
+    exit 1
+}
+
+# facts.nix `container` of HOST as JSON (Nix reads it, ws fact only strings).
+spec() {
+    local f="$repo/nix/hosts/$1/facts.nix"
+    [[ -r "$f" ]] || die "no nix/hosts/$1/facts.nix"
+    grep -qE '^[[:space:]]*boot = "container";' "$f" || die "$1 is not a container host (boot = \"container\")"
+    nix eval --json --file "$f" container
+}
+
+field() {
+    python3 -c 'import json,sys; v=json.load(sys.stdin)[sys.argv[1]]; print("\n".join(v) if isinstance(v, list) else v)' "$1" <<<"$spec_json"
+}
+
+remote() {
+    ssh -o BatchMode=yes "$server" "$@"
+}
+
+cmd_build() {
+    local commit
+    [[ -z "$(git -C "$repo" status --porcelain)" ]] \
+        || die "the checkout has changes: the image is built from a commit (commit first)"
+    commit="$(git -C "$repo" rev-parse --short HEAD)"
+    local -a build=(docker build --build-arg "HOST=$host"
+        --label "org.opencontainers.image.revision=$commit"
+        -t "$image:$commit" -t "$image:latest" -f container/Dockerfile -)
+    if [[ "$dry_run" == true ]]; then
+        echo "would run: git archive HEAD | ssh $server ${build[*]}"
+        return
+    fi
+    git -C "$repo" archive --format=tar HEAD | remote "${build[*]@Q}"
+    echo "built $image:$commit on $server"
+}
+
+cmd_run() {
+    local m d src rest
+    # shellcheck disable=SC2054 # commas are mount options, not separators
+    local -a args=(docker run -d --name "$host" --hostname "$host"
+        --restart unless-stopped
+        --runtime nvidia -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all
+        # systemd as PID 1: its cgroup tree, tmpfs where it expects them.
+        --cgroupns host -v /sys/fs/cgroup:/sys/fs/cgroup:rw
+        --tmpfs /run:rw,nosuid,nodev,mode=755
+        --tmpfs /run/lock:rw,nosuid,nodev,noexec,mode=755
+        --tmpfs /tmp:rw,nosuid,nodev,mode=1777
+        # Rootless podman, bubblewrap (Flatpak) and GDM inside: user
+        # namespaces, mounts and a fresh /proc.
+        --security-opt seccomp=unconfined --security-opt systempaths=unconfined
+        --cap-add SYS_ADMIN --cap-add SYS_RESOURCE --cap-add SYS_NICE
+        --cap-add SYS_TTY_CONFIG --cap-add MKNOD --cap-add DAC_READ_SEARCH
+        --shm-size 16g --pids-limit 16384
+        --log-opt max-size=50m --log-opt max-file=1
+        -p "$port:3389")
+    while IFS= read -r m; do
+        [[ -n "$m" ]] || continue
+        src="${m%%:*}"
+        rest="${m#*:}"
+        # SRC:~ or SRC:~/PATH: the home of the user of facts.nix.
+        # shellcheck disable=SC2088 # a literal ~ of facts.nix
+        case "$rest" in
+            '~' | '~/'* | '~:'*) rest="/home/$user${rest#\~}" ;;
+        esac
+        m="$src:$rest"
+        [[ "$dry_run" == true ]] || remote test -d "$src" || die "$src does not exist on $server (create the share first)"
+        args+=(-v "$m")
+    done < <(field mounts)
+    while IFS= read -r d; do
+        [[ -n "$d" ]] && args+=(--device "$d")
+    done < <(field devices)
+    args+=("$image:latest")
+    if [[ "$dry_run" == true ]]; then
+        echo "would run on $server: docker rm -f $host"
+        echo "would run on $server: ${args[*]}"
+        return
+    fi
+    remote docker image inspect "$image:latest" >/dev/null || die "no $image:latest on $server (ws container build $host)"
+    remote "docker rm -f ${host@Q} >/dev/null 2>&1 || true; ${args[*]@Q}"
+    echo "started $host on $server (RDP port $port)"
+}
+
+cmd_status() {
+    local rev head
+    remote docker ps -a --filter "name=^${host}\$" --format '{{.Names}}\t{{.Image}}\t{{.Status}}'
+    rev="$(remote docker inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$host" 2>/dev/null || true)"
+    head="$(git -C "$repo" rev-parse --short HEAD)"
+    if [[ -z "$rev" ]]; then
+        echo "no container $host"
+    elif [[ "$rev" == "$head" ]]; then
+        echo "image commit $rev = HEAD"
+    else
+        echo "image commit $rev, HEAD $head (ws container build $host, ws container run $host)"
+    fi
+}
+
+[[ $# -ge 1 ]] || { usage >&2; exit 64; }
+case "$1" in
+    -h|--help|help) usage; exit 0 ;;
+esac
+command="$1"
+host="${2:-}"
+[[ -n "$host" ]] || { usage >&2; exit 64; }
+dry_run=false
+case "${3:-}" in
+    --dry-run) dry_run=true ;;
+    "") ;;
+    *) die "unknown argument: $3" ;;
+esac
+
+spec_json="$(spec "$host")"
+user="$(sed -nE 's/^[[:space:]]*user = "([^"]*)";.*/\1/p' "$repo/nix/hosts/$host/facts.nix" | head -n1)"
+server="$(field server)"
+image="$(field image)"
+port="$(field port)"
+
+case "$command" in
+    build) cmd_build ;;
+    run) cmd_run ;;
+    status) cmd_status ;;
+    *) usage >&2; exit 64 ;;
+esac

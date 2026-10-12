@@ -9,7 +9,8 @@ set -euo pipefail
 # @wsbackup → groups nix-users, libvirt, input → fish as login shell → first
 # `ws switch`. The VM parts only with
 # vm = "yes" in facts.nix, the Steam parts with nativeSteam = "yes", the
-# Game Mode list with gameMode = "yes".
+# Game Mode list with gameMode = "yes". A container host (boot =
+# "container") skips what its image or the server holds.
 #
 # Runs as the desktop user from the checkout at ~/<wsconfig of
 # nix/hosts/<host>/facts.nix> and calls sudo itself. Every step checks
@@ -21,6 +22,8 @@ set -euo pipefail
 # in → ws apply → ws check.
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/apt.bash
+. "$repo/lib/apt.bash"
 dry_run=false
 
 die() {
@@ -45,12 +48,6 @@ run() {
 
 [[ $EUID -ne 0 ]] || die "run as the desktop user, not root"
 command -v sudo >/dev/null 2>&1 || die "sudo not found"
-[[ "$(findmnt -no FSTYPE /)" == btrfs ]] || die "/ is not Btrfs (rebuild.md, section 3)"
-findmnt -no OPTIONS / | tr ',' '\n' | grep -qx 'subvol=/@' \
-    || die "/ is not the subvolume @: first ~/wsconfig/bin/ws btrfs make (helpws rebuild, section 3)"
-[[ ! -e /var/lib/ws-btrfs-layout/old-root ]] \
-    || echo "The old root is still on the top level of Btrfs: ws btrfs make removes it."
-
 host="$("$repo/bin/ws" host)"
 host_list="$repo/nix/hosts/$host/apt.txt"
 [[ -r "$repo/nix/hosts/$host/facts.nix" ]] || die "no nix/hosts/$host/facts.nix"
@@ -73,23 +70,24 @@ game_mode="$("$repo/bin/ws" fact gameMode)" \
 [[ "$game_mode" == no || "$native_steam" == yes ]] \
     || die "gameMode = \"yes\" needs nativeSteam = \"yes\" in nix/hosts/$host/facts.nix"
 echo "Host: $host (vm = $vm, nativeSteam = $native_steam, gameMode = $game_mode)"
+# A container host (helpws plan-wsgnomebox): the image holds the apt
+# packages, groups and login shell, /nix is a directory of the server; no
+# Btrfs, subvolumes or local backup copies.
+container=false
+[[ "$("$repo/bin/ws" fact boot)" != container ]] || container=true
 
-# Package and PPA lines of the apt lists, without comments.
-apt_lines() {
-    local f
-    local lists=("$repo/nix/hosts/apt.txt" "$host_list")
-    [[ "$vm" == no ]] || lists+=("$repo/virt/apt.txt")
-    [[ "$native_steam" == no ]] || lists+=("$repo/steam/apt.txt")
-    [[ "$game_mode" == no ]] || lists+=("$repo/gaming/apt.txt")
-    for f in "${lists[@]}"; do
-        [[ -r "$f" ]] && sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' "$f"
-    done
-    return 0
-}
-
-root_dev="$(findmnt -no SOURCE / | sed 's/\[.*$//')"
-root_uuid="$(findmnt -no UUID /)"
-[[ -n "$root_uuid" ]] || die "cannot determine the UUID of /"
+if [[ "$container" == true ]]; then
+    mountpoint -q /nix || die "/nix is not a mount: the container needs it from the server (helpws plan-wsgnomebox)"
+else
+    [[ "$(findmnt -no FSTYPE /)" == btrfs ]] || die "/ is not Btrfs (rebuild.md, section 3)"
+    findmnt -no OPTIONS / | tr ',' '\n' | grep -qx 'subvol=/@' \
+        || die "/ is not the subvolume @: first ~/wsconfig/bin/ws btrfs make (helpws rebuild, section 3)"
+    [[ ! -e /var/lib/ws-btrfs-layout/old-root ]] \
+        || echo "The old root is still on the top level of Btrfs: ws btrfs make removes it."
+    root_dev="$(findmnt -no SOURCE / | sed 's/\[.*$//')"
+    root_uuid="$(findmnt -no UUID /)"
+    [[ -n "$root_uuid" ]] || die "cannot determine the UUID of /"
+fi
 
 # Subvolume NAME of the root filesystem mounted at DIR by an fstab line with
 # OPTIONS. DIR must not hold data yet: it would be hidden by the mount.
@@ -129,111 +127,20 @@ subvolume_mount() {
 
 echo
 echo "== 1. /nix on subvolume @nix"
-subvolume_mount @nix /nix noatime,compress=zstd:1
+if [[ "$container" == true ]]; then
+    echo "/nix is a directory of the server"
+else
+    subvolume_mount @nix /nix noatime,compress=zstd:1
+fi
 
 echo
 echo "== 2. apt"
-mapfile -t ppas < <(apt_lines | sed -n 's/^ppa://p')
-mapfile -t sources < <(apt_lines | sed -n 's/^source://p')
-mapfile -t archs < <(apt_lines | sed -n 's/^arch://p')
-# rec:NAME lines keep their prefix here: the install below takes their
-# recommends.
-mapfile -t packages < <(apt_lines | grep -v '^ppa:\|^purge:\|^source:\|^arch:')
-mapfile -t purges < <(apt_lines | sed -n 's/^purge://p')
-added=false
-for ppa in "${ppas[@]}"; do
-    if grep -rqsF "ppa.launchpadcontent.net/$ppa/" /etc/apt/sources.list.d/; then
-        echo "PPA present: $ppa"
-    else
-        run sudo add-apt-repository -y --no-update "ppa:$ppa"
-        added=true
-    fi
-done
-# Other repositories of the host: nix/hosts/<host>/apt/NAME.sources (deb822)
-# with its key NAME.asc, installed as ws-NAME; the file must point
-# Signed-By at the installed key.
-for name in "${sources[@]}"; do
-    src="$repo/nix/hosts/$host/apt/$name.sources"
-    key="$repo/nix/hosts/$host/apt/$name.asc"
-    [[ -r "$src" && -r "$key" ]] \
-        || die "source:$name needs nix/hosts/$host/apt/$name.sources and $name.asc"
-    grep -qx "Signed-By: /etc/apt/keyrings/ws-$name.asc" "$src" \
-        || die "nix/hosts/$host/apt/$name.sources: Signed-By must be /etc/apt/keyrings/ws-$name.asc"
-    if cmp -s "$src" "/etc/apt/sources.list.d/ws-$name.sources" \
-        && cmp -s "$key" "/etc/apt/keyrings/ws-$name.asc"; then
-        echo "source present: $name"
-    else
-        run sudo install -D -m0644 "$key" "/etc/apt/keyrings/ws-$name.asc"
-        run sudo install -D -m0644 "$src" "/etc/apt/sources.list.d/ws-$name.sources"
-        added=true
-    fi
-done
-# ws-NAME belongs to bootstrap.sh: one whose source: line is gone goes too,
-# or apt would keep installing from it.
-for f in /etc/apt/sources.list.d/ws-*.sources; do
-    [[ -e "$f" ]] || continue
-    name="${f##*/ws-}"
-    name="${name%.sources}"
-    [[ " ${sources[*]} " == *" $name "* ]] && continue
-    run sudo rm -f "$f" "/etc/apt/keyrings/ws-$name.asc"
-    added=true
-done
-for arch in "${archs[@]}"; do
-    if dpkg --print-foreign-architectures | grep -qx "$arch"; then
-        echo "architecture present: $arch"
-    else
-        run sudo dpkg --add-architecture "$arch"
-        added=true
-    fi
-done
-# Right after the first boot of a fresh install unattended-upgrades holds
-# the dpkg lock for minutes: wait for it instead of failing (phase 6, wsvm).
-apt_get=(sudo apt-get -o DPkg::Lock::Timeout=600)
-# Packages come without their recommends: what a host needs is listed.
-# A rec:NAME line is the exception (metapackages whose content is
-# Recommends, Steam's 32-bit libraries); apt takes recommends only when it
-# installs a package, so these go first, in their own install, before
-# anything else can pull them in as a plain dependency.
-missing=()
-missing_rec=()
-for line in "${packages[@]}"; do
-    pkg="${line#rec:}"
-    # "hold ok installed" counts too (linux-t2 is held).
-    dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q ' ok installed$' && continue
-    if [[ "$line" == rec:* ]]; then
-        missing_rec+=("$pkg")
-    else
-        missing+=("$pkg")
-    fi
-done
-packages=("${packages[@]#rec:}")
-if ((${#missing_rec[@]} + ${#missing[@]})); then
-    run "${apt_get[@]}" update
-    ((${#missing_rec[@]} == 0)) \
-        || run "${apt_get[@]}" install -y --install-recommends "${missing_rec[@]}"
-    ((${#missing[@]} == 0)) \
-        || run "${apt_get[@]}" install -y --no-install-recommends "${missing[@]}"
+if [[ "$container" == true ]]; then
+    # Installed here they would be gone with the next container.
+    echo "in the image (container/Dockerfile); ws check apt compares the lists"
 else
-    [[ "$added" == false ]] || run "${apt_get[@]}" update
-    echo "all ${#packages[@]} packages installed"
+    apt_install
 fi
-# A listed package the standard install already has as a dependency
-# (python3-gi) stays auto-installed: apt autoremove could take it.
-mapfile -t auto < <(apt-mark showauto "${packages[@]}" 2>/dev/null)
-if ((${#auto[@]})); then
-    run sudo apt-mark -o DPkg::Lock::Timeout=600 manual "${auto[@]}"
-else
-    echo "all listed packages marked manual"
-fi
-present=()
-for pkg in "${purges[@]}"; do
-    if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q ' installed$'; then
-        present+=("$pkg")
-    else
-        echo "not installed: $pkg"
-    fi
-done
-((${#present[@]} == 0)) || run "${apt_get[@]}" purge -y "${present[@]}"
 
 echo
 echo "== 3. VM state on @vms, libvirt (helpws virt)"
@@ -257,13 +164,17 @@ echo "== 5. Local backup copies on @wsbackup (helpws backup)"
 # the incremental backup would leave with @ on a Timeshift or Live USB
 # restore. Only the local side; the receiver is helpws backup.
 backup_root=/var/lib/workstation-backup
-subvolume_mount @wsbackup "$backup_root" noatime
-if [[ "$(stat -c %a "$backup_root" 2>/dev/null)" == 700 ]]; then
-    echo "$backup_root is 0700"
+if [[ "$container" == true ]]; then
+    echo "container: its data are directories of the server"
 else
-    run sudo chmod 0700 "$backup_root"
+    subvolume_mount @wsbackup "$backup_root" noatime
+    if [[ "$(stat -c %a "$backup_root" 2>/dev/null)" == 700 ]]; then
+        echo "$backup_root is 0700"
+    else
+        run sudo chmod 0700 "$backup_root"
+    fi
+    run sudo bash "$repo/backup/wsbackup-source" --uuid "$root_uuid" --root "$backup_root" init
 fi
-run sudo bash "$repo/backup/wsbackup-source" --uuid "$root_uuid" --root "$backup_root" init
 
 echo
 echo "== 6. Nix daemon and groups"
@@ -282,8 +193,10 @@ else
     run sudo systemctl start nix-daemon.socket
 fi
 user="$(id -un)"
-# input: xremap reads the keyboards (/dev/input/event*).
-groups=(nix-users input)
+# input: xremap reads the keyboards (/dev/input/event*); a container gets
+# its keys over RDP, not from /dev/input.
+groups=(nix-users)
+[[ "$container" == true ]] || groups+=(input)
 [[ "$vm" == no ]] || groups+=(libvirt)
 for group in "${groups[@]}"; do
     if getent group "$group" | cut -d: -f4 | tr ',' '\n' | grep -qx "$user"; then
@@ -320,7 +233,12 @@ echo
 # New groups reach only processes of a new systemd user manager, and GNOME
 # starts from it; a log out keeps the old one while another session of the
 # user (ssh) is open.
-echo "Done. Reboot (groups ${groups[*]}; PATH from 00-nix.fish), then:"
-echo "  ws system apply     # system files (sudo)"
+if [[ "$container" == true ]]; then
+    # The system tree is in the image (container/system-install).
+    echo "Done. Log out and in (PATH from 00-nix.fish), then:"
+else
+    echo "Done. Reboot (groups ${groups[*]}; PATH from 00-nix.fish), then:"
+    echo "  ws system apply     # system files (sudo)"
+fi
 echo "  ws apply            # user layer; log out and in; ws apply again"
 echo "  ws check"

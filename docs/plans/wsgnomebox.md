@@ -11,7 +11,31 @@ volume: User Commands
 как на mbp16, только без железа. Из текущего gnomebox ничего не переносится:
 ни файлы, ни домашний каталог, ни пользователь.
 
-Состояние: план. На tower ничего не делалось.
+Состояние: этап 1 сделан 2026-10-12, кроме клавиатуры (3.4). На tower
+ничего не делалось.
+
+Проверено локально 2026-10-12, в rootless podman на mbp16 без GPU:
+
+- образ собирается (~12 минут, 3.4 ГБ);
+- в контейнере systemd в состоянии `running`, без упавших юнитов;
+- gnome-remote-desktop слушает 3389, вход по RDP доходит до сессии
+  экрана входа GDM;
+- `bootstrap.sh` и первый `ws switch` проходят;
+- после пересоздания контейнера с теми же каталогами `ws system check`,
+  `ws-check-home` и `ws check apt` без FAIL.
+
+Не проверено, ждёт tower:
+
+- картинка в RDP: без GPU кадр чёрный, gnome-shell рисует программно, а
+  кодировщику gnome-remote-desktop нужен EGL;
+- rootless podman: у теста вложенный rootless, ему не хватает subuid;
+- `ws check` в настоящей сессии GNOME.
+
+`ttf-mscorefonts-installer` в образе стоит, но шрифтов нет: EULA при
+сборке некому принять (на машине её принимает пользователь).
+
+Изменение `facts.nix` хоста или apt-списков пересобирает слой apt
+(~10 минут), остальные коммиты — только слой системного дерева.
 
 # 1. Образец: gnomebox-desktop
 
@@ -90,76 +114,91 @@ RDP-клиент  какой — неизвестно; от него завис�
 
 ## 3.1 Хост `nix/hosts/wsgnomebox/`
 
-`facts.nix`: `hostname = "wsgnomebox"`, `user = "king"`, `vm = "no"`,
-`nativeSteam = "no"`, `gameMode = "no"`, `displayScale` — по размеру окна
-RDP. Новые значения фактов:
+`facts.nix`:
 
-- `boot = "container"`: нет загрузчика, ядра, initramfs, Timeshift. Для
-  него — `system/boot/container.nix` с файлами контейнера (маски юнитов,
-  oneshot RDP, GBM).
-- `hardware = "container-nvidia"`: `system/hardware/container-nvidia.nix`.
+- `hostname = "wsgnomebox"`, `user = "king"`, `vm`, `nativeSteam`,
+  `gameMode` — `"no"`, `displayScale = "1"`, `timezone = "Europe/Kyiv"`;
+- `boot = "container"` — нет загрузчика, ядра, initramfs, Timeshift;
+  профиль `system/boot/container.nix`;
+- `hardware = "container-nvidia"` — `system/hardware/container-nvidia.nix`;
+- `container` — сервер, образ, порт, каталоги и устройства для
+  `ws container`; `~` в цели каталога — домашний каталог `user`.
 
-`apt.txt` хоста:
-
-- `gnome-remote-desktop`, `podman`, `uidmap`, `fuse-overlayfs`, `passt`,
-  `mesa-utils`, `vulkan-tools`, `openssl`;
-- без `qemu-guest-agent`, драйверов железа, `linux-*`.
+`apt.txt` хоста: то, что у настоящей машины ставит установщик, а у
+`ubuntu:26.04` нет (`ubuntu-minimal`, `rec:ubuntu-desktop-minimal`,
+`locales`, `man-db` …), `gnome-remote-desktop`, `openssl`, `mesa-utils`,
+`vulkan-tools`, `pciutils`. podman, distrobox, fuse-overlayfs, passt — уже
+в общем `nix/hosts/apt.txt`.
 
 ## 3.2 Общий код
 
-Всё ниже — при `boot = "container"`. mbp16 и legiongo должны собираться в
-те же пути store (`nix eval --raw .#checks.x86_64-linux.home-mbp16.outPath`
-и `system-mbp16` до и после).
+Пути store у mbp16, legiongo и wsvm (`checks.x86_64-linux.home-*` и
+`system-*`) после изменений те же, что до.
 
-- **`system/common.nix`**: GRUB/Timeshift (`42_ws_timeshift`, хуки) и
-  `ntsync`/uinput — не для контейнера. Перенос в оба профиля загрузки (`grub`,
-  `refind-grub-recovery`) меняет порядок манифеста и путь store у mbp16.
-  Поэтому — условие `facts.boot != "container"` в `common.nix`: дерево у
-  остальных не меняется.
-- **`bootstrap.sh`**:
-  - пропустить проверку Btrfs-корня и подтома `@`;
-  - пропустить `@nix`, `@vms`, `@steam`, `@wsbackup` (`/nix` — bind-каталог);
-  - установка пакетов apt разбивается: её же вызывает сборка образа (шаг
-    `--apt-only` или отдельный скрипт, читающий те же списки);
-  - `chsh fish`, группы и первый `ws switch` — в работающем контейнере.
-- **`setup.sh`**: сейчас требует `boot == grub`. Для контейнера — свой
-  короткий путь: `bootstrap.sh` → `ws system apply` → `ws apply` →
-  `ws check`, без `ws btrfs make`, Timeshift и backup.
-- **`ws check`, `ws-workstation-verify`**: проверки ядра, GRUB, Timeshift,
-  suspend, udev и xremap — пропуск при `boot = "container"` (как сейчас для
-  T2 по `ws fact`).
+- **`system/common.nix`**: uinput, ntsync, GRUB и Timeshift — только при
+  `boot != "container"`; порядок файлов у остальных хостов не меняется.
+- **`lib/apt.bash`**: шаг apt из `bootstrap.sh` (PPA, `source:`, `arch:`,
+  `rec:`, пометки manual, `purge:`). Его вызывают `bootstrap.sh` и сборка
+  образа (`container/image-setup`).
+- **`bootstrap.sh`** при `boot = "container"`:
+  - вместо проверки Btrfs — `/nix` должен быть каталогом сервера;
+  - нет `@nix`, `@wsbackup`, установки apt (пакеты в образе; сравнивает
+    `ws check apt`) и группы `input` (нет xremap);
+  - группы и fish уже даны образом — шаги 6 и 7 только проверяют;
+  - первый `ws switch` — как везде.
+- **`ws system apply`**: юниты `masked` из манифеста маскирует, udev не
+  трогает в контейнере. **`ws system check`**: GRUB в контейнере не
+  проверяет.
+- **`setup.sh`** для контейнера не нужен: шаги — этап 6 (раздел 4).
 - **Клавиатура**: xremap в контейнере не работает, варианты — 3.4.
-- **Остальные владельцы** без изменений: GNOME и расширения, Flatpak,
-  Distrobox (rootless podman — как в gnomebox), terminal, widgets.
+- **Ещё не сделано** (этап 6 покажет, что падает): `ws check` и
+  `ws-workstation-verify` — пропуск suspend, ядра, xremap.
 
 ## 3.3 Образ и контейнер — `container/`
 
 ```text
-container/Dockerfile       FROM ubuntu:26.04; systemd; пользователь king;
-                           apt-списки хоста через общий скрипт из bootstrap.sh;
-                           nix из apt; маски юнитов; entrypoint
-container/entrypoint       то, что в 1 (пароль, группы устройств, GBM,
-                           nvidia params) + ссылка на checkout
-container/wsgnomebox.xml      шаблон Unraid (генерируется из facts.nix)
-bin/ws container …         build | deploy | status
+container/Dockerfile       стадия nix: дерево system-HOST (как ws system tree);
+                           стадия ubuntu:26.04: image-setup, system-install
+container/image-setup      шаг apt (lib/apt.bash), пользователь UID 1000 с
+                           группами sudo, nix-users и fish, LANG, часовой пояс
+container/system-install   файлы и состояния юнитов дерева в образ,
+                           graphical.target
+bin/ws-container           ws container build|run|status HOST [--dry-run]
 ```
 
-- **Сборка без файлов на tower**: `git archive HEAD | ssh root@tower docker
-  build -t local/wsgnomebox:<коммит> -f container/Dockerfile -`. Контекст —
-  сам коммит, образ помечен им.
-- **Постоянные каталоги** (в `/mnt/nvm/wsgnomebox`):
-  - `/nix` (store и профили home-manager);
-  - `/home/king` (checkout `~/wsconfig`, `~/.local/state/workstation`,
-    Flatpak `--user`, distrobox);
-  - `/var/lib/gnome-remote-desktop` (TLS);
-  - `/config` (ro, пароли);
-  - projects, ue5.
-- **Системный слой после пересоздания**: oneshot `ws-container-apply`
-  выполняет `ws system apply` без вопросов (root, `/nix` уже есть). Корень
-  контейнера каждый раз приходит в состояние коммита образа плюс
-  `system/` из checkout.
-- **Пароли**: в `/config` на tower, не в репозитории. Файлы создаёт
-  пользователь. sudo внутри — пароль из `/config`.
+Файлы контейнера — в системном дереве (`system/files/container/`), их
+сравнивает `ws system check`:
+
+- `ws-container-init` (entrypoint, на каждом старте): пароль пользователя
+  из `/config/password`, каркас `/nix`, домашний каталог (владелец,
+  `/etc/skel` в первый раз, без `chown -R`), группы `/dev/dri` и
+  `/dev/fuse`, хуки `/usr/local/lib/ws-container/init.d/`;
+- `50-nvidia` (хук `container-nvidia`): ссылка GBM, снятие
+  `/proc/driver/nvidia/params`;
+- `ws-rdp-init` и его юнит перед `gnome-remote-desktop`: TLS в
+  `/var/lib/gnome-remote-desktop`, учётные данные из `/config/rdp-user` и
+  `/config/rdp-password`, `grdctl --system rdp enable`;
+- `/etc/containers/storage.conf`: overlay через fuse-overlayfs;
+- маски: udev, udisks2, colord, tpm-udev, NetworkManager-wait-online,
+  bluetooth.
+
+- **Сборка без файлов на tower**: `ws container build wsgnomebox` —
+  `git archive HEAD | ssh … docker build -f container/Dockerfile -`, только
+  из чистого checkout; образ `local/wsgnomebox:<коммит>` и `:latest`, с
+  меткой коммита.
+- **Запуск**: `ws container run wsgnomebox` — `docker rm -f` и `docker
+  run` с правами из 1, каталогами и устройствами из `facts.nix`; проверяет,
+  что каталоги на сервере есть. Шаблона Unraid нет: контейнер виден в
+  разделе Docker, но правится только через `ws container run`.
+- **Системный слой после пересоздания**: дерево ставится в образ при
+  сборке (`system-install`), так что новый контейнер стартует с ним. Это
+  вместо oneshot с `ws system apply` на каждом старте: тот требовал бы
+  sudo без пароля. Изменение `system/` без пересборки — `ws system apply`
+  внутри до следующего образа.
+- **Постоянные каталоги** (`/mnt/nvm/wsgnomebox`): `home`, `nix`, `grd`,
+  `config` (ro) и `~/Projects`, `~/UE5`.
+- **Пароли**: в `/mnt/nvm/wsgnomebox/config` (`password`, `rdp-user`,
+  `rdp-password`), не в репозитории; создаёт пользователь.
 
 ## 3.4 Клавиатура через RDP
 
@@ -209,13 +248,14 @@ input-remapper) его не видят. GNOME-сочетания и xkb (`caps:n
 3. **tower: каталоги и `/config`** в `/mnt/nvm/wsgnomebox` (подтверждение).
 4. **tower: сборка образа** `ws container build` (подтверждение; место
    Docker на ssdintel — 38 ГБ свободно на 2026-10-12, образ ~8–10 ГБ).
-5. **tower: шаблон и запуск** (подтверждение). Проверки:
+5. **tower: запуск** `ws container run wsgnomebox` (подтверждение). Проверки:
    - systemd `running`;
    - вход по RDP на 3390;
    - `nvidia-smi`, `glxinfo -B` и `vulkaninfo --summary` на NVIDIA;
    - rootless podman;
    - flatpak с bubblewrap.
-6. **Внутри**: `bootstrap.sh` → `ws system apply` → `ws apply` → `ws check`;
+6. **Внутри** (терминал в RDP): `gh auth login`, `git clone` wsconfig в
+   `~/wsconfig` → `bootstrap.sh` → выйти и войти → `ws apply` → `ws check`;
    `ws checkpoint create setup`.
 7. **Пересоздание**: удалить и создать контейнер заново → всё, кроме
    корня, на месте, `ws check` без FAIL.
