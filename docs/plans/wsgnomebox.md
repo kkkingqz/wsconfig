@@ -1,18 +1,17 @@
-title: ws-plan-towerws
+title: ws-plan-wsgnomebox
 section: 1
 date: 2026-10-12
 source: Workstation
 volume: User Commands
 
-# TOWERWS — ХОСТ WSCONFIG В КОНТЕЙНЕРЕ НА TOWER
+# WSGNOMEBOX — ХОСТ WSCONFIG В КОНТЕЙНЕРЕ НА TOWER
 
 Цель — полный хост wsconfig в Docker на tower (Unraid), вход по RDP, рядом с
 `gnomebox-desktop`. Это Ubuntu 26.04 и GNOME с Nix и home-manager поверх них,
 как на mbp16, только без железа. Из текущего gnomebox ничего не переносится:
 ни файлы, ни домашний каталог, ни пользователь.
 
-Состояние: план. На tower ничего не делалось. Имя хоста `towerws` и пути
-ниже — предложение Claude, пока не подтверждённое.
+Состояние: план. На tower ничего не делалось.
 
 # 1. Образец: gnomebox-desktop
 
@@ -60,32 +59,32 @@ tmpfs       /run, /run/lock, /tmp; shm 16 ГБ; pids 16384
 
 ```text
 хост        полный хост wsconfig (bootstrap, системный слой, home-manager)
+имя         wsgnomebox (хост, контейнер, hostname)
 где         tower, рядом с gnomebox-desktop (тот продолжает работать)
 перенос     ничего из gnomebox-desktop
-mounts      projects (как у gnomebox) и новый ue5
-шара ue5    создаёт пользователь сам
 корень      пакеты apt — в образе; пересоздание контейнера = пересборка
             образа, состояние воспроизводится
+данные      /mnt/nvm/wsgnomebox — шару создаёт пользователь
+ue5         /mnt/nvm/ue5 → ~/UE5 — шару создаёт пользователь
+projects    как у gnomebox → ~/Projects
+RDP         порт 3390
 ```
 
 Предложения Claude (ждут ответа):
 
 ```text
-имя         хост и контейнер towerws, hostname towerws, пользователь king
-            (UID 1000)
-данные      /mnt/nvmtwo/towerws/{home,nix,grd,config}
-порт        RDP 3390 → 3389 (3389 занят gnomebox)
-сеть        bridge по умолчанию; своя сеть не нужна, guacamole не нужен
-mounts      /mnt/nvmtwo/projects и /mnt/<пул>/ue5 напрямую (без shfs
-            /mnt/user: быстрее для сборок UE5 и не касается HDD), в
-            контейнере — ~/Projects и ~/UE5 или /shares/… как у gnomebox
+пользователь king (UID 1000), как на mbp16 и legiongo
+данные      внутри /mnt/nvm/wsgnomebox: home, nix, grd, config
+projects    /mnt/nvmtwo/projects напрямую, без shfs /mnt/user: быстрее и
+            не касается HDD (шара только на кэше nvmtwo)
+сеть        bridge по умолчанию; своя сеть и guacamole не нужны
 ```
 
 # 3. Как это ложится на wsconfig
 
-## 3.1 Хост `nix/hosts/towerws/`
+## 3.1 Хост `nix/hosts/wsgnomebox/`
 
-`facts.nix`: `hostname = "towerws"`, `user = "king"`, `vm = "no"`,
+`facts.nix`: `hostname = "wsgnomebox"`, `user = "king"`, `vm = "no"`,
 `nativeSteam = "no"`, `gameMode = "no"`, `displayScale` — по размеру окна
 RDP. Новые значения фактов:
 
@@ -123,10 +122,7 @@ RDP. Новые значения фактов:
 - **`ws check`, `ws-workstation-verify`**: проверки ядра, GRUB, Timeshift,
   suspend, udev и xremap — пропуск при `boot = "container"` (как сейчас для
   T2 по `ws fact`).
-- **Клавиатура**: RDP-ввод приходит в mutter как виртуальное устройство, не
-  через `/dev/input` — xremap его не видит. Раскладки и сочетания GNOME
-  работают; переназначения xremap (macOS-style) — нет. Нужен факт (например
-  `xremap = "no"`) или пропуск по `boot`.
+- **Клавиатура**: xremap в контейнере не работает, варианты — 3.4.
 - **Остальные владельцы** без изменений: GNOME и расширения, Flatpak,
   Distrobox (rootless podman — как в gnomebox), terminal, widgets.
 
@@ -138,14 +134,14 @@ container/Dockerfile       FROM ubuntu:26.04; systemd; пользователь 
                            nix из apt; маски юнитов; entrypoint
 container/entrypoint       то, что в 1 (пароль, группы устройств, GBM,
                            nvidia params) + ссылка на checkout
-container/towerws.xml      шаблон Unraid (генерируется из facts.nix)
+container/wsgnomebox.xml      шаблон Unraid (генерируется из facts.nix)
 bin/ws container …         build | deploy | status
 ```
 
 - **Сборка без файлов на tower**: `git archive HEAD | ssh root@tower docker
-  build -t local/towerws:<коммит> -f container/Dockerfile -`. Контекст —
+  build -t local/wsgnomebox:<коммит> -f container/Dockerfile -`. Контекст —
   сам коммит, образ помечен им.
-- **Постоянные каталоги**:
+- **Постоянные каталоги** (в `/mnt/nvm/wsgnomebox`):
   - `/nix` (store и профили home-manager);
   - `/home/king` (checkout `~/wsconfig`, `~/.local/state/workstation`,
     Flatpak `--user`, distrobox);
@@ -159,17 +155,52 @@ bin/ws container …         build | deploy | status
 - **Пароли**: в `/config` на tower, не в репозитории. Файлы создаёт
   пользователь. sudo внутри — пароль из `/config`.
 
+## 3.4 Клавиатура через RDP
+
+gnome-remote-desktop передаёт ввод в mutter через D-Bus (RemoteDesktop,
+`NotifyKeyboardKeycode`) — виртуальным устройством Clutter, без
+`/dev/input`. xremap и любые evdev-переназначатели (keyd,
+input-remapper) его не видят. GNOME-сочетания и xkb (`caps:none`,
+раскладки) применяются как обычно.
+
+Варианты (выбор — за пользователем):
+
+1. **Перевод на клиенте.** xremap клиента (mbp16) переводит до
+   RDP-клиента, как для любого окна. Работают: Command+C/V/… в GUI,
+   приватные аккорды GNOME (`Shift+Ctrl+Alt+Super+…`) — если RDP-клиент
+   захватывает клавиатуру. Не работают:
+   - фильтр по приложению: клиент видит одно окно RDP, поэтому в
+     терминале контейнера Command+C придёт как Ctrl+C (прерывание);
+   - `launch:` (`ws-input-source`, `ws-window`, `ws-nautilus-current`)
+     выполняются на клиенте, а не в контейнере.
+2. **Клиент пропускает как есть, сочетания — на стороне GNOME.** RDP-клиент
+   добавляется к `&vm_consoles` (как консоли VM), CapsLock уходит
+   приватным аккордом. В контейнере вместо xremap — пользовательские
+   сочетания GNOME на эти аккорды (`ws-input-source`), раскладки и
+   окна (`ws-window`). Command+C/V в GUI-приложениях не переводятся:
+   у GTK нет общего переназначения; в ghostty — свои `super+c/v`.
+3. **Переводчик в GNOME Shell контейнера.** Расширение ловит клавиши
+   на сцене Clutter и по фокусному приложению подменяет их через
+   `Clutter.VirtualInputDevice` — то же, что xremap, но внутри mutter;
+   правила — из `xremap.yml`. Полная замена xremap, но своя разработка:
+   задержки, повторы, залипание модификаторов.
+4. **Ввод через uinput.** Другой протокол вместо RDP (Sunshine/Moonlight
+   создают устройства uinput) — тогда xremap работает как на железе.
+   Нужны `/dev/uinput` и узлы `/dev/input` с tower, mutter без udev
+   их не подхватит; заодно NVENC-поток лучше RDP для UE5. Самый
+   тяжёлый путь.
+
 # 4. Этапы
 
 Каждый этап, который меняет tower, — с отдельного «да» пользователя на
 конкретную команду.
 
-1. **Репозиторий** (без tower): хост `towerws`, `boot`/`hardware`
+1. **Репозиторий** (без tower): хост `wsgnomebox`, `boot`/`hardware`
    контейнера, условия в общем коде, `container/`, `ws container`.
    Проверка — тесты, `nix flake check`, пути mbp16/legiongo не изменились,
    сборка образа локально в podman на mbp16 (без GPU).
-2. **Шара ue5** — пользователь создаёт сам.
-3. **tower: каталоги и `/config`** на nvmtwo (подтверждение).
+2. **Шары `wsgnomebox` и `ue5` на nvm** — пользователь создаёт сам.
+3. **tower: каталоги и `/config`** в `/mnt/nvm/wsgnomebox` (подтверждение).
 4. **tower: сборка образа** `ws container build` (подтверждение; место
    Docker на ssdintel — 38 ГБ свободно на 2026-10-12, образ ~8–10 ГБ).
 5. **tower: шаблон и запуск** (подтверждение). Проверки:

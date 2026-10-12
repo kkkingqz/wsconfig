@@ -42,7 +42,7 @@ case "$topic" in
     plan-unraid|unraid) open_title ws-plan-unraid ;;
     plan-legion-go|legion-go|legiongo) open_title ws-plan-legion-go ;;
     plan-legion-go-agent|legion-go-agent) open_title ws-plan-legion-go-agent ;;
-    plan-towerws|towerws) open_title ws-plan-towerws ;;
+    plan-wsgnomebox|wsgnomebox) open_title ws-plan-wsgnomebox ;;
     plan-hyprland|hyprland) open_title ws-plan-hyprland ;;
     history-gnome|plan-gnome) open_title ws-history-gnome ;;
     history-flatpak|plan-flatpak) open_title ws-history-flatpak ;;
@@ -93,7 +93,7 @@ Plans (docs/plans):
   plan-unraid      Unraid receiver: server survey, preparation
   plan-legion-go   Legion Go (gen 1): host, Game Mode from Bazzite parts
   plan-legion-go-agent  Legion Go: instructions for Claude on the device
-  plan-towerws     towerws: wsconfig host in a container on tower
+  plan-wsgnomebox  wsgnomebox: wsconfig host in a container on tower
   plan-hyprland    Hyprland + Caelestia next to GNOME (proposal)
 
 History (docs/history; old plan-* names work too):
