@@ -41,7 +41,7 @@ def run_main(env, args):
         with mock.patch.dict(os.environ, env), contextlib.redirect_stdout(out), \
                 contextlib.redirect_stderr(err):
             backup.main(list(args))
-    except (ValueError, OSError) as e:
+    except (ValueError, OSError, backup.Terminated) as e:
         err.write(f'wsbackup: {e}\n')
         code = 1
     finally:

@@ -12,6 +12,9 @@ import time
 import pty
 import select
 import errno
+import contextlib
+import io
+from unittest import mock
 from backup_fixture import Boundary, U
 from backup_model import HelperModel, run_main
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'lib'))
@@ -315,6 +318,19 @@ os.execvp(a[1], a[1:])
         finally:
             if p.poll() is None:
                 p.kill(); p.communicate()
+
+    def test_sigterm_survives_library_oserror_handlers(self):
+        # tempfile probes its directory under "except OSError"; a SIGTERM
+        # raised as an OSError there was discarded and the transfer went on.
+        handler = signal.getsignal(signal.SIGTERM)
+        self.addCleanup(signal.signal, signal.SIGTERM, handler)
+        with mock.patch.dict(os.environ, self.env), contextlib.redirect_stdout(io.StringIO()):
+            backup.main(['plan', 'home'])  # installs the wsbackup handler
+        with self.assertRaises(backup.Terminated):
+            try:
+                os.kill(os.getpid(), signal.SIGTERM)
+            except OSError:
+                pass
 
 
 class BackupCLI(unittest.TestCase):

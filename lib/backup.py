@@ -27,6 +27,11 @@ UUID = re.compile(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z')
 REPO = Path(__file__).resolve().parents[1]
 
 
+class Terminated(BaseException):
+    """SIGTERM. Not an OSError: library code catches and discards those (tempfile
+    probing its directory), which silently lost the signal mid-transfer."""
+
+
 def safe_path(value):
     if not isinstance(value, str) or not value.startswith('/'):
         raise ValueError('path must be absolute')
@@ -444,7 +449,7 @@ def restore_test(c, scope, id, target, paths, state):
 
 def main(argv=None):
     def terminated(signum, frame):
-        raise InterruptedError('terminated; see operation record')
+        raise Terminated('terminated; see operation record')
     signal.signal(signal.SIGTERM, terminated)
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command')
@@ -516,7 +521,7 @@ if __name__ == '__main__':
     sys.modules['backup'] = sys.modules[__name__]
     try:
         main()
-    except (ValueError, OSError) as e:
+    except (ValueError, OSError, Terminated) as e:
         print(f'wsbackup: {e}', file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
