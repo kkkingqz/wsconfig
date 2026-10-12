@@ -70,14 +70,20 @@ projects    как у gnomebox → ~/Projects
 RDP         порт 3390
 ```
 
-Предложения Claude (ждут ответа):
+Тоже приняты пользователем 2026-10-12 (были предложениями Claude):
 
 ```text
 пользователь king (UID 1000), как на mbp16 и legiongo
+projects    /mnt/nvmtwo/projects напрямую, без shfs /mnt/user
+клавиатура  вариант 2 из 3.4: клиент пропускает клавиши, сочетания — GNOME
+```
+
+Предложения Claude (ждут ответа):
+
+```text
 данные      внутри /mnt/nvm/wsgnomebox: home, nix, grd, config
-projects    /mnt/nvmtwo/projects напрямую, без shfs /mnt/user: быстрее и
-            не касается HDD (шара только на кэше nvmtwo)
 сеть        bridge по умолчанию; своя сеть и guacamole не нужны
+RDP-клиент  какой — неизвестно; от него зависит правило пропуска (3.4)
 ```
 
 # 3. Как это ложится на wsconfig
@@ -163,7 +169,7 @@ gnome-remote-desktop передаёт ввод в mutter через D-Bus (Remot
 input-remapper) его не видят. GNOME-сочетания и xkb (`caps:none`,
 раскладки) применяются как обычно.
 
-Варианты (выбор — за пользователем):
+Варианты (пользователь выбрал 2):
 
 1. **Перевод на клиенте.** xremap клиента (mbp16) переводит до
    RDP-клиента, как для любого окна. Работают: Command+C/V/… в GUI,
