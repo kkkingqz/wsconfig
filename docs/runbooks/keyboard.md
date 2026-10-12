@@ -524,6 +524,38 @@ mode 2 (media/brightness), при отпускании возвращается 
 helpws touchbar
 ```
 
+## Через RDP: wsgnomebox
+
+Контейнер `wsgnomebox` (`helpws plan-wsgnomebox`) получает клавиши по RDP:
+gnome-remote-desktop отдаёт их mutter без `/dev/input`, xremap их не видит
+и там не ставится (`boot = "container"`).
+
+- **Клиент — Remmina на mbp16.** Её окна в `&vm_consoles`
+  (`keyboard/xremap.yml`): xremap клиента пропускает клавиши как есть,
+  CapsLock уходит приватным аккордом (`Shift+Ctrl+Alt+Space`, UA: `+U`).
+  В профиле подключения Remmina — «Grab all keyboard events» (или кнопка
+  захвата на панели): иначе сочетания с Super забирает GNOME клиента;
+  GNOME один раз спрашивает, можно ли Remmina перехватывать сочетания.
+- **В контейнере** то, что делает xremap, — сочетания GNOME
+  (`keyboard/keyboard.nix`, `rdp`), их ставят `ws apply keyboard` и
+  `ws apply tiling`:
+
+```text
+Shift+Ctrl+Alt+Space / +U     ws-input-source caps / ua (CapsLock, Fn+CapsLock)
+Ctrl+Left/Right               рабочие столы
+Option+Command+Esc, Command+H, Option+Command+H/W/M,
+Shift+Command+Q, Option+Shift+Command+Q    ws-window
+Ctrl+Home/End/PageUp/PageDown (Fn+Ctrl+стрелки Apple), Ctrl+Command+стрелки
+                              половины экрана (Tiling Assistant)
+Option+Command+E / T          Tile Editing Mode / Always on Top
+```
+
+- **Не работает через RDP:** macOS-сочетания в GUI (Command+C/V в GTK —
+  `Ctrl+C/V`), Fn+Ctrl+F/C/R и Fn+Option-тайлинг (Fn по RDP не
+  передаётся), Smart Popup на правых модификаторах, сочетания Nautilus и
+  терминала из xremap. В ghostty Command+C/V/T/W работают его собственными
+  `super+…`.
+
 ## Source of truth
 
 Repository:

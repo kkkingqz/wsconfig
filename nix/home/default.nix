@@ -10,7 +10,6 @@
     ../../terminal/session-colors.nix
     ../../terminal/ssh-colors.nix
     ../../terminal/distrobox-colors.nix
-    ../../keyboard/xremap.nix
     ./man.nix
     ../../gnome/gnome-extensions.nix
     ../../flatpak/flatpak.nix
@@ -23,6 +22,9 @@
     # gameMode = "yes" (wsgame, helpws gaming).
     ../../gaming/sources.nix
   ]
+  # xremap reads /dev/input; a container host gets its keys over RDP
+  # (keyboard/keyboard.nix, helpws plan-wsgnomebox).
+  ++ lib.optionals (facts.boot != "container") [ ../../keyboard/xremap.nix ]
   # ~/VMs (helpws virt) on hosts with VMs.
   ++ lib.optionals (facts.vm == "yes") [ ../../virt/virt.nix ]
   # Pinned sources of the patched t2bce modules (helpws suspend) and of

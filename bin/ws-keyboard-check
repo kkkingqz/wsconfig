@@ -35,68 +35,78 @@ gcontains() {
 
 section "1. xremap"
 
-# keyboard/xremap.nix builds the store config from keyboard/xremap.yml
-# (@repo@ -> checkout path).
-xremap_env="$(systemctl --user show -P Environment xremap.service 2>/dev/null || true)"
-xremap_cfg="$(tr ' ' '\n' <<<"$xremap_env" | sed -n 's/^XREMAP_CONFIG=//p')"
-xremap_env_bin="$(tr ' ' '\n' <<<"$xremap_env" | sed -n 's/^XREMAP_BIN=//p')"
-if [[ "$xremap_cfg" != /nix/store/* || ! -r "$xremap_cfg" ]]; then
-    fail "xremap.service has no store XREMAP_CONFIG (${xremap_cfg:-unset}); run ws switch"
-elif [[ "$(sed "s|@repo@|$repo|g" "$repo/keyboard/xremap.yml" | sha256sum)" != "$(sha256sum < "$xremap_cfg")" ]]; then
-    warn "xremap store config differs from keyboard/xremap.yml; run ws switch"
+if [[ "$("$repo/bin/ws" fact boot 2>/dev/null)" == container ]]; then
+    # Keys over RDP, without /dev/input: GNOME shortcuts do what xremap does
+    # (keyboard/keyboard.nix, helpws plan-wsgnomebox).
+    info "container: no xremap, keys over RDP (GNOME shortcuts below)"
+    systemctl --user cat xremap.service >/dev/null 2>&1 \
+        && fail "xremap.service installed in a container (ws switch)" \
+        || pass "no xremap.service"
 else
-    pass "xremap store config matches keyboard/xremap.yml (${xremap_cfg#/nix/store/})"
-fi
 
-
-if have xremap; then
-    pass "xremap binary: $(command -v xremap)"
-    info "xremap version: $(xremap --version 2>/dev/null || echo unknown)"
-else
-    fail "xremap binary missing"
-fi
-
-# ~/.local/bin/xremap: nix/pkgs/xremap.nix, pinned by hash (ws check home).
-xremap_real="$(readlink -f "$HOME/.local/bin/xremap" 2>/dev/null || true)"
-
-id -nG | tr ' ' '\n' | grep -Fxq input \
-    && pass "user belongs to input group" \
-    || fail "user not in input group"
-
-[[ -e /dev/uinput && -w /dev/uinput ]] \
-    && pass "/dev/uinput exists and is writable" \
-    || fail "/dev/uinput missing/not writable"
-
-systemctl --user is-active --quiet xremap.service 2>/dev/null \
-    && pass "xremap.service active" \
-    || fail "xremap.service not active"
-
-# keyboard/xremap.nix: home-manager owns the unit and its wants link;
-# `ws-keyboard restore` switches xremap off with a ConditionPathExists flag.
-[[ -L "$HOME/.config/systemd/user/graphical-session.target.wants/xremap.service" ]] \
-    && pass "xremap.service wanted by graphical-session.target" \
-    || fail "xremap.service wants link missing; run ws switch"
-[[ -e "$HOME/.local/state/workstation/keyboard/xremap.disabled" ]] \
-    && warn "xremap switched off by ws-keyboard restore (ws-keyboard apply turns it on)" \
-    || pass "xremap not switched off by ws-keyboard restore"
-[[ -s "$HOME/.local/state/workstation/keyboard/gsettings-backup.tsv" ]] \
-    && pass "original GNOME shortcuts saved for ws-keyboard restore" \
-    || warn "no ~/.local/state/workstation/keyboard/gsettings-backup.tsv; ws-keyboard restore has nothing to restore"
-[[ -n "$xremap_env_bin" && "$xremap_env_bin" == "$xremap_real" ]] \
-    && pass "xremap.service runs the same binary as ~/.local/bin/xremap" \
-    || fail "xremap.service XREMAP_BIN ${xremap_env_bin:-unset} differs from ~/.local/bin/xremap"
-
-virtual_found=false
-for input_name in /sys/class/input/event*/device/name /sys/class/input/input*/name; do
-    [[ -r "$input_name" ]] || continue
-    if grep -Fxq 'workstation-xremap' "$input_name" 2>/dev/null; then
-        virtual_found=true
-        break
+    # keyboard/xremap.nix builds the store config from keyboard/xremap.yml
+    # (@repo@ -> checkout path).
+    xremap_env="$(systemctl --user show -P Environment xremap.service 2>/dev/null || true)"
+    xremap_cfg="$(tr ' ' '\n' <<<"$xremap_env" | sed -n 's/^XREMAP_CONFIG=//p')"
+    xremap_env_bin="$(tr ' ' '\n' <<<"$xremap_env" | sed -n 's/^XREMAP_BIN=//p')"
+    if [[ "$xremap_cfg" != /nix/store/* || ! -r "$xremap_cfg" ]]; then
+        fail "xremap.service has no store XREMAP_CONFIG (${xremap_cfg:-unset}); run ws switch"
+    elif [[ "$(sed "s|@repo@|$repo|g" "$repo/keyboard/xremap.yml" | sha256sum)" != "$(sha256sum < "$xremap_cfg")" ]]; then
+        warn "xremap store config differs from keyboard/xremap.yml; run ws switch"
+    else
+        pass "xremap store config matches keyboard/xremap.yml (${xremap_cfg#/nix/store/})"
     fi
-done
-[[ "$virtual_found" == true ]] \
-    && pass "virtual input device workstation-xremap present" \
-    || warn "virtual input device workstation-xremap not found in /sys/class/input"
+
+
+    if have xremap; then
+        pass "xremap binary: $(command -v xremap)"
+        info "xremap version: $(xremap --version 2>/dev/null || echo unknown)"
+    else
+        fail "xremap binary missing"
+    fi
+
+    # ~/.local/bin/xremap: nix/pkgs/xremap.nix, pinned by hash (ws check home).
+    xremap_real="$(readlink -f "$HOME/.local/bin/xremap" 2>/dev/null || true)"
+
+    id -nG | tr ' ' '\n' | grep -Fxq input \
+        && pass "user belongs to input group" \
+        || fail "user not in input group"
+
+    [[ -e /dev/uinput && -w /dev/uinput ]] \
+        && pass "/dev/uinput exists and is writable" \
+        || fail "/dev/uinput missing/not writable"
+
+    systemctl --user is-active --quiet xremap.service 2>/dev/null \
+        && pass "xremap.service active" \
+        || fail "xremap.service not active"
+
+    # keyboard/xremap.nix: home-manager owns the unit and its wants link;
+    # `ws-keyboard restore` switches xremap off with a ConditionPathExists flag.
+    [[ -L "$HOME/.config/systemd/user/graphical-session.target.wants/xremap.service" ]] \
+        && pass "xremap.service wanted by graphical-session.target" \
+        || fail "xremap.service wants link missing; run ws switch"
+    [[ -e "$HOME/.local/state/workstation/keyboard/xremap.disabled" ]] \
+        && warn "xremap switched off by ws-keyboard restore (ws-keyboard apply turns it on)" \
+        || pass "xremap not switched off by ws-keyboard restore"
+    [[ -s "$HOME/.local/state/workstation/keyboard/gsettings-backup.tsv" ]] \
+        && pass "original GNOME shortcuts saved for ws-keyboard restore" \
+        || warn "no ~/.local/state/workstation/keyboard/gsettings-backup.tsv; ws-keyboard restore has nothing to restore"
+    [[ -n "$xremap_env_bin" && "$xremap_env_bin" == "$xremap_real" ]] \
+        && pass "xremap.service runs the same binary as ~/.local/bin/xremap" \
+        || fail "xremap.service XREMAP_BIN ${xremap_env_bin:-unset} differs from ~/.local/bin/xremap"
+
+    virtual_found=false
+    for input_name in /sys/class/input/event*/device/name /sys/class/input/input*/name; do
+        [[ -r "$input_name" ]] || continue
+        if grep -Fxq 'workstation-xremap' "$input_name" 2>/dev/null; then
+            virtual_found=true
+            break
+        fi
+    done
+    [[ "$virtual_found" == true ]] \
+        && pass "virtual input device workstation-xremap present" \
+        || warn "virtual input device workstation-xremap not found in /sys/class/input"
+fi
 
 section "2. GNOME shortcuts"
 

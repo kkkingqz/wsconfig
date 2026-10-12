@@ -80,7 +80,10 @@ section "2. GNOME <-> keyboard"
 # extensions: the xremap bridge for application-specific remaps, the Input
 # Source extension for ws-input-source, Tiling Assistant for the private
 # tiling chords.
-if have busctl && busctl --user call \
+if [[ "$boot" == container ]]; then
+    # Keys over RDP, no xremap (keyboard/keyboard.nix, helpws plan-wsgnomebox).
+    info "container: no xremap, its GNOME bridge is not needed"
+elif have busctl && busctl --user call \
     org.gnome.Shell \
     /com/k0kubun/Xremap \
     com.k0kubun.Xremap \

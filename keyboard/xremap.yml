@@ -29,6 +29,11 @@
 # and SPICE copies the host lock keys into the guest. In a VM console it is
 # sent as a private chord instead (Shift+Ctrl+Alt+Space, UA: +U), which the
 # xremap of the guest turns back into the CapsLock selector.
+#
+# Remmina is one of them: its RDP sessions go to wsgnomebox (helpws
+# plan-wsgnomebox), where keys reach GNOME without /dev/input and no xremap
+# runs. GNOME shortcuts there take the keys as typed and the private CapsLock
+# chords (keyboard/keyboard.nix, boot = "container").
 
 modmap:
   - name: Apple Fn mode
@@ -51,6 +56,7 @@ keymap:
         - '/.*[Vv]irt-manager.*/'
         - '/.*[Rr]emote-viewer.*/'
         - '/.*[Vv]irt-viewer.*/'
+        - '/.*[Rr]emmina.*/'
     device:
       only:
         - ids:0x05ac:0
@@ -314,6 +320,7 @@ keymap:
         - '/.*[Vv]irt-manager.*/'
         - '/.*[Rr]emote-viewer.*/'
         - '/.*[Vv]irt-viewer.*/'
+        - '/.*[Rr]emmina.*/'
     remap:
       # Editing
       Super-C: Ctrl-C

@@ -107,24 +107,31 @@ while IFS=$'\t' read -r schema key _ _; do
     }
 done < <(shortcut_lines required)
 
-command -v xremap >/dev/null 2>&1 || { echo "xremap not found in PATH" >&2; preflight_failed=true; }
-systemctl --user cat xremap.service >/dev/null 2>&1 || { echo "xremap.service not installed; run ws switch" >&2; preflight_failed=true; }
-if ! id -nG | tr ' ' '\n' | grep -Fxq input; then
-    # A group added by bootstrap.sh reaches GNOME only through a new systemd
-    # user manager: a log out keeps the old one while another session (ssh)
-    # of the user is open.
-    if id -nG "$(id -un)" | tr ' ' '\n' | grep -Fxq input; then
-        echo "user is in group input, this session is not yet: reboot (or end every session of the user)" >&2
-    else
-        echo "user is not in input group (bootstrap.sh adds it)" >&2
+# A container host gets its keys over RDP, without /dev/input: no xremap,
+# GNOME takes its part (keyboard/keyboard.nix, helpws plan-wsgnomebox).
+rdp=false
+[[ "$("$repo/bin/ws" fact boot 2>/dev/null)" != container ]] || rdp=true
+
+if [[ "$rdp" == false ]]; then
+    command -v xremap >/dev/null 2>&1 || { echo "xremap not found in PATH" >&2; preflight_failed=true; }
+    systemctl --user cat xremap.service >/dev/null 2>&1 || { echo "xremap.service not installed; run ws switch" >&2; preflight_failed=true; }
+    if ! id -nG | tr ' ' '\n' | grep -Fxq input; then
+        # A group added by bootstrap.sh reaches GNOME only through a new systemd
+        # user manager: a log out keeps the old one while another session (ssh)
+        # of the user is open.
+        if id -nG "$(id -un)" | tr ' ' '\n' | grep -Fxq input; then
+            echo "user is in group input, this session is not yet: reboot (or end every session of the user)" >&2
+        else
+            echo "user is not in input group (bootstrap.sh adds it)" >&2
+        fi
+        preflight_failed=true
     fi
-    preflight_failed=true
+    [[ -e /dev/uinput && -w /dev/uinput ]] || { echo "/dev/uinput missing or not writable" >&2; preflight_failed=true; }
+    busctl --user call org.gnome.Shell /com/k0kubun/Xremap com.k0kubun.Xremap WMClasses >/dev/null 2>&1 || {
+        echo "GNOME xremap bridge unavailable" >&2
+        preflight_failed=true
+    }
 fi
-[[ -e /dev/uinput && -w /dev/uinput ]] || { echo "/dev/uinput missing or not writable" >&2; preflight_failed=true; }
-busctl --user call org.gnome.Shell /com/k0kubun/Xremap com.k0kubun.Xremap WMClasses >/dev/null 2>&1 || {
-    echo "GNOME xremap bridge unavailable" >&2
-    preflight_failed=true
-}
 # Final profile depends on the repository-owned input-source/Smart Popup
 # extensions plus Window Control and Tiling Assistant. On a fresh install the
 # local extensions may require one logout/login before this preflight can pass.
@@ -173,10 +180,12 @@ fi
 
 # Prove the service can actually start while GNOME still has its old bindings.
 # If xremap/config/runtime is broken, exit without touching GNOME shortcuts.
-rm -f "$xremap_off"
-if ! systemctl --user restart xremap.service; then
-    echo "xremap service failed to start; no GNOME shortcuts were changed." >&2
-    exit 70
+if [[ "$rdp" == false ]]; then
+    rm -f "$xremap_off"
+    if ! systemctl --user restart xremap.service; then
+        echo "xremap service failed to start; no GNOME shortcuts were changed." >&2
+        exit 70
+    fi
 fi
 
 backup_once
@@ -222,4 +231,8 @@ done < <(shortcut_lines)
 apply_succeeded=true
 trap - EXIT
 
-echo "xremap service is active and GNOME shortcuts were applied."
+if [[ "$rdp" == true ]]; then
+    echo "GNOME shortcuts were applied (keys over RDP, no xremap)."
+else
+    echo "xremap service is active and GNOME shortcuts were applied."
+fi
