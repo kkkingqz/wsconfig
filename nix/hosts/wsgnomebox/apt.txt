@@ -29,6 +29,13 @@ pciutils
 # C/C++ toolchain and CMake (UE5 and projects in ~/Projects), tests
 build-essential
 cmake
+# Recommends of build-essential/dpkg-dev that gnomebox-desktop had
+# (2026-10-12, user): fakeroot for dpkg-buildpackage, the diff/merge
+# modules of dpkg-source
+fakeroot
+libalgorithm-diff-perl
+libalgorithm-diff-xs-perl
+libalgorithm-merge-perl
 python3-pytest
 # File manager and editor in the terminal
 mc
