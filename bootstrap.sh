@@ -3,6 +3,7 @@ set -euo pipefail
 
 # First steps on a fresh Ubuntu (helpws rebuild, helpws history-nix):
 # @nix subvolume at /nix → apt packages (nix/hosts/apt.txt, nix/hosts/<host>/apt.txt,
+# nix/hosts/machine-apt.txt,
 # virt/apt.txt, steam/apt.txt, gaming/apt.txt) → VM state on @vms (images,
 # nvram, qemu XML bound into libvirt), pool and network (virt/bootstrap.bash)
 # → Steam data on @steam (steam/bootstrap.bash) → local backup copies on

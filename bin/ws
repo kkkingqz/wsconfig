@@ -70,7 +70,8 @@ check     run the owners' checks with --json and summarize their result
           check gaming: the Game Mode packages, services, display manager
           and session names (wsgame check; hosts with gameMode = "yes");
           check backup: local copy root on its own subvolume, SSH alias and key;
-          check apt compares nix/hosts/apt.txt, nix/hosts/<host>/apt.txt and, with
+          check apt compares nix/hosts/apt.txt, nix/hosts/<host>/apt.txt,
+          nix/hosts/machine-apt.txt (not in a container) and, with
           vm = "yes", virt/apt.txt, with nativeSteam = "yes", steam/apt.txt,
           with gameMode = "yes", gaming/apt.txt (the
           lists of bootstrap.sh) with the installed packages, report only;
@@ -872,6 +873,8 @@ cmd_check_apt() {
 
     h="$(host)"
     local -a lists=("$repo/nix/hosts/apt.txt" "$repo/nix/hosts/$h/apt.txt")
+    # Real machines only, not a container host (helpws plan-wsgnomebox).
+    [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" boot)" == container ]] || lists+=("$repo/nix/hosts/machine-apt.txt")
     # VM packages only on hosts with vm = "yes" (helpws virt).
     [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" vm)" != yes ]] || lists+=("$repo/virt/apt.txt")
     # Native Steam and the Game Mode session (helpws plan-legion-go).
@@ -929,7 +932,7 @@ cmd_check_apt() {
     for pkg in "${!manual[@]}"; do
         [[ -n "${listed[$pkg]:-}" ]] || extra+=("$pkg")
     done
-    info "${#extra[@]} manual packages are not in nix/hosts/apt.txt or nix/hosts/$h/apt.txt: $(printf '%s\n' "${extra[@]}" | sort | paste -sd' ')"
+    info "${#extra[@]} manual packages are in no apt list of the host: $(printf '%s\n' "${extra[@]}" | sort | paste -sd' ')"
     check_finish
 }
 

@@ -1,4 +1,4 @@
-# shellcheck shell=bash disable=SC2154 # repo, host, host_list, vm, native_steam, game_mode: the caller's
+# shellcheck shell=bash disable=SC2154 # repo, host, host_list, container, vm, native_steam, game_mode: the caller's
 # apt step of bootstrap.sh (helpws rebuild): PPAs, source: repositories,
 # arch:, the packages of the apt lists (rec: with their recommends), manual
 # marks, purge:. Also run as root by the image build of a container host
@@ -10,6 +10,7 @@
 apt_lines() {
     local f
     local lists=("$repo/nix/hosts/apt.txt" "$host_list")
+    [[ "$container" == true ]] || lists+=("$repo/nix/hosts/machine-apt.txt")
     [[ "$vm" == no ]] || lists+=("$repo/virt/apt.txt")
     [[ "$native_steam" == no ]] || lists+=("$repo/steam/apt.txt")
     [[ "$game_mode" == no ]] || lists+=("$repo/gaming/apt.txt")

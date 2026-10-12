@@ -239,7 +239,9 @@ ws check            # проверки всех владельцев и verify (
 
 `bootstrap.sh` (от пользователя, sudo вызывает сам; `--dry-run` только
 показывает шаги): subvolume `@nix` и строка `/nix` в fstab → пакеты из
-`nix/hosts/apt.txt` и `nix/hosts/<host>/apt.txt` (PPA fish и
+`nix/hosts/apt.txt`, `nix/hosts/machine-apt.txt` (Btrfs, Timeshift,
+`steam-devices`; не для контейнера, `boot = "container"`) и
+`nix/hosts/<host>/apt.txt` (PPA fish и
 nautilus-my-computer; `purge:snapd` — без snap; в списке хоста
 `source:NAME` — репозиторий `nix/hosts/<host>/apt/NAME.sources` с ключом
 `NAME.asc`, `arch:NAME` — архитектура dpkg, оба до пакетов; пакеты

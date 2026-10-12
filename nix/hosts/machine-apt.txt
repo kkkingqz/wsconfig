@@ -1,0 +1,11 @@
+# apt packages of every real machine on top of nix/hosts/apt.txt: not for a
+# container host (boot = "container", helpws plan-wsgnomebox), whose disk,
+# devices and udev belong to the server. Same syntax as nix/hosts/apt.txt.
+
+# Btrfs subvolumes (bootstrap.sh, Timeshift hooks)
+btrfs-progs
+# Snapshots of @ and @home, GUI and CLI (Timeshift snapshots in GRUB)
+timeshift
+
+# udev rules for game controllers of the Steam flatpak
+steam-devices

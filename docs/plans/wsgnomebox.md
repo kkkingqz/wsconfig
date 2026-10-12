@@ -127,8 +127,12 @@ RDP-клиент  какой — неизвестно; от него завис�
 `apt.txt` хоста: то, что у настоящей машины ставит установщик, а у
 `ubuntu:26.04` нет (`ubuntu-minimal`, `rec:ubuntu-desktop-minimal`,
 `locales`, `man-db` …), `gnome-remote-desktop`, `openssl`, `mesa-utils`,
-`vulkan-tools`, `pciutils`. podman, distrobox, fuse-overlayfs, passt — уже
-в общем `nix/hosts/apt.txt`.
+`vulkan-tools`, `pciutils`; инструменты сборки и утилиты, которые были в
+gnomebox (`build-essential`, `cmake`, `python3-pytest`, `mc`, `nano`;
+решение пользователя 2026-10-12). podman, distrobox, fuse-overlayfs, passt —
+уже в общем `nix/hosts/apt.txt`. Btrfs, Timeshift и `steam-devices` — в
+`nix/hosts/machine-apt.txt`, контейнеру его не ставят (`lib/apt.bash`,
+`ws check apt`, `ws baseline`).
 
 ## 3.2 Общий код
 

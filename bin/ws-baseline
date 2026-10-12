@@ -196,6 +196,7 @@ cmd_capture() {
     h="$("$repo/bin/ws" host)"
     # The same lists as ws check apt: the layers by their facts.
     lists=("$repo/nix/hosts/apt.txt" "$repo/nix/hosts/$h/apt.txt")
+    [[ "$("$repo/bin/ws" fact boot 2>/dev/null)" == container ]] || lists+=("$repo/nix/hosts/machine-apt.txt")
     for fact in vm:virt nativeSteam:steam gameMode:gaming; do
         list="${fact#*:}"
         [[ "$("$repo/bin/ws" fact "${fact%%:*}" 2>/dev/null)" != yes ]] || lists+=("$repo/$list/apt.txt")

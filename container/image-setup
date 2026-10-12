@@ -37,6 +37,7 @@ fact() {
 }
 
 [[ "$(fact boot)" == container ]] || die "nix/hosts/$host: boot is not \"container\""
+container=true
 vm="$(fact vm)"
 native_steam="$(fact nativeSteam)"
 game_mode="$(fact gameMode)"

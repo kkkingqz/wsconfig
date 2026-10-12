@@ -24,3 +24,12 @@ openssl
 mesa-utils
 vulkan-tools
 pciutils
+
+# Building in the container (gnomebox-desktop had them, 2026-10-12, user):
+# C/C++ toolchain and CMake (UE5 and projects in ~/Projects), tests
+build-essential
+cmake
+python3-pytest
+# File manager and editor in the terminal
+mc
+nano
