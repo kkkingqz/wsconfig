@@ -14,7 +14,11 @@ let
   remmina = pkgs.callPackage ./package.nix { };
 
   launchers = [ "org.remmina.Remmina.desktop" "org.remmina.Remmina-file.desktop" ];
-  icons = [ "org.remmina.Remmina.svg" "org.remmina.Remmina-symbolic.svg" ];
+  # The app icons, and the tray icon: Remmina gives the panel an icon name
+  # only (org.remmina.Remmina-status), without a theme path, so GNOME Shell
+  # looks it up in ~/.local/share/icons; missing, it shows "...".
+  icons = map (f: "scalable/apps/${f}") [ "org.remmina.Remmina.svg" "org.remmina.Remmina-symbolic.svg" ]
+    ++ map (n: "${n}x${n}/status/org.remmina.Remmina-status.svg") [ "16" "22" "24" "32" "48" "64" ];
 
   desktop = pkgs.runCommand "remmina-desktop" { } ''
     mkdir -p $out
@@ -47,8 +51,8 @@ in
   xdg.dataFile = lib.listToAttrs (map (f:
     lib.nameValuePair "applications/${f}" { source = "${desktop}/${f}"; }) launchers)
   // lib.listToAttrs (map (f:
-    lib.nameValuePair "icons/hicolor/scalable/apps/${f}" {
-      source = "${remmina}/share/icons/hicolor/scalable/apps/${f}";
+    lib.nameValuePair "icons/hicolor/${f}" {
+      source = "${remmina}/share/icons/hicolor/${f}";
     }) icons);
 
   # Only these keys; the rest of remmina.pref is Remmina's.
