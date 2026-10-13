@@ -6,13 +6,15 @@
 #   reuse-file-context.diff  ours: one clipboard file context per
 #                connection; the channel opens again after an RDS redirection
 # FreeRDP of nixpkgs has H.264 (GFX AVC420/AVC444); the one of Ubuntu does
-# not, Remmina from apt gets RemoteFX only.
-{ lib, remmina }:
+# not, Remmina from apt gets RemoteFX only. Without OpenH264: FreeRDP takes
+# the first H.264 decoder that starts, OpenH264 before ffmpeg, and
+# OpenH264 decodes on one thread.
+{ lib, remmina, freerdp }:
 # A new Remmina in nixpkgs: check the merge requests (merged? the diffs
 # still apply?) before raising this.
 assert lib.assertMsg (remmina.version == "1.4.43")
   "remmina/package.nix: nixpkgs has Remmina ${remmina.version}, the patches are for 1.4.43 (helpws remmina)";
-remmina.overrideAttrs (o: {
+(remmina.override { freerdp = freerdp.override { openh264 = null; }; }).overrideAttrs (o: {
   pname = "remmina-ws";
   patches = (o.patches or [ ]) ++ [
     ./patches/mr2776.diff
