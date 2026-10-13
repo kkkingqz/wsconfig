@@ -32,10 +32,12 @@
   # ~/VMs (helpws virt) on hosts with VMs.
   ++ lib.optionals (facts.vm == "yes") [ ../../virt/virt.nix ]
   # Pinned sources of the patched t2bce modules (helpws suspend) and of
-  # t2gmux (helpws plan-dgpu).
+  # t2gmux (helpws plan-dgpu); the brightness that the panel ignores at boot
+  # and logout, written again in the session (helpws workstation, GRAPHICS).
   ++ lib.optionals (facts.hardware == "t2-mbp16") [
     ../../system/kernel/t2bce/t2bce.nix
     ../../system/kernel/t2gmux/t2gmux.nix
+    ../../gnome/backlight.nix
   ];
 
   home.username = facts.user;
