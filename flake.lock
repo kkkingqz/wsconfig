@@ -51,11 +51,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791883161,
-        "narHash": "sha256-9ck6xYxTeLbn0EffGnyZGzcO7GD7IOzAzhelyjXO3uc=",
+        "lastModified": 1791884010,
+        "narHash": "sha256-ye2QTJxxe4kHTJCkuET5Z7Fz/Xqz8prhEv67qjTFBuY=",
         "owner": "kkkingqz",
         "repo": "wswidgets",
-        "rev": "04541ca856e11b7fe47691df5978da821dff69d6",
+        "rev": "07e737718fc815d21132935baeeb0ce7367479d2",
         "type": "github"
       },
       "original": {

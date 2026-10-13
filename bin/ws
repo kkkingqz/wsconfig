@@ -28,7 +28,8 @@ Usage:
 
 switch    home-manager switch for this user and host (pinned by flake.lock);
           after a successful switch commits flatpak/apps.txt,
-          flatpak/overrides.txt and distrobox/hosts.txt if they changed
+          flatpak/overrides.txt, distrobox/hosts.txt and
+          widgets/widgets.txt if they changed
 news      home-manager news of this flake (switch does not notify about them)
 diff      build the home generation without activating it and show the
           package difference against the current one (nvd)
@@ -38,13 +39,14 @@ apply     run the layer owners in order, as by hand (no sudo steps):
             keyboard    ws-keyboard-apply
             flatpak     wsflatpak apply
             distrobox   wsbox apply
+            widgets     wswidgets apply (offers widgets not offered yet)
           a step whose preflight fails (exit 69: e.g. new extensions need a
           logout/login) is reported at the end; on a new machine:
           ws apply, log out and in, ws apply
 update    bring everything that is not pinned to the latest version, in order:
             apt         sudo apt update, sudo apt full-upgrade (held
                         packages such as linux-t2 stay)
-            nix         nix flake update (nixpkgs, home-manager), the
+            nix         nix flake update (nixpkgs, home-manager, wswidgets), the
                         package difference (nvd), switch; commit flake.lock
             flatpak     wsflatpak update
             distrobox   wsbox update (packages inside the containers)
@@ -199,7 +201,7 @@ current_generation() {
 # remove/apply, filesystem/env/talk and un…; wsbox create/apply/remove), all
 # with workstation marks (lib/ws_marks.py): switch adds them before the build
 # and commits them after a successful one.
-tool_lists=(flatpak/apps.txt flatpak/overrides.txt distrobox/hosts.txt)
+tool_lists=(flatpak/apps.txt flatpak/overrides.txt distrobox/hosts.txt widgets/widgets.txt)
 
 commit_tool_lists() {
     local f changes old
@@ -258,6 +260,7 @@ apply_steps=(
     "keyboard ws-keyboard-apply"
     "flatpak wsflatpak apply"
     "distrobox wsbox apply"
+    "widgets wswidgets apply"
 )
 
 cmd_apply() {

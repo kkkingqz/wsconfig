@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Per-workstation marks of the managed lists: flatpak/apps.txt (REMOTE APP)
-and distrobox/hosts.txt (NAME); flatpak/overrides.txt (APP KIND VALUE)
-with yes and no only (OVERRIDES). After the key fields a line carries
+"""Per-workstation marks of the managed lists: flatpak/apps.txt (REMOTE APP),
+distrobox/hosts.txt and widgets/widgets.txt (NAME); flatpak/overrides.txt
+(APP KIND VALUE) with yes and no only (OVERRIDES). After the key fields a line carries
 HOST=STATE tokens, STATE one of
 
     yes  installed on that workstation (apply installs it without asking)
@@ -14,13 +14,14 @@ workstation yes and, on a new line, all=ask; removing drops the line when no
 other workstation is marked, else marks this one no. The workstation name is
 `ws host`.
 
-Used by wsbox as a command:
+Used by wsbox and wswidgets as a command:
 
     ws_marks.py FILE state NAME HOST     print yes, no or ask
     ws_marks.py FILE states HOST NAME... print NAME STATE per line
     ws_marks.py FILE set NAME HOST STATE add the line (all=ask) if needed
     ws_marks.py FILE remove NAME HOST    drop the line or mark HOST no
     ws_marks.py FILE marked NAME         exit 0 when the line exists
+    ws_marks.py FILE keys                NAME of every line, in file order
     ws_marks.py FILE summary OLDFILE [N] +NAME, -NAME, NAME HOST=STATE (ws switch);
                                          N fixed key fields (overrides.txt: 3),
                                          NAME is then the whole key
@@ -214,7 +215,7 @@ def summary(old, new):
 
 
 def main(argv):
-    if len(argv) < 3:
+    if len(argv) < 2 or (len(argv) == 2 and argv[1] != "keys"):
         print(__doc__, file=sys.stderr)
         return 2
     path, action, args = argv[0], argv[1], argv[2:]
@@ -229,6 +230,9 @@ def main(argv):
         elif action == "states" and args:
             for name in args[1:]:
                 print(name, marks.state(name, args[0]))
+        elif action == "keys" and not args:
+            for line in marks.entries():
+                print(line.key[-1])
         elif action == "marked" and len(args) == 1:
             return 0 if marks.find(args[0]) else 1
         elif action == "set" and len(args) == 3 and args[2] in STATES:

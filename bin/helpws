@@ -35,7 +35,7 @@ case "$topic" in
     gaming|game|gamemode|wsgame) open_title ws-gaming ;;
     backup|wsbackup) open_title ws-backup ;;
     recovery|restore|ws-restore) open_title ws-recovery ;;
-    widgets|widget) open_title ws-widgets ;;
+    widgets|widget|wswidgets) open_title ws-widgets ;;
     roadmap|plans) open_title ws-roadmap ;;
     plan-t2) open_title ws-plan-t2 ;;
     plan-dgpu|dgpu|t2gmux) open_title ws-plan-dgpu ;;

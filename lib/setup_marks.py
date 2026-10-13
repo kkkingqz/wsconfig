@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """The choices of setup.sh on a workstation (helpws setup): every line of
-flatpak/apps.txt, distrobox/hosts.txt and flatpak/overrides.txt without a
+flatpak/apps.txt, distrobox/hosts.txt, flatpak/overrides.txt and (with
+widgets = "yes") widgets/widgets.txt without a
 yes or no of this workstation (an own ask is none), as checklists (lib/ws_select.py). all=yes and ask
 start checked, all=no unchecked; overrides are offered only for the apps
 this workstation has. Every line shown gets HOST=yes or HOST=no, so ws apply
 asks nothing afterwards; overrides of apps it does not have stay unmarked.
-Nothing is written until all three lists are answered. On a host with
+Nothing is written until all the lists are answered. On a host with
 nativeSteam = "yes" the Steam flatpak is no without a question: Steam is
 the apt one there (steam/apt.txt).
 
@@ -74,6 +75,7 @@ def run(repo, host, term):
     apps = MarkedList(repo / "flatpak/apps.txt", key_fields={2})
     boxes = MarkedList(repo / "distrobox/hosts.txt")
     overrides = MarkedList(repo / "flatpak/overrides.txt", **OVERRIDES)
+    widgets = MarkedList(repo / "widgets/widgets.txt")
 
     steam = apps.find(STEAM_FLATPAK)
     if (fact(repo, host, "nativeSteam") == "yes" and steam is not None
@@ -81,8 +83,11 @@ def run(repo, host, term):
         apps.set(STEAM_FLATPAK, host, "no")
         term.write(f"\n{STEAM_FLATPAK}: {host}=no (nativeSteam = \"yes\": Steam из apt)\n")
 
-    for marked, title in ((apps, f"Flatpak-приложения на {host}"),
-                          (boxes, f"Контейнеры Distrobox на {host}")):
+    lists = [(apps, f"Flatpak-приложения на {host}"), (boxes, f"Контейнеры Distrobox на {host}")]
+    # The widget layer only where facts.nix has it (helpws widgets).
+    if fact(repo, host, "widgets") == "yes":
+        lists.append((widgets, f"Виджеты wswidgets на {host}"))
+    for marked, title in lists:
         items = offer(marked, host)
         chosen = ask(term, title, items)
         if chosen is None:
@@ -97,7 +102,7 @@ def run(repo, host, term):
     mark(overrides, host, items, chosen)
 
     changed = []
-    for marked in (apps, boxes, overrides):
+    for marked in (apps, boxes, overrides, widgets):
         if any(line.changed for line in marked.lines):
             marked.save()
             changed.append(str(marked.path.relative_to(repo)))

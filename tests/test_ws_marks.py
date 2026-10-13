@@ -110,6 +110,12 @@ class MarkTests(unittest.TestCase):
         self.assertEqual(p.stdout, "absent\n")
         self.assertFalse(missing.exists())
 
+    def test_keys_in_file_order(self):
+        self.write("# c\nzeta a=yes\nalpha\n\nmid all=no  # note\n")
+        p = subprocess.run([sys.executable, str(ROOT / "lib/ws_marks.py"), str(self.path), "keys"],
+                           text=True, capture_output=True)
+        self.assertEqual(p.stdout, "zeta\nalpha\nmid\n")
+
 
 if __name__ == "__main__":
     unittest.main()
