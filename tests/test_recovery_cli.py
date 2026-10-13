@@ -1,6 +1,8 @@
 import io
 import os
 import pty
+import signal
+import contextlib
 import select
 from contextlib import contextmanager
 import json
@@ -146,5 +148,20 @@ class CLITests(unittest.TestCase):
             self.assertEqual(done.exception.code,0)
             with self.assertRaises(SystemExit) as done: recovery.main(['--version'])
             self.assertEqual(done.exception.code,0)
+    def test_sigterm_survives_library_oserror_handlers(self):
+        # tempfile probes its directory under "except OSError"; a SIGTERM
+        # raised as an OSError there was discarded and the restore went on.
+        handler=signal.getsignal(signal.SIGTERM)
+        self.addCleanup(signal.signal,signal.SIGTERM,handler)
+        with patch('recovery.os.geteuid',return_value=0), patch('recovery.open_tty',side_effect=ValueError('TTY required')):
+            with self.assertRaises(ValueError): recovery.main([])  # installs the ws-restore handler
+        with self.assertRaises(recovery.Terminated):
+            try: os.kill(os.getpid(),signal.SIGTERM)
+            except OSError: pass
+    def test_termination_reports_status_hint(self):
+        error=io.StringIO()
+        with patch('recovery.main',side_effect=recovery.Terminated('terminated; use status/resume/rollback')), contextlib.redirect_stderr(error):
+            self.assertEqual(recovery.entrypoint(),143)
+        self.assertIn('ws-restore: terminated; use status/resume/rollback',error.getvalue())
 
 if __name__=='__main__': unittest.main()

@@ -21,6 +21,11 @@ VERSION = 'ws-restore 1'
 LIMIT = 20000000
 
 
+class Terminated(BaseException):
+    """SIGTERM. Not an OSError: library code catches and discards those (tempfile
+    probing its directory), which silently lost the signal mid-restore."""
+
+
 def ssh_argv(options, words):
     host = options.get('host', '')
     if not isinstance(host, str) or not host or host.startswith('-'):
@@ -253,8 +258,8 @@ def main(argv=None):
     for field in ('host','user','port','config','key','host-id'): parser.add_argument('--'+field)
     args=parser.parse_args(argv)
     if os.geteuid()!=0: raise ValueError('run with sudo from Live USB')
-    def interrupted(signum,frame): raise InterruptedError('interrupted; use status/resume/rollback')
-    signal.signal(signal.SIGTERM,interrupted)
+    def terminated(signum,frame): raise Terminated('terminated; use status/resume/rollback')
+    signal.signal(signal.SIGTERM,terminated)
     with open_tty() as tty:
         dependencies(); p=LivePlatform()
         targets=p.discover_targets()
@@ -295,6 +300,8 @@ def entrypoint():
     try: return main()
     except (ValueError,OSError,KeyError,TypeError) as error:
         print('ws-restore: '+str(error),file=sys.stderr); return 1
+    except Terminated as error:
+        print('ws-restore: '+str(error),file=sys.stderr); return 143
     except KeyboardInterrupt:
         print('ws-restore: interrupted; inspect status before retrying',file=sys.stderr); return 130
 
