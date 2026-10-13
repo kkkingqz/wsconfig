@@ -1,0 +1,23 @@
+--- a/plugins/rdp/rdp_cliprdr.c
++++ b/plugins/rdp/rdp_cliprdr.c
+@@ -1614,11 +1614,18 @@
+ 
+ 	pthread_mutex_init(&clipboard->srv_data_mutex, NULL);
+ 
+-	clipboard->system = ClipboardCreate();
++	/* The channel opens again after a server redirection (RDS broker) or a
++	 * reconnect: keep the clipboard system and the file context of the
++	 * connection, as xfreerdp does, and only init the context again. A new one
++	 * would leak the old, whose FUSE mount (named after the pid) stays with
++	 * its root removed by uninit, so pasting server files finds nothing. */
++	if (!clipboard->system)
++		clipboard->system = ClipboardCreate();
+ 
+ #if FREERDP_VERSION_MAJOR >= 3
+ 	/* as xf_cliprdr.c: no file context, no clipboard (cliprdr->custom has to point at one) */
+-	clipboard->file_context = cliprdr_file_context_new(clipboard);
++	if (!clipboard->file_context)
++		clipboard->file_context = cliprdr_file_context_new(clipboard);
+ 	if (!clipboard->file_context) {
+ 		g_warning("[RDP] rdp_cliprdr: cliprdr_file_context_new() failed, clipboard disabled");
+ 		return;

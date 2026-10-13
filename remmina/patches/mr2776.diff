@@ -1,0 +1,24 @@
+diff --git a/plugins/rdp/rdp_cliprdr.c b/plugins/rdp/rdp_cliprdr.c
+index eb1d26577cb69fe273b0f27dac872ff1338310b0..c2ec693d05374ea3900844fc984111ebeaaa4c19 100644
+--- a/plugins/rdp/rdp_cliprdr.c
++++ b/plugins/rdp/rdp_cliprdr.c
+@@ -845,6 +845,7 @@ void remmina_rdp_cliprdr_get_clipboard_data(RemminaProtocolWidget *gp, RemminaPl
+ 			{
+ 				size = strlen((char *)inbuf);
+ 				outbuf = lf2crlf(inbuf, (int *) &size);
++				g_free(inbuf);
+ 				break;
+ 			}
+ 			case CF_UNICODETEXT:
+diff --git a/plugins/rdp/rdp_plugin.c b/plugins/rdp/rdp_plugin.c
+index 64c6cc5f6e9f3faa3c8dc4dfbb755eea77f2ae39..c0200e4d0a9f55ca9a833fa450c4bf6a517638b2 100644
+--- a/plugins/rdp/rdp_plugin.c
++++ b/plugins/rdp/rdp_plugin.c
+@@ -322,6 +322,7 @@ static BOOL rf_process_event_queue(RemminaProtocolWidget *gp)
+ #endif
+ 			response.requestedFormatData = event->clipboard_formatdataresponse.data;
+ 			rfi->clipboard.context->ClientFormatDataResponse(rfi->clipboard.context, &response);
++			free(event->clipboard_formatdataresponse.data);
+ 		}
+ 			break;
+ 

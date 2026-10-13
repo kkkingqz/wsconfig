@@ -46,6 +46,7 @@ terminal/       Ghostty, fish, micro, xdg-terminal-exec
 flatpak/        приложения (apps.txt), remotes и overrides (wsflatpak)
 distrobox/      контейнеры Distrobox и их hooks (wsbox)
 windows/        Windows-программы в контейнерах Wine/Proton (wswin)
+remmina/        RDP-клиент Remmina из Nix: H.264, файлы через буфер
 virt/           виртуальные машины: KVM, libvirt, virt-manager (ссылка ~/VMs)
 bin/            команды; ссылками в ~/.local/bin
 lib/check.bash  общий формат проверок (--json для ws check)
@@ -65,8 +66,8 @@ docs/           документация, из неё собираются man-�
 ```text
 docs/architecture/   layers (слои и правила), checks, workstation (подробно)
 docs/runbooks/       setup, rebuild, keyboard, gnome, terminal, suspend,
-                     touchbar, flatpak, distrobox, windows, virt, gaming,
-                     backup, recovery
+                     touchbar, flatpak, distrobox, windows, remmina, virt,
+                     gaming, backup, recovery
                      widgets (ws-widgets: сервис, проверка и добавление Item)
 docs/plans/          roadmap и незавершённые планы
 docs/history/        как строились завершённые слои

@@ -1,7 +1,7 @@
 # Completions for helpws.
 complete -c helpws -f
 
-set -l helpws_topics readme layers architecture checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall setup install new distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton virt vm vms libvirt kvm gaming game gamemode wsgame backup wsbackup recovery restore ws-restore widgets widget roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-final plan-unraid unraid plan-legion-go legion-go legiongo plan-legion-go-agent legion-go-agent plan-wsgnomebox wsgnomebox plan-hyprland hyprland history-gnome plan-gnome history-flatpak plan-flatpak history-distrobox plan-dev history-windows plan-windows history-nix plan-nix history-suspend history-touchbar history-virt plan-virt man help
+set -l helpws_topics readme layers architecture checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall setup install new distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton remmina rdp virt vm vms libvirt kvm gaming game gamemode wsgame backup wsbackup recovery restore ws-restore widgets widget roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-final plan-unraid unraid plan-legion-go legion-go legiongo plan-legion-go-agent legion-go-agent plan-wsgnomebox wsgnomebox plan-hyprland hyprland history-gnome plan-gnome history-flatpak plan-flatpak history-distrobox plan-dev history-windows plan-windows history-nix plan-nix history-suspend history-touchbar history-virt plan-virt man help
 
 function __helpws_topic -a name desc
     complete -c helpws -n "not __fish_seen_subcommand_from $helpws_topics" -a $name -d $desc
@@ -21,6 +21,7 @@ __helpws_topic touchbar 'Touch Bar'
 __helpws_topic flatpak 'Flatpak applications'
 __helpws_topic distrobox 'Managed Distrobox / Podman'
 __helpws_topic windows 'Wine / Proton / Steam'
+__helpws_topic remmina 'Remmina RDP client from Nix: H.264, files'
 __helpws_topic virt 'Virtual machines: KVM, libvirt, virt-manager'
 __helpws_topic gaming 'Game Mode: gamescope + Steam session'
 __helpws_topic backup 'Backup to Unraid: Timeshift, Btrfs send'

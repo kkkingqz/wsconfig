@@ -25,6 +25,9 @@
   # xremap reads /dev/input; a container host gets its keys over RDP
   # (keyboard/keyboard.nix, helpws plan-wsgnomebox).
   ++ lib.optionals (facts.boot != "container") [ ../../keyboard/xremap.nix ]
+  # The RDP client of a real machine; a container host is the RDP server
+  # (helpws remmina, helpws plan-wsgnomebox).
+  ++ lib.optionals (facts.boot != "container") [ ../../remmina/remmina.nix ]
   # ~/VMs (helpws virt) on hosts with VMs.
   ++ lib.optionals (facts.vm == "yes") [ ../../virt/virt.nix ]
   # Pinned sources of the patched t2bce modules (helpws suspend) and of
@@ -46,7 +49,8 @@
   # Nothing may change the GNOME session or shadow apt tools yet:
   # - targets.genericLinux writes ~/.config/environment.d/10-home-manager.conf
   #   (XDG_DATA_DIRS, NIX_PATH, TERMINFO_DIRS for the whole session) and GPU
-  #   drivers; GUI apps come from apt and Flatpak, so it stays off;
+  #   drivers; GUI apps come from apt and Flatpak, so it stays off (the one
+  #   Nix GUI app, Remmina, links its own launchers: remmina/remmina.nix);
   # - programs.man would put Nix man before /usr/bin/man;
   # - xdg.mime would run Nix update-mime-database on ~/.local/share/mime.
   targets.genericLinux.enable = false;

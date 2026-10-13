@@ -43,6 +43,7 @@ GNOME            gnome/gnome.nix, gnome-extensions.nix ws switch, ws apply exten
 Flatpak          flatpak/*.txt, flatpak.nix            wsflatpak apply      wsflatpak check
 Distrobox        distrobox/distrobox.nix               wsbox apply          wsbox check
 Windows          windows/apps.nix (+ боксы Distrobox)  ws switch, wswin     wswin check
+Remmina          remmina/*.nix, machine-apt.txt        ws switch, bootstrap.sh  ws check apt
 suspend / T2     system/hardware, system/kernel/t2bce  ws system apply, ws-suspend t2bce-*   ws-suspend check
 VM               apt.txt, bootstrap.sh, virt/virt.nix   bootstrap.sh, virt-manager           ws check virt
 Steam (apt)      steam/apt.txt, steam/bootstrap.bash   bootstrap.sh         ws check steam

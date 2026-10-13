@@ -9,3 +9,11 @@ timeshift
 
 # udev rules for game controllers of the Steam flatpak
 steam-devices
+
+# Remmina comes from Nix (remmina/, helpws remmina): the Ubuntu one has no
+# H.264 and no files through the clipboard. ubuntu-desktop only recommends it.
+purge:remmina
+purge:remmina-common
+purge:remmina-plugin-rdp
+purge:remmina-plugin-vnc
+purge:remmina-plugin-secret

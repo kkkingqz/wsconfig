@@ -30,6 +30,7 @@ case "$topic" in
     distrobox|box|boxes|wsbox) open_title ws-distrobox ;;
     flatpak|wsflatpak) open_title ws-flatpak ;;
     windows|wine|wswin|steam|proton) open_title ws-windows ;;
+    remmina|rdp) open_title ws-remmina ;;
     virt|vm|vms|libvirt|kvm) open_title ws-virt ;;
     gaming|game|gamemode|wsgame) open_title ws-gaming ;;
     backup|wsbackup) open_title ws-backup ;;
@@ -79,6 +80,7 @@ Runbooks (docs/runbooks):
   flatpak          Flatpak applications (wsflatpak)
   distrobox        Managed Distrobox / Podman containers (wsbox)
   windows          Windows programs, Wine, Proton, Steam (wswin)
+  remmina          Remmina RDP client from Nix: H.264, files
   virt             Virtual machines: KVM, libvirt, virt-manager
   gaming           Game Mode: gamescope + Steam session (wsgame)
   backup           Backup to Unraid: Timeshift snapshots, Btrfs send (wsbackup)
