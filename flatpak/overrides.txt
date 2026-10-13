@@ -20,6 +20,9 @@ com.anydesk.Anydesk talk org.kde.StatusNotifierWatcher mbp16=yes all=yes
 
 com.notesnook.Notesnook filesystem home:rw mbp16=yes all=yes
 
+# Tray icon: the launcher puts TMPDIR in $XDG_RUNTIME_DIR/chatgpt, private to
+# the sandbox, and Chromium writes the icon there; shared, GNOME Shell reads it.
 io.github.rulin132.ChatGPT filesystem host mbp16=yes all=yes
+io.github.rulin132.ChatGPT filesystem xdg-run/chatgpt:create mbp16=yes all=yes
 io.github.rulin132.ChatGPT talk org.freedesktop.Flatpak mbp16=yes all=yes
 
