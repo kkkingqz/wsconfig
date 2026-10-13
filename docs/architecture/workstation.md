@@ -332,6 +332,15 @@ Intel используется для desktop: `apple-gmux force_igd=y` пере
 перезагрузиться; статус службы —
 `systemctl status systemd-backlight@backlight:gmux_backlight.service`.
 
+Экран входа GDM — отдельный сеанс со своими настройками: выключенная в
+Настройках автояркость до него не доходит. С датчиком освещённости он
+ставит свою яркость при загрузке и при каждом logout, а mutter нового сеанса
+берёт тот уровень, который застал. Поэтому `system/common.nix` кладёт
+`/usr/share/gdm/dconf/95-ws-greeter` (`ambient-enabled=false` для экрана
+входа), и `ws system apply` пересобирает базу GDM
+(`/usr/share/gdm/generate-config`, сеансы не завершаются). В сеансе
+автояркость — обычная настройка GNOME (Настройки → Дисплеи).
+
 Runtime PM у amdgpu на этом Mac нет (`Runtime PM not available`: ни ATPX, ни
 ACPI `_PR3`, ни BACO), поэтому включённая AMD постоянно в D0. Выключают её
 при загрузке: в пункте «Ubuntu» `amdgpu` не загружается вовсе

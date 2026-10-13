@@ -613,7 +613,7 @@ system_record() {
 # nothing reboots.
 cmd_system_apply() {
     local tree kind a b f backup tmp unit changed=0 modprobe=false grub=false logind=false sysctl=false
-    local refind=false d3cold=false touchbar=false bootlinks=false has_bootlinks=false saved=false dev cfg out rc=0
+    local refind=false d3cold=false touchbar=false gdm=false bootlinks=false has_bootlinks=false saved=false dev cfg out rc=0
     local -a restart=()
 
     command -v sudo >/dev/null 2>&1 || die "sudo not found"
@@ -655,6 +655,7 @@ cmd_system_apply() {
                     /boot/refind_linux.conf) refind=true ;;
                     /usr/local/sbin/ws-boot-links) bootlinks=true ;;
                     */70-bcm4364-no-d3cold.rules) d3cold=true ;;
+                    /usr/share/gdm/dconf/*) gdm=true ;;
                 esac
                 ;;
             restart) restart+=("$b") ;;
@@ -767,6 +768,14 @@ cmd_system_apply() {
         echo "== initramfs (modprobe.d changed)"
         sudo update-initramfs -u -k "$(uname -r)"
         sudo lsinitrd 2>/dev/null | grep -E 't2bce|appletb|modprobe.d' || true
+    fi
+    # gdm compiles its dconf database at start; generate-config does the
+    # same now and tells the greeter's dconf-service, without ending sessions.
+    if [[ "$gdm" == true ]] && [[ -x /usr/share/gdm/generate-config ]]; then
+        echo
+        echo "== GDM greeter settings"
+        sudo /usr/share/gdm/generate-config
+        echo "compiled: /var/lib/gdm3/greeter-dconf-defaults"
     fi
     if [[ "$grub" == true ]]; then
         echo

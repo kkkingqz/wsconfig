@@ -1,0 +1,6 @@
+# GDM greeter settings (wsconfig, system/common.nix). The greeter has its
+# own settings: the user turning off automatic brightness does not reach it.
+# With the ambient light sensor on, the login screen sets its own brightness
+# at boot and at every logout, and the session keeps that level.
+[org/gnome/settings-daemon/plugins/power]
+ambient-enabled=false

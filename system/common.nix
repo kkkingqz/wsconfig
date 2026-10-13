@@ -17,6 +17,11 @@ in
   files = lib.optionals machine [
     (file "/etc/udev/rules.d/99-workstation-uinput.rules" "system/files/udev/99-workstation-uinput.rules" "0644")
     (file "/etc/modules-load.d/ntsync.conf" "system/files/modules-load.d/ntsync.conf" "0644")
+    # Login screen without automatic brightness: it must not replace the level
+    # systemd-backlight restores at boot and the session leaves at logout.
+    # Next to the package's 00-upstream-settings, as that file asks;
+    # compiled by gdm's generate-config (ws system apply runs it).
+    (file "/usr/share/gdm/dconf/95-ws-greeter" "system/files/gdm/95-ws-greeter" "0644")
   ] ++ [
     # No snaps: snapd is purged (nix/hosts/apt.txt) and pinned out.
     (file "/etc/apt/preferences.d/ws-no-snapd" "system/files/apt/ws-no-snapd" "0644")
