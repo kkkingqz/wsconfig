@@ -96,8 +96,8 @@ section "2. Extensions (gnome/gnome-extensions.nix)"
 # Every extension of gnome/gnome-extensions.nix is required.
 mapfile -t required_gnome_extensions < <(ext_list)
 
-# enabled-extensions = ego + local extensions, in list order (ws switch).
-declared_enabled="[$(for uuid in $(ext_list ego) $(ext_list local); do printf "'%s', " "$uuid"; done)"
+# enabled-extensions = ego + local + nix extensions, in list order (ws switch).
+declared_enabled="[$(for uuid in $(ext_list ego) $(ext_list local) $(ext_list nix); do printf "'%s', " "$uuid"; done)"
 declared_enabled="${declared_enabled%, }]"
 actual_enabled="$(gsettings get org.gnome.shell enabled-extensions 2>/dev/null || true)"
 if [[ "$actual_enabled" == "$declared_enabled" ]]; then
@@ -179,7 +179,7 @@ done
 
 # Enabled is not running: an extension with an error stays enabled.
 if have gnome-extensions; then
-    for uuid in $(ext_list ego) $(ext_list local); do
+    for uuid in $(ext_list ego) $(ext_list local) $(ext_list nix); do
         if gnome-extensions info "$uuid" 2>/dev/null | grep -Eq 'State:[[:space:]]+ACTIVE'; then
             pass "extension active: $uuid"
         else

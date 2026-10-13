@@ -8,6 +8,8 @@
   hardware = "legion-go";
   # No VMs on the handheld (helpws virt).
   vm = "no";
+  # Quickshell widgets on the GNOME panel (helpws widgets).
+  widgets = "yes";
   # Native Steam (steam/apt.txt, i386, data on @steam in
   # ~/.local/share/Steam; ws check steam) and the Game Mode
   # session (gaming/apt.txt, system/gaming.nix; helpws plan-legion-go).

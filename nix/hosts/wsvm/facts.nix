@@ -8,6 +8,8 @@
   hardware = "generic-pc";
   # No VMs inside the test VM (helpws virt).
   vm = "no";
+  # Quickshell widgets on the GNOME panel (helpws widgets).
+  widgets = "yes";
   # Neither native Steam nor the Game Mode session in the test VM.
   nativeSteam = "no";
   gameMode = "no";

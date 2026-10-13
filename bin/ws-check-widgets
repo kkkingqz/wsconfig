@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -u
+set -o pipefail
+
+# Widget layer (helpws widgets): wswidgets delivered by ws switch on hosts
+# with widgets = "yes" in facts.nix; the runtime diagnostics are its own
+# (ws-widgets check --tsv), with the enabled widgets of widgets/widgets.txt.
+# Read-only. ws check widgets; ws check runs it with --json (lib/check.bash).
+
+repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/check.bash
+. "$repo/lib/check.bash"
+
+case "${1:-}" in
+    --json) check_json_mode ;;
+    "") ;;
+    -h|--help) echo "Usage: ws-check-widgets [--json]  (ws check widgets)"; exit 0 ;;
+    *) echo "ws-check-widgets: unknown argument: $1" >&2; exit 64 ;;
+esac
+
+if [[ "$(host_fact widgets)" != yes ]]; then
+    info "widgets = \"$(host_fact widgets)\" in nix/hosts/$("$repo/bin/ws" host 2>/dev/null)/facts.nix: no widget layer, nothing to check"
+    check_finish
+    exit
+fi
+
+if ! have ws-widgets; then
+    fail "ws-widgets not in PATH: the widget layer is not delivered (ws switch)"
+    check_finish
+    exit
+fi
+
+while IFS=$'\t' read -r level message; do
+    case "$level" in pass|warn|fail|info) "$level" "$message" ;; *) fail "invalid diagnostic: $level $message" ;; esac
+done < <(ws-widgets check --tsv)
+
+# The manifest the runtime reads against widgets/widgets.txt.
+manifest="${XDG_DATA_HOME:-$HOME/.local/share}/workstation/widgets/manifest.json"
+expected="$(sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' "$repo/widgets/widgets.txt" | paste -sd ' ')"
+delivered="$(python3 -c 'import json, sys; print(" ".join(w["id"] for w in json.load(open(sys.argv[1]))["widgets"]))' "$manifest" 2>/dev/null)"
+if [[ "$delivered" == "$expected" ]]; then
+    pass "manifest matches widgets/widgets.txt: ${expected:-(none)}"
+else
+    fail "manifest has \"$delivered\", widgets/widgets.txt \"$expected\" (ws switch)"
+fi
+
+check_finish

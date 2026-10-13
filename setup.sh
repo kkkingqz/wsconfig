@@ -168,10 +168,13 @@ set_hostname() {
 }
 
 new_host() {
-    local name="$1" dir="$repo/nix/hosts/$1" vm=no steam=no game=no
+    local name="$1" dir="$repo/nix/hosts/$1" vm=no widgets=yes steam=no game=no
     say "Новый хост $name (generic-pc, GRUB)"
     if ask "Виртуальные машины (libvirt, helpws virt)?" n; then
         vm=yes
+    fi
+    if ! ask "Виджеты Quickshell на панели GNOME (helpws widgets)?" y; then
+        widgets=no
     fi
     if ask "Steam из apt (вместо Flatpak; helpws plan-legion-go)?" n; then
         steam=yes
@@ -190,6 +193,8 @@ new_host() {
   hardware = "generic-pc";
   # Virtual machines (helpws virt).
   vm = "$vm";
+  # Quickshell widgets on the GNOME panel (helpws widgets).
+  widgets = "$widgets";
   # Native Steam (steam/apt.txt, @steam) and the Game Mode session
   # (gaming/apt.txt; helpws plan-legion-go).
   nativeSteam = "$steam";

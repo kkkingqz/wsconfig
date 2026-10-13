@@ -40,6 +40,7 @@ ws check           проверки всех владельцев и связе�
 apt              nix/hosts/*apt.txt                    bootstrap.sh, apt    ws check apt
 клавиатура       keyboard/*.nix, xremap.yml            ws switch, ws-keyboard apply   ws-keyboard check
 GNOME            gnome/gnome.nix, gnome-extensions.nix ws switch, ws apply extensions ws-gnome check
+виджеты          widgets/ + flake input wswidgets      ws switch            ws check widgets
 Flatpak          flatpak/*.txt, flatpak.nix            wsflatpak apply      wsflatpak check
 Distrobox        distrobox/distrobox.nix               wsbox apply          wsbox check
 Windows          windows/apps.nix (+ боксы Distrobox)  ws switch, wswin     wswin check

@@ -17,12 +17,15 @@
 #           file by file by ws switch; not updated
 #   local   gnome/extensions/<uuid> in this repository, copied (schemas
 #           compiled) by ws-keyboard-install-extensions (ws apply extensions)
+#   nix     files delivered by a Home Manager module of a flake input (the
+#           wswidgets adapter, widgets/widgets.nix) on ws switch; only
+#           enabled here
 #
 # enabled-extensions is written on every ws switch: an extension enabled or
 # disabled by hand (Extension Manager, gnome-extensions) is reset by the next
 # switch; add or remove it here instead. New extensions load after
 # logout/login on Wayland.
-{ lib, pkgs, facts, ... }:
+{ config, lib, pkgs, facts, ... }:
 let
   # Hibernation is set up where facts.kernelParams has resume= (helpws
   # suspend, Hibernate). systemd finds a swap file without it, so
@@ -49,9 +52,10 @@ let
   ]
   # Hibernate in the power menu where logind allows it (helpws suspend).
   ++ lib.optional hibernate { uuid = "workstation-hibernate@local"; source = "local"; }
-  ++ [
-    { uuid = "workstation-widgets@local"; source = "local"; }
-  ];
+  # The panel adapter of the widget layer (helpws widgets): its files come
+  # from the wswidgets module (source "nix"), here it is only enabled.
+  ++ lib.optional (facts.widgets == "yes")
+    { uuid = config.programs.wswidgets.extensionUuid; source = "nix"; };
 
   # Extensions of the Ubuntu session mode that stay off: the mode enables
   # them whatever enabled-extensions says, only disabled-extensions wins.
@@ -78,7 +82,7 @@ in
       message = "gnome-extensions.nix: pin is only for ego extensions";
     }
     {
-      assertion = lib.all (e: lib.elem e.source [ "ubuntu" "ego" "local" ]) extensions;
+      assertion = lib.all (e: lib.elem e.source [ "ubuntu" "ego" "local" "nix" ]) extensions;
       message = "gnome-extensions.nix: unknown source";
     }
     {
@@ -95,7 +99,7 @@ in
     }) pinned);
 
   dconf.settings."org/gnome/shell" = {
-    enabled-extensions = bySource "ego" ++ bySource "local";
+    enabled-extensions = bySource "ego" ++ bySource "local" ++ bySource "nix";
     disabled-extensions = disabledUbuntu;
   };
 

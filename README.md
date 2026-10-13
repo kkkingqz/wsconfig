@@ -41,7 +41,7 @@ nix/            flake-хосты (facts.nix, apt.txt), home-manager, пакет�
 system/         системные файлы в /etc, /boot, /usr/local, ядро t2bce (ws system)
 keyboard/       macOS-клавиатура: xremap, сочетания GNOME и Tiling Assistant
 gnome/          профиль GNOME, расширения (свои — gnome/extensions/)
-widgets/        общий Quickshell framework, реестр виджетов и GNOME adapter
+widgets/        слой виджетов: установка wswidgets (~/Projects/wswidgets) и widgets.txt
 terminal/       Ghostty, fish, micro, xdg-terminal-exec
 flatpak/        приложения (apps.txt), remotes и overrides (wsflatpak)
 distrobox/      контейнеры Distrobox и их hooks (wsbox)
@@ -68,11 +68,11 @@ docs/architecture/   layers (слои и правила), checks, workstation (�
 docs/runbooks/       setup, rebuild, keyboard, gnome, terminal, suspend,
                      touchbar, flatpak, distrobox, windows, remmina, virt,
                      gaming, backup, recovery
-                     widgets (ws-widgets: сервис, проверка и добавление Item)
+                     widgets (слой wswidgets: факт widgets, widgets.txt, версия)
 docs/plans/          roadmap и незавершённые планы
 docs/history/        как строились завершённые слои
-docs/superpowers/    specs/ и plans/: проекты и планы реализации backup,
-                     recovery и виджетов (без man-страниц и helpws)
+docs/superpowers/    specs/ и plans/: проекты и планы реализации backup и
+                     recovery (без man-страниц и helpws; виджеты — в wswidgets)
 ```
 
 ## Состояние и восстановление

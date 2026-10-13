@@ -17,7 +17,6 @@
     ../../keyboard/keyboard.nix
     ../../distrobox/distrobox.nix
     ../../windows/apps.nix
-    ../../widgets/widgets.nix
     # Sources of the Game Mode packages: built anywhere, installed only with
     # gameMode = "yes" (wsgame, helpws gaming).
     ../../gaming/sources.nix
@@ -28,6 +27,8 @@
   # The RDP client of a real machine; a container host is the RDP server
   # (helpws remmina, helpws plan-wsgnomebox).
   ++ lib.optionals (facts.boot != "container") [ ../../remmina/remmina.nix ]
+  # Quickshell widgets from wswidgets (helpws widgets) on hosts with them.
+  ++ lib.optionals (facts.widgets == "yes") [ ../../widgets/widgets.nix ]
   # ~/VMs (helpws virt) on hosts with VMs.
   ++ lib.optionals (facts.vm == "yes") [ ../../virt/virt.nix ]
   # Pinned sources of the patched t2bce modules (helpws suspend) and of

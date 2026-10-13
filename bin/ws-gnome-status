@@ -226,8 +226,8 @@ else
 fi
 
 section "5. GNOME extensions"
-# ego and local extensions of gnome/gnome-extensions.nix.
-for uuid in $(awk '!/^#/ && ($2 == "ego" || $2 == "local") { print $1 }' \
+# ego, local and nix extensions of gnome/gnome-extensions.nix.
+for uuid in $(awk '!/^#/ && ($2 == "ego" || $2 == "local" || $2 == "nix") { print $1 }' \
     "$HOME/.local/share/workstation/gnome/extensions" 2>/dev/null); do
     kv "$uuid" "$(extension_state "$uuid")"
 done

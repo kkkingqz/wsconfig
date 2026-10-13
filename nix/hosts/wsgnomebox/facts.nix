@@ -13,6 +13,8 @@
   vm = "no";
   nativeSteam = "no";
   gameMode = "no";
+  # Quickshell widgets on the GNOME panel (helpws widgets).
+  widgets = "yes";
   # The RDP client sets the size; GNOME scales on its own.
   displayScale = "1";
   # No boot loader, kernel or initramfs: the container starts systemd.

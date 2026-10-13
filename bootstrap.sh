@@ -70,7 +70,7 @@ game_mode="$("$repo/bin/ws" fact gameMode)" \
     || die "gameMode in nix/hosts/$host/facts.nix must be \"yes\" or \"no\", not \"$game_mode\""
 [[ "$game_mode" == no || "$native_steam" == yes ]] \
     || die "gameMode = \"yes\" needs nativeSteam = \"yes\" in nix/hosts/$host/facts.nix"
-echo "Host: $host (vm = $vm, nativeSteam = $native_steam, gameMode = $game_mode)"
+echo "Host: $host (vm = $vm, widgets = $("$repo/bin/ws" fact widgets 2>/dev/null), nativeSteam = $native_steam, gameMode = $game_mode)"
 # A container host (helpws plan-wsgnomebox): the image holds the apt
 # packages, groups and login shell, /nix is a directory of the server; no
 # Btrfs, subvolumes or local backup copies.

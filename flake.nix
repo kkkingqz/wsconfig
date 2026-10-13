@@ -7,9 +7,15 @@
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Widget layer (widgets/widgets.nix, helpws widgets): runtime, QML and
+    # GNOME adapter of ~/Projects/wswidgets, pinned here like nixpkgs.
+    wswidgets = {
+      url = "github:kkkingqz/wswidgets";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { nixpkgs, home-manager, ... }:
+  outputs = { nixpkgs, home-manager, wswidgets, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -24,6 +30,8 @@
           "nix/hosts/${host}/facts.nix: vm must be \"yes\" or \"no\" (helpws virt)";
         assert lib.assertMsg (lib.elem (facts.nativeSteam or null) [ "yes" "no" ])
           "nix/hosts/${host}/facts.nix: nativeSteam must be \"yes\" or \"no\" (helpws plan-legion-go)";
+        assert lib.assertMsg (lib.elem (facts.widgets or null) [ "yes" "no" ])
+          "nix/hosts/${host}/facts.nix: widgets must be \"yes\" or \"no\" (helpws widgets)";
         assert lib.assertMsg (lib.elem (facts.gameMode or null) [ "yes" "no" ])
           "nix/hosts/${host}/facts.nix: gameMode must be \"yes\" or \"no\" (helpws plan-legion-go)";
         # The Game Mode session runs the apt Steam: the flatpak cannot reach
@@ -35,7 +43,7 @@
       mkHome = host: home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          inherit man;
+          inherit man wswidgets;
           facts = factsOf host;
           # The flake host (ws host): its workstation marks in
           # flatpak/apps.txt and distrobox/hosts.txt (lib/ws_marks.nix).
@@ -47,13 +55,6 @@
 
       # Man pages from docs/ with lowdown from nixpkgs.
       man = pkgs.callPackage ./nix/pkgs/man.nix { };
-      widgetsRuntime = import ./widgets/runtime { inherit pkgs; };
-      widgetsManifest = import ./widgets/manifest.nix {
-        inherit lib;
-        registry = import ./widgets/registry.nix;
-        qmlRoot = ./widgets/quickshell;
-      };
-
       # System file tree of the host; `ws system diff|check` compares it.
       mkSystem = host: pkgs.callPackage ./system { facts = factsOf host; };
 
@@ -73,34 +74,6 @@
           pkgs.writeText "scale" "lib/scale.nix: sizes by the display scale";
         ws-marks = assert import ./lib/test-ws-marks.nix { inherit lib; };
           pkgs.writeText "ws-marks" "lib/ws_marks.nix reads the workstation marks";
-        widgets-manifest = assert import ./widgets/test-manifest.nix { inherit lib; };
-          pkgs.writeText "widgets-manifest.json" (builtins.toJSON widgetsManifest);
-        widgets-qml = pkgs.runCommand "widgets-qml" { nativeBuildInputs = [ pkgs.python3 ]; } ''
-          export HOME="$TMPDIR/home" XDG_RUNTIME_DIR="$TMPDIR/runtime"
-          mkdir -p "$HOME" "$XDG_RUNTIME_DIR"
-          chmod 700 "$XDG_RUNTIME_DIR"
-          python ${./.}/tests/widgets/check-qml.py ${widgetsRuntime}/bin/qs-widgets
-          touch "$out"
-        '';
-        widgets-tests = assert builtins.readFile ./widgets/quickshell/framework/manifest.mjs == builtins.readFile (./gnome/extensions + "/workstation-widgets@local/lib/manifest.mjs");
-          pkgs.runCommand "widgets-tests" { nativeBuildInputs = [ pkgs.python3 pkgs.gjs ]; } ''
-            cp -r ${./.} source
-            chmod -R u+w source
-            cd source
-            patchShebangs bin/ws-widgets bin/ws-widgets-check
-            python -m unittest discover -s tests -p test_gnome_extension_files.py
-            python -m unittest discover -s tests -p test_ws_widgets.py
-            gjs -m tests/widgets/run-tests.js
-            touch "$out"
-          '';
-        widgets-runtime = pkgs.runCommand "widgets-runtime-integration" { nativeBuildInputs = [ pkgs.python3 pkgs.gjs ]; } ''
-          export HOME="$TMPDIR/home" XDG_RUNTIME_DIR="$TMPDIR/runtime"
-          mkdir -p "$HOME" "$XDG_RUNTIME_DIR"
-          chmod 700 "$XDG_RUNTIME_DIR"
-          python ${./.}/tests/widgets/check-runtime.py --runtime ${widgetsRuntime}/bin/qs-widgets \
-            --manifest ${pkgs.writeText "widget-test-manifest.json" (builtins.toJSON widgetsManifest)}
-          touch "$out"
-        '';
       };
 
       # Tools `ws` runs, pinned by flake.lock.
@@ -111,7 +84,6 @@
         nvd = pkgs.nvd;
         xremap = pkgs.callPackage ./nix/pkgs/xremap.nix { };
         man = man;
-        widgets-runtime = widgetsRuntime;
       };
     };
 }

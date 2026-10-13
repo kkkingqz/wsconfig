@@ -1,0 +1,5 @@
+# Включённые виджеты wswidgets (~/Projects/wswidgets, catalog.nix): ID по
+# одному в строке, порядок строк — порядок кнопок на панели GNOME. Только на
+# хостах с widgets = "yes" в facts.nix (helpws widgets); ws switch применяет.
+example
+compact

@@ -56,13 +56,17 @@ update    bring everything that is not pinned to the latest version, in order:
           with pin, container images by digest
 check     run the owners' checks with --json and summarize their result
           objects (lib/check.bash): ws check repo, ws check home,
-          ws-keyboard check, ws-gnome check, wsflatpak check, wsbox check,
+          ws-keyboard check, ws-gnome check, ws check widgets,
+          wsflatpak check, wsbox check,
           wswin check, ws-suspend check, ws system check, ws check apt,
           ws check virt, ws check steam, wsgame check, ws check backup and
           ws-workstation-verify (cross-layer invariants);
           shows WARN/FAIL messages, -v all;
           check repo: the checkout (Git, hygiene, syntax, bin/ executables);
           check home: home-manager generation, Nix, man pages, session;
+          check widgets: the wswidgets runtime, adapter and IPC (ws-widgets
+          check) and its manifest against widgets/widgets.txt (hosts with
+          widgets = "yes");
           check virt: KVM, libvirt, VM storage @vms, NAT network, OVMF/TPM
           (hosts with vm = "yes" in facts.nix);
           check steam: Steam data on @steam in ~/.local/share/Steam (hosts
@@ -841,7 +845,7 @@ check_steps=(
     "home ws-check-home"
     "keyboard ws-keyboard check"
     "gnome ws-gnome check"
-    "widgets ws-widgets check"
+    "widgets ws check widgets"
     "flatpak wsflatpak check"
     "distrobox wsbox check"
     "windows wswin check"
@@ -965,7 +969,7 @@ cmd_check() {
         steam) shift; exec "$repo/bin/ws-check-steam" "$@" ;;
         gaming|game) shift; exec "$repo/bin/wsgame" check "$@" ;;
         backup) shift; exec "$repo/bin/ws-check-backup" "$@" ;;
-        widgets) shift; exec "$repo/bin/ws-widgets-check" "$@" ;;
+        widgets|widget) shift; exec "$repo/bin/ws-check-widgets" "$@" ;;
         -v|--verbose) verbose=true ;;
         "") ;;
         *) die "unknown check option: $1" ;;

@@ -12,6 +12,10 @@
   # virt/apt.txt, @vms with libvirt (bootstrap.sh), OVMF descriptor, ~/VMs,
   # ws check virt; "no" leaves it out.
   vm = "yes";
+  # Widget layer (helpws widgets): "yes" installs wswidgets — Quickshell
+  # runtime, QML and the GNOME panel adapter (widgets/widgets.nix) with the
+  # widgets of widgets/widgets.txt, ws check widgets; "no" leaves it out.
+  widgets = "yes";
   # Native Steam (helpws plan-legion-go): "yes" installs the apt Steam
   # (steam/apt.txt, i386) and keeps its data on @steam in
   # ~/.local/share/Steam (bootstrap.sh, ws check steam); "no" — Steam is the
