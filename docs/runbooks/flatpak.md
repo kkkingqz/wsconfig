@@ -163,6 +163,13 @@ wsflatpak status
 wsflatpak test                       # portals, PipeWire + check
 ```
 
+Портал документов (`flatpak.nix`): после перелогина старый `fusermount3`
+(setuid root, systemd его не убивает) с `auto_unmount` снимал
+`/run/user/UID/doc` уже за новым порталом, и любой flatpak падал с
+`bwrap: Can't find source path .../doc/by-app/APP`. Drop-in
+`xdg-document-portal.service.d/ws-wait-fusermount.conf` ждёт его выхода
+(до 10 с) перед стартом. Вручную: `systemctl --user restart xdg-document-portal`.
+
 ## Проверка
 
 ```console

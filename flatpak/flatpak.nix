@@ -132,6 +132,21 @@ in
       source = "${flatpakConfig}/desktop/${baseNameOf f}";
     }) linkedDesktop);
 
+  # The document portal after a relogin: systemd cannot kill the old
+  # fusermount3 (setuid root), and with auto_unmount it unmounts
+  # $XDG_RUNTIME_DIR/doc after the new portal has mounted it; every flatpak
+  # then fails with "bwrap: Can't find source path .../doc/by-app/APP".
+  # Wait for it (at most 10 s) before the start.
+  xdg.configFile."systemd/user/xdg-document-portal.service.d/ws-wait-fusermount.conf".text = ''
+    [Service]
+    ExecStartPre=-${pkgs.writeShellScript "ws-doc-portal-wait" ''
+      for _ in $(${pkgs.coreutils}/bin/seq 50); do
+        ${pkgs.procps}/bin/pgrep -U "$(${pkgs.coreutils}/bin/id -u)" -f "fusermount3 .* -- $1\$" >/dev/null || exit 0
+        ${pkgs.coreutils}/bin/sleep 0.2
+      done
+    ''} %t/doc
+  '';
+
   # x-scheme-handler/claude comes from mimeinfo.cache next to the link.
   home.activation.flatpakDesktopDatabase = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
     if [ -x /usr/bin/update-desktop-database ]; then
