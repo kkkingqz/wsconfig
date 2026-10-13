@@ -69,6 +69,8 @@ gh
 # MPRIS players and PipeWire from the command line (playerctl, pactl)
 playerctl
 pulseaudio-utils
+# GNOME Keyring from the command line (secret-tool)
+libsecret-tools
 # Crash dumps (coredumpctl)
 systemd-coredump
 # Non-free codecs and Microsoft fonts (multiverse); the font installer asks
