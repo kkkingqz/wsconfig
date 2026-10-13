@@ -6,11 +6,12 @@ let
   repo = "${config.home.homeDirectory}/${facts.wsconfig}";
   # GNOME only. Game Mode (gamescope-session-plus, helpws gaming) starts
   # graphical-session.target too, and the user manager may still hold the
-  # environment of the GNOME session before it (as ws-xremap checks).
+  # environment of the GNOME session before it (as ws-xremap checks; [g]:
+  # the pattern must not match its own pgrep there, run at the same moment).
   sessionGuard = pkgs.writeShellScript "widgets-session-guard" ''
     case ":''${XDG_CURRENT_DESKTOP:-}:" in *:GNOME:*) ;; *) exit 1 ;; esac
     test -n "''${WAYLAND_DISPLAY:-}" || exit 1
-    ! ${pkgs.procps}/bin/pgrep -u "$UID" -f gamescope-session-plus >/dev/null
+    ! ${pkgs.procps}/bin/pgrep -u "$UID" -f '[g]amescope-session-plus' >/dev/null
   '';
 in {
   xdg.configFile."quickshell/workstation-widgets".source = config.lib.file.mkOutOfStoreSymlink "${repo}/widgets/quickshell";
