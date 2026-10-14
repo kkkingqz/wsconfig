@@ -4,9 +4,9 @@
 # repository chooses the widgets per host (nix/hosts/HOST/widgets.toml,
 # ws widgets enable|disable; lib/ws_catalog.py) and enables the adapter
 # (gnome/gnome-extensions.nix).
-{ lib, wswidgets, wsHost, ... }:
+{ lib, wswidgets, wsHost, wsConfig, ... }:
 let
-  catalog = import ../lib/catalog.nix { inherit lib; };
+  catalog = import ../lib/catalog.nix { inherit lib; hosts = wsConfig + "/nix/hosts"; };
 in
 {
   imports = [ wswidgets.homeManagerModules.default ];

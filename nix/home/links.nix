@@ -8,30 +8,34 @@
 # home-manager owns the links; the files stay in the checkout and are edited
 # there (mkOutOfStoreSymlink: no copy in the store, no switch after edits).
 # New files in the listed directories are linked on the next `ws apply`.
-{ config, lib, facts, core, ... }:
+{ config, lib, facts, core, wsConfig, ... }:
 let
   repo = "${config.home.homeDirectory}/${facts.wsconfig}";
-  src = ../..;
+  # The links point into the checkout of the configuration; which files
+  # there are, the flake source of the configuration says. The core is
+  # where this file is.
+  src = wsConfig;
+  coreSrc = ../..;
 
   link = path: config.lib.file.mkOutOfStoreSymlink "${repo}/${path}";
 
-  # Regular files of a checkout directory (the flake sees tracked files only).
-  filesIn = dir:
+  # Regular files of a directory under ROOT (the flake sees tracked files only).
+  filesIn = root: dir:
     builtins.attrNames (lib.filterAttrs (_: type: type == "regular")
-      (builtins.readDir (src + "/${dir}")));
+      (builtins.readDir (root + "/${dir}")));
 
   # The executables of DIR of the core, as links into the store.
   coreDir = { from, to, filter ? (_: true) }:
     lib.listToAttrs (map (name: {
       name = "${to}/${name}";
       value.source = "${core}/${from}/${name}";
-    }) (builtins.filter filter (filesIn from)));
+    }) (builtins.filter filter (filesIn coreSrc from)));
 
   linkDir = { from, to, filter ? (_: true) }:
     lib.listToAttrs (map (name: {
       name = "${to}/${name}";
       value.source = link "${from}/${name}";
-    }) (builtins.filter filter (filesIn from)));
+    }) (builtins.filter filter (filesIn src from)));
 
 in
 {

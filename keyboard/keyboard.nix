@@ -18,7 +18,7 @@
 # Change: keyboard/config.toml, then `ws apply keyboard` (or `ws apply
 # tiling`). The original GNOME values of a key new in the preset are not in
 # the existing backup (~/.local/state/wsconfig/keyboard/gsettings-backup.tsv).
-{ lib, facts, core, wsHost, ... }:
+{ lib, facts, core, wsHost, wsConfig, ... }:
 let
   # GVariant text as it is, for values that are not strings or string arrays.
   raw = text: { gvariant = text; };
@@ -54,8 +54,8 @@ let
     rdpCommands;
 
   keyboard = (import ../lib/config.nix { inherit lib; }).read {
-    file = ./config.toml;
-    host = ../nix/hosts + "/${wsHost}/keyboard.toml";
+    file = wsConfig + "/keyboard/config.toml";
+    host = wsConfig + "/nix/hosts/${wsHost}/keyboard.toml";
     type = schema.table {
       keys = {
         preset = schema.oneOf (lib.attrNames presets);

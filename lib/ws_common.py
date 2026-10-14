@@ -18,7 +18,7 @@ import os
 from pathlib import Path
 import sys
 
-# The state directory name; lib/common.bash, flake.nix (wsState) and
+# The state directory name; lib/common.bash, lib/mkconfig.nix (wsState) and
 # terminal/fish/completions/ws.fish have it too (tests/test_common.py).
 STATE_NAME = "wsconfig"
 

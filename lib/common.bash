@@ -17,7 +17,7 @@
 # (config_root of lib/ws_common.py). `repo`, what the tools use for the
 # data, is WS_CONFIG.
 #
-# The state directory name is also in lib/ws_common.py, flake.nix
+# The state directory name is also in lib/ws_common.py, lib/mkconfig.nix
 # (wsState) and terminal/fish/completions/ws.fish; tests/test_common.py
 # keeps them equal.
 

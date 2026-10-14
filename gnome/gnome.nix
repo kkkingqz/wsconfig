@@ -6,9 +6,9 @@
 # ws-gnome check compares the session with ~/.local/share/wsconfig/gnome/
 # settings.json ([{schema, key, value}], value as gsettings get prints it),
 # built from the same attribute set.
-{ config, lib, pkgs, facts, wsHost, ... }:
+{ config, lib, pkgs, facts, wsHost, wsConfig, ... }:
 let
-  gnome = import ./config.nix { inherit lib wsHost; };
+  gnome = import ./config.nix { inherit lib wsHost wsConfig; };
 
   profile = lib.recursiveUpdate (gnome.settings or { }) (lib.optionalAttrs (facts.hardware == "t2-mbp16") {
     # The power key hibernates (ws help suspend, Hibernate); logind does the

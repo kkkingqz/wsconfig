@@ -18,9 +18,9 @@
 # ones, so a key removed here disappears too. Desktop overrides are linked
 # into ~/.local/share/applications by home-manager, on a host that has the
 # app (elsewhere the launcher would start nothing).
-{ lib, pkgs, wsHost, facts, core, ... }:
+{ lib, pkgs, wsHost, wsConfig, facts, core, ... }:
 let
-  catalog = import ../lib/catalog.nix { inherit lib; };
+  catalog = import ../lib/catalog.nix { inherit lib; hosts = wsConfig + "/nix/hosts"; };
   # @claude@, @chatgpt@ in the desktop files: the scale factors of the host;
   # @ws-gpu@: ws-gpu of the core in the store.
   scale = import ../lib/scale.nix { inherit lib facts; };
@@ -28,7 +28,7 @@ let
     [ "@claude@" "@chatgpt@" "@ws-gpu@" ] [ scale.claude scale.chatgpt "${core}/libexec/ws-gpu" ]
     (builtins.readFile f));
 
-  flatpak = builtins.fromTOML (builtins.readFile ./catalog.toml);
+  flatpak = builtins.fromTOML (builtins.readFile (wsConfig + "/flatpak/catalog.toml"));
   inherit (flatpak) remotes;
   apps = flatpak.apps or [ ];
   host = catalog.choice wsHost "flatpak";

@@ -12,7 +12,7 @@
 #                   profile, driver, dpi, init_overrides (ws help plan-v2, 2.6)
 #
 # Which host has which: nix/hosts/HOST/boxes.toml (lib/ws_catalog.py).
-{ config, lib, pkgs, facts, core, ... }:
+{ config, lib, pkgs, facts, core, wsConfig, ... }:
 let
   # LogPixels of new prefixes by the display scale (lib/scale.nix).
   scale = import ../lib/scale.nix { inherit lib facts; };
@@ -94,7 +94,7 @@ let
     required = [ "name" "image" ];
   };
   catalog = (import ../lib/config.nix { inherit lib; }).read {
-    file = ./catalog.toml;
+    file = wsConfig + "/distrobox/catalog.toml";
     type = schema.table { keys.boxes = schema.listOf boxType; required = [ "boxes" ]; };
   };
 

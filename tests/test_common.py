@@ -129,7 +129,7 @@ manifest_rows {manifest} key nothing; echo end
     def test_state_name_is_the_same_everywhere(self):
         name = ws_common.STATE_NAME
         self.assertIn('/.local/state}/%s}"' % name, (ROOT / "lib/common.bash").read_text())
-        self.assertIn('wsState = ".local/state/%s";' % name, (ROOT / "flake.nix").read_text())
+        self.assertIn('wsState = ".local/state/%s";' % name, (ROOT / "lib/mkconfig.nix").read_text())
         self.assertIn("~/.local/state/%s/$dir" % name,
                       (ROOT / "terminal/fish/completions/ws.fish").read_text())
 

@@ -2,8 +2,9 @@
 # plan-v2, stage 3): nix/hosts/HOST/MODULE.toml with yes = [...] and
 # no = [...]. A name in neither has the default of its catalog position
 # (ask, no or yes). The tools validate the files; this only reads.
-# HOSTS: the directory of the host directories (tests: a fixture).
-{ lib, hosts ? ../nix/hosts }:
+# HOSTS: the directory of the host directories, wsConfig + "/nix/hosts"
+# (tests: a fixture); no default, the data is never next to this file.
+{ lib, hosts }:
 rec {
   # { yes = [ ... ]; no = [ ... ]; } of HOST for MODULE (flatpak, boxes,
   # widgets); both empty without a file.

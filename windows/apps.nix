@@ -7,14 +7,14 @@
 # The launchers only on a host that has the box: yes in
 # nix/hosts/HOST/boxes.toml, else the default of the box in
 # distrobox/catalog.toml (lib/catalog.nix); apps.json lists every program.
-{ config, lib, wsHost, core, ... }:
+{ config, lib, wsHost, wsConfig, core, ... }:
 let
-  catalog = import ../lib/catalog.nix { inherit lib; };
+  catalog = import ../lib/catalog.nix { inherit lib; hosts = wsConfig + "/nix/hosts"; };
   hasBox = box: catalog.has wsHost "boxes" box (config.ws.boxDefaults.${box} or "ask");
 
   schema = import ../lib/schema.nix { inherit lib; };
   windows = (import ../lib/config.nix { inherit lib; }).read {
-    file = ./apps.toml;
+    file = wsConfig + "/windows/apps.toml";
     type = schema.table {
       keys = {
         default_box = schema.string;

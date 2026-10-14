@@ -11,9 +11,9 @@
 # Source nix: files delivered by a Home Manager module of a flake input
 # (the wswidgets adapter, widgets/widgets.nix) on ws apply; only enabled
 # here.
-{ config, lib, pkgs, facts, wsHost, ... }:
+{ config, lib, pkgs, facts, wsHost, wsConfig, ... }:
 let
-  gnome = import ./config.nix { inherit lib wsHost; };
+  gnome = import ./config.nix { inherit lib wsHost wsConfig; };
 
   # Hibernation is set up where facts.kernelParams has resume= (ws help
   # suspend, Hibernate). systemd finds a swap file without it, so
