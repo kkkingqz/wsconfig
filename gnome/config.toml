@@ -1,0 +1,42 @@
+# GNOME of the workstation (helpws gnome). ws apply writes these keys with
+# dconf on every run: a manual change of them is reverted by the next
+# apply, and a key removed here is reset to its default. A host adds or
+# replaces keys in nix/hosts/HOST/gnome.toml. ws sync publishes the file.
+#
+# Values are written explicitly even where they equal the Ubuntu default, so
+# a changed distribution default does not reach this machine unnoticed.
+#
+# Deliberately not here (other owners or user choice): display scale and
+# monitors.xml, Mutter experimental-features, input sources and keyboard
+# shortcuts (keyboard, with restore), Tiling Assistant bindings, wallpaper;
+# gnome/gnome.nix refuses keys of those owners. The power key of mbp16
+# (hibernate) is set by gnome.nix: it belongs with logind of the system
+# layer.
+#
+# [settings."DCONF/DIR"]: KEY = value as text, number, true/false or a list
+# of texts.
+
+[settings."org/gnome/desktop/interface"]
+color-scheme = "prefer-dark"
+accent-color = "orange"
+gtk-theme = "Yaru-dark"
+icon-theme = "Yaru-dark"
+cursor-theme = "Yaru"
+font-name = "Ubuntu Sans 11"
+document-font-name = "Sans 11"
+monospace-font-name = "Ubuntu Sans Mono 11"
+
+# Ubuntu Dock: working baseline captured 2026-09-23.
+[settings."org/gnome/shell/extensions/dash-to-dock"]
+dock-position = "BOTTOM"
+dock-fixed = true
+autohide = true
+intellihide = true
+dash-max-icon-size = 50
+show-show-apps-button = true
+show-favorites = true
+show-running = true
+show-trash = false
+show-mounts = true
+multi-monitor = true
+click-action = "focus-minimize-or-appspread"

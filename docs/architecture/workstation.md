@@ -103,10 +103,10 @@ baseline от него не зависит.
 # GNOME MANAGED APPEARANCE
 
 Штатный GNOME appearance/Dock baseline хранится декларативно в
-`dconf.settings` home-manager и записывается `ws apply`:
+`dconf.settings` home-manager и записывается `ws apply`; значения — в
 
 ```text
-gnome/gnome.nix
+gnome/config.toml
 ```
 
 Управление:
@@ -903,7 +903,7 @@ checkout (fish, Ghostty), man pages
 `xremap.yml` из store, `enabled-extensions` и закреплённые расширения
 GNOME (`nix/pkgs/gnome-extensions.nix`), конфиг `ws flatpak` из
 `flatpak/flatpak.nix`, профиль внешнего вида GNOME
-(`gnome/gnome.nix`, `dconf.settings`); `ws apply system` ставит копии
+(`gnome/config.toml`, `dconf.settings`); `ws apply system` ставит копии
 системных файлов из сборки `system`; GNOME, Flatpak, Distrobox,
 клавиатура — владельцы из `libexec/`, их по порядку вызывает `ws apply`.
 Основная проверка — `ws check`.

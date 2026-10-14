@@ -357,12 +357,12 @@ ws gnome check
 Source of truth:
 
 ```text
-gnome/gnome.nix
+gnome/config.toml
 ```
 
 Профиль записывает `ws apply` (home-manager `dconf.settings`); отдельного
 шага в `ws apply` нет. Drift в `ws gnome check` значит, что ключ изменили
-вручную: следующий `ws apply` запишет значение из `gnome.nix` снова.
+вручную: следующий `ws apply` запишет значение из `gnome/config.toml` снова.
 
 Профиль не управляет display scale, `monitors.xml`, Mutter
 experimental flags, keyboard/input sources, extension enablement, wallpaper,

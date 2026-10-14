@@ -16,12 +16,12 @@ case "$cmd" in
 Usage: ws gnome [status|check|test|extensions]
 
   status     read-only GNOME inventory
-  check      compare appearance/Dock state with gnome/gnome.nix
+  check      compare appearance/Dock state with gnome/config.toml
   test       final read-only GNOME host smoke-test
   extensions install the EGO extensions without pin and the local ones of
              gnome/gnome-extensions.nix (ws apply extensions)
 
-The profile is applied by `ws apply` (gnome/gnome.nix).
+The profile is applied by `ws apply` (gnome/config.toml).
 USAGE
         ;;
     *)

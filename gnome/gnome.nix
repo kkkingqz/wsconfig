@@ -1,55 +1,32 @@
-# GNOME appearance and Ubuntu Dock profile. home-manager writes it with `dconf load` on every
-# `ws apply`: a manual change of these keys is reverted by the next switch,
-# and a key removed here is reset to its default.
-#
-# Values are written explicitly even where they equal the Ubuntu default, so
-# a changed distribution default does not reach this machine unnoticed.
-#
-# Deliberately not here (other owners or user choice): display scale and
-# monitors.xml, Mutter experimental-features, input sources and keyboard
-# shortcuts (ws-keyboard-apply, with restore), Tiling Assistant bindings
-# (ws-tiling-apply), wallpaper. Enabled extensions are declared in
-# gnome-extensions.nix, also as dconf.settings.
+# GNOME appearance and Ubuntu Dock: the values are gnome/config.toml (and
+# nix/hosts/HOST/gnome.toml), what the user edits; home-manager writes them
+# with `dconf load` on every `ws apply`. Here: the keys of the hardware,
+# the check against the keys of other owners and settings.json.
 #
 # ws-gnome check compares the session with ~/.local/share/wsconfig/gnome/
 # settings.json ([{schema, key, value}], value as gsettings get prints it),
 # built from the same attribute set.
-{ config, lib, pkgs, facts, ... }:
+{ config, lib, pkgs, facts, wsHost, ... }:
 let
-  profile = {
-    "org/gnome/desktop/interface" = {
-      color-scheme = "prefer-dark";
-      accent-color = "orange";
-      gtk-theme = "Yaru-dark";
-      icon-theme = "Yaru-dark";
-      cursor-theme = "Yaru";
-      font-name = "Ubuntu Sans 11";
-      document-font-name = "Sans 11";
-      monospace-font-name = "Ubuntu Sans Mono 11";
+  schema = import ../lib/schema.nix { inherit lib; };
+  dconfValue = schema.scalar "a text, number, true/false or a list of texts"
+    (v: builtins.isString v || builtins.isInt v || builtins.isFloat v || builtins.isBool v
+      || (builtins.isList v && lib.all builtins.isString v));
+  gnome = (import ../lib/config.nix { inherit lib; }).read {
+    file = ./config.toml;
+    host = ../nix/hosts + "/${wsHost}/gnome.toml";
+    type = schema.table {
+      keys.settings = schema.attrsOf (schema.attrsOf dconfValue);
     };
+  };
 
-    # Ubuntu Dock: working baseline captured 2026-09-23.
-    "org/gnome/shell/extensions/dash-to-dock" = {
-      dock-position = "BOTTOM";
-      dock-fixed = true;
-      autohide = true;
-      intellihide = true;
-      dash-max-icon-size = 50;
-      show-show-apps-button = true;
-      show-favorites = true;
-      show-running = true;
-      show-trash = false;
-      show-mounts = true;
-      multi-monitor = true;
-      click-action = "focus-minimize-or-appspread";
-    };
-  } // lib.optionalAttrs (facts.hardware == "t2-mbp16") {
+  profile = lib.recursiveUpdate (gnome.settings or { }) (lib.optionalAttrs (facts.hardware == "t2-mbp16") {
     # The power key hibernates (helpws suspend, Hibernate); logind does the
     # same outside a session (system/files/logind.conf.d/ws-sleep-keys.conf).
     "org/gnome/settings-daemon/plugins/power" = {
       power-button-action = "hibernate";
     };
-  };
+  });
 
   # Keys that scripts set (keyboard, tiling) or that stay unmanaged;
   # dconf.settings must not fight them.

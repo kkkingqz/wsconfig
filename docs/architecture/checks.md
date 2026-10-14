@@ -15,7 +15,7 @@ volume: User Commands
 ws check repo           checkout: git, мусор, синтаксис, исполняемые bin/ и libexec/
 ws check home           поколение home-manager, Nix и @nix, man, окружение сессии
 ws keyboard check       xremap, сочетания GNOME и Tiling из keyboard.nix, источники ввода
-ws gnome check          профиль gnome.nix, расширения: набор, pin, ACTIVE, копии, schemas
+ws gnome check          профиль gnome/config.toml, расширения: набор, pin, ACTIVE, копии, schemas
 ws flatpak check         remotes, приложения каталога, overrides, .desktop
 ws box check             контейнеры, образы, HOME, экспорты, hooks, wsbox-host-ntsync
 ws windows check             Windows-боксы, программы, .exe, ссылки меню

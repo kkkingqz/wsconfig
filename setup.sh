@@ -432,8 +432,9 @@ step_finish() {
     local checkpoint=true
     # The data of ws sync (data_patterns of bin/ws); step_choices may have
     # made the host files, so untracked ones count.
-    local -a data_files=(flatpak/catalog.toml distrobox/catalog.toml windows/apps.toml flake.lock
-        'nix/hosts/*/flatpak.toml' 'nix/hosts/*/boxes.toml' 'nix/hosts/*/widgets.toml')
+    local -a data_files=(flatpak/catalog.toml distrobox/catalog.toml windows/apps.toml
+        gnome/config.toml flake.lock 'nix/hosts/*/flatpak.toml' 'nix/hosts/*/boxes.toml'
+        'nix/hosts/*/widgets.toml' 'nix/hosts/*/gnome.toml')
     say "Готово"
     ws apply home
     # A checkpoint needs a live system that matches its tree (ws system check).

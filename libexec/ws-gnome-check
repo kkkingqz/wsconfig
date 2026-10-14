@@ -3,7 +3,7 @@ set -u
 set -o pipefail
 
 # GNOME owner check: the session against the managed profile of
-# gnome/gnome.nix (appearance, Ubuntu Dock) and the extensions of
+# gnome/config.toml (appearance, Ubuntu Dock) and the extensions of
 # gnome/gnome-extensions.nix (enabled set, pins, local sources, schemas).
 # Read-only; ws apply writes the profile, ws apply extensions installs.
 # ws check runs it with --json (lib/check.bash).
@@ -18,13 +18,13 @@ quiet=false
 usage() {
     cat <<'USAGE'
 Usage:
-  ws-gnome-check           compare the session with gnome/gnome.nix and
+  ws-gnome-check           compare the session with gnome/config.toml and
                            gnome/gnome-extensions.nix
   ws-gnome-check --quiet   exit status only
   ws-gnome-check --json    result object for ws check
 
 The profile (appearance and Ubuntu Dock) is declared in
-gnome/gnome.nix and applied by `ws apply`; home-manager builds
+gnome/config.toml and applied by `ws apply`; home-manager builds
 ~/.local/share/wsconfig/gnome/settings.json ({schema, key, value}) for this check.
 USAGE
 }

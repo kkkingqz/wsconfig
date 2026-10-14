@@ -318,9 +318,9 @@ profile="$HOME/.local/share/wsconfig/gnome/settings.json"
 check_helper="$WS_CORE/libexec/ws-gnome-check"
 if [[ -r "$profile" && -x "$check_helper" ]]; then
     if "$check_helper" --quiet >/dev/null 2>&1; then
-        kv "gnome/gnome.nix" "in sync"
+        kv "gnome/config.toml" "in sync"
     else
-        kv "gnome/gnome.nix" "DRIFT — run: ws gnome check"
+        kv "gnome/config.toml" "DRIFT — run: ws gnome check"
     fi
 else
     kv "managed profile" "not installed yet"

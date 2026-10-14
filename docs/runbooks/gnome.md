@@ -43,15 +43,17 @@ Distrobox (`helpws distrobox`), Wine (`helpws windows`; Wine только в
 Source of truth (с 2026-09-27):
 
 ```text
-gnome/gnome.nix
+gnome/config.toml               значения: [settings."DCONF/DIR"] KEY = значение
+nix/hosts/HOST/gnome.toml       свои значения хоста поверх общих (если нужен)
+gnome/gnome.nix                 логика: ключи железа, проверка чужих ключей
 ```
 
 Профиль — `dconf.settings` home-manager. Его записывает `ws apply`
 (`dconf load`) при каждой активации:
 
 - ручное изменение этих ключей (в Settings, Tweaks, `gsettings set`)
-  откатывается следующим `ws apply`; менять значение — в `gnome.nix`;
-- ключ, убранный из `gnome.nix`, при следующем switch сбрасывается к
+  откатывается следующим `ws apply`; менять значение — в `gnome/config.toml`;
+- ключ, убранный из `gnome/config.toml`, при следующем `ws apply` сбрасывается к
   значению по умолчанию;
 - значения пишутся явно, даже если совпадают с дефолтом Ubuntu, чтобы
   изменённый дефолт дистрибутива не пришёл незаметно.
@@ -59,9 +61,10 @@ gnome/gnome.nix
 Изменение:
 
 ```console
-$EDITOR ~/wsconfig/gnome/gnome.nix
+$EDITOR ~/wsconfig/gnome/config.toml
 ws apply
 ws gnome check
+ws sync             # опубликовать файл
 ```
 
 Откат — `git revert`/правка и `ws apply` (или активация предыдущего
@@ -88,7 +91,7 @@ Show Applications true
 click action      focus-minimize-or-appspread
 ```
 
-Остальные текущие Dock settings тоже записаны в `gnome.nix`.
+Остальные текущие Dock settings тоже записаны в `gnome/config.toml`.
 
 ## Что profile намеренно НЕ управляет
 
@@ -146,7 +149,7 @@ ws gnome check
 
 Сравнивает сессию (`gsettings get`) с `~/.local/share/wsconfig/gnome/
 settings.json` — списком `{schema, key, value}`, который home-manager собирает
-из того же набора в `gnome.nix`. Ничего не меняет. Прямой вызов —
+из того же набора, что `gnome/config.toml`. Ничего не меняет. Прямой вызов —
 `ws-gnome-check`.
 
 Exit status:
