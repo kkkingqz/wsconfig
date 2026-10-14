@@ -1,7 +1,7 @@
 # Completions for helpws.
 complete -c helpws -f
 
-set -l helpws_topics readme layers architecture checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall setup install new distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton remmina rdp virt vm vms libvirt kvm gaming game gamemode wsgame backup wsbackup recovery restore ws-restore widgets widget wswidgets roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-final plan-unraid unraid plan-legion-go legion-go legiongo plan-legion-go-agent legion-go-agent plan-wsgnomebox wsgnomebox plan-hyprland hyprland plan-v2 v2 history-gnome plan-gnome history-flatpak plan-flatpak history-distrobox plan-dev history-windows plan-windows history-nix plan-nix history-suspend history-touchbar history-virt plan-virt man help
+set -l helpws_topics readme layers architecture architecture-v2 arch-v2 checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall setup install new distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton remmina rdp virt vm vms libvirt kvm gaming game gamemode wsgame backup wsbackup recovery restore ws-restore widgets widget wswidgets roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-final plan-unraid unraid plan-legion-go legion-go legiongo plan-legion-go-agent legion-go-agent plan-wsgnomebox wsgnomebox plan-hyprland hyprland plan-v2 v2 history-gnome plan-gnome history-flatpak plan-flatpak history-distrobox plan-dev history-windows plan-windows history-nix plan-nix history-suspend history-touchbar history-virt plan-virt man help
 
 function __helpws_topic -a name desc
     complete -c helpws -n "not __fish_seen_subcommand_from $helpws_topics" -a $name -d $desc
@@ -9,6 +9,7 @@ end
 
 __helpws_topic readme 'README: entry point'
 __helpws_topic layers 'Layers, owners, rules'
+__helpws_topic architecture-v2 'wsconfig v2: core, configuration repository, shared mechanisms'
 __helpws_topic checks 'ws check: owners, --json format'
 __helpws_topic workstation 'Current workstation in detail'
 __helpws_topic setup 'New PC on wsconfig: setup.sh'

@@ -18,6 +18,7 @@ open_title() {
 case "$topic" in
     readme) MICRO_CONFIG_HOME="$micro_cfg" exec micro -readonly true "$repo/README.md" ;;
     layers|architecture) open_title ws-layers ;;
+    architecture-v2|arch-v2) open_title ws-architecture-v2 ;;
     checks|check) open_title ws-checks ;;
     workstation|system|baseline) open_title ws-workstation ;;
     terminal|term|ghostty|fish) open_title ws-terminal ;;
@@ -67,6 +68,7 @@ Usage: helpws [topic]
 Architecture (docs/architecture):
   readme           README: entry point
   layers           Layers, owners, rules, where things live
+  architecture-v2  wsconfig v2: core, configuration repository, shared mechanisms
   checks           ws check: who checks what, --json format
   workstation      Current workstation in detail, repository map
 
