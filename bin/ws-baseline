@@ -187,19 +187,15 @@ cmd_capture() {
     echo "== packages"
     # The owners' package lists: apt (nix/hosts/*apt.txt, as ws check apt)
     # and the Nix profile (home.packages) of the active generation.
-    local h pkg hm fact list
-    local -a lists
+    local h pkg hm
+    local host host_list container vm native_steam game_mode
     h="$("$repo/bin/ws" host)"
-    # The same lists as ws check apt: the layers by their facts.
-    lists=("$repo/nix/hosts/apt.txt" "$repo/nix/hosts/$h/apt.txt")
-    [[ "$("$repo/bin/ws" fact boot 2>/dev/null)" == container ]] || lists+=("$repo/nix/hosts/machine-apt.txt")
-    for fact in vm:virt nativeSteam:steam gameMode:gaming; do
-        list="${fact#*:}"
-        [[ "$("$repo/bin/ws" fact "${fact%%:*}" 2>/dev/null)" != yes ]] || lists+=("$repo/$list/apt.txt")
-    done
+    # The same lists as ws check apt (lib/apt.bash).
+    # shellcheck source=../lib/apt.bash
+    . "$WS_CORE/lib/apt.bash"
+    apt_host "$h"
     {
-        cat "${lists[@]}" 2>/dev/null \
-            | sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' -e '/^ppa:/d' -e 's/^rec://' | sort -u \
+        apt_lines | sed -e '/^ppa:/d' -e 's/^rec://' | sort -u \
             | while read -r pkg; do
                 if [[ "$pkg" == purge:* ]]; then
                     dpkg-query -W -f='${Status}' "${pkg#purge:}" 2>/dev/null | grep -q ' installed$' \

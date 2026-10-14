@@ -32,7 +32,7 @@ facts="$repo/nix/hosts/$host/facts.nix"
 host_list="$repo/nix/hosts/$host/apt.txt"
 [[ -r "$facts" ]] || die "no nix/hosts/$host/facts.nix"
 
-# A string fact, as bin/ws reads it (fact_in).
+# A string fact, as lib/ws_facts.py reads it: the base image has no python3.
 fact() {
     sed -nE "s/^[[:space:]]*$1 = \"([^\"]*)\";.*/\1/p" "$facts" | head -n1
 }

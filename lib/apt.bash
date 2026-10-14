@@ -5,19 +5,47 @@
 # (container/apt-install, helpws plan-wsgnomebox).
 #
 # Needs: those variables, run (prints instead with --dry-run) and die.
+# ws check apt and ws-baseline read the same lists (apt_host sets the
+# variables from the facts; helpws plan-v2, 2.3).
 
-# Package and PPA lines of the apt lists, without comments.
+# The apt lists of the host, by its facts: the only place that chooses them.
+apt_lists() {
+    printf '%s\n' "$repo/nix/hosts/apt.txt" "$host_list"
+    # Real machines only, not a container host (helpws plan-wsgnomebox).
+    [[ "$container" == true ]] || echo "$repo/nix/hosts/machine-apt.txt"
+    # VM packages only on hosts with vm = "yes" (helpws virt).
+    [[ "$vm" == no ]] || echo "$repo/virt/apt.txt"
+    # Native Steam and the Game Mode session (helpws plan-legion-go).
+    [[ "$native_steam" == no ]] || echo "$repo/steam/apt.txt"
+    [[ "$game_mode" == no ]] || echo "$repo/gaming/apt.txt"
+}
+
+# Package and PPA lines of the apt lists, without comments and blanks: the
+# only cleaning of their lines.
 apt_lines() {
     local f
-    local lists=("$repo/nix/hosts/apt.txt" "$host_list")
-    [[ "$container" == true ]] || lists+=("$repo/nix/hosts/machine-apt.txt")
-    [[ "$vm" == no ]] || lists+=("$repo/virt/apt.txt")
-    [[ "$native_steam" == no ]] || lists+=("$repo/steam/apt.txt")
-    [[ "$game_mode" == no ]] || lists+=("$repo/gaming/apt.txt")
-    for f in "${lists[@]}"; do
+    while IFS= read -r f; do
         [[ -r "$f" ]] && sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' "$f"
-    done
+    done < <(apt_lists)
     return 0
+}
+
+# The variables of apt_lists from the facts of HOST (lib/ws_facts.py), for
+# the tools that run with the checkout; bootstrap.sh and the image build
+# set them themselves. A layer fact that is not "yes" counts as no.
+apt_host() {
+    host="$1"
+    host_list="$repo/nix/hosts/$host/apt.txt"
+    container=false
+    [[ "$(apt_fact boot)" != container ]] || container=true
+    vm=no native_steam=no game_mode=no
+    [[ "$(apt_fact vm)" != yes ]] || vm=yes
+    [[ "$(apt_fact nativeSteam)" != yes ]] || native_steam=yes
+    [[ "$(apt_fact gameMode)" != yes ]] || game_mode=yes
+}
+
+apt_fact() {
+    WS_CONFIG="$repo" python3 "${WS_CORE:-$repo}/lib/ws_facts.py" fact --host "$host" "$1" 2>/dev/null
 }
 
 apt_install() {

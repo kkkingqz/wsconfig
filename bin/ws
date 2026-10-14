@@ -797,16 +797,12 @@ cmd_check_apt() {
     esac
 
     h="$(host)"
-    local -a lists=("$repo/nix/hosts/apt.txt" "$repo/nix/hosts/$h/apt.txt")
-    # Real machines only, not a container host (helpws plan-wsgnomebox).
-    [[ "$(facts_py fact --host "$h" boot 2>/dev/null)" == container ]] || lists+=("$repo/nix/hosts/machine-apt.txt")
-    # VM packages only on hosts with vm = "yes" (helpws virt).
-    [[ "$(facts_py fact --host "$h" vm 2>/dev/null)" != yes ]] || lists+=("$repo/virt/apt.txt")
-    # Native Steam and the Game Mode session (helpws plan-legion-go).
-    [[ "$(facts_py fact --host "$h" nativeSteam 2>/dev/null)" != yes ]] || lists+=("$repo/steam/apt.txt")
-    [[ "$(facts_py fact --host "$h" gameMode 2>/dev/null)" != yes ]] || lists+=("$repo/gaming/apt.txt")
-    mapfile -t want < <(cat "${lists[@]}" 2>/dev/null \
-        | sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' -e '/^ppa:/d' -e 's/^rec://' | sort -u)
+    # The lists of the host by its facts (lib/apt.bash).
+    local host host_list container vm native_steam game_mode
+    # shellcheck source=../lib/apt.bash
+    . "$WS_CORE/lib/apt.bash"
+    apt_host "$h"
+    mapfile -t want < <(apt_lines | sed -e '/^ppa:/d' -e 's/^rec://' | sort -u)
     for pkg in $(printf '%s\n' "${want[@]}" | sed -n 's/^purge://p'); do
         if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q ' installed$'; then
             warn "installed, the host list purges it: $pkg (bootstrap.sh)"
