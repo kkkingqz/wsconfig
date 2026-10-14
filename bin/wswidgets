@@ -11,9 +11,10 @@ set -euo pipefail
 # edit it and run ws switch, which commits it; update moves flake.lock to
 # the newest wswidgets, switches and commits flake.lock.
 
-bin_dir="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+bin_dir="$WS_CORE/bin"
 # The checkout whose flake.lock and widgets.txt are used (tests: a copy).
-repo="${WSCONFIG:-$(cd "$bin_dir/.." && pwd)}"
 list_file="${WSWIDGETS_LIST:-$repo/widgets/widgets.txt}"
 marks_py="$bin_dir/../lib/ws_marks.py"
 select_py="$bin_dir/../lib/ws_select.py"
@@ -38,11 +39,6 @@ Usage:
 USAGE
 }
 
-die() {
-    printf 'wswidgets: %s\n' "$*" >&2
-    exit 1
-}
-
 load_host() {
     [[ -z "${ws_host:-}" ]] || return 0
     ws_host="$("$bin_dir/ws" host)" || die "unknown workstation (ws host)"
@@ -63,10 +59,6 @@ require_layer() {
     load_host
     [[ "$(layer)" == yes ]] \
         || die "widgets = \"$(layer)\" in nix/hosts/$ws_host/facts.nix: no widget layer here (helpws widgets)"
-}
-
-nix_bin() {
-    command -v nix 2>/dev/null || die "nix not found"
 }
 
 # lib.catalog of the wswidgets in flake.lock, as JSON.

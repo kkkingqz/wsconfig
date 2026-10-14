@@ -28,7 +28,10 @@ import subprocess
 import sys
 import urllib.request
 
-REPO = Path(os.environ.get("WSCONFIG") or Path(os.path.realpath(__file__)).parent.parent)
+sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
+import ws_common  # noqa: E402
+
+REPO = ws_common.CONFIG
 DATA = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "workstation/gaming"
 SOURCES = DATA / "sources.json"
 SRC = DATA / "src"
@@ -52,7 +55,7 @@ APT = ["sddm", "weston"]
 
 
 def die(text):
-    raise SystemExit(f"wsgame: {text}")
+    ws_common.die("wsgame", text)
 
 
 def run(args, check=True, capture=False, **kw):

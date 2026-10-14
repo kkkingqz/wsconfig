@@ -26,7 +26,9 @@ set -euo pipefail
 #
 #   ws btrfs make [--dry-run] [--yes]
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws btrfs"
 dry_run=false
 yes=false
 
@@ -40,11 +42,6 @@ make  the Btrfs layout of a fresh install (@, @home, @cache, @tmp, @log)
       --dry-run only shows the steps, --yes answers its two questions
       (start the layout, remove the old root) with yes (setup.sh)
 USAGE
-}
-
-die() {
-    echo "ws btrfs: $*" >&2
-    exit 1
 }
 
 # Commands that change the system; --dry-run only prints them.

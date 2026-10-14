@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 
 # t2gmux, the gmux driver of KaiT2en, in place of apple-gmux (helpws
 # plan-dgpu): the AMD dGPU of MacBookPro16,1 goes off through ACPI PWRD like
@@ -13,11 +15,6 @@ cache="$HOME/.local/share/workstation/t2gmux"
 build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")"
 # Boot GPU of the firmware: 5th byte 1 = integrated, 0 = discrete.
 efi_var=/sys/firmware/efi/efivars/gpu-power-prefs-fa4ce28d-b62f-4c99-9cc3-6815686e30f9
-
-die() {
-    echo "ws-gmux: $*" >&2
-    exit 1
-}
 
 usage() {
     cat <<'USAGE'

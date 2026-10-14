@@ -17,6 +17,8 @@ class UpdateTests(unittest.TestCase):
         (self.repo / 'bin').mkdir(parents=True)
         (self.repo / 'flatpak').mkdir()
         shutil.copyfile(ROOT / 'bin/ws', self.repo / 'bin/ws')
+        (self.repo / 'lib').mkdir(exist_ok=True)
+        shutil.copyfile(ROOT / 'lib/common.bash', self.repo / 'lib/common.bash')
         for name in ('apps.txt', 'overrides.txt'):
             (self.repo / 'flatpak' / name).write_text('')
         self.git('init', '-q')

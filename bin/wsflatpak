@@ -14,10 +14,10 @@ import sys
 # it; the overrides are flatpak/overrides.txt: filesystem, host, env, talk and
 # their un… edit it. `ws switch` builds both and commits them.
 SOURCE = "flatpak/flatpak.nix"
-REPO = Path(
-    os.environ.get("WSCONFIG")
-    or Path(os.path.realpath(__file__)).parent.parent
-)
+sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
+import ws_common  # noqa: E402
+
+REPO = ws_common.CONFIG
 APPS_LIST = REPO / "flatpak/apps.txt"
 OVERRIDES_LIST = REPO / "flatpak/overrides.txt"
 OVERRIDE_KINDS = ("filesystem", "env", "talk")
@@ -43,7 +43,6 @@ SELECT_HINT = "wsflatpak apply --select"
 # builds those of this workstation. filesystem/env/talk mark it yes, un…
 # drop the line or mark it no (overrides_add, overrides_remove).
 
-sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
 import ws_marks  # noqa: E402
 import ws_select  # noqa: E402
 

@@ -8,7 +8,7 @@
 #   whether xremap runs: `ws-keyboard restore` and a failed apply create
 #   ~/.local/state/workstation/keyboard/xremap.disabled, apply/start remove it.
 # - ~/.local/bin/xremap stays for `ws-keyboard devices` and the status tools.
-{ config, lib, pkgs, xremap, facts, ... }:
+{ config, lib, pkgs, xremap, facts, wsState, ... }:
 let
   home = config.home.homeDirectory;
   repo = "${home}/${facts.wsconfig}";
@@ -31,7 +31,7 @@ in
       After = [ "graphical-session.target" ];
       StartLimitIntervalSec = 120;
       StartLimitBurst = 8;
-      ConditionPathExists = "!%h/.local/state/workstation/keyboard/xremap.disabled";
+      ConditionPathExists = "!%h/${wsState}/keyboard/xremap.disabled";
     };
     Service = {
       Type = "simple";

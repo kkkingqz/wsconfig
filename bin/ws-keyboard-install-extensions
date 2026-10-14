@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
-
-die() {
-    echo "ws-keyboard-install-extensions: $*" >&2
-    exit 1
-}
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 
 for cmd in python3 glib-compile-schemas curl gnome-extensions gnome-shell; do
     command -v "$cmd" >/dev/null 2>&1 || die "$cmd not found"

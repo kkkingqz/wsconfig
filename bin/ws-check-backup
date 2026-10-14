@@ -7,7 +7,8 @@ set -o pipefail
 # key. No sudo, no network; ws backup check --remote asks the receiver.
 # Read-only. ws check backup; ws check runs it with --json (lib/check.bash).
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
 . "$repo/lib/check.bash"
 
@@ -18,7 +19,7 @@ case "${1:-}" in
     *) echo "ws-check-backup: unknown argument: $1" >&2; exit 64 ;;
 esac
 
-config="${XDG_STATE_HOME:-$HOME/.local/state}/workstation/backup/config.json"
+config="$WS_STATE/backup/config.json"
 
 section "1. Configuration"
 

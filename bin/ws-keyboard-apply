@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # Machine-local state, outside the checkout: the GNOME shortcuts saved before
 # the first apply (restore target) and the xremap off flag.
-state_dir="$HOME/.local/state/workstation/keyboard"
+state_dir="$WS_STATE/keyboard"
 backup="$state_dir/gsettings-backup.tsv"
 # home-manager enables xremap.service (keyboard/xremap.nix); this flag is
 # its ConditionPathExists, so a restored profile stays off after a reboot.

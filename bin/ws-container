@@ -7,7 +7,9 @@ set -euo pipefail
 # machine with SSH to the server; nothing is copied to it but the build
 # context.
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws container"
 
 usage() {
     cat <<'USAGE'
@@ -25,11 +27,6 @@ status    the container and its image commit against HEAD
 
 --dry-run prints the docker command instead of running it.
 USAGE
-}
-
-die() {
-    echo "ws container: $*" >&2
-    exit 1
 }
 
 # facts.nix `container` of HOST as JSON (Nix reads it, ws fact only strings).

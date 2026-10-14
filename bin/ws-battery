@@ -17,6 +17,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "lib"))
+import ws_common  # noqa: E402
+
 SMC = "/sys/bus/acpi/devices/APP0001:00"
 BAT = "/sys/class/power_supply/BAT0"
 ADP = "/sys/class/power_supply/ADP1"
@@ -57,8 +60,7 @@ Logs: ~/.local/state/workstation/battery/ (idle-*.tsv, sleep.tsv)."""
 
 
 def die(msg):
-    print(f"ws-battery: {msg}", file=sys.stderr)
-    raise SystemExit(1)
+    ws_common.die("ws-battery", msg)
 
 
 def read(path):
@@ -346,7 +348,8 @@ def cmd_devices(seconds):
 def state_dir():
     user = os.environ.get("SUDO_USER")
     home = os.path.expanduser(f"~{user}") if user else os.path.expanduser("~")
-    path = f"{home}/.local/state/workstation/battery"
+    # Under sudo: the state of the user who ran it, not of root.
+    path = f"{home}/.local/state/{ws_common.STATE_NAME}/battery"
     os.makedirs(path, exist_ok=True)
     give_back(path)
     return path

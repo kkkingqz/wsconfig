@@ -6,7 +6,8 @@ set -o pipefail
 # executables of bin/, legacy paths and untracked files. Read-only.
 # ws check repo runs it with --json (lib/check.bash).
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
 . "$repo/lib/check.bash"
 

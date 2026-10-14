@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -u
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 
 
 ok()   { printf '  %-24s %s\n' "$1" "OK"; }
@@ -43,7 +45,7 @@ if [[ -L "$HOME/.config/systemd/user/xremap.service" ]]; then
 else
     warn "Service unit" "MISSING (ws switch)"
 fi
-[[ -e "$HOME/.local/state/workstation/keyboard/xremap.disabled" ]] \
+[[ -e "$WS_STATE/keyboard/xremap.disabled" ]] \
     && warn "Restore flag" "xremap off (ws-keyboard apply turns it on)"
 
 systemctl --user is-active --quiet xremap.service 2>/dev/null && ok "Service" || warn "Service" "$(systemctl --user is-active xremap.service 2>/dev/null || echo inactive)"

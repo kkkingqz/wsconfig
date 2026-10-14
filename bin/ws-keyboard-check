@@ -7,7 +7,8 @@ set -o pipefail
 # shortcuts match keyboard.nix, the input sources exist. Read-only.
 # ws-keyboard check; ws check runs it with --json (lib/check.bash).
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
 . "$repo/lib/check.bash"
 
@@ -85,10 +86,10 @@ else
     [[ -L "$HOME/.config/systemd/user/graphical-session.target.wants/xremap.service" ]] \
         && pass "xremap.service wanted by graphical-session.target" \
         || fail "xremap.service wants link missing; run ws switch"
-    [[ -e "$HOME/.local/state/workstation/keyboard/xremap.disabled" ]] \
+    [[ -e "$WS_STATE/keyboard/xremap.disabled" ]] \
         && warn "xremap switched off by ws-keyboard restore (ws-keyboard apply turns it on)" \
         || pass "xremap not switched off by ws-keyboard restore"
-    [[ -s "$HOME/.local/state/workstation/keyboard/gsettings-backup.tsv" ]] \
+    [[ -s "$WS_STATE/keyboard/gsettings-backup.tsv" ]] \
         && pass "original GNOME shortcuts saved for ws-keyboard restore" \
         || warn "no ~/.local/state/workstation/keyboard/gsettings-backup.tsv; ws-keyboard restore has nothing to restore"
     [[ -n "$xremap_env_bin" && "$xremap_env_bin" == "$xremap_real" ]] \

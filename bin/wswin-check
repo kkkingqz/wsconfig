@@ -7,7 +7,8 @@ set -o pipefail
 # opens in the default box, menu links resolve. Read-only. wswin check; ws check runs it with --json
 # (lib/check.bash).
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
 . "$repo/lib/check.bash"
 

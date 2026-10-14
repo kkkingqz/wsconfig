@@ -1,7 +1,8 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 set -eu
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # Micro config dir: settings.json and bindings.json are home-manager links
 # into terminal/micro-help; micro writes buffers/ (history) next to them.
 micro_cfg="$HOME/.local/share/workstation/micro-help"

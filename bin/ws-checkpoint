@@ -6,8 +6,10 @@ set -euo pipefail
 # home-manager generation alone is no rollback of the user layer; the commit is
 # the key, the generation and the system tree are what it built.
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
-state="${XDG_STATE_HOME:-$HOME/.local/state}/workstation"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws checkpoint"
+state="$WS_STATE"
 root="$state/checkpoints"
 
 usage() {
@@ -34,15 +36,6 @@ diff      what changed since NAME: commits and files, packages of the
           and compares it with the one of NAME
 remove    delete the tag, the record, its GC roots and its baseline
 USAGE
-}
-
-die() {
-    echo "ws checkpoint: $*" >&2
-    exit 1
-}
-
-nix_bin() {
-    command -v nix 2>/dev/null || die "nix not found"
 }
 
 check_name() {

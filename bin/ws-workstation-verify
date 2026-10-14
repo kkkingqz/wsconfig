@@ -11,7 +11,8 @@ set -o pipefail
 # t2-mbp16, /boot/ws only with boot refind-grub-recovery (ws fact). Read-only.
 # Exit codes: 0 = no FAIL, 1 = FAIL, 2 = warnings with --strict.
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
 . "$repo/lib/check.bash"
 strict=false

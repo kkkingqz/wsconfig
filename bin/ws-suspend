@@ -4,7 +4,8 @@ set -euo pipefail
 # Suspend / T2 power layer: deep-only sleep, Broadcom Wi-Fi guards and the
 # patched t2bce modules (no-state fallback fix). See helpws suspend.
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # Build results (sources, modules per kernel): generated, not edited.
 cache="$HOME/.local/share/workstation/t2bce"
 
@@ -14,11 +15,6 @@ t2bce_patch="$repo/system/kernel/t2bce/nostate-fix.patch"
 t2bce_sources="$HOME/.local/share/workstation/t2bce/sources"
 # The host release: the modules are built with the compiler of the kernel.
 build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")"
-
-die() {
-    echo "ws-suspend: $*" >&2
-    exit 1
-}
 
 usage() {
     cat <<'USAGE'

@@ -23,14 +23,13 @@ set -euo pipefail
 # in → ws apply → ws check.
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.bash
+. "$repo/lib/common.bash"
+ws_prog=bootstrap
 # shellcheck source=lib/apt.bash
 . "$repo/lib/apt.bash"
 dry_run=false
 
-die() {
-    echo "bootstrap: $*" >&2
-    exit 1
-}
 
 case "${1:-}" in
     --dry-run) dry_run=true ;;

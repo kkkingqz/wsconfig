@@ -5,8 +5,9 @@ set -euo pipefail
 # what is actually installed. Used as the regression gate of the Nix migration
 # (helpws history-nix, "Эталон функционала").
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
-root="${XDG_STATE_HOME:-$HOME/.local/state}/workstation/baseline"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+root="$WS_STATE/baseline"
 
 usage() {
     cat <<'USAGE'
@@ -25,11 +26,6 @@ capture   snapshot of owner checks, GNOME, Flatpak, Distrobox, user links,
 diff      compare two baselines; owner checks are compared as sets of
           PASS/WARN/FAIL lines, everything else line by line
 USAGE
-}
-
-die() {
-    echo "ws-baseline: $*" >&2
-    exit 1
 }
 
 

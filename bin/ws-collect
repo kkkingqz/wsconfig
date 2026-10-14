@@ -8,8 +8,10 @@ set -euo pipefail
 # stage 3). Read-only on the system; writes one archive. Asks sudo (baseline
 # --with-sudo, Btrfs subvolumes, input devices). helpws rebuild, section 0.
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
-state="${XDG_STATE_HOME:-$HOME/.local/state}/workstation"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws collect"
+state="$WS_STATE"
 
 usage() {
     cat <<'USAGE'
@@ -37,11 +39,6 @@ laptop before reinstalling.
               UEFI variables (nvram/) and TPM state (swtpm/); the disk
               images are not copied (backup of @vms: helpws plan-final)
 USAGE
-}
-
-die() {
-    echo "ws collect: $*" >&2
-    exit 1
 }
 
 firmware=true

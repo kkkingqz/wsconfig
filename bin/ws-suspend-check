@@ -7,7 +7,8 @@ set -o pipefail
 # check, the patched t2bce against the kernel by ws-workstation-verify.
 # Read-only. ws-suspend check; ws check runs it with --json (lib/check.bash).
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
 . "$repo/lib/check.bash"
 

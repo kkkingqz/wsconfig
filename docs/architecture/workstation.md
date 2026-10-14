@@ -882,6 +882,8 @@ wsconfig/
 │   ├── wswin             Windows-программы: install, run, prefixes
 │   ├── wswin-check       wswin check
 │   └── ws-gpu            AMD для Proton/Steam, если она есть
+├── lib/common.bash      корни WS_CORE, WS_CONFIG, WS_STATE, die, need, nix_bin
+├── lib/ws_common.py    то же для Python-инструментов
 ├── lib/check.bash       общий формат результата проверок (--json для ws check)
 ├── lib/setup_marks.py   списки с галочками setup.sh (пометки хоста)
 ├── lib/btrfs_layout.py  fstab и stub GRUB для ws btrfs make

@@ -26,6 +26,8 @@ class ContainerTests(unittest.TestCase):
         self.repo = self.root / 'repo'
         (self.repo / 'bin').mkdir(parents=True)
         shutil.copyfile(ROOT / 'bin/ws-container', self.repo / 'bin/ws-container')
+        (self.repo / 'lib').mkdir(exist_ok=True)
+        shutil.copyfile(ROOT / 'lib/common.bash', self.repo / 'lib/common.bash')
         (self.repo / 'bin/ws-container').chmod(0o755)
         self.host('box', 'container')
         self.host('pc', 'grub')

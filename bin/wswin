@@ -18,7 +18,9 @@ set -euo pipefail
 data="${WSWIN_DATA:-$HOME/.local/share/workstation}"
 boxes_ini="$data/distrobox/boxes.ini"
 apps_ini="$data/windows/apps.ini"
-bin_dir="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+bin_dir="$WS_CORE/bin"
 
 usage() {
     cat <<'USAGE'
@@ -50,11 +52,6 @@ wswin-BOX-PREFIX-NAME.desktop; they go with `prefix ... remove`, `menu sync`
 links them again (new system, restored HOME). Programs that must come back
 with the repository: windows/apps.nix.
 USAGE
-}
-
-die() {
-    printf 'wswin: %s\n' "$*" >&2
-    exit 1
 }
 
 ini_value() {

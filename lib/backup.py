@@ -15,6 +15,8 @@ import sys
 import tempfile
 import uuid as uuidlib
 
+import ws_common
+
 # Every source a workstation may have; vms only with vm = "yes" in its
 # facts.nix (scope_sources). The path checks keep all of them.
 SOURCES = {'home': '/home', 'vms': '/var/lib/vms'}
@@ -24,7 +26,7 @@ FIELDS = {'schema_version', 'ssh_host', 'remote_host_id', 'source_fs_uuid',
 REQUIRED = FIELDS - {'schema_version'}
 TOKEN = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}\Z')
 UUID = re.compile(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\Z')
-REPO = Path(__file__).resolve().parents[1]
+REPO = ws_common.CORE
 
 
 class Terminated(BaseException):
@@ -112,7 +114,7 @@ def build_batch_plan(config):
 
 
 def state_path():
-    return Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state'))) / 'workstation/backup'
+    return ws_common.state_dir() / 'backup'
 
 
 def config_path():

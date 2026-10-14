@@ -7,7 +7,8 @@ set -o pipefail
 # packages (steam/apt.txt, i386) are ws check apt.
 # Read-only. ws check steam; ws check runs it with --json (lib/check.bash).
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
 . "$repo/lib/check.bash"
 

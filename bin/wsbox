@@ -9,7 +9,9 @@ manifest_source="$cfg/containers.ini"
 manifest="${XDG_RUNTIME_DIR:-/tmp}/wsbox-$(id -u)/containers.ini"
 exports_manifest="$cfg/exports.ini"
 boxes_manifest="$cfg/boxes.ini"
-bin_dir="$(dirname "$(readlink -f "$0")")"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+bin_dir="$WS_CORE/bin"
 # Which containers this workstation has: distrobox/hosts.txt in the checkout,
 # NAME HOST=yes|no|ask ... all=STATE (lib/ws_marks.py). create/apply NAME mark
 # this workstation yes, remove drops the line or marks it no, apply asks about
@@ -38,15 +40,6 @@ Usage:
   wsbox export NAME APP
   wsbox unexport NAME APP
 USAGE
-}
-
-die() {
-    printf 'wsbox: %s\n' "$*" >&2
-    exit 1
-}
-
-need() {
-    command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
 }
 
 ensure_base() {

@@ -8,7 +8,8 @@ set -euo pipefail
 # linux-t2-patches commit the T2 kernel was built from (the same pin as
 # t2bce, system/kernel/t2bce/t2bce.nix).
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 patch_file="$repo/system/kernel/i915-psr/apple-psr.patch"
 # Kernel release -> linux-t2-patches commit, from system/kernel/t2bce/t2bce.nix.
 t2_sources="$HOME/.local/share/workstation/t2bce/sources"
@@ -16,11 +17,6 @@ t2_sources="$HOME/.local/share/workstation/t2bce/sources"
 cache="$HOME/.local/share/workstation/i915-psr"
 # The host release: built with the compiler of the kernel, as t2bce.
 build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")"
-
-die() {
-    echo "ws-psr: $*" >&2
-    exit 1
-}
 
 usage() {
     cat <<'USAGE'

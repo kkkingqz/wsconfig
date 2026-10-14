@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 
 usage() {
     cat <<'USAGE'
@@ -26,7 +27,7 @@ case "${1:-status}" in
     restore) exec "$repo/bin/ws-keyboard-apply" --restore ;;
     status) exec "$repo/bin/ws-keyboard-status" ;;
     check) shift; exec "$repo/bin/ws-keyboard-check" "$@" ;;
-    start) rm -f "$HOME/.local/state/workstation/keyboard/xremap.disabled"; systemctl --user start xremap.service ;;
+    start) rm -f "$WS_STATE/keyboard/xremap.disabled"; systemctl --user start xremap.service ;;
     stop) systemctl --user stop xremap.service ;;
     restart) systemctl --user restart xremap.service ;;
     logs) exec journalctl --user -fu xremap.service ;;
