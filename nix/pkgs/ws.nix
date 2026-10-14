@@ -10,7 +10,8 @@
 let
   root = ../..;
   data = map (p: lib.fileset.maybeMissing (root + p))
-    [ "/nix/hosts" "/flatpak/catalog.toml" "/distrobox/catalog.toml" "/flake.lock" "/tests" ];
+    [ "/nix/hosts" "/flatpak/catalog.toml" "/distrobox/catalog.toml" "/windows/apps.toml"
+      "/flake.lock" "/tests" ];
   src = lib.fileset.toSource {
     inherit root;
     fileset = lib.fileset.difference root (lib.fileset.unions data);

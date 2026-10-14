@@ -52,8 +52,8 @@ Proton и Steam Runtime umu скачивает при первом запуск�
 
 ## Кодировка
 
-Windows-программы запускаются с `LC_CTYPE=ru_RU.UTF-8` (`ansiLocale` в
-`windows/apps.nix`) — как «Язык программ, не поддерживающих Юникод» в
+Windows-программы запускаются с `LC_CTYPE=ru_RU.UTF-8` (`ansi_locale` в
+`windows/apps.toml`) — как «Язык программ, не поддерживающих Юникод» в
 Windows: кодировка `cp1251` для не-Unicode программ. С `C.UTF-8` сессии Wine
 брал `cp1252`, и кириллица пропадала (заголовок установщика GOG). Без
 `LC_MESSAGES` Wine взял бы из `LC_CTYPE` и язык интерфейса; `uiLocale`
@@ -90,7 +90,7 @@ ws windows menu remove ID
   пути.
 - Двойной клик по `.exe` в «Файлах» — `ws windows exec --box wine-wayland FILE`:
   стандартный prefix `wine-wayland` (создаётся при первом запуске), запуск
-  из каталога файла. Обработчик `ws-win-exe.desktop` (`windows/apps.nix`),
+  из каталога файла. Обработчик `ws-win-exe.desktop` (`windows/apps.toml`),
   `ws apply` делает его приложением по умолчанию для типов `.exe`
   (`xdg-mime`, только эти ключи `~/.config/mimeapps.list`). Установщик,
   запущенный так, работает, но пунктов меню не предлагает (нет терминала для
@@ -127,7 +127,7 @@ ws windows portable --prefix tools ~/Downloads/tool.zip
 системы с сохранённым HOME — `ws windows menu sync`.
 
 Программы, которые должны возвращаться вместе с репозиторием, — в
-`windows/apps.nix` (`exe` — путь внутри prefix), `ws apply`: launcher
+`windows/apps.toml` (`exe` — путь внутри prefix), `ws apply`: launcher
 `ws-win-NAME.desktop` (`ws windows run NAME`), как у WinBox. Launcher ставится
 только на машине, где box программы в `yes` её
 `nix/hosts/HOST/boxes.toml` (или без выбора с `default = "yes"`; `helpws
@@ -174,7 +174,7 @@ ws windows prefix --box BOX NAME remove
 
 1. `ws box remove BOX` — rootfs (пока контейнер ещё в `distrobox/catalog.toml`);
 2. убрать контейнер из `distrobox/catalog.toml` и его программы из
-   `windows/apps.nix`, `ws apply`;
+   `windows/apps.toml`, `ws apply`;
 3. `rm -rf ~/distrobox/BOX` — HOME: prefixes, программы, сохранения;
 4. `ws windows menu sync` — убрать ссылки меню, ставшие битыми (`ws check`
    предупреждает о них).

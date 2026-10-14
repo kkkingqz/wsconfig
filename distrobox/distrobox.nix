@@ -181,6 +181,16 @@ in
     description = "Default (ask, no, yes) of each container of distrobox/distrobox.nix.";
   };
 
+  # The Windows boxes (with windows = { profile }), for windows/apps.nix.
+  options.ws.windowsBoxes = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    readOnly = true;
+    internal = true;
+    description = "The containers of distrobox/catalog.toml with a Windows profile.";
+  };
+
+  config.ws.windowsBoxes = map (c: c.name) (lib.filter (c: c ? windows) containers);
+
   config.ws.boxDefaults = lib.listToAttrs (map (c: lib.nameValuePair c.name (c.default or "ask")) containers);
 
   config.assertions = [{

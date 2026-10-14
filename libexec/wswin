@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Windows programs in the Windows boxes of distrobox/distrobox.nix
 # (profile wine: wine/winetricks; profile proton: umu-run). Programs with a
-# launcher are listed in windows/apps.nix. ws apply builds both files:
+# launcher are listed in windows/apps.toml. ws apply builds both files:
 #
 #   ~/.local/share/wsconfig/distrobox/boxes.json  boxes: home profile driver dpi
 #                                                    init_overrides gpu
@@ -50,7 +50,7 @@ Host menu entries made by install/portable/menu add are kept in the prefix
 (PREFIX/.wswin/menu) and linked into ~/.local/share/applications as
 wswin-BOX-PREFIX-NAME.desktop; they go with `prefix ... remove`, `menu sync`
 links them again (new system, restored HOME). Programs that must come back
-with the repository: windows/apps.nix.
+with the repository: windows/apps.toml.
 USAGE
 }
 
@@ -686,7 +686,7 @@ cmd_run() {
     [[ -n "$app" ]] || die "app required"
     shift
     box="$(app_value "$app" box)"
-    [[ -n "$box" ]] || die "unknown app: $app (windows/apps.nix)"
+    [[ -n "$box" ]] || die "unknown app: $app (windows/apps.toml)"
     require_box "$box"
     pname="$(app_value "$app" prefix)"
     exe="$(app_value "$app" exe)"

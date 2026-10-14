@@ -1,57 +1,39 @@
-# Windows programs with a GNOME launcher. The boxes and their profiles are in
-# distrobox/catalog.toml; wswin installs and runs (helpws windows).
-#
-# Built into ~/.local/share/wsconfig/windows/apps.json for wswin and one
-# launcher ~/.local/share/applications/ws-win-NAME.desktop per program
-# (Exec: wswin run NAME).
-#
-#   box      Windows box; default: defaultBox
-#   prefix   "default" ($HOME/.wine of the box) or the name of an own prefix
-#            ($HOME/prefixes/NAME); default: "default"
-#   exe      path inside the prefix (drive_c/...)
-#   args     arguments, split at spaces
-#   env      KEY=VALUE ..., split at spaces
-#   icon     theme icon name, or a file inside the prefix (has a dot: "winbox.png")
-#   title, categories, wmClass (default: the exe file name)
-#
-# Add a program: wswin install [--box BOX] [--prefix NAME] SETUP.exe, then
-# an entry here, ws apply.
-#
-# A double click on an .exe in Files runs it in the standard prefix of
-# defaultBox (ws-win-exe.desktop: wswin exec FILE); switch makes it the
-# default application for the .exe types with xdg-mime.
+# Windows programs with a GNOME launcher: the logic of windows/apps.toml
+# (what the user edits; its comments say the keys). Builds
+# ~/.local/share/wsconfig/windows/apps.json for ws windows, one launcher
+# ws-win-NAME.desktop per program and ws-win-exe.desktop for a double click
+# on an .exe.
 #
 # The launchers only on a host that has the box: yes in
-# nix/hosts/HOST/boxes.toml, else the default of the box in distrobox/catalog.toml
-# (lib/catalog.nix); apps.json lists every program.
+# nix/hosts/HOST/boxes.toml, else the default of the box in
+# distrobox/catalog.toml (lib/catalog.nix); apps.json lists every program.
 { config, lib, wsHost, core, ... }:
 let
-  defaultBox = "wine-wayland";
   catalog = import ../lib/catalog.nix { inherit lib; };
   hasBox = box: catalog.has wsHost "boxes" box (config.ws.boxDefaults.${box} or "ask");
 
-  # LC_CTYPE of every Windows program (wswin): the codepage for non-Unicode
-  # programs, as "Language for non-Unicode programs" in Windows. With the
-  # session's C.UTF-8 Wine takes cp1252 and loses Cyrillic (the title of the
-  # GOG installer). Wine then also takes the UI language from it unless
-  # LC_MESSAGES is set: uiLocale keeps it English, as the host session.
-  ansiLocale = "ru_RU.UTF-8";
-  uiLocale = "en_US.UTF-8";
-
-  apps = {
-    winbox = {
-      title = "WinBox 3";
-      # Native Wayland since 2026-09-28 (was wine/XWayland, LogPixels 192).
-      box = "wine-wayland";
-      prefix = "winbox";
-      exe = "drive_c/Program Files/WinBox/winbox.exe";
-      # No Mono prompt: WinBox does not use .NET.
-      env = "WINEDLLOVERRIDES=mscoree=";
-      # From the AUR winbox3 package, copied into the prefix.
-      icon = "winbox.png";
-      categories = "Network;RemoteAccess;";
+  schema = import ../lib/schema.nix { inherit lib; };
+  windows = (import ../lib/config.nix { inherit lib; }).read {
+    file = ./apps.toml;
+    type = schema.table {
+      keys = {
+        default_box = schema.string;
+        ansi_locale = schema.string;
+        ui_locale = schema.string;
+        apps = schema.attrsOf (schema.table {
+          keys = lib.genAttrs [ "box" "prefix" "exe" "args" "env" "icon" "title" "categories" "wm_class" ]
+            (_: schema.string);
+          required = [ "exe" ];
+        });
+      };
+      required = [ "default_box" "ansi_locale" "ui_locale" ];
     };
   };
+  defaultBox = windows.default_box;
+  ansiLocale = windows.ansi_locale;
+  uiLocale = windows.ui_locale;
+  apps = lib.mapAttrs (_: a: removeAttrs a [ "wm_class" ]
+    // lib.optionalAttrs (a ? wm_class) { wmClass = a.wm_class; }) (windows.apps or { });
 
   withDefaults = name: a: {
     box = defaultBox;
@@ -115,8 +97,13 @@ in
     assertion = builtins.match "[A-Za-z0-9._-]+" name != null && name != "exe"
       && builtins.match "[A-Za-z0-9._-]+" a.prefix != null
       && !(lib.hasPrefix "/" a.exe);
-    message = "windows/apps.nix: ${name}: name/prefix [A-Za-z0-9._-] (not exe: ws-win-exe.desktop), exe relative to the prefix";
-  }) full;
+    message = "windows/apps.toml: ${name}: name/prefix [A-Za-z0-9._-] (not exe: ws-win-exe.desktop), exe relative to the prefix";
+  }) full
+  # A launcher of a box that is no Windows box would start nothing.
+  ++ map (box: {
+    assertion = lib.elem box config.ws.windowsBoxes;
+    message = "windows/apps.toml: ${box} is no Windows box of distrobox/catalog.toml (windows = { profile = ... }); Windows boxes: ${lib.concatStringsSep ", " config.ws.windowsBoxes}";
+  }) (lib.unique ([ defaultBox ] ++ lib.mapAttrsToList (_: a: a.box) full));
 
   xdg.dataFile = {
     "wsconfig/windows/apps.json".text = appsJson;

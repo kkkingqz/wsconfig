@@ -1,0 +1,46 @@
+# Windows programs with a GNOME launcher (helpws windows). The boxes and
+# their profiles are in distrobox/catalog.toml; ws windows installs and runs.
+# windows/apps.nix builds ~/.local/share/wsconfig/windows/apps.json for
+# ws windows and one launcher ~/.local/share/applications/ws-win-NAME.desktop
+# per program (Exec: ws windows run NAME), only on a host that has its box.
+#
+# Add a program: ws windows install [--box BOX] [--prefix NAME] SETUP.exe,
+# then an entry here, ws apply. ws sync publishes the file.
+#
+# Keys of a program [apps.NAME] (NAME and prefix: letters, digits, . _ -):
+#   exe         path inside the prefix (drive_c/...); required
+#   box         Windows box; default: default_box
+#   prefix      "default" ($HOME/.wine of the box) or the name of an own
+#               prefix ($HOME/prefixes/NAME); default: "default"
+#   args        arguments, split at spaces
+#   env         KEY=VALUE ..., split at spaces
+#   icon        theme icon name, or a file inside the prefix (has a dot:
+#               "winbox.png")
+#   title       default: NAME
+#   categories  of the launcher
+#   wm_class    StartupWMClass; default: the exe file name
+
+# A double click on an .exe in Files runs it in the standard prefix of this
+# box (ws-win-exe.desktop: ws windows exec FILE); apply makes it the default
+# application for the .exe types with xdg-mime.
+default_box = "wine-wayland"
+
+# LC_CTYPE of every Windows program: the codepage for non-Unicode programs,
+# as "Language for non-Unicode programs" in Windows. With the session's
+# C.UTF-8 Wine takes cp1252 and loses Cyrillic (the title of the GOG
+# installer). Wine then also takes the UI language from it unless
+# LC_MESSAGES is set: ui_locale keeps it English, as the host session.
+ansi_locale = "ru_RU.UTF-8"
+ui_locale = "en_US.UTF-8"
+
+[apps.winbox]
+title = "WinBox 3"
+# Native Wayland since 2026-09-28 (was wine/XWayland, LogPixels 192).
+box = "wine-wayland"
+prefix = "winbox"
+exe = "drive_c/Program Files/WinBox/winbox.exe"
+# No Mono prompt: WinBox does not use .NET.
+env = "WINEDLLOVERRIDES=mscoree="
+# From the AUR winbox3 package, copied into the prefix.
+icon = "winbox.png"
+categories = "Network;RemoteAccess;"

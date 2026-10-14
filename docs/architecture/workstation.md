@@ -514,7 +514,8 @@ distrobox/distrobox.nix                hooks по имени, значения �
 system/files/modules-load.d/ntsync.conf         ставит ws apply system
 distrobox/arch/wsbox-host-ntsync/  PKGBUILD NTSYNC-MODULE для Arch-контейнеров
 distrobox/arch/*-hook, wine/       хуки установки Windows-контейнеров
-windows/apps.nix                   Windows-программы с launcher (helpws windows)
+windows/apps.toml                  Windows-программы с launcher (helpws windows)
+windows/apps.nix                   их launcher, apps.json, проверки
 bin/wsbox, bin/wswin, bin/ws-gpu
 ```
 
@@ -850,7 +851,7 @@ wsconfig/
 ├── terminal/             fish/, ghostty/, micro-help/, xdg-terminals/
 ├── flatpak/              flatpak.nix, catalog.toml, desktop/
 ├── distrobox/            catalog.toml, distrobox.nix, arch/ (wsbox-host-ntsync, хуки), wine/
-├── windows/              apps.nix (Windows-программы с launcher)
+├── windows/              apps.toml (Windows-программы с launcher), apps.nix
 ├── steam/                apt.txt, bootstrap.bash (Steam из apt, @steam; nativeSteam)
 ├── gaming/               sources.nix, build.sh, apt.txt (Game Mode; wsgame, helpws gaming)
 ├── bin/

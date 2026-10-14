@@ -63,7 +63,7 @@ GNOME            gnome/gnome.nix, gnome-extensions.nix ws apply, ws apply extens
 виджеты          widgets/*.txt, flake input wswidgets  wswidgets, ws apply ws check widgets
 Flatpak          flatpak/*.txt, flatpak.nix            ws flatpak apply      ws flatpak check
 Distrobox        distrobox/catalog.toml, distrobox.nix ws box apply          ws box check
-Windows          windows/apps.nix (+ боксы Distrobox)  ws apply, ws windows     ws windows check
+Windows          windows/apps.toml (+ боксы Distrobox)  ws apply, ws windows     ws windows check
 Remmina          remmina/*.nix, machine-apt.txt        ws apply, bootstrap.sh  ws check apt
 suspend / T2     system/hardware, system/kernel/t2bce  ws apply system, ws suspend t2bce-*   ws suspend check
 VM               apt.txt, bootstrap.sh, virt/virt.nix   bootstrap.sh, virt-manager           ws check virt

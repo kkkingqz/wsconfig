@@ -187,11 +187,11 @@ current_generation() {
 # sync (helpws plan-v2, 2.7 and 7): the Flatpak catalog (ws flatpak install/
 # manage/unmanage, filesystem/env/talk and un…), the host choices
 # (lib/ws_catalog.py: ws flatpak, ws box, ws widgets), flake.lock and the
-# module files the user edits (distrobox/catalog.toml). Everything else in
-# the checkout is code, committed by the developer. Patterns as Git
-# pathspecs: * matches / too. apply adds them before the build; sync and
-# ws check repo read them (ws data-files).
-data_patterns=(flatpak/catalog.toml distrobox/catalog.toml flake.lock
+# module files the user edits (distrobox/catalog.toml, windows/apps.toml).
+# Everything else in the checkout is code, committed by the developer.
+# Patterns as Git pathspecs: * matches / too. apply adds them before the
+# build; sync and ws check repo read them (ws data-files).
+data_patterns=(flatpak/catalog.toml distrobox/catalog.toml windows/apps.toml flake.lock
     'nix/hosts/*/flatpak.toml' 'nix/hosts/*/boxes.toml' 'nix/hosts/*/widgets.toml')
 
 is_data_file() {
