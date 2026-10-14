@@ -49,7 +49,7 @@ flathub org.gimp.GIMP mbp16=yes wsvm=no all=ask
 снимает галочку, `a` переключает все, Enter ставит отмеченные, Esc/q
 отменяет только вопрос: предложенные остаются `ask` (спросит в следующий
 раз), остальное `apply` делает. Ответ пишется в `apps.txt` (`HOST=yes` /
-`HOST=no`), `ws switch` коммитит его и ставит `.desktop` новых `yes`. Уже
+`HOST=no`), `ws switch` ставит `.desktop` новых `yes`, `ws sync` публикует файл. Уже
 установленное без пометки получает `yes` молча.
 `wsflatpak apply --select` спрашивает и о `HOST=no` (они без галочки). Без
 терминала не предложенные не ставятся. `check`: `yes`, но не установлено —
@@ -99,12 +99,14 @@ wsflatpak manage APP [REMOTE]        # уже установленное — HOS
 wsflatpak unmanage APP               # убрать строку из apps.txt
 wsflatpak remove APP                 # удаляет; строку или HOST=no
 wsflatpak apply [--select]           # ставит HOST=yes, спрашивает об ask
-ws switch                            # собирает и коммитит apps.txt
+ws switch                            # собирает apps.txt
+ws sync                              # публикует: коммит, pull --rebase, push
 ```
 
 `ws switch` добавляет изменённые `apps.txt`, `overrides.txt` и
-`distrobox/hosts.txt` в сборку и после успешного switch коммитит их (без
-push).
+`distrobox/hosts.txt` в сборку и ничего не коммитит: в конце он называет
+неопубликованные файлы данных. Коммит и push делает только `ws sync`
+(`helpws plan-v2`, 2.7).
 
 ## Разрешения и окружение
 
@@ -119,7 +121,7 @@ wsflatpak host APP                   # = filesystem APP host
 wsflatpak env APP KEY VALUE          # или KEY=VALUE; новое значение заменяет
 wsflatpak talk APP BUS
 wsflatpak unfilesystem|unhost|unenv|untalk APP ...
-ws switch                            # собирает и коммитит overrides.txt
+ws switch                            # собирает overrides.txt (публикует ws sync)
 wsflatpak apply                      # применяет
 ```
 

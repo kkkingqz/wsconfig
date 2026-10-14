@@ -128,7 +128,7 @@ class WswidgetsTests(unittest.TestCase):
         self.assertEqual(self.list.read_text(), "example test=yes\n")
         self.assertEqual(self.calls(), [])
 
-    def test_update_moves_lock_switches_and_commits(self):
+    def test_update_moves_lock_and_switches_without_committing(self):
         self.list.write_text("example test=yes all=ask\n")
         result = self.run_w("update", NEW_REV="b" * 40)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -137,7 +137,9 @@ class WswidgetsTests(unittest.TestCase):
         self.assertEqual(self.calls()[-1], "switch")
         head = subprocess.run(["git", "-C", str(self.repo), "log", "-1", "--format=%s"],
                               text=True, capture_output=True).stdout.strip()
-        self.assertEqual(head, "flake.lock: wswidgets aaaaaaa -> bbbbbbb (wswidgets update)")
+        self.assertEqual(head, "init")
+        self.assertIn('"rev": "' + "b" * 40, (self.repo / "flake.lock").read_text().replace('":"', '": "'))
+        self.assertIn("not published (ws sync)", result.stdout)
 
     def test_update_refuses_to_drop_an_enabled_widget(self):
         self.list.write_text("compact other=yes all=ask\n")

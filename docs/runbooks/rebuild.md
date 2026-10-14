@@ -269,7 +269,7 @@ host`, переопределяет `WS_HOST=<name>`); для новой маш�
 Шаги `flatpak` и `distrobox` ставят то, что помечено для этой машины
 (`HOST=yes` в `flatpak/apps.txt` и `distrobox/hosts.txt`), и спрашивают о не
 предложенных: «Поставить все? [Y/n]», на `n` — список с галочками (Space).
-Ответ записывается пометкой этой машины; `ws switch` коммитит. Новая машина
+Ответ записывается пометкой этой машины; публикует `ws sync`. Новая машина
 получает вопрос обо всём с `all=ask` (`helpws flatpak`, `helpws distrobox`).
 
 `ws system diff` сравнивает системные файлы (`/etc`, `/boot`, `/usr/local`,
@@ -287,7 +287,7 @@ check`, `ws-gnome check`, `wsflatpak check`, `wsbox check`, `wswin check`,
 людей можно менять.
 `ws update` обновляет всё, что не закреплено, до последних версий: apt
 (`sudo apt full-upgrade`, `linux-t2` остаётся held), Nix (`nix flake update`,
-разница пакетов, switch; изменившийся `flake.lock` закоммитить), Flatpak,
+разница пакетов, switch; изменившийся `flake.lock` публикует `ws sync`), Flatpak,
 пакеты внутри контейнеров (`wsbox update`) и расширения с
 extensions.gnome.org (GNOME Shell скачивает обновления, как Extension
 Manager; ставятся после logout/login). Отдельный шаг — `ws update nix`.
@@ -332,7 +332,7 @@ checkpoint/NAME`, `ws switch`, `ws system apply`, `ws apply`, загрузка
 
 Flatpak: remotes объявлены в `flatpak/flatpak.nix`, приложения — в
 `flatpak/apps.txt`, overrides — в `flatpak/overrides.txt` (оба правит
-`wsflatpak`, `ws switch` коммитит); `ws switch` собирает из них
+`wsflatpak`, публикует `ws sync`); `ws switch` собирает из них
 `~/.local/share/workstation/flatpak/` и ставит `.desktop` Claude, шаг `flatpak`
 в `ws apply` (`wsflatpak apply`) добавляет remotes, ставит приложения и
 применяет overrides (`helpws flatpak`).

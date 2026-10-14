@@ -34,7 +34,8 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | ba
    приёмника `wsbackup-HOST` на Unraid): существующий
    хост даёт ПК свой `hostname`; новое имя — новый хост из generic-pc
    (`hardware = "generic-pc"`, GRUB, `quiet splash`) с тремя вопросами: VM,
-   Steam из apt, Game Mode. Новый хост коммитится и пушится сразу.
+   Steam из apt, Game Mode. Новый хост коммитится; публикуется он вместе с
+   выбором после вопроса «Опубликовать (ws sync)?».
 4. Списки с галочками (`lib/setup_marks.py`): приложения Flatpak,
    контейнеры Distrobox и overrides Flatpak — всё, где нет пометки этого
    хоста. `all=yes` и `ask` отмечены, `all=no` — нет; overrides — только

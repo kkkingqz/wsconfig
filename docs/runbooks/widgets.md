@@ -44,7 +44,7 @@ example mbp16=yes all=ask
 compact mbp16=yes legiongo=no all=ask
 ```
 
-Файл правит `wswidgets`, `ws switch` его коммитит; править руками тоже
+Файл правит `wswidgets`, публикует `ws sync`; править руками тоже
 можно. `setup.sh` на новом хосте (с `widgets = "yes"`) спрашивает о
 строках без пометки этого хоста вместе с Flatpak и Distrobox.
 

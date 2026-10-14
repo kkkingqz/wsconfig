@@ -75,8 +75,8 @@ all=STATE`, те же пометки, что в `flatpak/apps.txt` (`helpws flat
 без своей пометки; контейнер без строки — ask. `wsbox create NAME` и
 `wsbox apply NAME` ставят своей машине `yes`, `wsbox remove NAME` удаляет
 строку, если других машин в ней нет, иначе ставит своей `no` (описание в
-`distrobox.nix` остаётся). `recreate` пометки не трогает. `ws switch`
-коммитит файл.
+`distrobox.nix` остаётся). `recreate` пометки не трогает. Публикует файл
+`ws sync`.
 
 `apply` без имени создаёт контейнеры с `yes`, о не предложенных спрашивает
 «Поставить все? [Y/n]», на `n` — список с галочками (Space, `a`, Enter,

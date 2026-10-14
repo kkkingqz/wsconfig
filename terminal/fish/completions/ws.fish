@@ -25,9 +25,11 @@ function __ws_state_names -a dir
     test -d $d; and path basename $d/*/
 end
 
-complete -c ws -n __ws_needs_command -a switch -d 'home-manager switch, commit flatpak/apps.txt'
+complete -c ws -n __ws_needs_command -a switch -d 'home-manager switch for this host'
 complete -c ws -n __ws_needs_command -a diff -d 'Package difference of the next generation'
 complete -c ws -n __ws_needs_command -a apply -d 'Run the layer owners in order'
+complete -c ws -n __ws_needs_command -a sync -d 'Publish the data files (commit, pull --rebase, push)'
+complete -c ws -n '__ws_after sync' -l dry-run -d 'Only show what it would do'
 complete -c ws -n __ws_needs_command -a update -d 'Update everything not pinned'
 complete -c ws -n __ws_needs_command -a check -d 'All owner checks and cross-layer verify'
 complete -c ws -n __ws_needs_command -a system -d 'System file tree: diff, check, apply'

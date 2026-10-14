@@ -8,8 +8,8 @@ set -euo pipefail
 # update read its catalog (lib.catalog) through Nix. Which workstation has
 # which widget: widgets/widgets.txt, ID HOST=yes|no|ask ... all=STATE
 # (lib/ws_marks.py); the line order is the panel order. enable/disable/apply
-# edit it and run ws switch, which commits it; update moves flake.lock to
-# the newest wswidgets, switches and commits flake.lock.
+# edit it and run ws switch; update moves flake.lock to the newest
+# wswidgets and switches. ws sync publishes both (helpws plan-v2, 2.7).
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
@@ -30,7 +30,7 @@ Usage:
   wswidgets enable [-n] ID...    mark this workstation yes, then ws switch
   wswidgets disable [-n] ID...   drop the line or mark this workstation no, then ws switch
   wswidgets apply [--select]     offer the widgets not offered here yet, then ws switch
-  wswidgets update [-n]          newest wswidgets from GitHub: flake.lock, ws switch, commit
+  wswidgets update [-n]          newest wswidgets from GitHub: flake.lock, ws switch
   wswidgets version              the pinned wswidgets revision
   wswidgets status               ws-widgets status (the running runtime)
   wswidgets check [--json]       ws check widgets
@@ -96,7 +96,7 @@ mark() {
 
 do_switch() {
     if [[ "$1" == true ]]; then
-        echo "then: ws switch (applies it and commits $(realpath --relative-to="$repo" "$list_file" 2>/dev/null || echo widgets/widgets.txt))"
+        echo "then: ws switch (applies it), ws sync (publishes $(realpath --relative-to="$repo" "$list_file" 2>/dev/null || echo widgets/widgets.txt))"
     else
         # shellcheck disable=SC2086 # switch_cmd is a fixed command line
         $switch_cmd
@@ -287,9 +287,7 @@ cmd_update() {
         fi
     fi
     rm -f "$backup"
-    git -C "$repo" commit -q -m "flake.lock: wswidgets ${old:0:7} -> ${new:0:7} (wswidgets update)" -- flake.lock \
-        || die "commit of flake.lock failed"
-    echo "committed flake.lock: wswidgets ${new:0:7}"
+    echo "flake.lock: wswidgets ${new:0:7}, not published (ws sync)"
     [[ "$no_switch" == false ]] || echo "then: ws switch"
 }
 

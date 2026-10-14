@@ -922,6 +922,16 @@ git diff --cached
 Не используется `git add .` для workstation cleanup: source files добавляются
 явно.
 
+Файлы данных — `flatpak/apps.txt`, `flatpak/overrides.txt`,
+`distrobox/hosts.txt`, `widgets/widgets.txt`, `flake.lock` — правят
+инструменты (пометки, `ws update nix`, `wswidgets update`). Их коммитит и
+публикует только `ws sync`: один коммит с тем, что изменилось, затем
+`git pull --rebase` и `git push`, если у ветки есть upstream (без remote
+коммит остаётся локальным). `ws sync` отказывается при операции Git,
+отсоединённом HEAD, изменениях кода и неопубликованных коммитах кода — их
+коммитит и пушит разработчик (`helpws plan-v2`, 2.7). `ws switch`, `ws apply`
+и `ws update nix` в конце называют неопубликованное.
+
 ---
 
 # НЕ ИСПОЛЬЗУЕТСЯ

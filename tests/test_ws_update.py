@@ -86,21 +86,13 @@ esac
         self.assertFalse(any(call.startswith('run ') for call in self.calls.read_text().splitlines()))
         self.assertEqual(self.git('rev-parse', 'HEAD'), self.initial)
 
-    def test_successful_activation_commits_lists(self):
+    def test_successful_activation_names_what_is_not_published(self):
         result = self.update()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('OK    nix', result.stdout)
-        self.assertNotEqual(self.git('rev-parse', 'HEAD'), self.initial)
-        self.assertEqual(self.git('show', 'HEAD:flatpak/apps.txt'), 'flathub org.example.App')
-
-    def test_failed_commit_is_reported(self):
-        hook = self.repo / '.git/hooks/pre-commit'
-        hook.write_text('#!/bin/sh\nexit 1\n')
-        hook.chmod(0o755)
-        result = self.update()
-        self.assertNotEqual(result.returncode, 0, result.stdout)
-        self.assertIn('FAIL  nix', result.stdout)
+        # Nothing is committed: ws sync publishes (helpws plan-v2, 2.7).
         self.assertEqual(self.git('rev-parse', 'HEAD'), self.initial)
+        self.assertIn('not published: flatpak/apps.txt (ws sync)', result.stdout)
 
     def test_failed_extension_update_is_reported(self):
         result = self.update('extensions', DBUS_STATUS='42')

@@ -16,7 +16,7 @@ bin_dir="$WS_CORE/bin"
 # Which containers this workstation has: distrobox/hosts.txt in the checkout,
 # NAME HOST=yes|no|ask ... all=STATE (lib/ws_marks.py). create/apply NAME mark
 # this workstation yes, remove drops the line or marks it no, apply asks about
-# the containers not offered here yet (lib/ws_select.py); ws switch commits it.
+# the containers not offered here yet (lib/ws_select.py); ws sync publishes it.
 hosts_file="${WSBOX_HOSTS:-$bin_dir/../distrobox/hosts.txt}"
 marks_py="$bin_dir/../lib/ws_marks.py"
 select_py="$bin_dir/../lib/ws_select.py"
@@ -709,7 +709,7 @@ cmd_apply() {
                         mark_box "$box" no
                     fi
                 done
-                printf 'Marks for %s written to %s; then: ws switch (commits it, links the launchers)\n' "$host" "$hosts_file"
+                printf 'Marks for %s written to %s; then: ws switch (links the launchers), ws sync\n' "$host" "$hosts_file"
                 ;;
             2)
                 # Cancel answers only the question: the offered containers
@@ -890,7 +890,7 @@ cmd_remove() {
     # this one is marked no. The definition in distrobox.nix stays.
     result="$(python3 "$marks_py" "$hosts_file" remove "$name" "$ws_host")"
     case "$result" in
-        removed) echo "Removed from $hosts_file: $name (then: ws switch, commits it)" ;;
+        removed) echo "Removed from $hosts_file: $name (then: ws switch, ws sync)" ;;
         no) echo "Marked in $hosts_file: $name $ws_host=no (other workstations keep it; then: ws switch)" ;;
     esac
 

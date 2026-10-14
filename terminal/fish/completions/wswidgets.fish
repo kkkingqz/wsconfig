@@ -27,7 +27,7 @@ complete -c wswidgets -n __wswidgets_needs_command -a enabled -d 'IDs enabled he
 complete -c wswidgets -n __wswidgets_needs_command -a enable -d 'Enable widgets here, then ws switch'
 complete -c wswidgets -n __wswidgets_needs_command -a disable -d 'Disable widgets here, then ws switch'
 complete -c wswidgets -n __wswidgets_needs_command -a apply -d 'Offer widgets not offered here yet'
-complete -c wswidgets -n __wswidgets_needs_command -a update -d 'Newest wswidgets from GitHub, switch, commit flake.lock'
+complete -c wswidgets -n __wswidgets_needs_command -a update -d 'Newest wswidgets from GitHub into flake.lock, switch'
 complete -c wswidgets -n __wswidgets_needs_command -a version -d 'The pinned wswidgets revision'
 complete -c wswidgets -n __wswidgets_needs_command -a status -d 'The running widget runtime'
 complete -c wswidgets -n __wswidgets_needs_command -a check -d 'ws check widgets'

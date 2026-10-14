@@ -14,6 +14,7 @@ Usage:
   ws switch [HOME-MANAGER-ARG...]
   ws diff
   ws apply [STEP...]
+  ws sync [--dry-run]
   ws update [STEP...]
   ws check [-v] | ws check apt|repo|home|virt|steam|gaming [--json]
   ws system diff|check [--json]|apply|manifest|tree
@@ -28,9 +29,14 @@ Usage:
   ws news
 
 switch    home-manager switch for this user and host (pinned by flake.lock);
-          after a successful switch commits flatpak/apps.txt,
-          flatpak/overrides.txt, distrobox/hosts.txt and
-          widgets/widgets.txt if they changed
+          names the data files not published yet (ws sync)
+sync      publish the data files (flatpak/apps.txt, flatpak/overrides.txt,
+          distrobox/hosts.txt, widgets/widgets.txt, flake.lock): one commit
+          with what changed, then git pull --rebase and git push when the
+          branch has an upstream (no remote: the commit stays local);
+          refuses during a Git operation, on a detached HEAD, with changes
+          outside the data files and with unpushed commits of code;
+          --dry-run shows what it would do
 news      home-manager news of this flake (switch does not notify about them)
 diff      build the home generation without activating it and show the
           package difference against the current one (nvd)
@@ -48,7 +54,7 @@ update    bring everything that is not pinned to the latest version, in order:
             apt         sudo apt update, sudo apt full-upgrade (held
                         packages such as linux-t2 stay)
             nix         nix flake update (nixpkgs, home-manager, wswidgets), the
-                        package difference (nvd), switch; commit flake.lock
+                        package difference (nvd), switch; then ws sync
             flatpak     wsflatpak update
             distrobox   wsbox update (packages inside the containers)
             extensions  GNOME Shell checks extensions.gnome.org for updates
@@ -163,37 +169,167 @@ current_generation() {
 
 # Lists that commands edit in the checkout (wsflatpak install/manage/unmanage/
 # remove/apply, filesystem/env/talk and un…; wsbox create/apply/remove), all
-# with workstation marks (lib/ws_marks.py): switch adds them before the build
-# and commits them after a successful one.
-tool_lists=(flatpak/apps.txt flatpak/overrides.txt distrobox/hosts.txt widgets/widgets.txt)
+# with workstation marks (lib/ws_marks.py), and flake.lock: switch adds them
+# before the build.
+# Data files: what ws and the tools write, published only by ws sync
+# (helpws plan-v2, 2.7). Everything else in the checkout is code, committed
+# by the developer. switch, sync and ws check repo read this list.
+data_files=(flatpak/apps.txt flatpak/overrides.txt distrobox/hosts.txt widgets/widgets.txt flake.lock)
 
-commit_tool_lists() {
-    local f changes old
-    local -a fixed
-    for f in "${tool_lists[@]}"; do
-        [[ -e "$repo/$f" ]] || continue
-        git -C "$repo" diff --quiet HEAD -- "$f" 2>/dev/null && continue
-        # +NAME, -NAME, NAME HOST=STATE; overrides.txt: NAME is APP KIND VALUE.
-        fixed=()
-        [[ "$f" != flatpak/overrides.txt ]] || fixed=(3)
-        old="$(mktemp)"
-        git -C "$repo" show "HEAD:$f" > "$old" 2>/dev/null || : > "$old"
-        changes="$(python3 "$repo/lib/ws_marks.py" "$repo/$f" summary "$old" "${fixed[@]}")"
-        rm -f "$old"
-        git -C "$repo" commit -q -m "$f: ${changes:-edited} (ws switch)" -- "$f" || return
-        echo "committed $f: ${changes:-edited}"
+is_data_file() {
+    local f
+    for f in "${data_files[@]}"; do
+        [[ "$1" == "$f" ]] && return 0
     done
+    return 1
+}
+
+# Data files that differ from HEAD (staged or not).
+changed_data_files() {
+    local f
+    for f in "${data_files[@]}"; do
+        [[ -e "$repo/$f" ]] || continue
+        git -C "$repo" diff --quiet HEAD -- "$f" 2>/dev/null || echo "$f"
+    done
+}
+
+# What changed in a data file against HEAD, for the commit message:
+# +NAME, -NAME, NAME HOST=STATE (lib/ws_marks.py); flake.lock: the inputs
+# with a new revision.
+data_summary() {
+    local f="$1" old
+    local -a fixed=()
+    old="$(mktemp)"
+    git -C "$repo" show "HEAD:$f" > "$old" 2>/dev/null || : > "$old"
+    if [[ "$f" == flake.lock ]]; then
+        python3 - "$old" "$repo/$f" <<'PY'
+import json, sys
+def revs(path):
+    try:
+        nodes = json.load(open(path)).get("nodes", {})
+    except ValueError:
+        return {}
+    return {k: v.get("locked", {}).get("rev") or v.get("locked", {}).get("narHash") for k, v in nodes.items()}
+old, new = revs(sys.argv[1]), revs(sys.argv[2])
+print(", ".join(k for k in sorted(set(old) | set(new)) if old.get(k) != new.get(k) and k != "root"))
+PY
+    else
+        [[ "$f" != flatpak/overrides.txt ]] || fixed=(3)
+        python3 "$WS_CORE/lib/ws_marks.py" "$repo/$f" summary "$old" "${fixed[@]}"
+    fi
+    rm -f "$old"
+}
+
+# The data files not published yet: changed ones, and those of local commits
+# the upstream does not have. One line for the end of switch, apply and
+# update nix; nothing when all is published.
+unpublished_notice() {
+    local -a pending=()
+    local f
+    mapfile -t pending < <({
+        changed_data_files
+        if git -C "$repo" rev-parse --verify -q '@{u}' >/dev/null 2>&1; then
+            git -C "$repo" log --format= --name-only '@{u}..HEAD' -- "${data_files[@]}"
+        fi
+    } | sort -u | sed '/^$/d')
+    ((${#pending[@]})) || return 0
+    printf 'not published: %s (ws sync)\n' "${pending[*]}"
+}
+
+# A Git operation in progress: rebase, merge, cherry-pick, revert, bisect.
+git_operation() {
+    local p
+    for p in rebase-merge rebase-apply MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG; do
+        [[ -e "$(git -C "$repo" rev-parse --path-format=absolute --git-path "$p")" ]] && { echo "${p,,}"; return 0; }
+    done
+    return 1
+}
+
+cmd_sync() {
+    local dry_run=false op f subject remote upstream branch
+    local -a to_commit=() code=() body=()
+    case "${1:-}" in
+        --dry-run|-n) dry_run=true ;;
+        "") ;;
+        *) die "usage: ws sync [--dry-run]" ;;
+    esac
+    git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "not a Git checkout: $repo"
+
+    if op="$(git_operation)"; then
+        die "a Git operation is in progress ($op): finish or abort it first (git status)"
+    fi
+    branch="$(git -C "$repo" symbolic-ref -q --short HEAD)" \
+        || die "HEAD is detached: check out a branch first"
+    # Until code and data are separate repositories (helpws plan-v2, stage
+    # 8) code changes and commits are the developer's: sync touches neither.
+    mapfile -t code < <(git -C "$repo" status --porcelain --untracked-files=no \
+        | cut -c4- | sed 's/.* -> //' | while IFS= read -r f; do is_data_file "$f" || echo "$f"; done)
+    ((${#code[@]} == 0)) \
+        || die "changes outside the data files: ${code[*]}; commit or restore them first (ws sync publishes data only)"
+    upstream="$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)" || upstream=""
+    if [[ -n "$upstream" ]]; then
+        mapfile -t code < <(git -C "$repo" log --format= --name-only '@{u}..HEAD' \
+            | sed '/^$/d' | sort -u | while IFS= read -r f; do is_data_file "$f" || echo "$f"; done)
+        ((${#code[@]} == 0)) \
+            || die "local commits not on $upstream change code: ${code[*]}; push them yourself first (git push)"
+    fi
+
+    mapfile -t to_commit < <(changed_data_files)
+    if ((${#to_commit[@]})); then
+        for f in "${to_commit[@]}"; do
+            body+=("$f: $(data_summary "$f" | sed 's/^$/edited/')")
+        done
+        subject="ws sync: ${to_commit[*]}"
+        printf '%s\n' "${body[@]}"
+        if [[ "$dry_run" == true ]]; then
+            echo "would commit: $subject"
+        else
+            git -C "$repo" add -- "${to_commit[@]}"
+            git -C "$repo" commit -q -m "$subject" -m "$(printf '%s\n' "${body[@]}")" -- "${to_commit[@]}" \
+                || die "git commit failed"
+            echo "committed: $subject"
+        fi
+    else
+        echo "no changed data files"
+    fi
+
+    remote="$(git -C "$repo" remote | head -n1)"
+    if [[ -z "$remote" ]]; then
+        echo "no remote: the commit stays local"
+    elif [[ -z "$upstream" ]]; then
+        echo "no upstream for $branch: the commit stays local (to publish: git -C $repo push -u $remote $branch)"
+    elif [[ "$dry_run" == true ]]; then
+        echo "would run: git pull --rebase, git push ($upstream)"
+    else
+        if ! git -C "$repo" pull -q --rebase; then
+            if git_operation >/dev/null; then
+                cat >&2 <<MSG
+ws sync: the rebase onto $upstream stopped on a conflict. By hand:
+  git -C $repo status                 the files in conflict
+  edit them, git -C $repo add FILE    then: git -C $repo rebase --continue
+  or git -C $repo rebase --abort      back to the state before the pull
+then ws sync again.
+MSG
+            else
+                echo "ws sync: git pull --rebase failed (network? login?); nothing pushed" >&2
+            fi
+            return 1
+        fi
+        git -C "$repo" push -q || die "git push failed (network? login?); the commit is local"
+        echo "pushed to $upstream"
+    fi
 }
 
 cmd_switch() {
     local nix f
     nix="$(nix_bin)" || return
-    for f in "${tool_lists[@]}"; do
+    # The flake sees only files Git knows; nothing is committed here (ws sync).
+    for f in "${data_files[@]}"; do
         [[ ! -e "$repo/$f" ]] || git -C "$repo" add -- "$f" || return
     done
     check_untracked || return
     "$nix" run "$repo#home-manager" -- switch --flake "$(target)" "$@" || return
-    commit_tool_lists
+    unpublished_notice
 }
 
 cmd_news() {
@@ -272,12 +408,21 @@ apply_steps=(
     "widgets wswidgets apply"
 )
 
+# The marks the apply steps may write, to see whether they changed.
+marks_state() {
+    local f
+    for f in "${data_files[@]}"; do
+        [[ "$f" == flake.lock ]] || cat "$repo/$f" 2>/dev/null
+    done | cksum
+}
+
 cmd_apply() {
-    local step name cmd rc
+    local step name cmd rc marks_before
     local -a results=() selected=()
     local failed=false
 
     steps_check apply_steps apply "$@"
+    marks_before="$(marks_state)"
     mapfile -t selected < <(steps_selected apply_steps "$@")
     for step in "${selected[@]}"; do
         name="${step%% *}"
@@ -295,10 +440,11 @@ cmd_apply() {
 
     steps_summary "ws apply" "${results[@]}"
     # wsflatpak/wsbox apply may have written marks: switch links the desktop
-    # entries of what this workstation now has and commits the lists.
-    if ! git -C "$repo" diff --quiet HEAD -- "${tool_lists[@]}" 2>/dev/null; then
-        printf '  marks changed: ws switch (links the desktop entries, commits the lists)\n'
+    # entries of what this workstation now has.
+    if [[ "$(marks_state)" != "$marks_before" ]]; then
+        printf '  marks changed: ws switch (links the desktop entries)\n'
     fi
+    unpublished_notice | sed 's/^/  /'
     [[ "$failed" == false ]]
 }
 
@@ -318,9 +464,6 @@ update_nix() {
     "$nix" flake update --flake "$repo" || return
     cmd_diff || return
     cmd_switch || return
-    if ! git -C "$repo" diff --quiet -- flake.lock; then
-        echo "flake.lock changed: commit it (git -C $repo commit flake.lock)"
-    fi
 }
 
 update_extensions() {
@@ -953,6 +1096,7 @@ cmd_check() {
 
 case "${1:-}" in
     apply) shift; cmd_apply "$@" ;;
+    sync) shift; cmd_sync "$@" ;;
     check) shift; cmd_check "$@" ;;
     switch) shift; cmd_switch "$@" ;;
     diff) shift; cmd_diff "$@" ;;
@@ -967,6 +1111,9 @@ case "${1:-}" in
     backup) shift; exec "$repo/bin/wsbackup" "$@" ;;
     host) shift; host "$@" ;;
     fact) shift; cmd_fact "$@" ;;
+    # The data files and what of them is not published (ws check repo).
+    data-files) printf '%s\n' "${data_files[@]}" ;;
+    unpublished) unpublished_notice ;;
     # Step names of apply, update and check, one per line: the fish
     # completion reads them from here instead of keeping its own list.
     steps)

@@ -9,13 +9,14 @@ set -euo pipefail
 # git, gh, xdg-terminal-exec → GitHub login (gh auth login in the browser)
 # → ~/wsconfig → the host: the one whose facts.nix has this hostname, else
 # asked (an existing one gives the PC its hostname, a new one is made from
-# generic-pc, committed and pushed) → all questions at once: Flatpak apps,
+# generic-pc and committed) → all questions at once: Flatpak apps,
 # Distrobox boxes and overrides without a mark of this host (checklists,
-# lib/setup_marks.py), package licenses, the go → ws btrfs make → reboot → ws btrfs
+# lib/setup_marks.py), package licenses, the go; the host and the marks are
+# published after a question (ws sync) → ws btrfs make → reboot → ws btrfs
 # make → bootstrap.sh → reboot → ws system apply, ws apply → reboot → ws
 # apply, ws check (FAIL does not stop: listed at the end) → Timeshift and
 # its first snapshot, the backup key → ws switch, ws checkpoint create setup,
-# git push.
+# what is not published yet: after the question (ws sync).
 #
 # Each run starts where the last one stopped: the state of the system and
 # the steps done in ~/.local/state/workstation/setup. Until the end a GNOME
@@ -100,6 +101,20 @@ reboot_now() {
 
 push() {
     git -C "$repo" push -q origin HEAD:main || die "git push failed (network, GitHub login?); run setup.sh again"
+}
+
+# The new host (a commit of setup.sh) and the marks (data files) leave this
+# machine only after the question; ws sync commits the marks and pushes
+# (helpws plan-v2, 2.7).
+publish() {
+    if ! ask "Опубликовать новый хост и выбор (ws sync)?" y; then
+        echo "Не опубликовано; позже: git -C $repo push (новый хост), ws sync (выбор)."
+        return 0
+    fi
+    if [[ -n "$(git -C "$repo" log --format=%h '@{u}..HEAD' -- nix/hosts 2>/dev/null)" ]]; then
+        push
+    fi
+    ws sync || die "ws sync failed; run setup.sh again or ws sync by hand"
 }
 
 step_tools() {
@@ -209,7 +224,6 @@ EOF
     printf '# apt packages of %s on top of nix/hosts/apt.txt.\n' "$name" > "$dir/apt.txt"
     git -C "$repo" add "nix/hosts/$name"
     git -C "$repo" commit -q -m "Hosts: $name from generic-pc (setup.sh)" -- "nix/hosts/$name"
-    push
 }
 
 # What setup.sh needs from the facts of HOST, checked before the PC is renamed.
@@ -263,11 +277,9 @@ step_choices() {
     changed="$(python3 "$repo/lib/setup_marks.py" "$repo" "$host")" || rc=$?
     ((rc == 0)) || die "lists not answered (setup_marks exit $rc); run setup.sh again"
     if [[ -n "$changed" ]]; then
-        # shellcheck disable=SC2086 # paths without spaces, one per line
-        git -C "$repo" commit -q -m "Marks: $host (setup.sh)" -- $changed
-        push
         echo "Пометки $host: $(echo $changed)"
     fi
+    publish
     # Licenses apt would ask about in the middle of bootstrap.sh.
     local -a eula=('Microsoft core fonts (ubuntu-restricted-extras)')
     local -a seed=('ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true')
@@ -420,7 +432,10 @@ step_finish() {
     if ! git -C "$repo" rev-parse -q --verify refs/tags/checkpoint/setup >/dev/null; then
         ws checkpoint create setup || checkpoint=false
     fi
-    [[ -z "$(git -C "$repo" log --oneline origin/main..HEAD 2>/dev/null)" ]] || push
+    if [[ -n "$(git -C "$repo" log --oneline '@{u}..HEAD' 2>/dev/null)" \
+        || -n "$(git -C "$repo" status --porcelain --untracked-files=no -- flatpak distrobox widgets flake.lock)" ]]; then
+        publish
+    fi
     rm -f "$autostart"
     if [[ -s "$state/check-fail.txt" ]]; then
         echo "Хост $host настроен, но ws check нашёл FAIL ($state/check.txt):"
