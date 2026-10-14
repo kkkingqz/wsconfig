@@ -19,7 +19,10 @@ Usage:
   ws container status HOST
 
 build     docker build on the server from `git archive HEAD` (clean checkout
-          only): image IMAGE:COMMIT and IMAGE:latest (host.toml [container])
+          only): image IMAGE:COMMIT and IMAGE:latest (host.toml [container]);
+          a configuration of its own sends its HEAD and the core flake.lock
+          pins (or the clean checkout of ws container --core PATH):
+          IMAGE:COMMIT-CORE
 run       replace the container HOST on the server with one from
           IMAGE:latest: mounts, devices and port of host.toml [container]; the
           directories of the mounts must exist (shares of the server)
@@ -45,20 +48,66 @@ remote() {
     ssh -o BatchMode=yes "$server" "$@"
 }
 
+# The core of the image of a configuration of its own, unpacked as DIR/core;
+# prints its short revision. --core PATH: the HEAD of that clean checkout;
+# else the source of the input wsconfig that flake.lock pins, from the
+# local store (nix flake archive): the server fetches no core.
+core_into() {
+    local dir="$1" src
+    if [[ -n "${WS_CORE_PATH:-}" ]]; then
+        [[ -z "$(git -C "$WS_CORE_PATH" status --porcelain)" ]] \
+            || die "--core $WS_CORE_PATH has changes: the image is built from a commit (commit first)"
+        git -C "$WS_CORE_PATH" archive --format=tar --prefix=core/ HEAD | tar -x -C "$dir"
+        git -C "$WS_CORE_PATH" rev-parse --short HEAD
+        return
+    fi
+    src="$("$(nix_bin)" flake archive --json "$repo" \
+        | python3 -c 'import json, sys; print(json.load(sys.stdin)["inputs"]["wsconfig"]["path"])')" \
+        || die "nix flake archive: no source of the input wsconfig"
+    cp -r "$src" "$dir/core"
+    chmod -R u+w "$dir/core"
+    python3 "$WS_CORE/lib/ws_common.py" get "$repo/flake.lock" nodes wsconfig locked rev | cut -c1-7
+}
+
 cmd_build() {
-    local commit
+    local commit core_rev ctx
     [[ -z "$(git -C "$repo" status --porcelain)" ]] \
         || die "the checkout has changes: the image is built from a commit (commit first)"
     commit="$(git -C "$repo" rev-parse --short HEAD)"
-    local -a build=(docker build --build-arg "HOST=$host"
-        --label "org.opencontainers.image.revision=$commit"
-        -t "$image:$commit" -t "$image:latest" -f container/Dockerfile -)
-    if [[ "$dry_run" == true ]]; then
-        echo "would run: git archive HEAD | ssh $server ${build[*]}"
+    if ! separate_config; then
+        local -a build=(docker build --build-arg "HOST=$host"
+            --label "org.opencontainers.image.revision=$commit"
+            -t "$image:$commit" -t "$image:latest" -f container/Dockerfile -)
+        if [[ "$dry_run" == true ]]; then
+            echo "would run: git archive HEAD | ssh $server ${build[*]}"
+            return
+        fi
+        git -C "$repo" archive --format=tar HEAD | remote "${build[*]@Q}"
+        echo "built $image:$commit on $server"
         return
     fi
-    git -C "$repo" archive --format=tar HEAD | remote "${build[*]@Q}"
-    echo "built $image:$commit on $server"
+    # A configuration of its own (ws help plan-v2, 8.7): the context holds
+    # config/ (its HEAD) and core/; the tag both revisions.
+    ctx="$(mktemp -d)"
+    # shellcheck disable=SC2064 # the path now
+    trap "rm -rf '$ctx'" EXIT
+    git -C "$repo" archive --format=tar --prefix=config/ HEAD | tar -x -C "$ctx"
+    if [[ "$dry_run" == true && -z "${WS_CORE_PATH:-}" ]]; then
+        core_rev="$(python3 "$WS_CORE/lib/ws_common.py" get "$repo/flake.lock" nodes wsconfig locked rev | cut -c1-7)"
+    else
+        core_rev="$(core_into "$ctx")"
+    fi
+    [[ -n "$core_rev" ]] || die "no core revision (flake.lock input wsconfig, or --core PATH)"
+    local -a build=(docker build --build-arg "HOST=$host" --build-arg CONFIG=config --build-arg CORE=core
+        --label "org.opencontainers.image.revision=$commit"
+        --label "org.wsconfig.core.revision=$core_rev"
+        -t "$image:$commit-$core_rev" -t "$image:latest" -f core/container/Dockerfile -)
+    if [[ "$dry_run" == true ]]; then
+        echo "would run: config $commit + core $core_rev | ssh $server ${build[*]}"
+        return
+    fi
+    tar -C "$ctx" -c . | remote "${build[*]@Q}"
+    echo "built $image:$commit-$core_rev on $server"
 }
 
 cmd_run() {

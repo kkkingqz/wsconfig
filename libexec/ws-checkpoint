@@ -5,6 +5,11 @@ set -euo pipefail
 # fish and Ghostty are links into the checkout (nix/home/links.nix), so a
 # home-manager generation alone is no rollback of the user layer; the commit is
 # the key, the generation and the system tree are what it built.
+# A configuration of its own (ws help plan-v2, 8.7): the tag is in its
+# checkout, meta records the core too: the revision its flake.lock pins, or
+# the commit of ws checkpoint --core PATH (a clean checkout). Checkpoints
+# from before the split have no config: their commit is in the checkout
+# that held core and data (now the core checkout).
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
@@ -67,8 +72,25 @@ home_built() {
         "$repo#homeConfigurations.\"$(id -un)@$("$WS_CORE/bin/ws" host)\".activationPackage"
 }
 
+# The core this state is built with, for meta: nothing for a checkout of
+# core and data together (the commit is both); the commit of --core PATH,
+# refused when that checkout has changes; else the revision of the input
+# wsconfig in flake.lock.
+core_revision() {
+    if ! separate_config; then
+        return 0
+    fi
+    if [[ -n "${WS_CORE_PATH:-}" ]]; then
+        [[ -z "$(git -C "$WS_CORE_PATH" status --porcelain 2>/dev/null)" ]] \
+            || die "--core $WS_CORE_PATH has uncommitted or untracked files: a checkpoint names a commit"
+        git -C "$WS_CORE_PATH" rev-parse HEAD
+        return
+    fi
+    python3 "$WS_CORE/lib/ws_common.py" get "$repo/flake.lock" nodes wsconfig locked rev
+}
+
 cmd_create() {
-    local name="${1:-}" nix dir profile gen gen_link home tree out
+    local name="${1:-}" nix dir profile gen gen_link home tree out core
     [[ $# -eq 1 ]] || die "usage: ws checkpoint create NAME"
     check_name "$name"
     dir="$root/$name"
@@ -82,6 +104,8 @@ cmd_create() {
     [[ -z "$(git -C "$repo" status --porcelain)" ]] \
         || die "checkout has uncommitted or untracked files; commit them first"
     echo "clean: $(git -C "$repo" log -1 --format='%h %s')"
+    core="$(core_revision)" || exit
+    [[ -z "$core" ]] || echo "core: $core${WS_CORE_PATH:+ ($WS_CORE_PATH)}"
 
     echo "== home-manager"
     profile="$(hm_profile)"
@@ -105,7 +129,10 @@ cmd_create() {
         echo "name: $name"
         echo "date: $(date --iso-8601=seconds)"
         echo "host: $(hostname)"
+        ! separate_config || echo "config: $repo"
         echo "commit: $(git -C "$repo" rev-parse HEAD)"
+        [[ -z "$core" ]] || echo "core: $core"
+        [[ -z "${WS_CORE_PATH:-}" ]] || echo "core-path: $WS_CORE_PATH"
         echo "subject: $(git -C "$repo" log -1 --format=%s)"
         echo "home-generation: ${gen_link%-link}"
         echo "home: $gen"
@@ -141,18 +168,43 @@ cmd_list() {
 }
 
 cmd_show() {
-    local dir name kernel
+    local dir name kernel config core_path
     [[ $# -eq 1 ]] || die "usage: ws checkpoint show NAME"
     dir="$(dir_of "$1")"
     name="$1"
     kernel="$(meta "$dir" kernel)"
     cat "$dir/meta.txt"
-    cat <<EOF
+    config="$(meta "$dir" config)"
+    core_path="$(meta "$dir" core-path)"
+    # Without config: a checkout of core and data, this one until the split.
+    [[ -n "$config" ]] || separate_config || config="$repo"
+    if [[ -z "$config" ]]; then
+        cat <<EOF
+
+Recorded before code and data were separate repositories (ws help plan-v2,
+8.7): commit $(meta "$dir" commit | cut -c1-7) and the tag checkpoint/$name are in the
+checkout that held both, now the core checkout (~/Projects/wsconfig). That
+commit expects its layout: one checkout with code and data at ~/wsconfig.
+Return to it (by hand; the commands are not run), only with that layout:
+  git -C CHECKOUT switch --detach checkpoint/$name
+  CHECKOUT/bin/ws apply
+EOF
+    elif [[ -n "$core_path" ]]; then
+        cat <<EOF
 
 Return to it (by hand; the commands are not run):
-  git -C $repo switch --detach checkpoint/$name
-  ws apply                  # that commit: system files (sudo), home-manager, the modules
+  git -C $config switch --detach checkpoint/$name
+  git -C $core_path switch --detach $(meta "$dir" core | cut -c1-12)
+  ws apply --core $core_path   # the configuration of that commit with that core
 EOF
+    else
+        cat <<EOF
+
+Return to it (by hand; the commands are not run):
+  git -C $config switch --detach checkpoint/$name
+  ws apply                  # that commit; its flake.lock pins the core
+EOF
+    fi
     [[ "$kernel" == "$(uname -r)" ]] \
         || echo "  boot kernel $kernel (rEFInd); installed now: $(cd /boot && ls vmlinuz-* 2>/dev/null | sed 's/^vmlinuz-//' | paste -sd' ')"
     cat <<EOF
@@ -181,9 +233,13 @@ cmd_diff() {
     nix="$(nix_bin)"
 
     echo "== Git: checkpoint/$name ($(meta "$dir" commit | cut -c1-7)) .. HEAD"
-    git -C "$repo" log --oneline "checkpoint/$name..HEAD"
-    git -C "$repo" diff --stat "checkpoint/$name"
-    [[ -z "$(git -C "$repo" status --porcelain)" ]] || echo "(the checkout has uncommitted changes, included above)"
+    if git -C "$repo" rev-parse -q --verify "refs/tags/checkpoint/$name" >/dev/null; then
+        git -C "$repo" log --oneline "checkpoint/$name..HEAD"
+        git -C "$repo" diff --stat "checkpoint/$name"
+        [[ -z "$(git -C "$repo" status --porcelain)" ]] || echo "(the checkout has uncommitted changes, included above)"
+    else
+        echo "the tag is not in $repo: recorded before the split, it is in the core checkout (ws checkpoint show $name)"
+    fi
 
     echo
     echo "== home-manager"

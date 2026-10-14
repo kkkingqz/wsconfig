@@ -30,6 +30,9 @@ class ContainerTests(unittest.TestCase):
         for name in ('common.bash', 'ws_common.py', 'ws_facts.py'):
             shutil.copyfile(ROOT / 'lib' / name, self.repo / 'lib' / name)
         (self.repo / 'libexec/ws-container').chmod(0o755)
+        # A checkout of core and data together (until ws help plan-v2, 8.11).
+        (self.repo / 'bin').mkdir()
+        (self.repo / 'bin/ws').write_text('')
         shutil.copyfile(ROOT / '.gitignore', self.repo / '.gitignore')
         self.host('box', 'container')
         self.host('pc', 'grub')
@@ -120,6 +123,51 @@ exit 0
         self.assertIn("'HOST=box'", call)
         self.assertIn("-f container/Dockerfile -", call.replace("'", ''))
         self.assertGreater(int(size), 0)
+
+
+    def separate(self):
+        """The checkout as a configuration of its own, a core checkout
+        beside it."""
+        self.git('rm', '-q', 'bin/ws')
+        (self.repo / 'flake.lock').write_text(json.dumps(
+            {'nodes': {'root': {'inputs': {'wsconfig': 'wsconfig'}},
+                       'wsconfig': {'locked': {'rev': 'c' * 40}}}, 'root': 'root', 'version': 7}))
+        self.git('add', 'flake.lock')
+        self.git('commit', '-qm', 'separate')
+        core = self.root / 'core'
+        (core / 'container').mkdir(parents=True)
+        (core / 'container/Dockerfile').write_text('FROM scratch\n')
+        g = ['git', '-C', str(core)]
+        subprocess.run([*g, 'init', '-q'], check=True)
+        subprocess.run([*g, 'add', '.'], check=True)
+        subprocess.run([*g, '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'core'], check=True)
+        return core, subprocess.check_output([*g, 'rev-parse', '--short', 'HEAD'], text=True).strip()
+
+    def test_build_of_a_separate_configuration_sends_config_and_core(self):
+        core, core_rev = self.separate()
+        commit = self.git('rev-parse', '--short', 'HEAD')
+        p = self.ws('build', 'box', WS_CORE_PATH=str(core))
+        self.assertEqual(p.returncode, 0, p.stderr)
+        call, size = self.calls.read_text().splitlines()[-2:]
+        flat = call.replace("'", '')
+        self.assertIn(f'-t local/box:{commit}-{core_rev}', flat)
+        self.assertIn('CONFIG=config', flat)
+        self.assertIn(f'org.wsconfig.core.revision={core_rev}', flat)
+        self.assertIn('-f core/container/Dockerfile -', flat)
+        self.assertGreater(int(size), 0)
+
+    def test_dry_run_of_a_separate_configuration_names_the_pinned_core(self):
+        self.separate()
+        p = self.ws('build', 'box', '--dry-run')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn('+ core ccccccc |', p.stdout)
+
+    def test_dirty_core_checkout_is_refused(self):
+        core, _ = self.separate()
+        (core / 'x').write_text('x')
+        p = self.ws('build', 'box', WS_CORE_PATH=str(core))
+        self.assertEqual(p.returncode, 1)
+        self.assertIn('has changes', p.stderr)
 
 
 if __name__ == '__main__':

@@ -31,7 +31,7 @@ Usage:
   ws MODULE [ARG...]       flatpak box windows widgets game keyboard gnome
                            suspend backup: the owner of that layer
 
---core PATH  (apply, diff, news, update, checkpoint) build the configuration
+--core PATH  (apply, diff, news, update, checkpoint, container) build the configuration
           with the core checkout PATH instead of the revision its flake.lock
           pins (--override-input wsconfig; flake.lock stays); only for a
           configuration of its own, which has the input wsconfig
@@ -981,7 +981,7 @@ cmd_check() {
 # --core PATH, anywhere after the command name of the commands that build
 # (use_core, lib/common.bash).
 case "${1:-}" in
-    apply|diff|news|update|checkpoint)
+    apply|diff|news|update|checkpoint|container)
         args=("$1")
         shift
         while (($#)); do
