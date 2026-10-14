@@ -1,5 +1,6 @@
 # shellcheck shell=bash disable=SC2154 # repo: the check's own
-# Result contract of the owner checks, sourced by them. ws check runs every
+# Result contract of the owner checks, sourced by them; lib/ws_check.py is the
+# same for Python checks (tests/test_ws_check.py). ws check runs every
 # owner with --json and reads only the object printed by check_finish:
 #   {"status": "pass|warn|fail", "passes": N, "warnings": N, "failures": N,
 #    "messages": [{"level": "pass|warn|fail|info", "text": "..."}]}

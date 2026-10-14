@@ -29,6 +29,7 @@ import sys
 import urllib.request
 
 sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
+import ws_check  # noqa: E402
 import ws_common  # noqa: E402
 
 REPO = ws_common.CONFIG
@@ -225,37 +226,12 @@ def cmd_install():
     return 0
 
 
-class Check:
-    """lib/check.bash in Python: the same result object for ws check."""
-
-    def __init__(self, json_mode):
-        self.json_mode, self.messages = json_mode, []
-        self.counts = {"pass": 0, "warn": 0, "fail": 0}
-
-    def msg(self, level, text):
-        self.messages.append({"level": level, "text": text})
-        if level in self.counts:
-            self.counts[level] += 1
-        if not self.json_mode:
-            print(f"  {level.upper():<5} {text}")
-
-    def finish(self):
-        status = "fail" if self.counts["fail"] else "warn" if self.counts["warn"] else "pass"
-        if self.json_mode:
-            print(json.dumps({"status": status, "passes": self.counts["pass"],
-                              "warnings": self.counts["warn"], "failures": self.counts["fail"],
-                              "messages": self.messages}))
-        else:
-            print(f"\n  PASS={self.counts['pass']} WARN={self.counts['warn']} FAIL={self.counts['fail']}")
-        return 1 if self.counts["fail"] else 0
-
-
 def ok(args):
     return run(args, check=False, capture=True).returncode == 0
 
 
 def cmd_check(json_mode=False):
-    c = Check(json_mode)
+    c = ws_check.Check(json_mode)
     game = fact("gameMode")
     if game != "yes":
         c.msg("info", f'gameMode = "{game or "?"}" in facts.nix: no Game Mode on this host')

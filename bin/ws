@@ -860,17 +860,7 @@ cmd_check_apt() {
 # Counts and messages of one result object: first line "WARNINGS FAILURES",
 # then the messages to show (WARN/FAIL; all with -v). Fails on bad JSON.
 check_result() {
-    python3 -c '
-import json, sys
-try:
-    d = json.load(open(sys.argv[1]))
-    print(int(d["warnings"]), int(d["failures"]))
-except Exception:
-    sys.exit(1)
-for m in d.get("messages", []):
-    if sys.argv[2] == "true" or m["level"] in ("warn", "fail"):
-        print("  %-5s %s" % (m["level"].upper(), m["text"]))
-' "$1" "$2"
+    python3 "$WS_CORE/lib/ws_check.py" result "$1" "$2"
 }
 
 cmd_check() {
