@@ -1,9 +1,9 @@
 # The one list of GNOME Shell extensions of the workstation. Everything else
 # reads it: enabled-extensions (dconf, written by ws switch), the links of
-# pinned EGO extensions, and ~/.local/share/workstation/gnome/extensions
-# ("UUID SOURCE [PINNED-VERSION]" per line) for
-# ws-keyboard-install-extensions, ws-workstation-verify, ws-gnome-test and
-# ws-gnome-status.
+# pinned EGO extensions, and ~/.local/share/workstation/gnome/extensions.json
+# (order: every UUID in order; by_source: SOURCE: [UUID]; pins: UUID:
+# VERSION; helpws plan-v2, 2.6) for ws-keyboard-install-extensions,
+# ws-gnome check, test and status, ws check repo and ws update extensions.
 #
 # source:
 #   ubuntu  gnome-shell-ubuntu-extensions (apt); enabled by the Ubuntu session
@@ -103,9 +103,10 @@ in
     disabled-extensions = disabledUbuntu;
   };
 
-  xdg.dataFile."workstation/gnome/extensions".text = ''
-    # Built from gnome/gnome-extensions.nix: UUID SOURCE [PINNED-VERSION]
-  '' + lib.concatMapStrings (e:
-    "${e.uuid} ${e.source}${lib.optionalString (e ? pin) " ${toString e.pin.version}"}\n")
-    extensions;
+  xdg.dataFile."workstation/gnome/extensions.json".text = builtins.toJSON {
+    order = map (e: e.uuid) extensions;
+    by_source = lib.genAttrs (lib.unique (map (e: e.source) extensions)) bySource;
+    pins = lib.listToAttrs (map (e: lib.nameValuePair e.uuid (toString e.pin.version))
+      (lib.filter (e: e ? pin) extensions));
+  };
 }

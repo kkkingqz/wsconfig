@@ -52,7 +52,8 @@ esac
         gdbus.chmod(0o755)
         extensions = self.root / '.local/share/workstation/gnome'
         extensions.mkdir(parents=True)
-        (extensions / 'extensions').write_text('example@local local\n')
+        (extensions / 'extensions.json').write_text(
+            '{"order": ["example@local"], "by_source": {"local": ["example@local"]}, "pins": {}}')
         self.calls = self.root / 'calls'
         self.env = dict(os.environ, HOME=str(self.root), WSCONFIG=str(self.repo),
                         XDG_STATE_HOME=str(self.root / 'state'), WS_HOST='test',

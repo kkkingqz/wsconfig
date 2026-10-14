@@ -12,7 +12,8 @@
 # gnome-extensions.nix, also as dconf.settings.
 #
 # ws-gnome check compares the session with ~/.local/share/workstation/gnome/
-# settings.conf (SCHEMA|KEY|VALUE), built from the same attribute set.
+# settings.json ([{schema, key, value}], value as gsettings get prints it),
+# built from the same attribute set.
 { config, lib, pkgs, facts, ... }:
 let
   profile = {
@@ -72,13 +73,13 @@ let
     lib.elem path foreignKeys
     || lib.any (dir: lib.hasPrefix "${dir}/" path) foreignDirs) declared;
 
-  checkProfile = pkgs.writeText "gnome-settings.conf" (''
-    # Built from gnome/gnome.nix; read by ws-gnome check.
-    # SCHEMA|KEY|VALUE as printed by gsettings get
-  '' + lib.concatStrings (lib.mapAttrsToList (dir: keys:
-    lib.concatStrings (lib.mapAttrsToList (key: value:
-      "${lib.replaceStrings [ "/" ] [ "." ] dir}|${key}|${toString (lib.hm.gvariant.mkValue value)}\n")
-      keys)) profile));
+  checkProfile = pkgs.writeText "gnome-settings.json" (builtins.toJSON
+    (lib.flatten (lib.mapAttrsToList (dir: keys:
+      lib.mapAttrsToList (key: value: {
+        schema = lib.replaceStrings [ "/" ] [ "." ] dir;
+        inherit key;
+        value = toString (lib.hm.gvariant.mkValue value);
+      }) keys) profile)));
 in
 {
   assertions = [{
@@ -89,5 +90,5 @@ in
 
   dconf.settings = profile;
 
-  xdg.dataFile."workstation/gnome/settings.conf".source = checkProfile;
+  xdg.dataFile."workstation/gnome/settings.json".source = checkProfile;
 }

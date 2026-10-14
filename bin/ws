@@ -324,10 +324,10 @@ update_nix() {
 }
 
 update_extensions() {
-    local list="$HOME/.local/share/workstation/gnome/extensions" pinned
+    local list="$HOME/.local/share/workstation/gnome/extensions.json" pinned
     [[ -r "$list" ]] || die "extension list missing: $list (ws switch)"
     # GNOME Shell updates every extension from EGO, a pinned copy too.
-    pinned="$(awk '!/^#/ && $2 == "ego" && NF >= 3 { print $1 }' "$list")"
+    pinned="$(manifest_get "$list" pins)"
     if [[ -n "$pinned" ]]; then
         echo "pinned EGO extensions would be replaced as well:" $pinned
         echo "update the others one by one in Extension Manager"

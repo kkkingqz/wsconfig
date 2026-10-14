@@ -24,11 +24,15 @@ is_tracked() {
     git -C "$repo" ls-files --error-unmatch -- "$1" >/dev/null 2>&1
 }
 
-# The extension list is built from gnome/gnome-extensions.nix.
+# The extension list is built from gnome/gnome-extensions.nix: all in
+# order, or those of one source.
 ext_list() {
-    local f="$HOME/.local/share/workstation/gnome/extensions"
-    [[ -r "$f" ]] || return 0
-    awk -v s="${1:-}" '!/^#/ && NF >= 2 && (s == "" || $2 == s) { print $1 }' "$f"
+    local f="$HOME/.local/share/workstation/gnome/extensions.json"
+    if [[ -n "${1:-}" ]]; then
+        manifest_get "$f" by_source "$1"
+    else
+        manifest_get "$f" order
+    fi
 }
 
 section "1. Repository identity / Git integrity"
