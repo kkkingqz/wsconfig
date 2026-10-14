@@ -298,63 +298,7 @@ else
 fi
 
 
-section "4. Legacy artifacts that should be gone"
-
-# Generated files live in ~/.local/share/workstation (before 2026-09-27:
-# ~/.config/workstation and ~/.cache/ws-suspend).
-for old in "$HOME/.config/workstation" "$HOME/.cache/ws-suspend" \
-    "$HOME/.local/share/distrobox-homes"; do
-    if [[ -e "$old" || -L "$old" ]]; then
-        warn "obsolete directory: $(q "$old") (helpws workstation: ~/.local/share/workstation, ~/distrobox)"
-    else
-        pass "obsolete directory absent: $old"
-    fi
-done
-
-# Machine-local state lives in ~/.local/state/workstation, not in the checkout.
-if [[ -e "$repo/state" ]]; then
-    fail "state/ in the checkout is obsolete: move keyboard/gsettings-backup.tsv to ~/.local/state/workstation/keyboard/"
-else
-    pass "no state/ in the checkout"
-fi
-
-legacy_repo_paths=(
-    bin/ws-nautilus-go
-    bin/ws-gnome-apply
-    systemd
-    # Layout before ~/wsconfig (2026-09-27): config/, modules/, kernel/,
-    # hosts/, pkgs/ and the system tree directly under system/.
-    config
-    modules
-    kernel
-    hosts
-    pkgs
-    system/udev
-    system/modprobe
-    system/systemd
-    system/usr
-    system/boot/refind_linux.conf
-    system/default
-    system/esp
-    system/NetworkManager
-    system/sleep.conf.d
-    system/modules-load.d
-    system/files/udev/70-workstation-uinput.rules
-    system/kernel/t2bce/sources.conf
-    # micro writes its buffers into ~/.local/share/workstation/micro-help.
-    terminal/micro-help/buffers
-)
-for path in "${legacy_repo_paths[@]}"; do
-    if is_tracked "$path"; then
-        warn "obsolete tracked artifact: $(q "$path")"
-    elif [[ -e "$repo/$path" || -L "$repo/$path" ]]; then
-        warn "obsolete untracked artifact in repo: $(q "$path")"
-    else
-        pass "legacy artifact absent: $path"
-    fi
-done
-
-section "5. Untracked files / cleanup candidates"
+section "4. Untracked files / cleanup candidates"
 
 untracked_any=false
 while IFS= read -r -d '' path; do
@@ -382,7 +326,7 @@ done < <(git -C "$repo" ls-files --others --exclude-standard -z)
 [[ "$untracked_any" == false ]] && pass "no non-ignored untracked files"
 
 
-section "6. Executables"
+section "5. Executables"
 
 # bin/ is run through ~/.local/bin links (and ws-caps-led from the checkout):
 # every file there is executable in Git and on disk.
