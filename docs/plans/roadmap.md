@@ -69,8 +69,9 @@ volume: User Commands
    репозиторий конфигурации — последним этапом. Этапы 0 (база:
    сравнение выходов, инвентарь вызовов, checkpoint v2-base) и 1 (чистка
    legacy), 2 (общие механизмы, `ws sync`, `ws MODULE`, state в
-   `~/.local/state/wsconfig`) и 3 (каталоги, выбор хоста в
-   `nix/hosts/HOST/*.toml`, `ws_catalog`) выполнены 2026-10-14.
+   `~/.local/state/wsconfig`), 3 (каталоги, выбор хоста в
+   `nix/hosts/HOST/*.toml`, `ws_catalog`) и 4 (факты хоста в
+   `host.toml`) выполнены 2026-10-14.
 
 Отложено:
 
