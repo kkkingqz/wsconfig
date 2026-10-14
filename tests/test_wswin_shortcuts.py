@@ -23,7 +23,7 @@ class ShortcutTests(unittest.TestCase):
         (self.root / 'windows').mkdir()
         (self.root / 'distrobox/boxes.json').write_text(
             json.dumps([{'name': 'wine', 'profile': 'wine', 'home': f'{self.root}/wine'}]))
-        (self.root / 'windows/apps.ini').write_text('[wswin]\ndefault_box=wine\n')
+        (self.root / 'windows/apps.json').write_text(json.dumps({'default_box': 'wine', 'apps': {}}))
         self.env = dict(os.environ, HOME=str(self.root), WSWIN_DATA=str(self.root))
 
     def menu_add(self, data):

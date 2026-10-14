@@ -1,6 +1,7 @@
 """wswin check follows the box marks of distrobox/hosts.txt: the launchers
 of windows/apps.nix exist only where the box is marked yes, so programs and
 the .exe default of other boxes are not checked."""
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -21,10 +22,9 @@ class WswinCheckTests(unittest.TestCase):
         (root / "windows").mkdir()
         (root / "distrobox/boxes.json").write_text(
             '[{"name": "here", "profile": "wine"}, {"name": "elsewhere", "profile": "wine"}]')
-        (root / "windows/apps.ini").write_text(
-            "[wswin]\ndefault_box=elsewhere\n\n"
-            "[local]\nbox=here\nprefix=default\nexe=drive_c/local.exe\n\n"
-            "[remote]\nbox=elsewhere\nprefix=default\nexe=drive_c/remote.exe\n")
+        (root / "windows/apps.json").write_text(json.dumps({"default_box": "elsewhere", "apps": {
+            "local": {"box": "here", "prefix": "default", "exe": "drive_c/local.exe"},
+            "remote": {"box": "elsewhere", "prefix": "default", "exe": "drive_c/remote.exe"}}}))
         self.hosts = root / "hosts.txt"
         self.hosts.write_text("here test=yes all=ask\nelsewhere other=yes all=ask\n")
         self.env = dict(os.environ, HOME=str(root), WSWIN_DATA=str(root),

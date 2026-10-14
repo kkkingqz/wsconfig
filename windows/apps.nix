@@ -1,7 +1,7 @@
 # Windows programs with a GNOME launcher. The boxes and their profiles are in
 # distrobox/distrobox.nix; wswin installs and runs (helpws windows).
 #
-# Built into ~/.local/share/workstation/windows/apps.ini for wswin and one
+# Built into ~/.local/share/workstation/windows/apps.json for wswin and one
 # launcher ~/.local/share/applications/ws-win-NAME.desktop per program
 # (Exec: wswin run NAME).
 #
@@ -22,7 +22,7 @@
 # default application for the .exe types with xdg-mime.
 #
 # The launchers only on a workstation that has the box: BOX HOST=yes in
-# distrobox/hosts.txt (lib/ws_marks.nix); apps.ini lists every program.
+# distrobox/hosts.txt (lib/ws_marks.nix); apps.json lists every program.
 { config, lib, wsHost, ... }:
 let
   defaultBox = "wine-wayland";
@@ -90,16 +90,13 @@ let
     MimeType=${lib.concatMapStrings (t: "${t};") exeTypes}
   '';
 
-  appsIni = "[wswin]\ndefault_box=${defaultBox}\nlc_ctype=${ansiLocale}\nlc_messages=${uiLocale}\n"
-    + lib.concatStrings (lib.mapAttrsToList (name: a: ''
-
-      [${name}]
-      box=${a.box}
-      prefix=${a.prefix}
-      exe=${a.exe}
-      args=${a.args}
-      env=${a.env}
-    '') full);
+  # What wswin reads (helpws plan-v2, 2.6).
+  appsJson = builtins.toJSON {
+    default_box = defaultBox;
+    lc_ctype = ansiLocale;
+    lc_messages = uiLocale;
+    apps = lib.mapAttrs (_: a: { inherit (a) box prefix exe args env; }) full;
+  };
 
   desktop = name: a: ''
     [Desktop Entry]
@@ -122,7 +119,7 @@ in
   }) full;
 
   xdg.dataFile = {
-    "workstation/windows/apps.ini".text = appsIni;
+    "workstation/windows/apps.json".text = appsJson;
   } // lib.optionalAttrs (hasBox defaultBox) {
     "applications/ws-win-exe.desktop".text = exeDesktop;
   } // lib.mapAttrs' (name: a:

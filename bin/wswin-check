@@ -21,7 +21,7 @@ esac
 
 data="${WSWIN_DATA:-$HOME/.local/share/workstation}"
 boxes_json="$data/distrobox/boxes.json"
-apps_ini="$data/windows/apps.ini"
+apps_json="$data/windows/apps.json"
 # Both files are built by ws switch (distrobox/distrobox.nix, windows/apps.nix).
 # The Windows boxes: those with a profile (distrobox/distrobox.nix).
 win_boxes="$(for b in $(manifest_get "$boxes_json"); do
@@ -52,7 +52,7 @@ fi
 rm -f "$marks_err"
 on_host() { [[ "${box_state[$1]:-ask}" == yes ]]; }
 
-default_box="$(sed -nE 's/^default_box=//p' "$apps_ini" 2>/dev/null)"
+default_box="$(manifest_get "$apps_json" default_box)"
 if [[ -n "$default_box" ]] && grep -qxF "$default_box" <<<"$win_boxes"; then
     pass "wswin default box is a Windows box: $default_box"
 else
@@ -61,7 +61,7 @@ fi
 
 while IFS= read -r app; do
     [[ -n "$app" && "$app" != wswin ]] || continue
-    app_box="$(awk -v s="[$app]" '$0 == s { i = 1; next } i && /^\[/ { exit } i && /^box=/ { sub(/^box=/, ""); print; exit }' "$apps_ini")"
+    app_box="$(manifest_get "$apps_json" apps "$app" box)"
     if grep -qxF "$app_box" <<<"$win_boxes"; then
         pass "app $app: box $app_box is a Windows box"
     else
@@ -73,8 +73,8 @@ while IFS= read -r app; do
     fi
     # The program itself is machine state (wswin install, a prefix from a
     # backup): on a new machine the launcher exists before it (phase 6, wsvm).
-    app_prefix="$(awk -v s="[$app]" '$0 == s { i = 1; next } i && /^\[/ { exit } i && /^prefix=/ { sub(/^prefix=/, ""); print; exit }' "$apps_ini")"
-    app_exe="$(awk -v s="[$app]" '$0 == s { i = 1; next } i && /^\[/ { exit } i && /^exe=/ { sub(/^exe=/, ""); print; exit }' "$apps_ini")"
+    app_prefix="$(manifest_get "$apps_json" apps "$app" prefix)"
+    app_exe="$(manifest_get "$apps_json" apps "$app" exe)"
     if [[ "$app_prefix" == default ]]; then
         app_dir="$HOME/distrobox/$app_box/.wine"
     else
@@ -85,7 +85,7 @@ while IFS= read -r app; do
     else
         warn "app $app: not installed, the launcher has nothing to run: $app_dir/$app_exe (helpws windows; helpws rebuild)"
     fi
-done < <(sed -nE 's/^\[([^]]+)\]$/\1/p' "$apps_ini" 2>/dev/null)
+done < <(manifest_get "$apps_json" apps)
 
 if ! on_host "$default_box"; then
     info ".exe: default box $default_box is not on $host, no ws-win-exe.desktop"

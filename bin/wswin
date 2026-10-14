@@ -7,7 +7,7 @@ set -euo pipefail
 #
 #   ~/.local/share/workstation/distrobox/boxes.json  boxes: home profile driver dpi
 #                                                    init_overrides gpu
-#   ~/.local/share/workstation/windows/apps.ini      [wswin] default_box; [APP] ...
+#   ~/.local/share/workstation/windows/apps.json     default_box, locales, apps
 #
 # Prefixes live in the container HOME (~/distrobox/BOX), survive recreate:
 #   default   $HOME/.wine
@@ -17,7 +17,7 @@ set -euo pipefail
 
 data="${WSWIN_DATA:-$HOME/.local/share/workstation}"
 boxes_json="$data/distrobox/boxes.json"
-apps_ini="$data/windows/apps.ini"
+apps_json="$data/windows/apps.json"
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 bin_dir="$WS_CORE/bin"
@@ -40,7 +40,7 @@ Usage:
   wswin menu list|sync
   wswin menu remove ID
 
-BOX defaults to the default_box of apps.ini, NAME to "default" (the
+BOX defaults to the default_box of apps.json, NAME to "default" (the
 standard prefix $HOME/.wine of the box). --desktop runs the program in a
 Wine virtual desktop (one window; the size is asked for, default
 1600x1000, but Wine 10+/Proton under XWayland scaling opens it fullscreen):
@@ -54,31 +54,18 @@ with the repository: windows/apps.nix.
 USAGE
 }
 
-ini_value() {
-    local file="$1" section="$2" key="$3"
-
-    awk -v section="[$section]" -v key="$key" '
-        $0 == section { inside = 1; next }
-        inside && /^\[/ { exit }
-        inside {
-            k = $0
-            sub(/=.*/, "", k)
-            if (k == key) {
-                sub(/^[^=]*=/, "")
-                print
-                exit
-            }
-        }
-    ' "$file"
-}
-
-sections() {
-    sed -nE 's/^\[([^]]+)\]$/\1/p' "$1"
+# A value of windows/apps.json: app_value APP KEY, or a top-level KEY.
+app_value() {
+    if (($# == 2)); then
+        manifest_get "$apps_json" apps "$1" "$2"
+    else
+        manifest_get "$apps_json" "$1"
+    fi
 }
 
 ensure_config() {
     [[ -r "$boxes_json" ]] || die "not found: $boxes_json (ws switch)"
-    [[ -r "$apps_ini" ]] || die "not found: $apps_ini (ws switch)"
+    [[ -r "$apps_json" ]] || die "not found: $apps_json (ws switch)"
 }
 
 # A value of a box in boxes.json (distrobox/distrobox.nix), ${HOME} expanded.
@@ -96,7 +83,7 @@ require_box() {
 }
 
 default_box() {
-    ini_value "$apps_ini" wswin default_box
+    app_value default_box
 }
 
 box_home() {
@@ -120,7 +107,7 @@ prefix_path() {
 }
 
 # Run a command in BOX with WINEPREFIX. For proton, GAMEID tells umu which
-# protonfixes apply (none for umu-default). LC_CTYPE (apps.ini lc_ctype)
+# protonfixes apply (none for umu-default). LC_CTYPE (apps.json lc_ctype)
 # is the codepage of non-Unicode programs, LC_MESSAGES the UI language. With a custom HOME distrobox
 # starts in /run/host/$PWD, which the Steam Runtime (pressure-vessel)
 # refuses: start in WSWIN_CWD (a host path that exists in the container) or
@@ -133,8 +120,8 @@ in_box() {
         WINEPREFIX="$prefix" \
         GAMEID="${GAMEID:-umu-default}" \
         WINEDEBUG="${WINEDEBUG:--all}" \
-        LC_CTYPE="$(ini_value "$apps_ini" wswin lc_ctype)" \
-        LC_MESSAGES="$(ini_value "$apps_ini" wswin lc_messages)" \
+        LC_CTYPE="$(app_value lc_ctype)" \
+        LC_MESSAGES="$(app_value lc_messages)" \
         WSWIN_CWD="${WSWIN_CWD:-}" \
         bash -c 'cd "${WSWIN_CWD:-$HOME}" && exec "$@"' _ "$@"
 }
@@ -210,7 +197,7 @@ parse_target() {
         esac
     done
 
-    [[ -n "$box" ]] || die "no box: default_box missing in $apps_ini"
+    [[ -n "$box" ]] || die "no box: default_box missing in $apps_json"
     require_box "$box"
 }
 
@@ -692,18 +679,18 @@ cmd_run() {
 
     [[ -n "$app" ]] || die "app required"
     shift
-    box="$(ini_value "$apps_ini" "$app" box)"
+    box="$(app_value "$app" box)"
     [[ -n "$box" ]] || die "unknown app: $app (windows/apps.nix)"
     require_box "$box"
-    pname="$(ini_value "$apps_ini" "$app" prefix)"
-    exe="$(ini_value "$apps_ini" "$app" exe)"
+    pname="$(app_value "$app" prefix)"
+    exe="$(app_value "$app" exe)"
     prefix="$(prefix_path "$box" "$pname")"
 
     [[ -f "$prefix/$exe" ]] \
         || die "$app: not installed: $prefix/$exe (wswin install --box $box --prefix $pname ...)"
 
-    args_line="$(ini_value "$apps_ini" "$app" args)"
-    env_line="$(ini_value "$apps_ini" "$app" env)"
+    args_line="$(app_value "$app" args)"
+    env_line="$(app_value "$app" env)"
     [[ -z "$args_line" ]] || read -ra args <<<"$args_line"
     [[ -z "$env_line" ]] || read -ra envs <<<"$env_line"
 
@@ -787,13 +774,13 @@ cmd_list() {
     printf '%-14s %-14s %-12s %-10s %s\n' APP BOX PREFIX STATE EXE
     while IFS= read -r app; do
         [[ -n "$app" && "$app" != wswin ]] || continue
-        box="$(ini_value "$apps_ini" "$app" box)"
-        pname="$(ini_value "$apps_ini" "$app" prefix)"
-        exe="$(ini_value "$apps_ini" "$app" exe)"
+        box="$(app_value "$app" box)"
+        pname="$(app_value "$app" prefix)"
+        exe="$(app_value "$app" exe)"
         prefix="$(prefix_path "$box" "$pname")"
         if [[ -f "$prefix/$exe" ]]; then state=installed; else state=missing; fi
         printf '%-14s %-14s %-12s %-10s %s\n' "$app" "$box" "$pname" "$state" "$exe"
-    done < <(sections "$apps_ini")
+    done < <(manifest_get "$apps_json" apps)
 
     printf '\n%-14s %-8s %s\n' BOX PROFILE PREFIXES
     while IFS= read -r box; do
