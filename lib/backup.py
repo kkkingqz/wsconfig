@@ -46,7 +46,10 @@ def safe_path(value):
 def load_config(path):
     if not path.exists():
         return {'schema_version': 1}
-    c = json.loads(path.read_text())
+    return check_config(json.loads(path.read_text()))
+
+
+def check_config(c):
     if not isinstance(c, dict) or set(c) - FIELDS:
         raise ValueError('unknown configuration fields')
     if type(c.get('schema_version')) is not int or c.get('schema_version') != 1:
@@ -118,8 +121,77 @@ def state_path():
 
 
 def config_path():
-    # Machine-local (addresses, UUIDs), next to the backup state it describes.
+    # The former place (until ws help plan-v2, 8.8): machine-local, next to
+    # the backup state it describes.
     return state_path() / 'config.json'
+
+
+# The configuration in the configuration repository (ws help plan-v2, 7.5
+# and 8.8): what every host shares, then what the host has of its own; a
+# key of the host file replaces the common one. Either may be missing.
+COMMON_FIELDS = ('ssh_host', 'remote_root', 'receiver_fs_uuid', 'source_snapshot_root')
+HOST_FIELDS = ('remote_host_id', 'source_fs_uuid')
+
+
+def toml_paths(config=None, host=None):
+    root = Path(config or ws_common.CONFIG)
+    if host is None:
+        import ws_facts
+        host = ws_facts.find_host(config)
+    files = [root / 'backup/config.toml']
+    if host:
+        files.append(root / 'hosts' / host / 'backup.toml')
+    return files
+
+
+def read_toml(config=None, host=None):
+    """The merged TOML files, checked as config.json is; None when there is
+    none of them."""
+    import tomllib
+    merged, found = {}, False
+    for path in toml_paths(config, host):
+        if not path.exists():
+            continue
+        found = True
+        try:
+            data = tomllib.loads(path.read_text())
+        except tomllib.TOMLDecodeError as e:
+            raise ValueError(f'{path}: {e}') from None
+        if 'schema_version' in data:
+            raise ValueError(f'{path}: schema_version: the schema is that of wsconfig.toml')
+        merged.update(data)
+    if not found:
+        return None
+    try:
+        return check_config({'schema_version': 1, **merged})
+    except ValueError as e:
+        raise ValueError(f'{" + ".join(str(p) for p in toml_paths(config, host) if p.exists())}: {e}') from None
+
+
+def current_config():
+    """The TOML of the configuration, else the former config.json of the
+    state (both: TOML wins), else nothing configured."""
+    c = read_toml()
+    return c if c is not None else load_config(config_path())
+
+
+def migration():
+    """What to write instead of the former config.json while there is no
+    TOML (ws backup check); None otherwise. ws writes no files of the user.
+    Only for a configuration of its own (no bin/ws at its root): the checkout
+    of core and data is public, its TOML would publish addresses and UUIDs."""
+    if (Path(ws_common.CONFIG) / 'bin/ws').exists():
+        return None
+    if not config_path().exists() or read_toml() is not None:
+        return None
+    c = load_config(config_path())
+    files = toml_paths()
+    toml = lambda keys: ''.join(f'{k} = {json.dumps(c[k])}\n' for k in keys if k in c)
+    out = {str(files[0]): toml(COMMON_FIELDS)}
+    if len(files) > 1:
+        out[str(files[1])] = toml(HOST_FIELDS)
+    return {'from': str(config_path()), 'write': out,
+            'then': 'ws sync; check with ws backup check, then delete ' + str(config_path())}
 
 
 def now():
@@ -477,7 +549,7 @@ def main(argv=None):
         from recovery_bundle import export_bundle
         print(json.dumps(export_bundle(args.output, overwrite=args.force), indent=2))
         return
-    c = load_config(config_path())
+    c = current_config()
     scope = getattr(args, 'scope', None)
     # The vm fact only where it matters: home needs no host.toml.
     vm = vm_layer() if args.command in {'plan', 'send'} and scope in {'vms', 'all'} else False
@@ -505,6 +577,9 @@ def main(argv=None):
             print(json.dumps(run_batch(c, state_path()), indent=2))
         elif args.command == 'check':
             result = probe(c) if args.remote else plan
+            hint = migration()
+            if hint:
+                result = {**result, 'migration': hint}
             print(json.dumps(result, indent=2))
         elif args.command == 'list':
             copies = list_copies(c, state_path())

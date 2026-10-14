@@ -79,157 +79,42 @@ Scope `vms` есть только на хосте с `vm = true` в `host.toml` 
 HOME snapshot согласован на уровне filesystem; для важной открытой базы
 данных закрыть приложение или сделать штатный export перед backup.
 
-## Локальная конфигурация
+## Конфигурация
 
-Пример-шаблон: `backup/config.example.json`. Рабочий файл:
-`~/.local/state/wsconfig/backup/config.json`, рядом с состоянием backup
-(не хранить machine-local адреса и ключи в Git).
+В отдельном (закрытом) репозитории конфигурации (`ws help plan-v2`, 8.8):
+общее — `backup/config.toml`, своё у хоста — `hosts/HOST/backup.toml`;
+ключ файла хоста заменяет общий. Проверки те же: только известные ключи,
+непустые строки, безопасные alias и id, UUID, пути вне источников. Ключи
+SSH остаются в `~/.ssh`.
 
-Пример после настройки NAS — заменить все значения:
-
-```json
-{
-  "schema_version": 1,
-  "ssh_host": "wsbackup-unraid",
-  "remote_host_id": "mbp16",
-  "source_fs_uuid": "00000000-0000-0000-0000-000000000000",
-  "receiver_fs_uuid": "00000000-0000-0000-0000-000000000000",
-  "source_snapshot_root": "/var/lib/workstation-backup",
-  "remote_root": "/mnt/disk6/wsbackup"
-}
+```toml
+# backup/config.toml
+ssh_host = "wsbackup-unraid"
+receiver_fs_uuid = "00000000-0000-0000-0000-000000000000"
+source_snapshot_root = "/var/lib/workstation-backup"
+remote_root = "/mnt/disk6/wsbackup"
 ```
 
-Это пример, не готовая конфигурация. Получить настоящий source UUID:
-`findmnt -nro UUID -T /`, сверить Timeshift storage, /home и /var/lib/vms.
-Поддерживается Timeshift Btrfs layout @/@home на source filesystem;
-отдельный @vms ожидается на том же filesystem для `send vms`.
-Paths и IDs ограничены ASCII без пробелов, `..`, управляющих символов.
-
-В `~/.ssh/config` создать alias wsbackup-unraid с HostName, User wsbackup,
-IdentityFile для выделенного backup key и IdentitiesOnly yes. Проверить
-серверный host key обычным SSH по доверенному fingerprint до автоматического
-запуска: клиент использует BatchMode и StrictHostKeyChecking=yes.
-Таймаут подключения — 10 секунд; время всей передачи не ограничивается.
-
-Локальные ro-копии (последний parent каждого scope) хранятся в отдельной
-top-level subvolume `@wsbackup`, смонтированной в `/var/lib/workstation-backup`
-строкой fstab, как `@vms`. Вложенная в `@` subvolume при откате Timeshift или
-Live USB уехала бы вместе со старым `@`: в восстановленной системе parents
-пропали бы, следующий backup стал бы полным, а старый `@` не удалялся бы.
-Timeshift показывает только свои снимки и эти копии не видит; снимок `@` не
-захватывает вложенные subvolumes. Live USB restore сохраняет `@wsbackup` и
-принимает её строку fstab.
-
-Создаёт `bootstrap.sh` (шаг 5, с `init`); вручную то же
-(ROOT_UUID — `findmnt -nro UUID -T /`):
-
-```console
-sudo mount -o subvolid=5 /dev/disk/by-uuid/ROOT_UUID /mnt
-sudo btrfs subvolume create /mnt/@wsbackup
-sudo chmod 0700 /mnt/@wsbackup
-sudo umount /mnt
-sudo mkdir -p /var/lib/workstation-backup
-echo 'UUID=ROOT_UUID  /var/lib/workstation-backup  btrfs  subvol=@wsbackup,noatime  0 0' | sudo tee -a /etc/fstab
-sudo systemctl daemon-reload
-sudo mount /var/lib/workstation-backup
-sudo bash ~/wsconfig/backup/wsbackup-source --uuid ROOT_UUID --root /var/lib/workstation-backup init
+```toml
+# hosts/mbp16/backup.toml
+remote_host_id = "mbp16"
+source_fs_uuid = "00000000-0000-0000-0000-000000000000"
 ```
 
-`init` только проверяет: каталог — отдельный mount top-level subvolume (не `@`,
-не `@home`) на source filesystem. Сам он subvolume не создаёт. Те же условия
-проверяет каждое действие helper и `ws check backup`.
-
-Helper не устанавливается в /usr/local и не получает NOPASSWD.
-Перед каждым требующим root действием координатор выполняет `sudo -v`
-с видимым запросом в терминале. Затем helper запускается через `sudo -n`
-с сохранением управляющего терминала. Пароль не читается из Btrfs stream.
-Запускать backup/send/restore-test из терминала; при отсутствии авторизации операция
-отказывает до запуска передачи. Скрипты запускаются
-на Ubuntu host; из Flatpak сначала использовать `flatpak-spawn --host`.
-
-## Unraid: подготовка приёмника
-
-Обычные share users Unraid не имеют SSH, а `btrfs receive` требует root.
-Поэтому подключение идёт под отдельным системным пользователем `wsbackup`, а приём
-выполняется от root через sudo. sudo разрешает ему одну команду без пароля:
-приёмник с его config. Ключ ноутбука не попадает в authorized keys root. Обход
-ограничений ключа в OpenSSH дал бы только непривилегированного `wsbackup`. Сам
-приём остаётся root: это ключ только для доверенного workstation, btrfs receive
-не является sandbox для недоверенного Btrfs stream.
-
-Unraid при загрузке восстанавливает `/etc`, `/usr/local` и пользователей из образа.
-Поэтому всё ставит `backup/unraid/boot.sh` при каждой загрузке из копии на flash.
-Повторный запуск ничего не меняет. Скрипт:
-
-- создаёт `wsbackup` (оболочка bash для ForceCommand, пароль `*`, своя группа);
-- ставит receiver, common и config в `/usr/local/libexec/wsbackup/` с владельцем root;
-- кладёт ключи в `/etc/ssh/wsbackup_authorized_keys` и правило в `/etc/sudoers.d/wsbackup`.
-  sudo сохраняет только `SSH_ORIGINAL_COMMAND`;
-- добавляет `wsbackup` в существующий `AllowUsers` и блок `Match User wsbackup`:
-  свой файл ключей, `ForceCommand`, без PTY, forwarding и паролей. Конфиг
-  проверяется `sshd -t` до записи; listener перезапускается, открытые сессии
-  остаются. `rc.sshd` правит в конфиге только адреса и порт, поэтому блок
-  переживает его reload.
-
-Если в веб-интерфейсе изменить настройки SSH (Management Access) или обновить
-Unraid, конфиг может вернуться к исходному. Тогда `ws backup` сообщит об ошибке
-подключения. Исправление: `bash /boot/config/wsbackup/boot.sh` или перезагрузка.
-После обновления Unraid выполнить `ws backup check --remote`.
-
-Установка, один раз, от root на Unraid:
-
-1. Выбрать прямой путь на физическом Btrfs pool/disk, не `/mnt/user/...`.
-   Проверить `findmnt -T PATH` и `btrfs filesystem show`, записать UUID. Здесь:
-   `/mnt/disk6/wsbackup` (Btrfs на массиве, под parity). Каталог создаётся root
-   с mode 0700. Он не должен быть доступен на запись через SMB/NFS, Docker volumes
-   или mover. Unraid показывает его как share; проверить, что она не экспортируется.
-   Подкаталоги `HOST_ID/system|home|vms` и `.catalog` создаёт receiver.
-
-   ```console
-   mkdir -m 0700 /mnt/disk6/wsbackup
-   ```
-
-2. Скопировать на flash с сохранением структуры:
-   - `backup/unraid/boot.sh`, `backup/unraid/wsbackup-receiver`,
-     `backup/unraid/catalog.bash` и `backup/btrfs-common.bash` в
-     `/boot/config/wsbackup/` (`unraid/` для двух файлов receiver);
-   - `receiver.conf` по `receiver.conf.example`, mode 0600;
-   - `authorized_keys` с одной строкой выделенного ключа:
-
-```text
-restrict,command="sudo -n /usr/local/libexec/wsbackup/unraid/wsbackup-receiver /usr/local/libexec/wsbackup/receiver.conf" ssh-ed25519 PUBLIC_KEY workstation-backup
-```
-
-   Команда в ключе дублирует ForceCommand sshd.
-3. Запустить `bash /boot/config/wsbackup/boot.sh` и добавить эту же строку в конец
-   `/boot/config/go`. Проверить после перезагрузки Unraid.
-
-### Несколько workstation
-
-У каждой workstation на Unraid свой пользователь, ключ, config приёмника
-(`HOST_ID`) и forced command: ключ одной машины не достаёт до копий другой.
-Первая (mbp16) остаётся как выше: пользователь `wsbackup`, `receiver.conf`
-и `authorized_keys` в корне flash. Каждая следующая — каталог
-`hosts/HOST/` на flash, `boot.sh` делает из него пользователя
-`wsbackup-HOST`:
-
-```text
-/boot/config/wsbackup/hosts/legiongo/receiver.conf     HOST_ID=legiongo, ROOT, FS_UUID; 0600
-/boot/config/wsbackup/hosts/legiongo/authorized_keys   ключ legiongo (~/.ssh/wsbackup_ed25519.pub)
-```
-
-Строка ключа — с config этой машины:
-
-```text
-restrict,command="sudo -n /usr/local/libexec/wsbackup/unraid/wsbackup-receiver /usr/local/libexec/wsbackup/hosts/legiongo.conf" ssh-ed25519 PUBLIC_KEY legiongo
-```
+Прежний файл — `~/.local/state/wsconfig/backup/config.json` (шаблон
+`backup/config.example.json`): работает, пока TOML нет. В отдельной
+конфигурации `ws backup check` печатает в `migration`, какой TOML
+написать; `ws check backup` предупреждает. ws файлы пользователя не
+переписывает: TOML пишет пользователь, затем `ws sync`, `ws backup check`,
+и только потом удаляет config.json. В checkout ядра и данных вместе
+(публичный, до разделения) подсказки нет: адреса и UUID туда не пишутся.
 
 `ROOT` может быть общим: у каждой машины свой подкаталог `ROOT/HOST_ID` и
 свой flock (`ROOT/.receiver-HOST_ID.lock`): машины не ждут друг друга, а
 второй запуск той же машины получает «receiver busy». `ws-restore` (Live
 USB) умеет только rEFInd (mbp16); для GRUB-хостов — `ws help recovery`,
 «Хосты с GRUB». На workstation — alias с `User
-wsbackup-HOST` и `config.json` с `"remote_host_id": "HOST"`; остальные
+wsbackup-HOST` и `hosts/HOST/backup.toml` с `remote_host_id = "HOST"`; остальные
 значения те же, что у mbp16. `boot.sh` с одной машиной пишет sshd и sudo
 байт в байт как прежний (`tests/test_unraid_boot.py`).
 

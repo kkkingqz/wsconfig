@@ -19,24 +19,42 @@ case "${1:-}" in
     *) echo "ws-check-backup: unknown argument: $1" >&2; exit 64 ;;
 esac
 
-config="$WS_STATE/backup/config.json"
-
 section "1. Configuration"
 
-if [[ ! -e "$config" ]]; then
-    info "not configured: $config (ws help backup)"
+# backup/config.toml and hosts/HOST/backup.toml of the configuration, else
+# the former config.json of the state (lib/backup.py current_config).
+values="$(python3 - "$WS_CORE/lib" <<'PY' 2>&1
+import sys
+sys.path.insert(0, sys.argv[1])
+import backup
+try:
+    c = backup.current_config()
+except ValueError as e:
+    print("error", e)
+    sys.exit(0)
+toml = backup.read_toml() is not None
+where = " + ".join(str(p) for p in backup.toml_paths() if p.exists()) if toml else str(backup.config_path())
+print("ok", int(len(c) > 1), int(toml), int(backup.migration() is not None), where)
+print(c.get("source_snapshot_root", ""), c.get("source_fs_uuid", ""), c.get("ssh_host", ""))
+PY
+)" || { fail "unreadable configuration: $values"; check_finish; exit; }
+read -r state configured _ old where <<<"$(head -n1 <<<"$values")"
+if [[ "$state" != ok ]]; then
+    fail "configuration: ${values#error }"
     check_finish
     exit
 fi
-values="$(python3 -c '
-import json, sys
-c = json.load(open(sys.argv[1]))
-print(c.get("source_snapshot_root", ""), c.get("source_fs_uuid", ""), c.get("ssh_host", ""))
-' "$config" 2>/dev/null)" || { fail "unreadable configuration: $config"; check_finish; exit; }
-read -r root fs_uuid ssh_host <<<"$values"
+if [[ "$configured" == 0 ]]; then
+    info "not configured: backup/config.toml and hosts/HOST/backup.toml of the configuration (ws help backup)"
+    check_finish
+    exit
+fi
+read -r root fs_uuid ssh_host <<<"$(sed -n 2p <<<"$values")"
 [[ -n "$root" && -n "$fs_uuid" && -n "$ssh_host" ]] \
-    && pass "configuration: $config" \
-    || fail "incomplete configuration (ws backup check): $config"
+    && pass "configuration: $where" \
+    || fail "incomplete configuration (ws backup check): $where"
+[[ "$old" == 0 ]] \
+    || warn "the former $where: write the TOML of the configuration instead (ws backup check prints it)"
 
 section "2. Local copy root"
 
