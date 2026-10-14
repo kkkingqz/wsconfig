@@ -2,7 +2,7 @@
 set -u
 set -o pipefail
 
-# Windows layer (windows/apps.nix, the Windows boxes of distrobox.nix):
+# Windows layer (windows/apps.nix, the Windows boxes of distrobox/catalog.toml):
 # programs point at Windows boxes and are installed in their prefixes, .exe
 # opens in the default box, menu links resolve. Read-only. wswin check; ws check runs it with --json
 # (lib/check.bash).
@@ -22,15 +22,15 @@ esac
 data="${WSWIN_DATA:-$HOME/.local/share/wsconfig}"
 boxes_json="$data/distrobox/boxes.json"
 apps_json="$data/windows/apps.json"
-# Both files are built by ws apply (distrobox/distrobox.nix, windows/apps.nix).
-# The Windows boxes: those with a profile (distrobox/distrobox.nix).
+# Both files are built by ws apply (distrobox/catalog.toml, windows/apps.nix).
+# The Windows boxes: those with a profile (distrobox/catalog.toml).
 win_boxes="$(for b in $(manifest_get "$boxes_json"); do
     [[ -z "$(manifest_get "$boxes_json" "$b" profile)" ]] || echo "$b"
 done)"
 if [[ -n "$win_boxes" ]]; then
     pass "Windows boxes: $(echo $win_boxes)"
 else
-    fail "no Windows box in boxes.json (distrobox/distrobox.nix)"
+    fail "no Windows box in boxes.json (distrobox/catalog.toml)"
 fi
 
 # Launchers exist only where the box is yes (nix/hosts/HOST/boxes.toml, else

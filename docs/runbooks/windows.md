@@ -18,7 +18,7 @@ wine          Ubuntu релиза host   WineHQ stable, XWayland: програм
 proton        Arch                 umu-launcher + Proton: игры, тяжёлое 3D
 ```
 
-Описаны в `distrobox/distrobox.nix` (`windows = { profile; driver; dpi; }`),
+Описаны в `distrobox/catalog.toml` (`windows = { profile, driver, dpi }`),
 живут как обычные managed boxes: `ws box status`, `ws box update`,
 `ws box recreate NAME`. HOME каждого — `~/distrobox/NAME`, переживает
 recreate. Что ставится при создании:
@@ -141,7 +141,7 @@ box не проверяет (INFO).
 ws gpu status
 ```
 
-`proton` (`gpu = "amd"` в `distrobox.nix`) и Steam работают на AMD, если
+`proton` (`gpu = "amd"` в `distrobox/catalog.toml`) и Steam работают на AMD, если
 система загружена в rEFInd «Ubuntu (AMD)», иначе на Intel. `ws-gpu` ищет
 render node с драйвером `amdgpu` при каждом запуске и передаёт
 `DRI_PRIME=pci-0000_03_00_0`; `ws box enter/run proton` добавляют его через
@@ -172,8 +172,8 @@ ws windows prefix --box BOX NAME remove
 
 Контейнер целиком (навсегда):
 
-1. `ws box remove BOX` — rootfs (пока контейнер ещё в `distrobox.nix`);
-2. убрать контейнер из `distrobox/distrobox.nix` и его программы из
+1. `ws box remove BOX` — rootfs (пока контейнер ещё в `distrobox/catalog.toml`);
+2. убрать контейнер из `distrobox/catalog.toml` и его программы из
    `windows/apps.nix`, `ws apply`;
 3. `rm -rf ~/distrobox/BOX` — HOME: prefixes, программы, сохранения;
 4. `ws windows menu sync` — убрать ссылки меню, ставшие битыми (`ws check`

@@ -41,17 +41,15 @@ filesystems = ["host"]
 id = "org.example.Mine"
 remote = "flathub"
 '''
-# distrobox.nix as setup reads it without Nix: name, then default.
-BOXES = '''  containers = [
-    {
-      name = "arch";
-      image = "x";
-    }
-    {
-      name = "t2bce-build";
-      default = "no";
-    }
-  ];
+# distrobox/catalog.toml as setup reads it without Nix.
+BOXES = '''[[boxes]]
+name = "arch"
+image = "x"
+
+[[boxes]]
+name = "t2bce-build"
+default = "no"
+image = "y"
 '''
 
 
@@ -71,7 +69,7 @@ class SetupTests(unittest.TestCase):
         (self.repo / 'flatpak').mkdir()
         (self.repo / 'distrobox').mkdir()
         (self.repo / 'flatpak/catalog.toml').write_text(CATALOG)
-        (self.repo / 'distrobox/distrobox.nix').write_text(BOXES)
+        (self.repo / 'distrobox/catalog.toml').write_text(BOXES)
         for host in ('mbp16', 'new'):
             (self.repo / 'nix/hosts' / host).mkdir(parents=True)
         (self.repo / 'nix/hosts/mbp16/boxes.toml').write_text('yes = ["arch", "t2bce-build"]\n')

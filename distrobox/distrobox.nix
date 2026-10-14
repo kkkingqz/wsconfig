@@ -1,6 +1,9 @@
-# Distrobox containers and their exported applications. wsbox stays the owner
-# of apply/check and reads what is built here from
-# ~/.local/share/wsconfig/distrobox (one link to the store):
+# Distrobox containers and their exported applications. The catalog of
+# containers is distrobox/catalog.toml (what the user edits; its comments
+# say the keys); this file is the logic: the hooks by name, the defaults,
+# the LogPixels by the display scale, and what it builds into
+# ~/.local/share/wsconfig/distrobox (one link to the store) for ws box and
+# ws windows:
 #
 #   containers.ini  manifest for `distrobox assemble` (its own format)
 #   boxes.json      the containers in order, for wsbox and wswin: name,
@@ -8,20 +11,7 @@
 #                   the container), gpu, default, and for Windows boxes
 #                   profile, driver, dpi, init_overrides (helpws plan-v2, 2.6)
 #
-# This file is the catalog of containers. Which host has which:
-# nix/hosts/HOST/boxes.toml (yes, no; lib/ws_catalog.py, ws box create/
-# apply/remove). A container in neither has its default: ask (offered by
-# ws box apply; the default), no (not offered; --select asks) or yes (on
-# every host without its own choice).
-#
-# Change: edit this file, `ws apply`, then `ws box apply NAME` (new container)
-# or `ws box recreate NAME` (changed image or packages, hooks; rootfs is
-# replaced, the custom HOME stays).
-#
-# Images are tags, not digests: packages inside are updated in place by
-# `ws box update` (distrobox upgrade), a new image is used on recreate. A
-# digest (repo@sha256:...) still works where a fixed image is needed; wsbox
-# check then compares the repo digest.
+# Which host has which: nix/hosts/HOST/boxes.toml (lib/ws_catalog.py).
 { config, lib, pkgs, facts, core, ... }:
 let
   # LogPixels of new prefixes by the display scale (lib/scale.nix).
@@ -38,15 +28,8 @@ let
 
   keyOrder = [ "init" "nvidia" "pull" "root" "start_now" "entry" ];
 
-  # The Ubuntu release of the host, substituted by wsbox from
-  # /etc/os-release (VERSION_ID). For build containers: what they build must
-  # match the host (kernel modules, binaries against the host glibc). After a
-  # host release upgrade wsbox check reports image drift: wsbox recreate NAME.
-  hostUbuntu = "docker.io/library/ubuntu:@HOST_VERSION_ID@";
-
   # Hooks run as root on every container start (init_hooks at the end of
-  # distrobox-init, pre_init_hooks before its package setup): each one
-  # returns at once when its work is done.
+  # distrobox-init, pre_init_hooks before its package setup).
   #
   # Their path is fixed when a container is created, so it must not change:
   # not the core in the store (a new path with every change, gone after a
@@ -58,107 +41,88 @@ let
   # files; what it needs, such as the user of a build, is an argument
   # (helpws plan-v2, stage 5).
   hooks = "${config.home.homeDirectory}/.local/share/wsconfig/hooks";
-  #
-  # Before any Wine package on Arch: the host kernel provides ntsync, the
-  # virtual provider keeps pacman/paru from pulling an Arch kernel.
-  # makepkg runs as the user of the container: distrobox makes the host user.
-  ntsyncHook = "sh ${hooks}/arch/wsbox-host-ntsync/install-hook ${facts.user}";
-  # Packages that need the provider (wine -> ntsync-autoload), so not
-  # additional_packages: those are installed before the init hooks.
-  pacmanHook = pkgs: "sh ${hooks}/arch/pacman-install-hook ${lib.concatStringsSep " " pkgs}";
-  multilibHook = "sh ${hooks}/arch/multilib-hook";
 
-  # Windows boxes (wswin, helpws history-windows):
-  #   profile  wine: wine/winetricks; proton: umu-run
-  #   driver   Wine graphics driver written into every new prefix
-  #   dpi      LogPixels of a new prefix (192 = 200%)
-  #   initOverrides  WINEDLLOVERRIDES for wineboot of a new prefix
-  #   gpu      amd: DRI_PRIME to the AMD card when the boot has it (ws-gpu),
-  #            Intel otherwise
-  # A box for one program later: one more entry with the same profile.
+  # The hook names of catalog.toml: NAME -> { path under hooks; fixed:
+  # arguments from Nix; needsArgs: the catalog gives arguments, else it
+  # gives none }. ntsync gets the user: makepkg runs as the user of the
+  # container, which distrobox makes for the host user.
+  hookTable = {
+    ntsync = { path = "arch/wsbox-host-ntsync/install-hook"; fixed = [ facts.user ]; };
+    pacman-install = { path = "arch/pacman-install-hook"; needsArgs = true; };
+    multilib = { path = "arch/multilib-hook"; };
+    winehq-install = { path = "wine/winehq-install-hook"; };
+    locale = { path = "wine/locale-hook"; needsArgs = true; };
+  };
+  hookLine = box: line:
+    let
+      words = lib.filter (w: w != "") (lib.splitString " " line);
+      name = lib.head words;
+      args = lib.tail words;
+      h = hookTable.${name} or (throw
+        "distrobox/catalog.toml: ${box}: unknown hook ${name} (hooks: ${lib.concatStringsSep ", " (lib.attrNames hookTable)})");
+    in
+    if (h.needsArgs or false) && args == [ ] then
+      throw "distrobox/catalog.toml: ${box}: hook ${name} needs arguments"
+    else if !(h.needsArgs or false) && args != [ ] then
+      throw "distrobox/catalog.toml: ${box}: hook ${name} takes no arguments"
+    else lib.concatStringsSep " " ([ "sh" "${hooks}/${h.path}" ] ++ (h.fixed or [ ]) ++ args);
 
-  # In manifest order. HOME of every container: ~/distrobox/NAME (survives
-  # recreate). The host HOME is mounted as well, at its own path: sources
-  # such as ~/touchbar are reached as /home/<user>/touchbar.
-  containers = [
+  schema = import ../lib/schema.nix { inherit lib; };
+  boxType = schema.table {
+    keys = {
+      name = schema.string;
+      image = schema.string;
+      packages = schema.strings;
+      pre_init_hooks = schema.strings;
+      init_hooks = schema.strings;
+      default = schema.oneOf [ "ask" "no" "yes" ];
+      gpu = schema.oneOf [ "amd" ];
+      exports = schema.attrsOf schema.string;
+      settings = schema.table {
+        keys = lib.genAttrs keyOrder (_: schema.bool);
+      };
+      windows = schema.table {
+        keys = {
+          profile = schema.oneOf [ "wine" "proton" ];
+          driver = schema.oneOf [ "wayland" "x11" ];
+          dpi = schema.int;
+          init_overrides = schema.string;
+        };
+        required = [ "profile" ];
+      };
+    };
+    required = [ "name" "image" ];
+  };
+  catalog = (import ../lib/config.nix { inherit lib; }).read {
+    file = ./catalog.toml;
+    type = schema.table { keys.boxes = schema.listOf boxType; required = [ "boxes" ]; };
+  };
+
+  # The catalog in the form of the rest of this file.
+  fromToml = b:
     {
-      name = "arch";
-      # Arch is rolling: pacman -Syu inside (wsbox update). Recreate only
-      # when needed; AUR packages are installed again by hand
-      # (helpws rebuild).
-      image = "docker.io/library/archlinux:latest";
-      # base-devel: makepkg for the hook and for AUR (paru).
-      packages = [ "base-devel" "git" ];
-      # No Wine here since 2026-09-28 (WinBox moved to wine); the provider
-      # stays so an AUR package that pulls wine does not pull a kernel.
-      initHooks = [ ntsyncHook ];
+      inherit (b) name image;
+      preInitHooks = map (hookLine b.name) (b.pre_init_hooks or [ ]);
+      initHooks = map (hookLine b.name) (b.init_hooks or [ ]);
     }
-    {
-      # Default Windows box: Wine from Arch with its native Wayland driver.
-      name = "wine-wayland";
-      image = "docker.io/library/archlinux:latest";
-      # icoutils: icons of portable programs (wswin portable).
-      packages = [ "base-devel" "git" "icoutils" "mesa" "vulkan-intel" "vulkan-radeon" ];
-      initHooks = [ ntsyncHook (pacmanHook [ "wine" "wine-mono" "wine-gecko" "winetricks" ]) ];
-      # LogPixels 96 x scale: the Wayland driver does not scale (144 at 1.5).
-      windows = { profile = "wine"; driver = "wayland"; dpi = scale.dpi; };
-    }
-    {
-      # Wine through XWayland (xwayland-native-scaling, so LogPixels 128 x
-      # scale, 192 at 1.5):
-      # programs the Wayland driver does not suit (none yet). WineHQ stable,
-      # amd64 only (WoW64), from the hook.
-      name = "wine";
-      image = hostUbuntu;
-      packages = [ "ca-certificates" "icoutils" "mesa-vulkan-drivers" ];
-      initHooks = [
-        "sh ${hooks}/wine/winehq-install-hook"
-        # The Arch boxes have every locale (glibc-locales).
-        "sh ${hooks}/wine/locale-hook ru_RU.UTF-8"
-      ];
-      # WineHQ has no Mono/Gecko packages: wineboot would ask to download
-      # them; winetricks adds them to a prefix that needs them.
-      windows = { profile = "wine"; driver = "x11"; dpi = scale.dpiX11; initOverrides = "mscoree,mshtml="; };
-    }
-    {
-      # Games and heavy 3D: umu-launcher runs Proton (UMU-Proton by default)
-      # in the Steam Runtime; both are downloaded into the container HOME.
-      # multilib: umu-launcher and the 32-bit drivers for DXVK.
-      name = "proton";
-      image = "docker.io/library/archlinux:latest";
-      packages = [
-        "base-devel" "git" "icoutils" "mesa" "lib32-mesa" "vulkan-intel" "lib32-vulkan-intel"
-        "vulkan-radeon" "lib32-vulkan-radeon" "vulkan-tools" "umu-launcher"
-      ];
-      preInitHooks = [ multilibHook ];
-      initHooks = [ ntsyncHook ];
-      gpu = "amd";
-      # Proton draws through XWayland (xwayland-native-scaling): LogPixels
-      # 96 x scale, as in wine-wayland.
-      windows = { profile = "proton"; dpi = scale.dpi; };
-    }
-    {
-      # Manual kernel/module builds; the t2bce modules themselves are built by
-      # ws-suspend in a one-off container. T2 only: not offered elsewhere.
-      name = "t2bce-build";
-      default = "no";
-      image = hostUbuntu;
-      packages = [ "build-essential" "bison" "flex" "kmod" "libelf-dev" "libssl-dev" ];
-    }
-    {
-      # Touch Bar port (/home/<user>/touchbar). Rust: rustup in the
-      # container HOME (~/distrobox/touchbar-build/.rustup, .cargo; PATH from
-      # its .profile and fish conf.d), so it survives recreate. T2 only.
-      name = "touchbar-build";
-      default = "no";
-      image = hostUbuntu;
-      packages = [
-        "build-essential" "git" "pkg-config" "libdrm-dev" "libegl-dev" "libgles-dev"
-        "libinput-dev" "libsystemd-dev" "libudev-dev" "libwayland-dev" "ripgrep"
-        "shellcheck" "systemd"
-      ];
-    }
-  ];
+    // lib.optionalAttrs (b ? packages) { inherit (b) packages; }
+    // lib.optionalAttrs (b ? default) { inherit (b) default; }
+    // lib.optionalAttrs (b ? gpu) { inherit (b) gpu; }
+    // lib.optionalAttrs (b ? exports) { inherit (b) exports; }
+    // lib.optionalAttrs (b ? settings) { inherit (b) settings; }
+    // lib.optionalAttrs (b ? windows) {
+      windows = {
+        inherit (b.windows) profile;
+        # LogPixels by the display scale (lib/scale.nix): 128 per 1.0 through
+        # XWayland with native scaling (driver x11), 96 otherwise (the
+        # Wayland driver does not scale; Proton).
+        dpi = b.windows.dpi or (if (b.windows.driver or null) == "x11" then scale.dpiX11 else scale.dpi);
+      }
+      // lib.optionalAttrs (b.windows ? driver) { inherit (b.windows) driver; }
+      // lib.optionalAttrs (b.windows ? init_overrides) { initOverrides = b.windows.init_overrides; };
+    };
+
+  containers = map fromToml catalog.boxes;
 
   value = v: if lib.isBool v then lib.boolToString v else toString v;
 

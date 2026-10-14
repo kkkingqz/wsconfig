@@ -1,5 +1,5 @@
 # Windows programs with a GNOME launcher. The boxes and their profiles are in
-# distrobox/distrobox.nix; wswin installs and runs (helpws windows).
+# distrobox/catalog.toml; wswin installs and runs (helpws windows).
 #
 # Built into ~/.local/share/wsconfig/windows/apps.json for wswin and one
 # launcher ~/.local/share/applications/ws-win-NAME.desktop per program
@@ -22,7 +22,7 @@
 # default application for the .exe types with xdg-mime.
 #
 # The launchers only on a host that has the box: yes in
-# nix/hosts/HOST/boxes.toml, else the default of the box in distrobox.nix
+# nix/hosts/HOST/boxes.toml, else the default of the box in distrobox/catalog.toml
 # (lib/catalog.nix); apps.json lists every program.
 { config, lib, wsHost, core, ... }:
 let

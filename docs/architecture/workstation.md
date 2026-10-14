@@ -509,7 +509,8 @@ Host сознательно не используется как общий deve
 Source of truth:
 
 ```text
-distrobox/distrobox.nix                контейнеры и экспорты
+distrobox/catalog.toml                 контейнеры и экспорты (каталог)
+distrobox/distrobox.nix                hooks по имени, значения по умолчанию, манифесты
 system/files/modules-load.d/ntsync.conf         ставит ws apply system
 distrobox/arch/wsbox-host-ntsync/  PKGBUILD NTSYNC-MODULE для Arch-контейнеров
 distrobox/arch/*-hook, wine/       хуки установки Windows-контейнеров
@@ -517,11 +518,11 @@ windows/apps.nix                   Windows-программы с launcher (helpw
 bin/wsbox, bin/wswin, bin/ws-gpu
 ```
 
-Контейнеры объявлены в `distrobox/distrobox.nix` (общие
-значения по умолчанию, у контейнера — только образ, HOME, пакеты,
-экспорты). `ws apply` собирает из них `containers.ini` (формат
+Контейнеры объявлены в `distrobox/catalog.toml` (у контейнера — образ,
+пакеты, hooks по имени, экспорты); общие значения по умолчанию, пути hooks
+и LogPixels по масштабу — в `distrobox/distrobox.nix`. `ws apply` собирает из них `containers.ini` (формат
 `distrobox assemble`) и `boxes.json` (контейнеры, hooks, экспорты) в
-`~/.local/share/wsconfig/distrobox/`, `ws box` и `ws windows` читают оттуда. Изменение: правка `distrobox.nix`, `ws apply`,
+`~/.local/share/wsconfig/distrobox/`, `ws box` и `ws windows` читают оттуда. Изменение: правка `distrobox/catalog.toml`, `ws apply`,
 затем `ws box apply NAME` или `ws box recreate NAME`.
 
 Managed containers:
@@ -546,10 +547,10 @@ touchbar-build  Ubuntu релиза хоста, порт Touch Bar (~/touchbar):
 новый образ берётся только при `ws box recreate NAME`: rootfs пересоздаётся,
 HOME остаётся, пакеты из AUR в `arch` ставятся заново (`helpws rebuild`,
 раздел 6.3). Build-контейнеры берут релиз Ubuntu хоста (`@HOST_VERSION_ID@`
-в `distrobox.nix`, `ws box` подставляет `VERSION_ID` из `/etc/os-release`):
+в `distrobox/catalog.toml`, `ws box` подставляет `VERSION_ID` из `/etc/os-release`):
 то, что в них собирается, должно совпадать с хостом. После обновления
 Ubuntu `ws box check` покажет image drift — `ws box recreate NAME`. Закрепить
-образ: `repo@sha256:…` в `distrobox.nix`, `ws box check` сверит repo digest.
+образ: `repo@sha256:…` в `distrobox/catalog.toml`, `ws box check` сверит repo digest.
 
 Arch-контейнеры (`arch`, `wine-wayland`, `proton`) используют NTSync из host
 T2 kernel. Host загружает `ntsync`, а `wsbox-host-ntsync` внутри Arch только
@@ -848,7 +849,7 @@ wsconfig/
 ├── keyboard/             keyboard.nix, xremap.nix, xremap.yml
 ├── terminal/             fish/, ghostty/, micro-help/, xdg-terminals/
 ├── flatpak/              flatpak.nix, catalog.toml, desktop/
-├── distrobox/            distrobox.nix, arch/ (wsbox-host-ntsync, хуки), wine/
+├── distrobox/            catalog.toml, distrobox.nix, arch/ (wsbox-host-ntsync, хуки), wine/
 ├── windows/              apps.nix (Windows-программы с launcher)
 ├── steam/                apt.txt, bootstrap.bash (Steam из apt, @steam; nativeSteam)
 ├── gaming/               sources.nix, build.sh, apt.txt (Game Mode; wsgame, helpws gaming)

@@ -1,0 +1,131 @@
+# Distrobox containers: the catalog (helpws distrobox). distrobox.nix builds
+# containers.ini for distrobox assemble and boxes.json for ws box and
+# ws windows from it. Which host has which: nix/hosts/HOST/boxes.toml
+# (yes, no; ws box create/apply/remove). A container in neither has its
+# default: ask (offered by ws box apply; the default), no (not offered;
+# --select asks) or yes (on every host without its own choice).
+#
+# Change: edit this file, then ws apply distrobox (a new container) or
+# ws box recreate NAME (another image, packages or hooks; rootfs is
+# replaced, the custom HOME stays). ws sync publishes the file.
+#
+# In manifest order. HOME of every container: ~/distrobox/NAME (survives
+# recreate). The host HOME is mounted as well, at its own path: sources
+# such as ~/touchbar are reached as /home/<user>/touchbar.
+#
+# Images are tags, not digests: packages inside are updated in place by
+# ws box update (distrobox upgrade), a new image is used on recreate. A
+# digest (repo@sha256:...) still works where a fixed image is needed;
+# ws box check then compares the repo digest. @HOST_VERSION_ID@: the Ubuntu
+# release of the host (/etc/os-release, substituted by ws box), for build
+# containers whose results must match the host (kernel modules, binaries
+# against the host glibc); after a host release upgrade ws box check
+# reports image drift: ws box recreate NAME.
+#
+# Keys of a container:
+#   name, image        required
+#   packages           additional_packages of distrobox
+#   pre_init_hooks     run as root on every start before the package setup
+#   init_hooks         run as root at the end of every start; each returns
+#                      at once when its work is done. A hook is a name and
+#                      its arguments (distrobox.nix knows the names):
+#                        ntsync                 wsbox-host-ntsync, the
+#                                               NTSYNC-MODULE provider (Arch)
+#                        pacman-install PKG...  packages after the other
+#                                               hooks (Arch)
+#                        multilib               [multilib] (Arch, pre-init)
+#                        winehq-install         WineHQ stable (Ubuntu)
+#                        locale LOCALE...       locales (Ubuntu)
+#   default            ask (if missing), no or yes
+#   gpu                amd: DRI_PRIME to the AMD card when the boot has it
+#                      (ws-gpu), Intel otherwise
+#   exports            ALIAS = "desktop file inside the container"
+#   settings           init, nvidia, pull, root, start_now, entry (true or
+#                      false; defaults: pull = true, the rest false)
+#   windows            a Windows box (ws windows, helpws history-windows):
+#                        profile         wine: wine/winetricks; proton: umu-run
+#                        driver          Wine graphics driver of every new
+#                                        prefix (wayland, x11)
+#                        dpi             LogPixels of a new prefix; default by
+#                                        the display scale: 128 x scale with
+#                                        driver x11 (XWayland, native
+#                                        scaling), else 96 x scale
+#                        init_overrides  WINEDLLOVERRIDES for wineboot of a
+#                                        new prefix
+#                      A box for one program later: one more entry with the
+#                      same profile.
+
+[[boxes]]
+name = "arch"
+# Arch is rolling: pacman -Syu inside (ws box update). Recreate only when
+# needed; AUR packages are installed again by hand (helpws rebuild).
+image = "docker.io/library/archlinux:latest"
+# base-devel: makepkg for the hook and for AUR (paru).
+packages = ["base-devel", "git"]
+# No Wine here since 2026-09-28 (WinBox moved to wine); the provider stays
+# so an AUR package that pulls wine does not pull a kernel.
+init_hooks = ["ntsync"]
+
+[[boxes]]
+# Default Windows box: Wine from Arch with its native Wayland driver.
+name = "wine-wayland"
+image = "docker.io/library/archlinux:latest"
+# icoutils: icons of portable programs (ws windows portable).
+packages = ["base-devel", "git", "icoutils", "mesa", "vulkan-intel", "vulkan-radeon"]
+# Before any Wine package: the host kernel provides ntsync, the provider
+# keeps pacman/paru from pulling an Arch kernel; wine needs it
+# (ntsync-autoload), so it is not in packages: those come before the hooks.
+init_hooks = ["ntsync", "pacman-install wine wine-mono wine-gecko winetricks"]
+# The Wayland driver does not scale: LogPixels 96 x scale (144 at 1.5).
+windows = { profile = "wine", driver = "wayland" }
+
+[[boxes]]
+# Wine through XWayland (xwayland-native-scaling, so LogPixels 128 x scale,
+# 192 at 1.5): programs the Wayland driver does not suit (none yet).
+# WineHQ stable, amd64 only (WoW64), from the hook.
+name = "wine"
+image = "docker.io/library/ubuntu:@HOST_VERSION_ID@"
+packages = ["ca-certificates", "icoutils", "mesa-vulkan-drivers"]
+# The Arch boxes have every locale (glibc-locales).
+init_hooks = ["winehq-install", "locale ru_RU.UTF-8"]
+# WineHQ has no Mono/Gecko packages: wineboot would ask to download them;
+# winetricks adds them to a prefix that needs them.
+windows = { profile = "wine", driver = "x11", init_overrides = "mscoree,mshtml=" }
+
+[[boxes]]
+# Games and heavy 3D: umu-launcher runs Proton (UMU-Proton by default) in
+# the Steam Runtime; both are downloaded into the container HOME.
+# multilib: umu-launcher and the 32-bit drivers for DXVK.
+name = "proton"
+image = "docker.io/library/archlinux:latest"
+packages = [
+  "base-devel", "git", "icoutils", "mesa", "lib32-mesa", "vulkan-intel", "lib32-vulkan-intel",
+  "vulkan-radeon", "lib32-vulkan-radeon", "vulkan-tools", "umu-launcher",
+]
+pre_init_hooks = ["multilib"]
+init_hooks = ["ntsync"]
+gpu = "amd"
+# Proton draws through XWayland (xwayland-native-scaling): LogPixels
+# 96 x scale, as in wine-wayland.
+windows = { profile = "proton" }
+
+[[boxes]]
+# Manual kernel/module builds; the t2bce modules themselves are built by
+# ws suspend in a one-off container. T2 only: not offered elsewhere.
+name = "t2bce-build"
+default = "no"
+image = "docker.io/library/ubuntu:@HOST_VERSION_ID@"
+packages = ["build-essential", "bison", "flex", "kmod", "libelf-dev", "libssl-dev"]
+
+[[boxes]]
+# Touch Bar port (/home/<user>/touchbar). Rust: rustup in the container
+# HOME (~/distrobox/touchbar-build/.rustup, .cargo; PATH from its .profile
+# and fish conf.d), so it survives recreate. T2 only.
+name = "touchbar-build"
+default = "no"
+image = "docker.io/library/ubuntu:@HOST_VERSION_ID@"
+packages = [
+  "build-essential", "git", "pkg-config", "libdrm-dev", "libegl-dev", "libgles-dev",
+  "libinput-dev", "libsystemd-dev", "libudev-dev", "libwayland-dev", "ripgrep",
+  "shellcheck", "systemd",
+]

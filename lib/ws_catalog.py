@@ -2,7 +2,7 @@
 """Catalogs and the choice of each host (helpws plan-v2, stage 3).
 
 A module's catalog is all it can install: the Flatpak apps, the containers
-of distrobox.nix, the widgets of the pinned wswidgets. Each position has a
+of distrobox/catalog.toml, the widgets of the pinned wswidgets. Each position has a
 default, what a host without its own choice gets:
 
     ask  offered (apply asks: "Поставить все? [Y/n]", then a checklist)
@@ -46,7 +46,6 @@ about everything without a choice of the host: exit 2 when cancelled
 """
 import os
 from pathlib import Path
-import re
 import sys
 import tomllib
 
@@ -241,23 +240,18 @@ CANCELLED, NO_TERMINAL = ws_select.CANCELLED, ws_select.NO_TERMINAL
 
 def box_catalog(config=None):
     """[(name, default)] of the containers: boxes.json of the build
-    (distrobox.nix through ws apply), else distrobox/distrobox.nix read
-    without Nix (setup runs before bootstrap installs it): its name = "..."
-    lines and the default = "..." after them (helpws plan-v2: TOML at
-    stage 7)."""
+    (distrobox/catalog.toml through ws apply), else distrobox/catalog.toml
+    itself (setup runs before bootstrap installs Nix)."""
     built = ws_common.load(Path(os.environ.get("WSBOX_CONFIG") or
                                 Path.home() / ".local/share/wsconfig/distrobox") / "boxes.json")
     if isinstance(built, list) and config is None:
         return [(b["name"], b.get("default", "ask")) for b in built]
-    boxes = []
-    path = Path(config or ws_common.CONFIG) / "distrobox/distrobox.nix"
-    for line in (path.read_text() if path.exists() else "").splitlines():
-        m = re.fullmatch(r'\s*(name|default) = "([^"]+)";', line)
-        if m and m[1] == "name":
-            boxes.append([m[2], "ask"])
-        elif m and boxes:
-            boxes[-1][1] = m[2]
-    return [tuple(b) for b in boxes]
+    path = Path(config or ws_common.CONFIG) / "distrobox/catalog.toml"
+    try:
+        boxes = tomllib.loads(path.read_text()).get("boxes", [])
+    except OSError:
+        return []
+    return [(b["name"], b.get("default", "ask")) for b in boxes if isinstance(b, dict) and "name" in b]
 
 
 def widget_catalog(config=None):
@@ -282,7 +276,7 @@ def checklist(term, title, items):
 def setup(config, host, term):
     """The choices of setup.sh (helpws setup), as checklists, so ws apply
     asks nothing afterwards: the apps of flatpak/catalog.toml and the
-    containers of distrobox.nix without a choice of this host, with
+    containers of distrobox/catalog.toml without a choice of this host, with
     widgets = true the widgets some host has in yes (ws widgets apply
     offers the rest later), and the catalog overrides of the apps the host
     gets. Default ask and yes start checked, no unchecked; an unchecked

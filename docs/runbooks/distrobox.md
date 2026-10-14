@@ -12,7 +12,8 @@ Distrobox под rootless Podman. Как слой появился: `helpws hist
 ## Источник
 
 ```text
-distrobox/distrobox.nix          контейнеры, пакеты, hooks, экспорты
+distrobox/catalog.toml           каталог: контейнеры, пакеты, hooks по имени, экспорты
+distrobox/distrobox.nix          логика: hooks, значения по умолчанию, сборка манифестов
 distrobox/arch/…, distrobox/wine/…  hooks (root, при каждом старте; сделанное пропускают)
 distrobox/arch/wsbox-host-ntsync/   пакет-заглушка NTSYNC-MODULE для Arch
 libexec/wsbox                    владелец: apply, check, update, recreate
@@ -77,9 +78,9 @@ ws box export NAME APP | unexport NAME APP
 ```
 
 `apply` не трогает существующий контейнер. `recreate` и `remove` меняют
-только rootfs; описание в `distrobox.nix` и HOME остаются.
+только rootfs; описание в `distrobox/catalog.toml` и HOME остаются.
 
-`distrobox.nix` — каталог: все контейнеры, которые можно создать. Какие
+`distrobox/catalog.toml` — каталог: все контейнеры, которые можно создать. Какие
 есть на машине — её `nix/hosts/HOST/boxes.toml` (`lib/ws_catalog.py`,
 `helpws plan-v2`, этап 3):
 
@@ -89,10 +90,10 @@ no = ["proton"]                  # отказались
 ```
 
 Контейнер, которого нет ни там, ни там, получает свой `default` из
-`distrobox.nix`: `ask` (по умолчанию) — предложить, `no` — не предлагать
+`distrobox/catalog.toml`: `ask` (по умолчанию) — предложить, `no` — не предлагать
 (`t2bce-build`, `touchbar-build`: только T2), `yes` — создать на каждой
 машине без своего выбора. `ws box create NAME` и `ws box apply NAME` ставят
-контейнер в `yes`, `ws box remove NAME` — в `no` (описание в `distrobox.nix`
+контейнер в `yes`, `ws box remove NAME` — в `no` (описание в `distrobox/catalog.toml`
 остаётся). `recreate` выбор не трогает. Каждая машина пишет только свой
 файл, комментарии в нём сохраняются; публикует его `ws sync`.
 
@@ -111,7 +112,8 @@ Enter, Esc/q), ответ пишется в `boxes.toml`. Esc/q отменяет
 
 ## Изменить контейнер
 
-1. Правка `distrobox/distrobox.nix`, `ws apply`.
+1. Правка `distrobox/catalog.toml` (ключи — в его комментарии), `ws apply`;
+   `ws sync` публикует файл.
 2. Новый контейнер — `ws box apply NAME`; другой образ, пакеты или hooks —
    `ws box recreate NAME`.
 3. `ws box check`.

@@ -224,7 +224,7 @@ ntsync_boxes="$(
         index($0, hook) == 1 { print box }
     ' "$HOME/.local/share/wsconfig/distrobox/containers.ini" 2>/dev/null
 )"
-[[ -n "$ntsync_boxes" ]] || fail "no box runs the NTSync hook (distrobox/distrobox.nix; ws apply)"
+[[ -n "$ntsync_boxes" ]] || fail "no box runs the NTSync hook (distrobox/catalog.toml; ws apply)"
 for box in $ntsync_boxes; do
     if [[ "$(podman inspect -f '{{.State.Running}}' "$box" 2>/dev/null || true)" != true ]]; then
         info "$box not running; NTSync inside not checked"

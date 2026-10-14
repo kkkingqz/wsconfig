@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Declared in distrobox/distrobox.nix; ws apply builds
+# Declared in distrobox/catalog.toml; ws apply builds
 # ~/.local/share/wsconfig/distrobox. wsbox only reads it: boxes.json (the
 # containers, their hooks and exports) and containers.ini for distrobox
 # assemble, rendered first (@HOST_VERSION_ID@: the host release from
@@ -17,7 +17,7 @@ hooks_dir="${WSBOX_HOOKS:-$HOME/.local/share/wsconfig/hooks}"
 ws_prog="ws box"
 # Which containers this host has: nix/hosts/HOST/boxes.toml in the
 # configuration, yes = [...], no = [...]; a container in neither has its
-# default of distrobox.nix (boxes.json; lib/ws_catalog.py). create/apply NAME
+# default of distrobox/catalog.toml (boxes.json; lib/ws_catalog.py). create/apply NAME
 # put it in yes, remove in no, apply asks about the containers in state ask;
 # ws sync publishes the file.
 catalog_py="$WS_CORE/lib/ws_catalog.py"
@@ -902,7 +902,7 @@ cmd_remove() {
         --yes \
         "$name"
 
-    # The host choice: no. The definition in distrobox.nix stays.
+    # The host choice: no. The definition in distrobox/catalog.toml stays.
     mark_box "$name" no
     echo "no on $ws_host in $hosts_file: $name"
 
