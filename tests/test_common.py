@@ -95,6 +95,17 @@ manifest_get "$f" a home; manifest_get "$f" b home; manifest_get "$f" c home; ma
         self.assertEqual(p.stdout.split("\n"), ["a", "b", "-", "x", "y", "-", "/y", "h1 arg", "h2", "3", "true",
                                                 "${HOME}/a", "end", ""])
 
+    def test_manifest_rows(self):
+        manifest = self.tmp / "k.json"
+        manifest.write_text('{"shortcuts": [{"schema": "s", "key": "k", "value": "[\'a b\']", "kind": "required"},'
+                            ' {"schema": "t", "key": "x", "value": "@as []"}]}')
+        p = self.run_tool(f'''while IFS=$'\\t' read -r schema key value kind; do
+    echo "$schema|$key|$value|$kind"
+done < <(manifest_rows {manifest} schema,key,value,kind shortcuts)
+manifest_rows {manifest} key nothing; echo end
+''')
+        self.assertEqual(p.stdout, "s|k|['a b']|required\nt|x|@as []|\nend\n")
+
     def test_state_name_is_the_same_everywhere(self):
         name = ws_common.STATE_NAME
         self.assertIn('/.local/state}/%s}"' % name, (ROOT / "lib/common.bash").read_text())

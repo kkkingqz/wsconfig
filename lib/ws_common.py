@@ -77,12 +77,26 @@ def load(path):
         return None
 
 
+def rows(value, fields):
+    """The FIELDS of each entry of a list, tab-separated: for `while IFS=$'\\t'
+    read`."""
+    if not isinstance(value, list):
+        return []
+    return ["\t".join(str(e.get(f, "")) if isinstance(e, dict) else "" for f in fields)
+            for e in value]
+
+
 if __name__ == "__main__":
-    # ws_common.py get FILE [KEY...]: for the bash tools (no jq on the
-    # hosts). Nothing is printed for a missing file or key.
+    # For the bash tools (no jq on the hosts); nothing is printed for a
+    # missing file or key:
+    #   ws_common.py get FILE [KEY...]
+    #   ws_common.py rows FILE FIELD,FIELD... [KEY...]
     if len(sys.argv) >= 3 and sys.argv[1] == "get":
-        for line in lines(get(load(sys.argv[2]), *sys.argv[3:])):
-            print(line)
-        sys.exit(0)
-    print("usage: ws_common.py get FILE [KEY...]", file=sys.stderr)
-    sys.exit(64)
+        out = lines(get(load(sys.argv[2]), *sys.argv[3:]))
+    elif len(sys.argv) >= 4 and sys.argv[1] == "rows":
+        out = rows(get(load(sys.argv[2]), *sys.argv[4:]), sys.argv[3].split(","))
+    else:
+        print("usage: ws_common.py get FILE [KEY...] | rows FILE FIELD,... [KEY...]", file=sys.stderr)
+        sys.exit(64)
+    for line in out:
+        print(line)

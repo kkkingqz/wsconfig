@@ -48,3 +48,9 @@ nix_bin() {
 manifest_get() {
     python3 "$WS_CORE/lib/ws_common.py" get "$@"
 }
+
+# The FIELDs of each entry of a list, tab-separated, one entry per line:
+# manifest_rows FILE FIELD,FIELD... KEY...
+manifest_rows() {
+    python3 "$WS_CORE/lib/ws_common.py" rows "$@"
+}

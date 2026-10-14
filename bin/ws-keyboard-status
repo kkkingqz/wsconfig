@@ -53,14 +53,14 @@ systemctl --user is-active --quiet xremap.service 2>/dev/null && ok "Service" ||
 echo
 echo "GNOME bindings"
 # Keys of the profile in keyboard/keyboard.nix (built by ws switch).
-kb_shortcuts="$HOME/.local/share/workstation/keyboard/gnome-shortcuts.tsv"
+kb_shortcuts="${WS_KEYBOARD_MANIFEST:-$HOME/.local/share/workstation/keyboard/keyboard.json}"
 [[ -r "$kb_shortcuts" ]] || warn "Shortcut data" "missing $kb_shortcuts (ws switch)"
 [[ -r "$kb_shortcuts" ]] && while IFS=$'\t' read -r schema key _ _; do
-    [[ -z "$schema" || "$schema" == \#* ]] && continue
+    [[ -n "$schema" ]] || continue
     if gsettings list-keys "$schema" 2>/dev/null | grep -Fxq "$key"; then
         printf '  %-30s %s\n' "$key" "$(gsettings get "$schema" "$key")"
     fi
-done < "$kb_shortcuts"
+done < <(manifest_rows "$kb_shortcuts" schema,key,value,kind shortcuts)
 
 if command -v xremap >/dev/null 2>&1; then
     echo

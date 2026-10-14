@@ -112,13 +112,13 @@ fi
 section "2. GNOME shortcuts"
 
 # The profile of keyboard/keyboard.nix, set by ws-keyboard-apply.
-kb_dir="$HOME/.local/share/workstation/keyboard"
+kb_json="${WS_KEYBOARD_MANIFEST:-$HOME/.local/share/workstation/keyboard/keyboard.json}"
 
-if have gsettings && [[ -r "$kb_dir/gnome-shortcuts.tsv" ]]; then
+if have gsettings && [[ -r "$kb_json" ]]; then
     kb_total=0
     kb_bad=0
     while IFS=$'\t' read -r schema key value kind; do
-        [[ -z "$schema" || "$schema" == \#* ]] && continue
+        [[ -n "$schema" ]] || continue
         if [[ "$kind" == optional ]] && ! gsettings range "$schema" "$key" >/dev/null 2>&1; then
             continue
         fi
@@ -132,7 +132,7 @@ if have gsettings && [[ -r "$kb_dir/gnome-shortcuts.tsv" ]]; then
             ((kb_bad += 1))
             fail "GNOME shortcut $schema $key = ${actual:-MISSING}, profile: $value (ws apply keyboard)"
         fi
-    done < "$kb_dir/gnome-shortcuts.tsv"
+    done < <(manifest_rows "$kb_json" schema,key,value,kind shortcuts)
     ((kb_bad == 0)) && pass "GNOME shortcuts match keyboard/keyboard.nix ($kb_total keys)"
 else
     fail "gsettings or keyboard shortcut data missing"
@@ -144,13 +144,13 @@ ta_schema="org.gnome.shell.extensions.tiling-assistant"
 if have gsettings && gsettings list-keys "$ta_schema" >/dev/null 2>&1; then
     pass "Tiling Assistant GSettings schema present"
     # Private chords of keyboard/keyboard.nix, appended by ws-tiling-apply.
-    if [[ -r "$kb_dir/tiling-bindings.tsv" ]]; then
+    if [[ -r "$kb_json" ]]; then
         while IFS=$'\t' read -r key binding; do
-            [[ -z "$key" || "$key" == \#* ]] && continue
+            [[ -n "$key" ]] || continue
             gcontains "$ta_schema" "$key" "'$binding'" "private $key: $binding"
-        done < "$kb_dir/tiling-bindings.tsv"
+        done < <(manifest_rows "$kb_json" key,binding tiling)
     else
-        fail "missing $kb_dir/tiling-bindings.tsv (ws switch)"
+        fail "missing $kb_json (ws switch)"
     fi
 else
     fail "Tiling Assistant GSettings schema missing"

@@ -4,13 +4,13 @@
 # bindings depend on xremap), saves the originals once and `ws-keyboard
 # restore` puts them back; home-manager would write them on every switch.
 #
-# Built for the scripts into ~/.local/share/workstation/keyboard/:
-#   gnome-shortcuts.tsv  SCHEMA<TAB>KEY<TAB>VALUE<TAB>required|optional
-#                        VALUE as `gsettings get` prints it; read by
-#                        ws-keyboard-apply (set, backup, preflight),
-#                        ws-workstation-verify and ws-keyboard-status
-#   tiling-bindings.tsv  KEY<TAB>BINDING, appended by ws-tiling-apply to the
-#                        Tiling Assistant defaults; checked by verify
+# Built for the scripts into ~/.local/share/workstation/keyboard/keyboard.json
+# (helpws plan-v2, 2.6):
+#   shortcuts  [{schema, key, value, kind: required|optional}], value as
+#              `gsettings get` prints it; read by ws-keyboard-apply (set,
+#              backup, preflight), ws-keyboard check and ws-keyboard status
+#   tiling     [{key, binding}], appended by ws-tiling-apply to the Tiling
+#              Assistant defaults; checked by ws-keyboard check
 #
 # Change: edit here, `ws switch`, `ws apply keyboard` (or `ws apply tiling`).
 # The original GNOME values of a newly added key are not in the existing
@@ -163,22 +163,24 @@ let
     else if v == [ ] then "@as []"
     else "[" + lib.concatMapStringsSep ", " quote v + "]";
 
-  shortcutsTsv = lib.concatStrings (lib.flatten (lib.mapAttrsToList (schema: keys:
+  shortcutEntries = lib.flatten (lib.mapAttrsToList (schema: keys:
     lib.mapAttrsToList (key: value:
       let
         path = "${lib.replaceStrings [ "." ] [ "/" ] schema}/${key}";
       in
-      "${schema}\t${key}\t${gvariant value}\t"
-      + (if lib.elem path optional then "optional" else "required") + "\n")
-      keys) shortcuts));
+      {
+        inherit schema key;
+        value = gvariant value;
+        kind = if lib.elem path optional then "optional" else "required";
+      })
+      keys) shortcuts);
 
-  tilingTsv = lib.concatStrings (lib.flatten (lib.mapAttrsToList (key: bindings:
-    map (b: "${key}\t${b}\n") bindings) tiling));
+  tilingEntries = lib.flatten (lib.mapAttrsToList (key: bindings:
+    map (binding: { inherit key binding; }) bindings) tiling);
 in
 {
-  xdg.dataFile."workstation/keyboard/gnome-shortcuts.tsv".text =
-    "# Built from keyboard/keyboard.nix: SCHEMA KEY VALUE required|optional\n"
-    + shortcutsTsv;
-  xdg.dataFile."workstation/keyboard/tiling-bindings.tsv".text =
-    "# Built from keyboard/keyboard.nix: KEY BINDING\n" + tilingTsv;
+  xdg.dataFile."workstation/keyboard/keyboard.json".text = builtins.toJSON {
+    shortcuts = shortcutEntries;
+    tiling = tilingEntries;
+  };
 }

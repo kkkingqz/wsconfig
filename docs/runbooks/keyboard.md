@@ -656,7 +656,7 @@ home-manager перезапускает сервис (`--watch=config` store-ф�
 
 Сочетания GNOME профиля и private chords Tiling Assistant объявлены данными
 в `keyboard/keyboard.nix`. `ws switch` собирает из них
-`~/.local/share/workstation/keyboard/gnome-shortcuts.tsv` и `tiling-bindings.tsv`;
+`~/.local/share/workstation/keyboard/keyboard.json` (shortcuts и tiling);
 по ним работают `ws-keyboard-apply` (preflight, backup, установка),
 `ws-tiling-apply`, `ws-keyboard check` и `ws-keyboard-status`. Это не `dconf.settings`:
 сочетания ставятся только после preflight и запуска xremap, и

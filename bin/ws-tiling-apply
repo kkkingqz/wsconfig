@@ -4,16 +4,20 @@ import ast
 import os
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
+import ws_common  # noqa: E402
 
 SCHEMA = "org.gnome.shell.extensions.tiling-assistant"
 
 # Private chords emitted by xremap, appended to the Tiling Assistant defaults
 # (never replacing them). Declared in keyboard/keyboard.nix, built by
-# ws switch as KEY<TAB>BINDING lines.
+# ws switch into keyboard.json: tiling, [{key, binding}].
 BINDINGS_FILE = Path(
     os.environ.get(
-        "WS_TILING_BINDINGS",
-        Path.home() / ".local/share/workstation/keyboard/tiling-bindings.tsv",
+        "WS_KEYBOARD_MANIFEST",
+        Path.home() / ".local/share/workstation/keyboard/keyboard.json",
     )
 )
 
@@ -25,11 +29,8 @@ def load_bindings():
         )
 
     bindings = {}
-    for line in BINDINGS_FILE.read_text().splitlines():
-        if not line or line.startswith("#"):
-            continue
-        key, binding = line.split("\t")
-        bindings.setdefault(key, []).append(binding)
+    for entry in (ws_common.load(BINDINGS_FILE) or {}).get("tiling", []):
+        bindings.setdefault(entry["key"], []).append(entry["binding"])
 
     if not bindings:
         raise SystemExit(f"ws-tiling-apply: no bindings in {BINDINGS_FILE}")
