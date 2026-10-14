@@ -144,7 +144,7 @@ ws-gnome-status
 ws gnome check
 ```
 
-Сравнивает сессию (`gsettings get`) с `~/.local/share/workstation/gnome/
+Сравнивает сессию (`gsettings get`) с `~/.local/share/wsconfig/gnome/
 settings.json` — списком `{schema, key, value}`, который home-manager собирает
 из того же набора в `gnome.nix`. Ничего не меняет. Прямой вызов —
 `ws-gnome-check`.
@@ -196,7 +196,7 @@ local   gnome/extensions/<uuid>, копирует ws gnome extensions
   `disabled-extensions` — пишет `ws switch`. Расширение, включённое или
   выключенное вручную (Extension Manager, `gnome-extensions`), следующий
   switch вернёт к списку; добавлять и убирать — в `gnome-extensions.nix`.
-- `~/.local/share/workstation/gnome/extensions.json` (`order` — все UUID по
+- `~/.local/share/wsconfig/gnome/extensions.json` (`order` — все UUID по
   порядку, `by_source` — по источникам, `pins` — версии pin) — его читают
   `ws gnome check`, `ws-gnome-test`, `ws-gnome-status`, `ws check repo`,
   `ws update extensions` и `ws gnome extensions`.
@@ -204,7 +204,7 @@ local   gnome/extensions/<uuid>, копирует ws gnome extensions
 Все расширения списка обязательны. Посмотреть текущий список:
 
 ```console
-python3 -m json.tool ~/.local/share/workstation/gnome/extensions.json
+python3 -m json.tool ~/.local/share/wsconfig/gnome/extensions.json
 ```
 
 `window-monitor-pro@muhammed.hussien2030.gmail.com` используется и входит в

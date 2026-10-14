@@ -2,7 +2,7 @@
 # ws is no link into the checkout: ~/.local/bin/ws is bin/ws of the core in
 # the store (nix/pkgs/ws.nix), and so is helpws, the help of the docs. The
 # internal tools are not in PATH (helpws plan-v2, stage 5): ws runs them,
-# Nix callers use their store paths, and ~/.local/share/workstation/libexec
+# Nix callers use their store paths, and ~/.local/share/wsconfig/libexec
 # points at libexec/ of the core for callers that need a fixed path (the
 # input-source extension runs ws-caps-led).
 # home-manager owns the links; the files stay in the checkout and are edited
@@ -36,10 +36,10 @@ let
 in
 {
   xdg.dataFile = {
-    "workstation/libexec".source = "${core}/libexec";
+    "wsconfig/libexec".source = "${core}/libexec";
     # MICRO_CONFIG_HOME of helpws; micro writes its buffers/ there.
-    "workstation/micro-help/settings.json".source = link "terminal/micro-help/settings.json";
-    "workstation/micro-help/bindings.json".source = link "terminal/micro-help/bindings.json";
+    "wsconfig/micro-help/settings.json".source = link "terminal/micro-help/settings.json";
+    "wsconfig/micro-help/bindings.json".source = link "terminal/micro-help/bindings.json";
   };
 
   home.file = lib.mkMerge [

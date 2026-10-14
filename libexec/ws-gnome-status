@@ -229,7 +229,7 @@ fi
 section "5. GNOME extensions"
 # ego, local and nix extensions of gnome/gnome-extensions.nix.
 for uuid in $(for source in ego local nix; do
-    manifest_get "$HOME/.local/share/workstation/gnome/extensions.json" by_source "$source"
+    manifest_get "$HOME/.local/share/wsconfig/gnome/extensions.json" by_source "$source"
 done); do
     kv "$uuid" "$(extension_state "$uuid")"
 done
@@ -314,7 +314,7 @@ else
 fi
 
 section "9. Managed appearance profile"
-profile="$HOME/.local/share/workstation/gnome/settings.json"
+profile="$HOME/.local/share/wsconfig/gnome/settings.json"
 check_helper="$WS_CORE/libexec/ws-gnome-check"
 if [[ -r "$profile" && -x "$check_helper" ]]; then
     if "$check_helper" --quiet >/dev/null 2>&1; then

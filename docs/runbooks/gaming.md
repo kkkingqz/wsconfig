@@ -16,7 +16,7 @@ Game Mode — отдельная сессия gamescope + Steam, как в Steam
 
 ```text
 gaming/sources.nix     источники: url, sha256, версия пакета (ws switch →
-                       ~/.local/share/workstation/gaming/sources.json, на
+                       ~/.local/share/wsconfig/gaming/sources.json, на
                        каждом хосте: собирать можно где угодно)
 gaming/build.sh        сборка в контейнере Ubuntu релиза host (podman)
 gaming/apt.txt         из Ubuntu, ставит bootstrap.sh: gamescope, mangoapp

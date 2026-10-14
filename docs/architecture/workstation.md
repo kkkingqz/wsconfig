@@ -521,7 +521,7 @@ bin/wsbox, bin/wswin, bin/ws-gpu
 значения по умолчанию, у контейнера — только образ, HOME, пакеты,
 экспорты). `ws switch` собирает из них `containers.ini` (формат
 `distrobox assemble`) и `boxes.json` (контейнеры, hooks, экспорты) в
-`~/.local/share/workstation/distrobox/`, `ws box` и `ws windows` читают оттуда. Изменение: правка `distrobox.nix`, `ws switch`,
+`~/.local/share/wsconfig/distrobox/`, `ws box` и `ws windows` читают оттуда. Изменение: правка `distrobox.nix`, `ws switch`,
 затем `ws box apply NAME` или `ws box recreate NAME`.
 
 Managed containers:
@@ -798,7 +798,7 @@ store.
 executable source   ~/wsconfig/bin/ws, ~/wsconfig/libexec/<tool>
 runtime link        ~/.local/bin/ws, helpws → ядро в store (nix/pkgs/ws.nix)
 config source       ~/wsconfig/<область>/...
-generated           ~/.local/share/workstation/...
+generated           ~/.local/share/wsconfig/...
 ```
 
 Shebang:
@@ -824,7 +824,7 @@ Shebang:
 Всё, что правится, лежит в `~/wsconfig` (каталог задаёт `wsconfig` в
 `nix/hosts/<host>/host.toml`), по областям: в каждой — её объявление в Nix
 и родные файлы программ. Сгенерированное и скачанное — в
-`~/.local/share/workstation/`, состояние (backup сочетаний, baseline) — в
+`~/.local/share/wsconfig/`, состояние (backup сочетаний, baseline) — в
 `~/.local/state/wsconfig/`, HOME контейнеров — в `~/distrobox/<имя>/`.
 
 ```text

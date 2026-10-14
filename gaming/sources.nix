@@ -1,10 +1,10 @@
 # Sources of the Game Mode packages (helpws gaming, helpws plan-legion-go
 # 3.4): what wsgame fetches, checks by sha256, builds and installs. Built
-# into ~/.local/share/workstation/gaming/sources.json on every host: the
+# into ~/.local/share/wsconfig/gaming/sources.json on every host: the
 # packages can be built on any machine with podman (wsgame build), they are
 # installed only where gameMode = "yes" (wsgame install).
 #
-#   url      downloaded once into ~/.local/share/workstation/gaming/src
+#   url      downloaded once into ~/.local/share/wsconfig/gaming/src
 #   sha256   of that file; a mismatch stops wsgame
 #   version  Debian version of the package wsgame makes (or installs)
 #   build    steamos-manager, powerbuttond: built by gaming/build.sh in an
@@ -74,5 +74,5 @@ in
     message = "gaming/sources.nix: ${name} needs an https url and a full sha256";
   }) sources;
 
-  xdg.dataFile."workstation/gaming/sources.json".text = builtins.toJSON sources;
+  xdg.dataFile."wsconfig/gaming/sources.json".text = builtins.toJSON sources;
 }

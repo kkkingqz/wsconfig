@@ -6,7 +6,7 @@
 # Newer commit: change it here, `ws switch`, `ws-gmux build`, `ws-gmux
 # install`, test (helpws plan-dgpu).
 #
-# Built into ~/.local/share/workstation/t2gmux/source.json (repo, commit;
+# Built into ~/.local/share/wsconfig/t2gmux/source.json (repo, commit;
 # helpws plan-v2, 2.6), read by ws-gmux.
 { ... }:
 let
@@ -19,5 +19,5 @@ in
     message = "t2gmux.nix: the KaiT2en commit is not a full 40-character hash";
   }];
 
-  xdg.dataFile."workstation/t2gmux/source.json".text = builtins.toJSON { inherit repo commit; };
+  xdg.dataFile."wsconfig/t2gmux/source.json".text = builtins.toJSON { inherit repo commit; };
 }

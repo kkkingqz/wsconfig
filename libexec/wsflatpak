@@ -11,7 +11,7 @@ import sys
 # lib/flatpak_catalog.py) and the choice of each host
 # nix/hosts/HOST/flatpak.toml (yes, no and own overrides; lib/ws_catalog.py)
 # in the configuration; desktop overrides in flatpak/flatpak.nix.
-# home-manager builds them into ~/.local/share/workstation/flatpak, which
+# home-manager builds them into ~/.local/share/wsconfig/flatpak, which
 # wsflatpak reads. install, manage and unmanage edit the catalog and the
 # choice; filesystem, host, env, talk and their un… edit the overrides.
 # `ws switch` builds them, `ws sync` publishes them.
@@ -25,7 +25,7 @@ OVERRIDE_KINDS = ("filesystem", "env", "talk")
 CFG = Path(
     os.environ.get(
         "WSFLATPAK_CONFIG",
-        Path.home() / ".local/share/workstation/flatpak",
+        Path.home() / ".local/share/wsconfig/flatpak",
     )
 )
 # remotes, apps (REMOTE APP in order) and the overrides of this host

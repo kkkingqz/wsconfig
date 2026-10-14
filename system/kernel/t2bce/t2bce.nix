@@ -6,7 +6,7 @@
 # New kernel: add its release and commit here, `ws switch`, then
 # `ws-suspend t2bce-build KERNEL` (helpws suspend).
 #
-# Built into ~/.local/share/workstation/t2bce/sources.json (KERNEL: COMMIT;
+# Built into ~/.local/share/wsconfig/t2bce/sources.json (KERNEL: COMMIT;
 # helpws plan-v2, 2.6), read by ws-suspend, ws-psr and ws-workstation-verify.
 { lib, ... }:
 let
@@ -20,5 +20,5 @@ in
     message = "t2bce.nix: a linux-t2-patches commit is not a full 40-character hash";
   }];
 
-  xdg.dataFile."workstation/t2bce/sources.json".text = builtins.toJSON sources;
+  xdg.dataFile."wsconfig/t2bce/sources.json".text = builtins.toJSON sources;
 }

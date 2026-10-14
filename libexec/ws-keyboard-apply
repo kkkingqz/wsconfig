@@ -13,7 +13,7 @@ xremap_off="$state_dir/xremap.disabled"
 
 # The GNOME shortcuts of the profile: keyboard/keyboard.nix, built by
 # ws switch (SCHEMA<TAB>KEY<TAB>VALUE<TAB>required|optional).
-shortcuts="${WS_KEYBOARD_MANIFEST:-$HOME/.local/share/workstation/keyboard/keyboard.json}"
+shortcuts="${WS_KEYBOARD_MANIFEST:-$HOME/.local/share/wsconfig/keyboard/keyboard.json}"
 
 [[ -r "$shortcuts" ]] || { echo "ws-keyboard-apply: missing $shortcuts (run ws switch)" >&2; exit 66; }
 

@@ -65,10 +65,10 @@ else
     fail "~/.local/bin/ws is not the core in the store (${ws_real:-missing}); ws switch"
 fi
 if [[ -n "$core_installed" \
-    && "$(readlink -f "$HOME/.local/share/workstation/libexec" 2>/dev/null)" == "$core_installed/libexec" ]]; then
-    pass "~/.local/share/workstation/libexec is libexec/ of that core"
+    && "$(readlink -f "$HOME/.local/share/wsconfig/libexec" 2>/dev/null)" == "$core_installed/libexec" ]]; then
+    pass "~/.local/share/wsconfig/libexec is libexec/ of that core"
 else
-    fail "~/.local/share/workstation/libexec is not libexec/ of the installed core; ws switch"
+    fail "~/.local/share/wsconfig/libexec is not libexec/ of the installed core; ws switch"
 fi
 # host.json: the configuration and host of the ws in PATH.
 record="$(python3 "$WS_CORE/lib/ws_common.py" get "$WS_STATE/host.json" config 2>/dev/null || true)"

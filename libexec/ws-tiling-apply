@@ -17,7 +17,7 @@ SCHEMA = "org.gnome.shell.extensions.tiling-assistant"
 BINDINGS_FILE = Path(
     os.environ.get(
         "WS_KEYBOARD_MANIFEST",
-        Path.home() / ".local/share/workstation/keyboard/keyboard.json",
+        Path.home() / ".local/share/wsconfig/keyboard/keyboard.json",
     )
 )
 

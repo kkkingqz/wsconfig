@@ -114,7 +114,7 @@ fi
 section "2. GNOME shortcuts"
 
 # The profile of keyboard/keyboard.nix, set by ws-keyboard-apply.
-kb_json="${WS_KEYBOARD_MANIFEST:-$HOME/.local/share/workstation/keyboard/keyboard.json}"
+kb_json="${WS_KEYBOARD_MANIFEST:-$HOME/.local/share/wsconfig/keyboard/keyboard.json}"
 
 if have gsettings && [[ -r "$kb_json" ]]; then
     kb_total=0

@@ -5,9 +5,9 @@ set -euo pipefail
 # (profile wine: wine/winetricks; profile proton: umu-run). Programs with a
 # launcher are listed in windows/apps.nix. ws switch builds both files:
 #
-#   ~/.local/share/workstation/distrobox/boxes.json  boxes: home profile driver dpi
+#   ~/.local/share/wsconfig/distrobox/boxes.json  boxes: home profile driver dpi
 #                                                    init_overrides gpu
-#   ~/.local/share/workstation/windows/apps.json     default_box, locales, apps
+#   ~/.local/share/wsconfig/windows/apps.json     default_box, locales, apps
 #
 # Prefixes live in the container HOME (~/distrobox/BOX), survive recreate:
 #   default   $HOME/.wine
@@ -15,7 +15,7 @@ set -euo pipefail
 #
 # Commands run through `wsbox run`, which adds DRI_PRIME for gpu=amd boxes.
 
-data="${WSWIN_DATA:-$HOME/.local/share/workstation}"
+data="${WSWIN_DATA:-$HOME/.local/share/wsconfig}"
 boxes_json="$data/distrobox/boxes.json"
 apps_json="$data/windows/apps.json"
 # shellcheck source=../lib/common.bash

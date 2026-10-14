@@ -546,7 +546,7 @@ update_nix() {
 }
 
 update_extensions() {
-    local list="$HOME/.local/share/workstation/gnome/extensions.json" pinned
+    local list="$HOME/.local/share/wsconfig/gnome/extensions.json" pinned
     [[ -r "$list" ]] || die "extension list missing: $list (ws switch)"
     # GNOME Shell updates every extension from EGO, a pinned copy too.
     pinned="$(manifest_get "$list" pins)"

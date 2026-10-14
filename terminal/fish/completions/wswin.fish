@@ -2,13 +2,13 @@
 
 function __wswin_apps
     # Built by home-manager from windows/apps.nix.
-    set -l ini ~/.local/share/workstation/windows/apps.ini
+    set -l ini ~/.local/share/wsconfig/windows/apps.ini
     test -f $ini; and string match -rg '^\[([^]]+)\]$' < $ini | string match -v wswin
 end
 
 function __wswin_boxes
     # Built by home-manager from distrobox/distrobox.nix: boxes with a profile.
-    set -l ini ~/.local/share/workstation/distrobox/boxes.ini
+    set -l ini ~/.local/share/wsconfig/distrobox/boxes.ini
     test -f $ini; or return
     set -l box
     while read -l line

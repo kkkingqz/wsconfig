@@ -17,7 +17,7 @@ class NtsyncHookTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
-        # A copy without the executable bit, as in ~/.local/share/workstation/hooks.
+        # A copy without the executable bit, as in ~/.local/share/wsconfig/hooks.
         self.copy = self.root / "hooks/wsbox-host-ntsync"
         shutil.copytree(HOOK, self.copy)
         (self.copy / "install-hook").chmod(0o644)

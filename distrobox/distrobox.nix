@@ -1,6 +1,6 @@
 # Distrobox containers and their exported applications. wsbox stays the owner
 # of apply/check and reads what is built here from
-# ~/.local/share/workstation/distrobox (one link to the store):
+# ~/.local/share/wsconfig/distrobox (one link to the store):
 #
 #   containers.ini  manifest for `distrobox assemble` (its own format)
 #   boxes.json      the containers in order, for wsbox and wswin: name,
@@ -52,12 +52,12 @@ let
   # not the core in the store (a new path with every change, gone after a
   # garbage collection; /nix is not even mounted in the container), but
   # copies of distrobox/arch and distrobox/wine of the core in
-  # ~/.local/share/workstation/hooks, renewed by every switch (the host
+  # ~/.local/share/wsconfig/hooks, renewed by every switch (the host
   # HOME is mounted in the container). Run through sh: no shebang or mode
   # is needed, and a hook derives nothing from the owner or mode of its
   # files; what it needs, such as the user of a build, is an argument
   # (helpws plan-v2, stage 5).
-  hooks = "${config.home.homeDirectory}/.local/share/workstation/hooks";
+  hooks = "${config.home.homeDirectory}/.local/share/wsconfig/hooks";
   #
   # Before any Wine package on Arch: the host kernel provides ntsync, the
   # virtual provider keeps pacman/paru from pulling an Arch kernel.
@@ -228,7 +228,7 @@ in
     message = "distrobox.nix: ${c.name}: profile is wine or proton, gpu is amd";
   }) containers;
 
-  config.xdg.dataFile."workstation/distrobox".source = distroboxConfig;
+  config.xdg.dataFile."wsconfig/distrobox".source = distroboxConfig;
 
   # The copies of the hooks (see hooks above): replaced as a whole.
   config.home.activation.distroboxHooks = lib.hm.dag.entryAfter [ "linkGeneration" ] ''

@@ -2,7 +2,7 @@
 # overrides; lib/flatpak_catalog.py), the choice of this host
 # nix/hosts/HOST/flatpak.toml (yes, no and own overrides; lib/catalog.nix)
 # and desktop overrides. wsflatpak stays the owner of apply/check and reads
-# what is built here from ~/.local/share/workstation/flatpak (one link to
+# what is built here from ~/.local/share/wsconfig/flatpak (one link to
 # the store):
 #
 #   flatpak.json      remotes (NAME: URL), apps (REMOTE APP of the catalog,
@@ -96,7 +96,7 @@ in
   }) (lib.attrNames hostOverrides);
 
   xdg.dataFile = {
-    "workstation/flatpak".source = flatpakConfig;
+    "wsconfig/flatpak".source = flatpakConfig;
   } // lib.listToAttrs (map (f:
     lib.nameValuePair "applications/${baseNameOf f}" {
       source = "${flatpakConfig}/desktop/${baseNameOf f}";

@@ -5,7 +5,7 @@ set -eu
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # Micro config dir: settings.json and bindings.json are home-manager links
 # into terminal/micro-help; micro writes buffers/ (history) next to them.
-micro_cfg="$HOME/.local/share/workstation/micro-help"
+micro_cfg="$HOME/.local/share/wsconfig/micro-help"
 topic="${1:-terminal}"
 
 # A topic names a page by its `title:`, not by a path: docs/ can be

@@ -12,9 +12,9 @@ set -euo pipefail
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 patch_file="$WS_CORE/system/kernel/i915-psr/apple-psr.patch"
 # Kernel release -> linux-t2-patches commit, from system/kernel/t2bce/t2bce.nix.
-t2_sources="$HOME/.local/share/workstation/t2bce/sources.json"
+t2_sources="$HOME/.local/share/wsconfig/t2bce/sources.json"
 # Build results per kernel: generated, not edited.
-cache="$HOME/.local/share/workstation/i915-psr"
+cache="$HOME/.local/share/wsconfig/i915-psr"
 # The host release: built with the compiler of the kernel, as t2bce.
 build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")"
 
@@ -23,7 +23,7 @@ usage() {
 Usage: ws psr <command> [KERNEL]
 
   status             patched i915 built / installed / loaded
-  build [KERNEL]     build i915.ko with apple-psr.patch into ~/.local/share/workstation/i915-psr/KERNEL
+  build [KERNEL]     build i915.ko with apple-psr.patch into ~/.local/share/wsconfig/i915-psr/KERNEL
   install [KERNEL]   install it into /lib/modules/KERNEL/updates/i915-psr + initramfs (sudo)
   rollback [KERNEL]  remove it again; the stock i915 (no PSR) takes over (sudo)
 

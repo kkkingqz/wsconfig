@@ -20,7 +20,7 @@ flatpak/desktop/*.desktop     полные .desktop, заменяющие шта
 libexec/wsflatpak             владелец: install, apply, check
 ```
 
-`ws switch` собирает `~/.local/share/workstation/flatpak/` (`flatpak.json`:
+`ws switch` собирает `~/.local/share/wsconfig/flatpak/` (`flatpak.json`:
 remotes, приложения каталога и overrides этой машины; `desktop/`) и ставит
 свои `.desktop` в `~/.local/share/applications` — только приложений, которые
 на этой машине в состоянии yes: у не поставленного приложения ярлык ничего

@@ -218,7 +218,7 @@ overview LED off (временный EN)
 libexec/ws-caps-led
 ```
 
-вызывается GNOME extension через `~/.local/share/workstation/libexec/`
+вызывается GNOME extension через `~/.local/share/wsconfig/libexec/`
 (ссылка home-manager на `libexec/` checkout). Это не пользовательская команда, в
 PATH её нет: там только `ws` и `helpws` (`nix/home/links.nix`).
 
@@ -657,7 +657,7 @@ home-manager перезапускает сервис (`--watch=config` store-ф�
 
 Сочетания GNOME профиля и private chords Tiling Assistant объявлены данными
 в `keyboard/keyboard.nix`. `ws switch` собирает из них
-`~/.local/share/workstation/keyboard/keyboard.json` (shortcuts и tiling);
+`~/.local/share/wsconfig/keyboard/keyboard.json` (shortcuts и tiling);
 по ним работают `ws-keyboard-apply` (preflight, backup, установка),
 `ws-tiling-apply`, `ws keyboard check` и `ws-keyboard-status`. Это не `dconf.settings`:
 сочетания ставятся только после preflight и запуска xremap, и
@@ -737,7 +737,7 @@ ws-workstation-verify     # GNOME ↔ клавиатура: мост xremap, Inp
 ws keyboard status
 ws keyboard devices
 ws keyboard gnome-apps
-~/.local/share/workstation/libexec/ws-input-source status
+~/.local/share/wsconfig/libexec/ws-input-source status
 
 systemctl --user status xremap.service
 journalctl --user -u xremap.service

@@ -4,7 +4,7 @@
 # bindings depend on xremap), saves the originals once and `ws-keyboard
 # restore` puts them back; home-manager would write them on every switch.
 #
-# Built for the scripts into ~/.local/share/workstation/keyboard/keyboard.json
+# Built for the scripts into ~/.local/share/wsconfig/keyboard/keyboard.json
 # (helpws plan-v2, 2.6):
 #   shortcuts  [{schema, key, value, kind: required|optional}], value as
 #              `gsettings get` prints it; read by ws-keyboard-apply (set,
@@ -179,7 +179,7 @@ let
     map (binding: { inherit key binding; }) bindings) tiling);
 in
 {
-  xdg.dataFile."workstation/keyboard/keyboard.json".text = builtins.toJSON {
+  xdg.dataFile."wsconfig/keyboard/keyboard.json".text = builtins.toJSON {
     shortcuts = shortcutEntries;
     tiling = tilingEntries;
   };

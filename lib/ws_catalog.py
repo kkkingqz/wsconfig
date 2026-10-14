@@ -246,7 +246,7 @@ def box_catalog(config=None):
     lines and the default = "..." after them (helpws plan-v2: TOML at
     stage 7)."""
     built = ws_common.load(Path(os.environ.get("WSBOX_CONFIG") or
-                                Path.home() / ".local/share/workstation/distrobox") / "boxes.json")
+                                Path.home() / ".local/share/wsconfig/distrobox") / "boxes.json")
     if isinstance(built, list) and config is None:
         return [(b["name"], b.get("default", "ask")) for b in built]
     boxes = []

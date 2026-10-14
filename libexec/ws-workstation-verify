@@ -130,7 +130,7 @@ if [[ "$t2" == true ]]; then
         warn "linux-t2 is not held: a kernel update would boot the in-tree t2bce (helpws suspend)"
     fi
 
-    t2bce_sources="$HOME/.local/share/workstation/t2bce/sources.json"
+    t2bce_sources="$HOME/.local/share/wsconfig/t2bce/sources.json"
     if [[ -n "$(manifest_get "$t2bce_sources" "$(uname -r)")" ]]; then
         pass "system/kernel/t2bce/t2bce.nix pins sources for $(uname -r)"
     else
@@ -217,12 +217,12 @@ else
 fi
 
 # The hook as distrobox/distrobox.nix writes it: sh, the copy, the user.
-ntsync_hook="sh $HOME/.local/share/workstation/hooks/arch/wsbox-host-ntsync/install-hook "
+ntsync_hook="sh $HOME/.local/share/wsconfig/hooks/arch/wsbox-host-ntsync/install-hook "
 ntsync_boxes="$(
     awk -v hook="init_hooks=\"$ntsync_hook" '
         /^\[/ { box = substr($0, 2, length($0) - 2) }
         index($0, hook) == 1 { print box }
-    ' "$HOME/.local/share/workstation/distrobox/containers.ini" 2>/dev/null
+    ' "$HOME/.local/share/wsconfig/distrobox/containers.ini" 2>/dev/null
 )"
 [[ -n "$ntsync_boxes" ]] || fail "no box runs the NTSync hook (distrobox/distrobox.nix; ws switch)"
 for box in $ntsync_boxes; do

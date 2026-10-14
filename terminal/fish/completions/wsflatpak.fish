@@ -83,7 +83,7 @@ function __wsflatpak_override_values
 end
 
 function __wsflatpak_managed_remotes
-    set -l cfg "$HOME/.local/share/workstation/flatpak"
+    set -l cfg "$HOME/.local/share/wsconfig/flatpak"
     if set -q WSFLATPAK_CONFIG; and test -n "$WSFLATPAK_CONFIG"
         set cfg "$WSFLATPAK_CONFIG"
     end

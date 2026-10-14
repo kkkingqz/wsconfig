@@ -10,7 +10,7 @@ set -o pipefail
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
-profile="${WS_GNOME_PROFILE:-$HOME/.local/share/workstation/gnome/settings.json}"
+profile="${WS_GNOME_PROFILE:-$HOME/.local/share/wsconfig/gnome/settings.json}"
 # shellcheck source=../lib/check.bash
 . "$WS_CORE/lib/check.bash"
 quiet=false
@@ -25,7 +25,7 @@ Usage:
 
 The profile (appearance and Ubuntu Dock) is declared in
 gnome/gnome.nix and applied by `ws switch`; home-manager builds
-~/.local/share/workstation/gnome/settings.json ({schema, key, value}) for this check.
+~/.local/share/wsconfig/gnome/settings.json ({schema, key, value}) for this check.
 USAGE
 }
 
@@ -47,7 +47,7 @@ is_tracked() {
 
 # The extension list is built from gnome/gnome-extensions.nix.
 # All in order, or those of one source.
-ext_list_file="$HOME/.local/share/workstation/gnome/extensions.json"
+ext_list_file="$HOME/.local/share/wsconfig/gnome/extensions.json"
 ext_list() {
     if [[ -n "${1:-}" ]]; then
         manifest_get "$ext_list_file" by_source "$1"

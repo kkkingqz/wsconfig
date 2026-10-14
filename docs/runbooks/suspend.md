@@ -263,7 +263,7 @@ deqrocks/t2bce#9                          черновик исправлени�
 ```text
 system/kernel/t2bce/nostate-fix.patch   патч к drivers/staging/t2bce из linux-t2-patches 1001
 system/kernel/t2bce/t2bce.nix           версия ядра -> коммит linux-t2-patches
-                                        (ws switch собирает ~/.local/share/workstation/t2bce/sources.json)
+                                        (ws switch собирает ~/.local/share/wsconfig/t2bce/sources.json)
 ```
 
 Патч:
@@ -278,7 +278,7 @@ system/kernel/t2bce/t2bce.nix           версия ядра -> коммит li
 Пересобираются все пять модулей `t2bce_*`, чтобы совпадали версии символов.
 Сборка идёт в одноразовом контейнере podman (`ubuntu:` релиза хоста из
 `/etc/os-release`) с заголовками
-`/usr/src/linux-headers-KERNEL`; результат — `~/.local/share/workstation/t2bce/KERNEL/`.
+`/usr/src/linux-headers-KERNEL`; результат — `~/.local/share/wsconfig/t2bce/KERNEL/`.
 Модули ставятся в `/lib/modules/KERNEL/updates/t2bce`: depmod ищет в
 `updates` раньше, чем в `kernel`. Пакеты ядра не меняются.
 

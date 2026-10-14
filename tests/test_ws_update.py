@@ -49,7 +49,7 @@ esac
         gdbus = self.bin / 'gdbus'
         gdbus.write_text('#!/bin/sh\nexit "${DBUS_STATUS:-0}"\n')
         gdbus.chmod(0o755)
-        extensions = self.root / '.local/share/workstation/gnome'
+        extensions = self.root / '.local/share/wsconfig/gnome'
         extensions.mkdir(parents=True)
         (extensions / 'extensions.json').write_text(
             '{"order": ["example@local"], "by_source": {"local": ["example@local"]}, "pins": {}}')

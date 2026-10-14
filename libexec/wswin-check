@@ -19,7 +19,7 @@ case "${1:-}" in
     *) echo "ws windows check: unknown argument: $1" >&2; exit 64 ;;
 esac
 
-data="${WSWIN_DATA:-$HOME/.local/share/workstation}"
+data="${WSWIN_DATA:-$HOME/.local/share/wsconfig}"
 boxes_json="$data/distrobox/boxes.json"
 apps_json="$data/windows/apps.json"
 # Both files are built by ws switch (distrobox/distrobox.nix, windows/apps.nix).

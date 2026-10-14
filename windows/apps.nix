@@ -1,7 +1,7 @@
 # Windows programs with a GNOME launcher. The boxes and their profiles are in
 # distrobox/distrobox.nix; wswin installs and runs (helpws windows).
 #
-# Built into ~/.local/share/workstation/windows/apps.json for wswin and one
+# Built into ~/.local/share/wsconfig/windows/apps.json for wswin and one
 # launcher ~/.local/share/applications/ws-win-NAME.desktop per program
 # (Exec: wswin run NAME).
 #
@@ -119,7 +119,7 @@ in
   }) full;
 
   xdg.dataFile = {
-    "workstation/windows/apps.json".text = appsJson;
+    "wsconfig/windows/apps.json".text = appsJson;
   } // lib.optionalAttrs (hasBox defaultBox) {
     "applications/ws-win-exe.desktop".text = exeDesktop;
   } // lib.mapAttrs' (name: a:

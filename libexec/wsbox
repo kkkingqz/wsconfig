@@ -2,16 +2,16 @@
 set -euo pipefail
 
 # Declared in distrobox/distrobox.nix; ws switch builds
-# ~/.local/share/workstation/distrobox. wsbox only reads it: boxes.json (the
+# ~/.local/share/wsconfig/distrobox. wsbox only reads it: boxes.json (the
 # containers, their hooks and exports) and containers.ini for distrobox
 # assemble, rendered first (@HOST_VERSION_ID@: the host release from
 # /etc/os-release).
-cfg="${WSBOX_CONFIG:-$HOME/.local/share/workstation/distrobox}"
+cfg="${WSBOX_CONFIG:-$HOME/.local/share/wsconfig/distrobox}"
 manifest_source="$cfg/containers.ini"
 manifest="${XDG_RUNTIME_DIR:-/tmp}/wsbox-$(id -u)/containers.ini"
 boxes_manifest="$cfg/boxes.json"
 # The copies of the hooks the containers run (distrobox/distrobox.nix).
-hooks_dir="${WSBOX_HOOKS:-$HOME/.local/share/workstation/hooks}"
+hooks_dir="${WSBOX_HOOKS:-$HOME/.local/share/wsconfig/hooks}"
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 ws_prog="ws box"
@@ -603,7 +603,7 @@ cmd_check() {
 
     # Every hook the manifest runs: sh and a copy in hooks_dir of the hook
     # of the installed core (ws switch renews the copies).
-    core_installed="$(readlink -f "$HOME/.local/share/workstation/libexec/.." 2>/dev/null || true)"
+    core_installed="$(readlink -f "$HOME/.local/share/wsconfig/libexec/.." 2>/dev/null || true)"
     while IFS= read -r hook; do
         path="${hook#"$hooks_dir"/}"
         if [[ "$hook" != "$hooks_dir"/* ]]; then

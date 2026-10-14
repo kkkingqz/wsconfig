@@ -11,7 +11,7 @@
 # (ws-tiling-apply), wallpaper. Enabled extensions are declared in
 # gnome-extensions.nix, also as dconf.settings.
 #
-# ws-gnome check compares the session with ~/.local/share/workstation/gnome/
+# ws-gnome check compares the session with ~/.local/share/wsconfig/gnome/
 # settings.json ([{schema, key, value}], value as gsettings get prints it),
 # built from the same attribute set.
 { config, lib, pkgs, facts, ... }:
@@ -90,5 +90,5 @@ in
 
   dconf.settings = profile;
 
-  xdg.dataFile."workstation/gnome/settings.json".source = checkProfile;
+  xdg.dataFile."wsconfig/gnome/settings.json".source = checkProfile;
 }

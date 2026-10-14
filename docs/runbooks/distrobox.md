@@ -18,7 +18,7 @@ distrobox/arch/wsbox-host-ntsync/   пакет-заглушка NTSYNC-MODULE д
 libexec/wsbox                    владелец: apply, check, update, recreate
 ```
 
-`ws switch` собирает в `~/.local/share/workstation/distrobox/`:
+`ws switch` собирает в `~/.local/share/wsconfig/distrobox/`:
 
 ```text
 containers.ini   манифест distrobox assemble
@@ -28,7 +28,7 @@ boxes.json       контейнеры по порядку: image, home, hooks, e
                  (ws box, ws windows)
 ```
 
-Hooks контейнеры запускают через `sh` из `~/.local/share/workstation/hooks/`:
+Hooks контейнеры запускают через `sh` из `~/.local/share/wsconfig/hooks/`:
 это копии `distrobox/arch` и `distrobox/wine` ядра, `ws switch` обновляет
 их целиком. Путь hook запоминается при создании контейнера, поэтому он
 стабилен, а не путь в store (тот меняется с каждой версией ядра и исчезает

@@ -8,12 +8,12 @@ set -euo pipefail
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 ws_prog="ws suspend"
 # Build results (sources, modules per kernel): generated, not edited.
-cache="$HOME/.local/share/workstation/t2bce"
+cache="$HOME/.local/share/wsconfig/t2bce"
 
 t2bce_modules=(t2bce_dma t2bce_core t2bce_vhci t2bce_audio t2bce_ave)
 t2bce_patch="$WS_CORE/system/kernel/t2bce/nostate-fix.patch"
 # Kernel release -> linux-t2-patches commit, from system/kernel/t2bce/t2bce.nix.
-t2bce_sources="$HOME/.local/share/workstation/t2bce/sources.json"
+t2bce_sources="$HOME/.local/share/wsconfig/t2bce/sources.json"
 # The host release: the modules are built with the compiler of the kernel.
 build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")"
 
@@ -24,7 +24,7 @@ Usage: ws suspend <command> [KERNEL]
   status                 show sleep mode, t2bce state and runtime drift (read-only)
   check [--json]         deep sleep, t2bce stateful sleep, Touch Bar mode (ws check)
   apply                  install the system files: ws system apply (sudo)
-  t2bce-build [KERNEL]   build patched t2bce modules into ~/.local/share/workstation/t2bce
+  t2bce-build [KERNEL]   build patched t2bce modules into ~/.local/share/wsconfig/t2bce
   t2bce-install [KERNEL] install built modules into /lib/modules/KERNEL/updates/t2bce (sudo)
   t2bce-rollback [KERNEL] remove them; the in-tree modules take over (sudo)
   swap-setup [SIZE]      swapfile for hibernation in subvolume @swap at /swap,

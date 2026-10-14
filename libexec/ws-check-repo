@@ -27,7 +27,7 @@ is_tracked() {
 # The extension list is built from gnome/gnome-extensions.nix: all in
 # order, or those of one source.
 ext_list() {
-    local f="$HOME/.local/share/workstation/gnome/extensions.json"
+    local f="$HOME/.local/share/wsconfig/gnome/extensions.json"
     if [[ -n "${1:-}" ]]; then
         manifest_get "$f" by_source "$1"
     else

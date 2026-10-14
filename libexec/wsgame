@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ws game: the packages of the Game Mode session (helpws gaming, helpws
 plan-legion-go 3.4). Sources and versions are gaming/sources.nix, built by
-ws switch into ~/.local/share/workstation/gaming/sources.json; downloads and
+ws switch into ~/.local/share/wsconfig/gaming/sources.json; downloads and
 .debs live next to it. Nothing is installed from outside dpkg.
 
   fetch            download the sources, check their sha256
@@ -33,7 +33,7 @@ import ws_check  # noqa: E402
 import ws_common  # noqa: E402
 
 REPO = ws_common.CONFIG
-DATA = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "workstation/gaming"
+DATA = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "wsconfig/gaming"
 SOURCES = DATA / "sources.json"
 SRC = DATA / "src"
 DEBS = DATA / "debs"

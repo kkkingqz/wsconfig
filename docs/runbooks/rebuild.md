@@ -339,7 +339,7 @@ Flatpak: remotes, приложения и общие overrides — в катал
 `flatpak/catalog.toml`, выбор и свои overrides машины — в
 `nix/hosts/HOST/flatpak.toml` (оба правит `ws flatpak`, публикует
 `ws sync`); `ws switch` собирает из них
-`~/.local/share/workstation/flatpak/` и ставит `.desktop` Claude, шаг `flatpak`
+`~/.local/share/wsconfig/flatpak/` и ставит `.desktop` Claude, шаг `flatpak`
 в `ws apply` (`ws flatpak apply`) добавляет remotes, ставит приложения и
 применяет overrides (`helpws flatpak`).
 
@@ -431,7 +431,7 @@ logout/login и ещё один `ws apply`.
 
 ```console
 ws keyboard check
-~/.local/share/workstation/libexec/ws-input-source status
+~/.local/share/wsconfig/libexec/ws-input-source status
 ```
 
 Ожидаемое поведение:

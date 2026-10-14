@@ -8,9 +8,9 @@ set -euo pipefail
 # on macOS (CPU package PC7 with the card off) and can come back on.
 
 # REPO COMMIT, from system/kernel/t2gmux/t2gmux.nix (ws switch).
-source_file="$HOME/.local/share/workstation/t2gmux/source.json"
+source_file="$HOME/.local/share/wsconfig/t2gmux/source.json"
 # Build results per kernel: generated, not edited.
-cache="$HOME/.local/share/workstation/t2gmux"
+cache="$HOME/.local/share/wsconfig/t2gmux"
 # The host release: built with the compiler of the kernel, as t2bce.
 build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")"
 # Boot GPU of the firmware: 5th byte 1 = integrated, 0 = discrete.
@@ -21,7 +21,7 @@ usage() {
 Usage: ws gmux <command> [KERNEL]
 
   status                     driver bound to the gmux, built/installed t2gmux, boot GPU
-  build [KERNEL]             build t2gmux into ~/.local/share/workstation/t2gmux/KERNEL
+  build [KERNEL]             build t2gmux into ~/.local/share/wsconfig/t2gmux/KERNEL
   install [KERNEL]           install it into /lib/modules/KERNEL/updates/t2gmux (sudo)
   rollback [KERNEL]          remove it again (sudo)
   boot-gpu [integrated|discrete]
