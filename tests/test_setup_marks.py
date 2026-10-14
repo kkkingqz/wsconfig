@@ -111,6 +111,19 @@ class SetupMarksTests(unittest.TestCase):
         self.run_with([[], [], []])
         self.assertIn('com.valvesoftware.Steam', self.asked[0][1])
 
+    def test_widgets_some_host_has_are_offered_on_a_widget_host(self):
+        (self.repo / 'nix/hosts/mbp16').mkdir(parents=True)
+        (self.repo / 'nix/hosts/mbp16/widgets.toml').write_text('yes = ["example", "compact"]\n')
+        (self.repo / 'nix/hosts/new').mkdir(parents=True)
+        (self.repo / 'nix/hosts/new/facts.nix').write_text('{\n  widgets = "yes";\n}\n')
+        (self.repo / 'nix/hosts/new/widgets.toml').write_text('# mine\nno = ["compact"]\n')
+        changed = self.run_with([[], [], ['example'], []])
+        self.assertEqual(self.asked[2], ('Виджеты (ws widgets) на new', {'example': True}))
+        self.assertIn('nix/hosts/new/widgets.toml', changed)
+        text = (self.repo / 'nix/hosts/new/widgets.toml').read_text()
+        self.assertTrue(text.startswith('# mine\n'), text)
+        self.assertIn('yes = ["example"]', text)
+
     def test_cancel_writes_nothing(self):
         self.assertIsNone(self.run_with([['org.example.Asked'], None]))
         self.assertEqual(self.read('flatpak/apps.txt'), APPS)

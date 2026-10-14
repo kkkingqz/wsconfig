@@ -923,8 +923,9 @@ git diff --cached
 явно.
 
 Файлы данных — `flatpak/apps.txt`, `flatpak/overrides.txt`,
-`distrobox/hosts.txt`, `widgets/widgets.txt`, `flake.lock` — правят
-инструменты (пометки, `ws update nix`, `ws widgets update`). Их коммитит и
+`distrobox/hosts.txt`, выбор хостов `nix/hosts/*/widgets.toml`
+(`lib/ws_catalog.py`), `flake.lock` — правят инструменты (пометки, выбор,
+`ws update nix`, `ws widgets update`). Их коммитит и
 публикует только `ws sync`: один коммит с тем, что изменилось, затем
 `git pull --rebase` и `git push`, если у ветки есть upstream (без remote
 коммит остаётся локальным). `ws sync` отказывается при операции Git,

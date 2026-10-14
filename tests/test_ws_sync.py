@@ -100,6 +100,20 @@ class SyncTests(unittest.TestCase):
         self.assertIn("would run: git pull --rebase, git push", p.stdout)
         self.assertEqual(self.git("rev-parse", "HEAD"), head)
 
+    def test_host_choices_new_and_changed(self):
+        host = self.repo / "nix/hosts/mbp16"
+        host.mkdir(parents=True)
+        (host / "widgets.toml").write_text('yes = ["a"]\n')
+        p = self.ws()
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(self.git("log", "-1", "--format=%s"), "ws sync: nix/hosts/mbp16/widgets.toml")
+        self.assertIn("nix/hosts/mbp16/widgets.toml: a=yes", self.git("log", "-1", "--format=%b"))
+        (host / "widgets.toml").write_text('yes = []\nno = ["a"]\n')
+        p = self.ws()
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("widgets.toml: a=no", self.git("log", "-1", "--format=%b"))
+        self.assertEqual(self.git("status", "--porcelain"), "")
+
     def test_refuses_code_changes(self):
         (self.repo / "bin/ws").write_text((self.repo / "bin/ws").read_text() + "\n")
         self.edit_apps()

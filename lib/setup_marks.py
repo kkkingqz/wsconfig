@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """The choices of setup.sh on a workstation (helpws setup): every line of
-flatpak/apps.txt, distrobox/hosts.txt, flatpak/overrides.txt and (with
-widgets = "yes") widgets/widgets.txt without a
-yes or no of this workstation (an own ask is none), as checklists (lib/ws_select.py). all=yes and ask
-start checked, all=no unchecked; overrides are offered only for the apps
-this workstation has. Every line shown gets HOST=yes or HOST=no, so ws apply
+flatpak/apps.txt, distrobox/hosts.txt and flatpak/overrides.txt without a
+yes or no of this workstation (an own ask is none), as checklists
+(lib/ws_select.py), and with widgets = "yes" the widgets some host has in
+yes (nix/hosts/*/widgets.toml, lib/ws_catalog.py) in state ask here; the
+full widget catalog needs Nix, which comes later (ws widgets apply offers
+the rest). all=yes and ask start checked, all=no unchecked; overrides are
+offered only for the apps this workstation has. Every line shown gets HOST=yes or HOST=no, so ws apply
 asks nothing afterwards; overrides of apps it does not have stay unmarked.
 Nothing is written until all the lists are answered. On a host with
 nativeSteam = "yes" the Steam flatpak is no without a question: Steam is
@@ -22,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ws_facts import fact  # noqa: E402
 from ws_marks import OVERRIDES, MarkedList, check_host  # noqa: E402
+import ws_catalog  # noqa: E402
 import ws_select  # noqa: E402
 
 CANCELLED, NO_TERMINAL = 2, 3
@@ -65,7 +68,7 @@ def run(repo, host, term):
     apps = MarkedList(repo / "flatpak/apps.txt", key_fields={2})
     boxes = MarkedList(repo / "distrobox/hosts.txt")
     overrides = MarkedList(repo / "flatpak/overrides.txt", **OVERRIDES)
-    widgets = MarkedList(repo / "widgets/widgets.txt")
+    widgets = ws_catalog.Choice("widgets", host, repo)
 
     steam = apps.find(STEAM_FLATPAK)
     if (fact(host, "nativeSteam", repo) == "yes" and steam is not None
@@ -74,15 +77,22 @@ def run(repo, host, term):
         term.write(f"\n{STEAM_FLATPAK}: {host}=no (nativeSteam = \"yes\": Steam из apt)\n")
 
     lists = [(apps, f"Flatpak-приложения на {host}"), (boxes, f"Контейнеры Distrobox на {host}")]
-    # The widget layer only where facts.nix has it (helpws widgets).
-    if fact(host, "widgets", repo) == "yes":
-        lists.append((widgets, f"Виджеты (ws widgets) на {host}"))
     for marked, title in lists:
         items = offer(marked, host)
         chosen = ask(term, title, items)
         if chosen is None:
             return None
         mark(marked, host, items, chosen)
+
+    # The widget layer only where facts.nix has it (helpws widgets).
+    if fact(host, "widgets", repo) == "yes":
+        items = [(name, "", True) for name in ws_catalog.used("widgets", repo)
+                 if widgets.state(name) == "ask"]
+        chosen = ask(term, f"Виджеты (ws widgets) на {host}", items)
+        if chosen is None:
+            return None
+        for name, _, _ in items:
+            widgets.set(name, "yes" if name in chosen else "no")
 
     has = {line.key[-1] for line in apps.entries() if apps.line_state(line, host) == "yes"}
     items = offer(overrides, host, lambda line: line.key[0] in has)
@@ -92,10 +102,12 @@ def run(repo, host, term):
     mark(overrides, host, items, chosen)
 
     changed = []
-    for marked in (apps, boxes, overrides, widgets):
+    for marked in (apps, boxes, overrides):
         if any(line.changed for line in marked.lines):
             marked.save()
             changed.append(str(marked.path.relative_to(repo)))
+    if widgets.save():
+        changed.append(str(widgets.path.relative_to(repo)))
     return changed
 
 

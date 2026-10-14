@@ -5,9 +5,9 @@ set -euo pipefail
 # wswidgets each workstation has and which wswidgets version is installed.
 # The widgets come from the wswidgets flake input pinned by flake.lock
 # (github:kkkingqz/wswidgets), never from a local checkout: list, enable and
-# update read its catalog (lib.catalog) through Nix. Which workstation has
-# which widget: widgets/widgets.txt, ID HOST=yes|no|ask ... all=STATE
-# (lib/ws_marks.py); the line order is the panel order. enable/disable/apply
+# update read its catalog (lib.catalog) through Nix. Which host has which
+# widget: nix/hosts/HOST/widgets.toml, yes = [...] in panel order, no =
+# [...]; a widget in neither is ask (lib/ws_catalog.py). enable/disable/apply
 # edit it and run ws switch; update moves flake.lock to the newest
 # wswidgets and switches. ws sync publishes both (helpws plan-v2, 2.7).
 
@@ -15,10 +15,7 @@ set -euo pipefail
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 ws_prog="ws widgets"
 bin_dir="$WS_CORE/bin"
-# The checkout whose flake.lock and widgets.txt are used (tests: a copy).
-list_file="${WSWIDGETS_LIST:-$repo/widgets/widgets.txt}"
-marks_py="$bin_dir/../lib/ws_marks.py"
-select_py="$bin_dir/../lib/ws_select.py"
+catalog_py="$WS_CORE/lib/ws_catalog.py"
 # Tests replace the catalog (a JSON file), ws switch and the layer fact.
 catalog_file="${WSWIDGETS_CATALOG:-}"
 switch_cmd="${WSWIDGETS_SWITCH:-$bin_dir/ws switch}"
@@ -28,8 +25,8 @@ usage() {
 Usage:
   ws widgets list                 widgets of the pinned wswidgets and their state here
   ws widgets enabled              IDs enabled on this workstation, in panel order
-  ws widgets enable [-n] ID...    mark this workstation yes, then ws switch
-  ws widgets disable [-n] ID...   drop the line or mark this workstation no, then ws switch
+  ws widgets enable [-n] ID...    yes on this host, then ws switch
+  ws widgets disable [-n] ID...   no on this host, then ws switch
   ws widgets apply [--select]     offer the widgets not offered here yet, then ws switch
   ws widgets update [-n]          newest wswidgets from GitHub: flake.lock, ws switch
   ws widgets version              the pinned wswidgets revision
@@ -43,7 +40,12 @@ USAGE
 load_host() {
     [[ -z "${ws_host:-}" ]] || return 0
     ws_host="$("$bin_dir/ws" host --for-marks)" \
-        || die "no workstation for the marks of widgets/widgets.txt (ws host --for-marks)"
+        || die "no host for nix/hosts/HOST/widgets.toml (ws host --for-marks)"
+    list_file="nix/hosts/$ws_host/widgets.toml"
+}
+
+choice() {
+    python3 "$catalog_py" --host "$ws_host" widgets "$@"
 }
 
 # widgets = "yes"|"no" of this host's facts.nix: the layer itself.
@@ -83,21 +85,13 @@ catalog_ids() {
     catalog_rows | cut -f1
 }
 
-list_keys() {
-    python3 "$marks_py" "$list_file" keys
-}
-
 state_of() {
-    python3 "$marks_py" "$list_file" state "$1" "$ws_host"
-}
-
-mark() {
-    python3 "$marks_py" "$list_file" set "$1" "$ws_host" "$2" >/dev/null
+    choice state "$1"
 }
 
 do_switch() {
     if [[ "$1" == true ]]; then
-        echo "then: ws switch (applies it), ws sync (publishes $(realpath --relative-to="$repo" "$list_file" 2>/dev/null || echo widgets/widgets.txt))"
+        echo "then: ws switch (applies it), ws sync (publishes $list_file)"
     else
         # shellcheck disable=SC2086 # switch_cmd is a fixed command line
         $switch_cmd
@@ -136,22 +130,18 @@ cmd_list() {
         state="$(state_of "$id")"
         printf '  %-16s %-4s %s\n' "$id" "$state" "$label"
     done <<<"$known"
-    # Lines whose widget the pinned version no longer has.
+    # Chosen widgets the pinned version no longer has.
     while IFS= read -r id; do
         [[ -n "$id" ]] || continue
         grep -q "^$id"$'\t' <<<"$known" && continue
         printf '  %-16s %-4s (not in this wswidgets version)\n' "$id" "$(state_of "$id")"
-    done < <(list_keys)
+    done < <(choice chosen)
 }
 
-# What widgets.nix enables: the yes lines of this workstation in file order.
+# What widgets.nix enables: yes of this host, in panel order.
 cmd_enabled() {
-    local id
     load_host
-    while IFS= read -r id; do
-        [[ -n "$id" && "$(state_of "$id")" == yes ]] && printf '%s\n' "$id"
-    done < <(list_keys)
-    return 0
+    choice yes
 }
 
 cmd_enable() {
@@ -164,38 +154,35 @@ cmd_enable() {
         grep -Fxq -- "$id" <<<"$ids" \
             || die "no widget $id in wswidgets $(lock_field rev | cut -c1-7); have: $(paste -sd ' ' <<<"$ids")"
     done
+    choice set yes "$@" || exit
     for id in "$@"; do
-        mark "$id" yes
         echo "enabled on $ws_host: $id"
     done
     do_switch "$no_switch"
 }
 
 cmd_disable() {
-    local no_switch=false id result
+    local no_switch=false id
     if no_switch_flag "${1:-}"; then no_switch=true; shift; fi
     (($#)) || die "usage: ws widgets disable [-n] ID..."
     require_layer
     for id in "$@"; do
         [[ "$(state_of "$id")" == yes ]] || die "$id is not enabled on $ws_host"
     done
+    choice set no "$@" || exit
     for id in "$@"; do
-        result="$(python3 "$marks_py" "$list_file" remove "$id" "$ws_host")"
-        case "$result" in
-            removed) echo "removed from the list: $id" ;;
-            no) echo "disabled on $ws_host: $id ($ws_host=no; other workstations keep it)" ;;
-        esac
+        echo "disabled on $ws_host: $id (no in $list_file)"
     done
     do_switch "$no_switch"
 }
 
-# yes: enabled; ask: offered (the answer goes to widgets.txt); no: left
+# yes: enabled; ask: offered (the answer goes to widgets.toml); no: left
 # alone unless --select. A new catalog widget without a line is offered too.
 cmd_apply() {
-    local reselect=false id label state chosen rc=0 changed=false rows
-    local -a items=() offered=() unchecked=()
+    local id label state rc=0 offered rows
+    local -a items=() select=()
     case "${1:-}" in
-        --select) reselect=true ;;
+        --select) select=(--select) ;;
         "") ;;
         *) die "usage: ws widgets apply [--select]" ;;
     esac
@@ -204,36 +191,30 @@ cmd_apply() {
         echo "widgets = \"$(layer)\" in nix/hosts/$ws_host/facts.nix: no widget layer, nothing to apply"
         return 0
     fi
+    # Every widget of the catalog defaults to ask.
     rows="$(catalog_rows)" || exit 1
     while IFS=$'\t' read -r id label; do
-        [[ -n "$id" ]] || continue
-        state="$(state_of "$id")"
-        if [[ "$state" == ask || ( "$state" == no && "$reselect" == true ) ]]; then
-            items+=("$id"$'\t'"$label")
-            offered+=("$id")
-            [[ "$state" == ask ]] || unchecked+=(--unchecked "$id")
-        fi
+        [[ -z "$id" ]] || items+=("$id"$'\t'ask$'\t'"$label")
     done <<<"$rows"
-    if ((${#items[@]} == 0)); then
+    offered="$(for id in "${items[@]}"; do
+        id="${id%%$'\t'*}"
+        state="$(state_of "$id")"
+        if [[ "$state" == ask || ( "$state" == no && ${#select[@]} -gt 0 ) ]]; then echo "$id"; fi
+    done)"
+    if [[ -z "$offered" ]]; then
         echo "no widgets to offer on $ws_host"
         return 0
     fi
-    chosen="$(python3 "$select_py" --what "виджеты wswidgets" "${unchecked[@]}" -- "${items[@]}")" || rc=$?
+    choice offer "${select[@]}" --what "виджеты wswidgets" -- "${items[@]}" >/dev/null || rc=$?
     case "$rc" in
-        0)
-            for id in "${offered[@]}"; do
-                if grep -Fxq -- "$id" <<<"$chosen"; then mark "$id" yes; else mark "$id" no; fi
-            done
-            changed=true
-            ;;
+        0) do_switch false ;;
         2) echo "ws widgets: выбор отменён, предложенные виджеты не тронуты (спросит в следующий раз)" >&2 ;;
         3)
-            [[ "$reselect" == false ]] || die "ws widgets apply --select: needs a terminal"
-            echo "Not offered on $ws_host yet (no terminal to ask): ${offered[*]}; run ws widgets apply in a terminal" >&2
+            ((${#select[@]} == 0)) || die "ws widgets apply --select: needs a terminal"
+            echo "Not offered on $ws_host yet (no terminal to ask): $(echo $offered); run ws widgets apply in a terminal" >&2
             ;;
         *) exit "$rc" ;;
     esac
-    [[ "$changed" == false ]] || do_switch false
 }
 
 cmd_update() {
@@ -259,18 +240,15 @@ cmd_update() {
     fi
     new_ids="$(catalog_ids)" || { restore; exit 1; }
 
-    # A widget enabled on some workstation must still exist: its home
+    # A widget enabled on some host must still exist: its home
     # configuration would not build. Disable it first (ws widgets disable).
     while IFS= read -r id; do
         [[ -n "$id" ]] || continue
-        grep -Fxq -- "$id" <<<"$new_ids" && continue
-        if grep -Eq "^[[:space:]]*$id([[:space:]]|$).*=yes" "$list_file"; then
-            gone+=("$id")
-        fi
-    done < <(list_keys)
+        grep -Fxq -- "$id" <<<"$new_ids" || gone+=("$id")
+    done < <(python3 "$catalog_py" widgets used)
     if ((${#gone[@]})); then
         restore
-        die "wswidgets ${new:0:7} has no ${gone[*]}, enabled in widgets/widgets.txt; disable them first (flake.lock unchanged)"
+        die "wswidgets ${new:0:7} has no ${gone[*]}, enabled in nix/hosts/*/widgets.toml; disable them first (flake.lock unchanged)"
     fi
 
     echo "wswidgets ${old:0:7} -> ${new:0:7} ($(lock_field date))"

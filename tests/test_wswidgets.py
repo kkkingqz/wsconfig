@@ -1,4 +1,5 @@
-"""wswidgets against widgets/widgets.txt marks and a fixed catalog: list,
+"""wswidgets against the host choices nix/hosts/HOST/widgets.toml and a
+fixed catalog: list,
 enabled, enable, disable, apply without a terminal and update with nix and
 ws switch replaced by stubs, in a throwaway Git checkout."""
 import json
@@ -46,8 +47,10 @@ class WswidgetsTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
         self.repo = root / "repo"
-        (self.repo / "widgets").mkdir(parents=True)
-        self.list = self.repo / "widgets/widgets.txt"
+        (self.repo / "nix/hosts/test").mkdir(parents=True)
+        (self.repo / "nix/hosts/other").mkdir(parents=True)
+        self.list = self.repo / "nix/hosts/test/widgets.toml"
+        self.other = self.repo / "nix/hosts/other/widgets.toml"
         self.catalog = root / "catalog.json"
         self.catalog.write_text(json.dumps(CATALOG))
         self.log = root / "calls"
@@ -75,8 +78,8 @@ class WswidgetsTests(unittest.TestCase):
     def calls(self):
         return self.log.read_text().splitlines() if self.log.exists() else []
 
-    def test_list_shows_states_and_lines_missing_from_the_catalog(self):
-        self.list.write_text("example test=yes all=ask\ngone test=yes\nclock all=no\n")
+    def test_list_shows_states_and_choices_missing_from_the_catalog(self):
+        self.list.write_text('yes = ["example", "gone"]\nno = ["clock"]\n')
         result = self.run_w("list")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("wswidgets aaaaaaa", result.stdout)
@@ -84,52 +87,60 @@ class WswidgetsTests(unittest.TestCase):
         self.assertEqual(rows, {"example": "yes", "compact": "ask", "clock": "no", "gone": "yes"})
         self.assertIn("not in this wswidgets version", result.stdout)
 
-    def test_enabled_is_this_host_yes_in_file_order(self):
-        self.list.write_text("# c\ncompact test=yes\nexample other=yes all=no\nclock all=yes\n")
+    def test_enabled_is_this_host_yes_in_order(self):
+        self.list.write_text('# c\nyes = ["compact", "clock"]\n')
+        self.other.write_text('yes = ["example"]\n')
         self.assertEqual(self.run_w("enabled").stdout.split(), ["compact", "clock"])
 
     def test_enable_marks_yes_and_switches(self):
-        self.list.write_text("example other=yes all=ask\n")
+        self.list.write_text('# mine\nno = ["example"]\n')
         result = self.run_w("enable", "example", "clock")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.list.read_text(), "example other=yes test=yes all=ask\nclock test=yes all=ask\n")
+        self.assertEqual(self.list.read_text(), '# mine\nno = []\nyes = ["example", "clock"]\n')
         self.assertEqual(self.calls(), ["switch"])
 
     def test_enable_no_switch_and_unknown_id(self):
-        self.list.write_text("")
         self.assertEqual(self.run_w("enable", "-n", "compact").returncode, 0)
         self.assertEqual(self.calls(), [])
         result = self.run_w("enable", "nope", "example")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("no widget nope", result.stderr)
-        self.assertEqual(self.list.read_text(), "compact test=yes all=ask\n")
+        self.assertIn('yes = ["compact"]', self.list.read_text())
 
-    def test_disable_drops_or_marks_no(self):
-        self.list.write_text("example test=yes all=ask\ncompact test=yes other=yes\n")
+    def test_disable_marks_no(self):
+        self.list.write_text('yes = ["example", "compact"]\n')
+        self.other.write_text('yes = ["compact"]\n')
         result = self.run_w("disable", "-n", "example", "compact")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.list.read_text(), "compact test=no other=yes\n")
+        self.assertEqual(self.list.read_text(), 'yes = []\nno = ["example", "compact"]\n')
+        self.assertEqual(self.other.read_text(), 'yes = ["compact"]\n')
         self.assertNotEqual(self.run_w("disable", "clock").returncode, 0)
 
     def test_without_layer(self):
-        self.list.write_text("example test=ask\n")
+        self.list.write_text('no = ["example"]\n')
         result = self.run_w("enable", "example", WSWIDGETS_FACT="no")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('widgets = "no"', result.stderr)
         result = self.run_w("apply", WSWIDGETS_FACT="no")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.list.read_text(), "example test=ask\n")
+        self.assertEqual(self.list.read_text(), 'no = ["example"]\n')
 
     def test_apply_without_terminal_leaves_ask(self):
-        self.list.write_text("example test=yes\n")
+        self.list.write_text('yes = ["example"]\n')
         result = self.run_w("apply")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("compact clock", result.stderr)
-        self.assertEqual(self.list.read_text(), "example test=yes\n")
+        self.assertEqual(self.list.read_text(), 'yes = ["example"]\n')
         self.assertEqual(self.calls(), [])
 
+    def test_apply_with_nothing_to_offer(self):
+        self.list.write_text('yes = ["example", "compact"]\nno = ["clock"]\n')
+        result = self.run_w("apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no widgets to offer on test", result.stdout)
+
     def test_update_moves_lock_and_switches_without_committing(self):
-        self.list.write_text("example test=yes all=ask\n")
+        self.list.write_text('yes = ["example"]\n')
         result = self.run_w("update", NEW_REV="b" * 40)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("aaaaaaa -> bbbbbbb", result.stdout)
@@ -142,7 +153,7 @@ class WswidgetsTests(unittest.TestCase):
         self.assertIn("not published (ws sync)", result.stdout)
 
     def test_update_refuses_to_drop_an_enabled_widget(self):
-        self.list.write_text("compact other=yes all=ask\n")
+        self.other.write_text('yes = ["compact"]\n')
         smaller = self.catalog.with_name("new.json")
         smaller.write_text(json.dumps(CATALOG[:1]))
         before = (self.repo / "flake.lock").read_text()

@@ -32,28 +32,27 @@ widgets = "yes";   # "no" — без виджетов
 
 ## Какие виджеты на каком хосте
 
-`widgets/widgets.txt` — как `flatpak/apps.txt` и `distrobox/hosts.txt`
-(`helpws flatpak`, `helpws distrobox`): `ID HOST=STATE... all=STATE`, STATE
-yes (включён), no (отказались), ask (не предложен; `ws widgets apply`
-спрашивает). `all=` действует на хосте без своей пометки, строка без
-пометок — ask. Порядок строк — порядок кнопок. ID — из `catalog.nix`
-закреплённой версии wswidgets.
+Каталог — виджеты `catalog.nix` закреплённой версии wswidgets. Выбор
+хоста — `nix/hosts/HOST/widgets.toml` (`lib/ws_catalog.py`, `helpws
+plan-v2`, этап 3):
 
-```text
-example mbp16=yes all=ask
-compact mbp16=yes legiongo=no all=ask
+```toml
+yes = ["example", "compact"]   # включены; порядок — порядок кнопок на панели
+no = ["clock"]                 # отказались
 ```
 
-Файл правит `wswidgets`, публикует `ws sync`; править руками тоже
-можно. `setup.sh` на новом хосте (с `widgets = "yes"`) спрашивает о
-строках без пометки этого хоста вместе с Flatpak и Distrobox.
+Виджет, которого нет ни в `yes`, ни в `no`, — ask: его предлагает
+`ws widgets apply`. Файл правит `ws widgets` (комментарии и порядок
+сохраняются), публикует `ws sync`; править руками тоже можно. Каждый хост
+пишет только свой файл. `setup.sh` на новом хосте (с `widgets = "yes"`)
+спрашивает о виджетах в состоянии ask вместе с Flatpak и Distrobox.
 
 ## wswidgets
 
 ```console
 ws widgets list                 # виджеты закреплённой версии и их состояние здесь
-ws widgets enable clock         # host=yes в widgets.txt, затем ws switch
-ws widgets disable compact      # убрать строку или host=no, затем ws switch
+ws widgets enable clock         # в yes этого хоста (в конец панели), затем ws switch
+ws widgets disable compact      # в no этого хоста, затем ws switch
 ws widgets apply                # спросить о виджетах в состоянии ask (чеклист)
 ws widgets apply --select       # и об отклонённых (no)
 ws widgets update               # новая версия с GitHub (см. ниже)
@@ -64,17 +63,17 @@ ws widgets check [--json]       # = ws check widgets
 ```
 
 `-n` (`--no-switch`) у enable, disable и update только правит файл или
-`flake.lock`; применит следующий `ws switch`. Новый виджет каталога без
-строки в `widgets.txt` — ask: его предлагает `ws widgets apply`, в том числе
+`flake.lock`; применит следующий `ws switch`. Новый виджет каталога —
+ask: его предлагает `ws widgets apply`, в том числе
 из `ws apply` (шаг `widgets`).
 
 ## Версия wswidgets
 
 wsconfig закреплён на коммите wswidgets в `flake.lock`, как nixpkgs.
 `ws widgets update`: `nix flake update wswidgets`, ссылка на сравнение
-коммитов на GitHub, новые и удалённые виджеты, `ws switch` и коммит
-`flake.lock`. Если в новой версии нет виджета, включённого в `widgets.txt`
-на каком-либо хосте, update отказывается и не трогает `flake.lock`: сначала
+коммитов на GitHub, новые и удалённые виджеты, `ws switch`; `flake.lock`
+публикует `ws sync`. Если в новой версии нет виджета из `yes` какого-либо хоста
+(`nix/hosts/*/widgets.toml`), update отказывается и не трогает `flake.lock`: сначала
 `ws widgets disable`. Неудачный `ws switch` возвращает прежний `flake.lock`.
 `ws update nix` тоже обновляет wswidgets вместе с остальными inputs.
 
@@ -92,4 +91,4 @@ wsconfig закреплён на коммите wswidgets в `flake.lock`, ка�
 
 Виджет: `ws widgets disable ID`. Весь слой: `widgets = "no"` в `facts.nix` и
 `ws switch` — Home Manager убирает файлы слоя и сервис, расширение исчезает
-из `enabled-extensions`; пометки в `widgets.txt` остаются.
+из `enabled-extensions`; выбор в `widgets.toml` остаётся.

@@ -26,6 +26,7 @@ For the bash tools (HOST: ws host --for-marks unless --host):
     ws_catalog.py [--host H] MODULE set STATE NAME...         ask drops the choice
     ws_catalog.py [--host H] MODULE yes                       in file order
     ws_catalog.py [--host H] MODULE chosen                    names in yes or no
+    ws_catalog.py MODULE used                                 names in yes on any host
     ws_catalog.py [--host H] MODULE offer [--select] --what TEXT -- NAME<TAB>DEFAULT<TAB>LABEL...
     ws_catalog.py summary OLD NEW                             changes of a host file (ws sync)
 
@@ -130,7 +131,7 @@ class Choice:
             if self.text is None:
                 self.doc = kit.document()
                 self.doc.add(kit.comment(f"{self.host}: {MODULES[self.module]}."))
-                self.doc.add(kit.comment("yes — стоит здесь, no — отказ; чего нет ни там, ни там, — по default каталога."))
+                self.doc.add(kit.comment("yes — есть здесь, no — отказались; чего нет ни там, ни там, — default каталога."))
             else:
                 self.doc = kit.parse(self.text)
             for key in ("yes", "no"):
@@ -157,16 +158,28 @@ class Choice:
         return True
 
     def save(self):
+        """Writes the edits; True when the file changed."""
         if self.doc is None:
-            return
+            return False
         text = tomlkit().dumps(self.doc)
         if text == self.text:
-            return
+            return False
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_name(self.path.name + ".tmp")
         tmp.write_text(text)
         tmp.replace(self.path)
         self.text = text
+        return True
+
+
+def used(module, config=None):
+    """The names in yes on any host, each once, by host name."""
+    names = []
+    for path in sorted(hosts_dir(config).glob(f"*/{module}.toml")):
+        for name in Choice(module, path.parent.name, config).yes():
+            if name not in names:
+                names.append(name)
+    return names
 
 
 def offer(choice, items, select=False, what="", tty=None):
@@ -220,6 +233,10 @@ def main(argv):
             print(summary(read(argv[1]), read(argv[2])))
             return 0
         module, action, args = argv[0], argv[1], argv[2:]
+        if action == "used" and not args:
+            for name in used(module):
+                print(name)
+            return 0
         choice = Choice(module, host)
         if action == "state" and len(args) in (1, 2):
             print(choice.state(*args))

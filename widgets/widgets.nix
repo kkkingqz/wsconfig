@@ -1,25 +1,20 @@
 # Widget layer (helpws widgets), on hosts with widgets = "yes": the
 # Quickshell runtime, QML, GNOME adapter files and ws-widgets come from the
-# wswidgets flake input (pinned by flake.lock; wswidgets update); this
-# repository chooses the widgets per workstation (widgets.txt, wswidgets
-# enable|disable) and enables the adapter (gnome/gnome-extensions.nix).
+# wswidgets flake input (pinned by flake.lock; ws widgets update); this
+# repository chooses the widgets per host (nix/hosts/HOST/widgets.toml,
+# ws widgets enable|disable; lib/ws_catalog.py) and enables the adapter
+# (gnome/gnome-extensions.nix).
 { lib, wswidgets, wsHost, ... }:
 let
-  marks = import ../lib/ws_marks.nix { inherit lib; };
-  # ID HOST=STATE... all=STATE per line, # comments; the file order is the
-  # panel order, so the lines are read in order (ws_marks.read is a set).
-  lines = lib.filter (l: l != "")
-    (map (l: lib.trim (builtins.head (lib.splitString "#" l)))
-      (lib.splitString "\n" (builtins.readFile ./widgets.txt)));
-  idOf = line: builtins.head (lib.splitString " " (builtins.replaceStrings [ "\t" ] [ " " ] line));
-  enabled = line: marks.stateIn (marks.marksIn line) wsHost "ask" == "yes";
-  ids = map idOf (lib.filter enabled lines);
+  catalog = import ../lib/catalog.nix { inherit lib; };
 in
 {
   imports = [ wswidgets.homeManagerModules.default ];
 
   programs.wswidgets = {
     enable = true;
-    widgets = ids;
+    # yes of this host, in order: the panel order. Every widget of the
+    # catalog defaults to ask, so only yes enables one.
+    widgets = (catalog.choice wsHost "widgets").yes;
   };
 }

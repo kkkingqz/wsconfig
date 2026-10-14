@@ -14,7 +14,7 @@
   vm = "yes";
   # Widget layer (helpws widgets): "yes" installs wswidgets — Quickshell
   # runtime, QML and the GNOME panel adapter (widgets/widgets.nix) with the
-  # widgets of widgets/widgets.txt, ws check widgets; "no" leaves it out.
+  # widgets of nix/hosts/HOST/widgets.toml, ws check widgets; "no" leaves it out.
   widgets = "yes";
   # Native Steam (helpws plan-legion-go): "yes" installs the apt Steam
   # (steam/apt.txt, i386) and keeps its data on @steam in

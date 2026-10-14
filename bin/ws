@@ -33,7 +33,7 @@ Usage:
 switch    home-manager switch for this user and host (pinned by flake.lock);
           names the data files not published yet (ws sync)
 sync      publish the data files (flatpak/apps.txt, flatpak/overrides.txt,
-          distrobox/hosts.txt, widgets/widgets.txt, flake.lock): one commit
+          distrobox/hosts.txt, nix/hosts/*/widgets.toml, flake.lock): one commit
           with what changed, then git pull --rebase and git push when the
           branch has an upstream (no remote: the commit stays local);
           refuses during a Git operation, on a detached HEAD, with changes
@@ -76,7 +76,7 @@ check     run the owners' checks with --json and summarize their result
           check repo: the checkout (Git, hygiene, syntax, bin/ executables);
           check home: home-manager generation, Nix, man pages, session;
           check widgets: the wswidgets runtime, adapter and IPC (ws-widgets
-          check) and its manifest against widgets/widgets.txt (hosts with
+          check) and its manifest against nix/hosts/HOST/widgets.toml (hosts with
           widgets = "yes");
           check virt: KVM, libvirt, VM storage @vms, NAT network, OVMF/TPM
           (hosts with vm = "yes" in facts.nix);
@@ -181,35 +181,53 @@ current_generation() {
     done
 }
 
-# Lists that commands edit in the checkout (wsflatpak install/manage/unmanage/
-# remove/apply, filesystem/env/talk and un…; wsbox create/apply/remove), all
-# with workstation marks (lib/ws_marks.py), and flake.lock: switch adds them
-# before the build.
 # Data files: what ws and the tools write, published only by ws sync
-# (helpws plan-v2, 2.7). Everything else in the checkout is code, committed
-# by the developer. switch, sync and ws check repo read this list.
-data_files=(flatpak/apps.txt flatpak/overrides.txt distrobox/hosts.txt widgets/widgets.txt flake.lock)
+# (helpws plan-v2, 2.7): the lists that commands edit (wsflatpak install/
+# manage/unmanage/remove/apply, filesystem/env/talk and un…; wsbox
+# create/apply/remove), the host choices (lib/ws_catalog.py: ws widgets) and
+# flake.lock. Everything else in the checkout is code, committed by the
+# developer. Patterns as Git pathspecs: * matches / too. switch adds them
+# before the build; sync and ws check repo read them (ws data-files).
+data_patterns=(flatpak/apps.txt flatpak/overrides.txt distrobox/hosts.txt flake.lock
+    'nix/hosts/*/widgets.toml')
 
 is_data_file() {
     local f
-    for f in "${data_files[@]}"; do
-        [[ "$1" == "$f" ]] && return 0
+    for f in "${data_patterns[@]}"; do
+        # shellcheck disable=SC2053 # the pattern is a glob
+        [[ "$1" == $f ]] && return 0
     done
     return 1
 }
 
-# Data files that differ from HEAD (staged or not).
+# The data files as paths, in the order of the patterns: in the checkout
+# (new ones too) or in HEAD.
+data_files() {
+    local p
+    for p in "${data_patterns[@]}"; do
+        {
+            git -C "$repo" ls-files --cached --others --exclude-standard -- "$p"
+            git -C "$repo" ls-tree -r --name-only HEAD -- "$p" 2>/dev/null
+        } | sort -u
+    done | awk '!seen[$0]++'
+}
+
+# Data files that differ from HEAD (staged or not, new or deleted).
 changed_data_files() {
     local f
-    for f in "${data_files[@]}"; do
-        [[ -e "$repo/$f" ]] || continue
-        git -C "$repo" diff --quiet HEAD -- "$f" 2>/dev/null || echo "$f"
-    done
+    while IFS= read -r f; do
+        if ! git -C "$repo" cat-file -e "HEAD:$f" 2>/dev/null; then
+            [[ -e "$repo/$f" ]] && echo "$f"
+        elif [[ ! -e "$repo/$f" ]] || ! git -C "$repo" diff --quiet HEAD -- "$f" 2>/dev/null; then
+            echo "$f"
+        fi
+    done < <(data_files)
 }
 
 # What changed in a data file against HEAD, for the commit message:
-# +NAME, -NAME, NAME HOST=STATE (lib/ws_marks.py); flake.lock: the inputs
-# with a new revision.
+# +NAME, -NAME, NAME HOST=STATE (lib/ws_marks.py); a host choice NAME=yes,
+# NAME=no, -NAME (lib/ws_catalog.py); flake.lock: the inputs with a new
+# revision.
 data_summary() {
     local f="$1" old
     local -a fixed=()
@@ -227,6 +245,8 @@ def revs(path):
 old, new = revs(sys.argv[1]), revs(sys.argv[2])
 print(", ".join(k for k in sorted(set(old) | set(new)) if old.get(k) != new.get(k) and k != "root"))
 PY
+    elif [[ "$f" == nix/hosts/*.toml ]]; then
+        python3 "$WS_CORE/lib/ws_catalog.py" summary "$old" "$repo/$f"
     else
         [[ "$f" != flatpak/overrides.txt ]] || fixed=(3)
         python3 "$WS_CORE/lib/ws_marks.py" "$repo/$f" summary "$old" "${fixed[@]}"
@@ -243,7 +263,7 @@ unpublished_notice() {
     mapfile -t pending < <({
         changed_data_files
         if git -C "$repo" rev-parse --verify -q '@{u}' >/dev/null 2>&1; then
-            git -C "$repo" log --format= --name-only '@{u}..HEAD' -- "${data_files[@]}"
+            git -C "$repo" log --format= --name-only '@{u}..HEAD' -- "${data_patterns[@]}"
         fi
     } | sort -u | sed '/^$/d')
     ((${#pending[@]})) || return 0
@@ -338,9 +358,9 @@ cmd_switch() {
     local nix f
     nix="$(nix_bin)" || return
     # The flake sees only files Git knows; nothing is committed here (ws sync).
-    for f in "${data_files[@]}"; do
+    while IFS= read -r f; do
         [[ ! -e "$repo/$f" ]] || git -C "$repo" add -- "$f" || return
-    done
+    done < <(data_files)
     check_untracked || return
     "$nix" run "$repo#home-manager" -- switch --flake "$(target)" "$@" || return
     unpublished_notice
@@ -447,9 +467,9 @@ apply_steps=(
 # The marks the apply steps may write, to see whether they changed.
 marks_state() {
     local f
-    for f in "${data_files[@]}"; do
-        [[ "$f" == flake.lock ]] || cat "$repo/$f" 2>/dev/null
-    done | cksum
+    while IFS= read -r f; do
+        [[ "$f" == flake.lock ]] || { echo "$f"; cat "$repo/$f" 2>/dev/null; }
+    done < <(data_files) | cksum
 }
 
 cmd_apply() {
@@ -1152,7 +1172,7 @@ case "${1:-}" in
     host) shift; host "$@" ;;
     fact) shift; cmd_fact "$@" ;;
     # The data files and what of them is not published (ws check repo).
-    data-files) printf '%s\n' "${data_files[@]}" ;;
+    data-files) data_files ;;
     unpublished) unpublished_notice ;;
     modules) printf '%s\n' "${modules[@]}" ;;
     # Step names of apply, update and check, one per line: the fish
