@@ -1,6 +1,10 @@
 """A throwaway core and configuration for tests of bin/ws: bin/ws, lib/ and
 libexec/ copied or stubbed, nix and sudo stubbed in PATH, every call
-recorded in CALLS (ws help plan-v2, stage 6)."""
+recorded in CALLS (ws help plan-v2, stage 6).
+
+One checkout (core and data in `repo`, as until stage 8) or split=True:
+the core in `core` without data, the configuration in `repo` with only the
+data files, WSCONFIG naming it (ws help plan-v2, 8.1)."""
 import os
 from pathlib import Path
 import shutil
@@ -65,17 +69,19 @@ esac
 
 
 class Workspace:
-    def __init__(self, root, modules=None, real=("ws_run",)):
+    def __init__(self, root, modules=None, real=("ws_run",), split=False):
         self.root = Path(root)
-        self.repo = self.root / "repo"
+        self.split = split
+        self.repo = self.root / ("config" if split else "repo")
+        self.core = self.root / "core" if split else self.repo
         self.state = self.root / "state"
         self.bin = self.root / "bin"
         self.calls = self.root / "calls"
-        for d in (self.repo / "bin", self.repo / "libexec", self.repo / "flatpak", self.state, self.bin):
+        for d in (self.core / "bin", self.core / "libexec", self.repo / "flatpak", self.state, self.bin):
             d.mkdir(parents=True, exist_ok=True)
-        shutil.copy(ROOT / "bin/ws", self.repo / "bin/ws")
-        shutil.copytree(ROOT / "lib", self.repo / "lib", ignore=shutil.ignore_patterns("__pycache__"))
-        shutil.copy(ROOT / "libexec/ws-apt", self.repo / "libexec/ws-apt")
+        shutil.copy(ROOT / "bin/ws", self.core / "bin/ws")
+        shutil.copytree(ROOT / "lib", self.core / "lib", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copy(ROOT / "libexec/ws-apt", self.core / "libexec/ws-apt")
         shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
         (self.repo / "flatpak/catalog.toml").write_text("[remotes]\n")
         (self.repo / "flake.lock").write_text('{"nodes": {"root": {}}}\n')
@@ -89,7 +95,7 @@ class Workspace:
         self.write(self.bin / "sudo", SUDO)
         for name, body in APT.items():
             self.stub(name, body, where="bin")
-        self.write(self.repo / "libexec/ws-system", SYSTEM)
+        self.write(self.core / "libexec/ws-system", SYSTEM)
         for name, body in (modules or {}).items():
             self.stub(name, body)
         self.env = {k: v for k, v in os.environ.items() if not k.startswith(("WS", "GIT_"))}
@@ -98,6 +104,8 @@ class Workspace:
                         PATH=f"{self.bin}:{os.environ['PATH']}",
                         GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
                         GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+        if split:
+            self.env["WSCONFIG"] = str(self.repo)
         self.git("init", "-q")
         self.git("add", ".")
         self.git("commit", "-qm", "init")
@@ -108,14 +116,14 @@ class Workspace:
         path.chmod(0o755)
 
     def stub(self, name, body, where="libexec"):
-        self.write((self.repo / where if where == "libexec" else self.bin) / name, "#!/bin/sh\n" + body)
+        self.write((self.core / where if where == "libexec" else self.bin) / name, "#!/bin/sh\n" + body)
 
     def git(self, *args):
         return subprocess.run(["git", "-C", str(self.repo), *args], env=getattr(self, "env", None),
                               check=True, text=True, capture_output=True).stdout.strip()
 
     def ws(self, *args, **env):
-        p = subprocess.run([str(self.repo / "bin/ws"), *args], text=True, capture_output=True,
+        p = subprocess.run([str(self.core / "bin/ws"), *args], text=True, capture_output=True,
                            env=dict(self.env, **env), stdin=subprocess.DEVNULL)
         return p.returncode, p.stdout, p.stderr
 

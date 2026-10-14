@@ -1,10 +1,14 @@
 """ws apply, update and check walk their step tables (ws help plan-v2, 2.5
 and stage 6): the order of apply, the names, the summary."""
 import json
+from pathlib import Path
+import shutil
 import tempfile
 import unittest
 
 from ws_fixture import Workspace
+
+ROOT = Path(__file__).resolve().parents[1]
 
 APPLY = {"ws-gnome": 0, "ws-tiling-apply": 69, "ws-keyboard-apply": 3,
          "wsflatpak": 0, "wsbox": 0, "wswidgets": 0}
@@ -15,10 +19,12 @@ RESULT = json.dumps({"status": "warn", "passes": 1, "warnings": 1, "failures": 0
 
 
 class StepsTests(unittest.TestCase):
+    SPLIT = False
+
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        self.w = Workspace(tmp.name)
+        self.w = Workspace(tmp.name, split=self.SPLIT)
         for name, rc in APPLY.items():
             self.w.stub(name, f'echo "{name} $* applying=${{WS_APPLYING:-}} offered=${{WS_OFFERED:-}}"\n'
                               f'[ "$1" = check ] && echo \'{RESULT}\' && exit 0\nexit {rc}\n')
@@ -127,13 +133,15 @@ class StepsTests(unittest.TestCase):
 class IdempotenceTests(unittest.TestCase):
     """A second ws apply with nothing changed installs nothing and asks no
     sudo (ws help plan-v2, stage 6)."""
+    SPLIT = False
+
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         modules = {name: f'echo "{name} $*" >> "$CALLS"\n' for name in
                    ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsbox", "wswidgets")}
-        self.w = Workspace(tmp.name, modules=modules)
+        self.w = Workspace(tmp.name, split=self.SPLIT, modules=modules)
         (self.w.repo / "nix/hosts/test/apt.txt").write_text("pkg-a\npurge:old-b\n")
         (self.w.state / "installed").write_text("old-b\n")
         (self.w.state / "system-todo").write_text("file: /etc/x\n")
@@ -164,6 +172,34 @@ class IdempotenceTests(unittest.TestCase):
         self.assertEqual(rc, 1, out + err)
         self.assertIn("would also remove: needs-old-b", out + err)
         self.assertFalse([c for c in self.w.take_calls() if " purge -y" in c])
+
+
+class SplitStepsTests(StepsTests):
+    """The tests that read paths, with the configuration apart from the
+    core (ws help plan-v2, 8.1); the rest does not depend on it."""
+    SPLIT = True
+    test_named_steps_run_the_nix_stages_and_only_them = None
+
+    def test_check_repo_takes_its_code_from_the_core(self):
+        shutil.copy(ROOT / "libexec/ws-check-repo", self.w.core / "libexec/ws-check-repo")
+        rc, out, err = self.ws("check", "repo", "--json")
+        self.assertNotIn("check.bash", err)
+        self.assertIn(json.loads(out)["status"], ("pass", "warn", "fail"))
+
+    test_home_alone = None
+    test_pending_system_not_named_is_left = None
+    test_failed_build_applies_nothing = None
+    test_failed_home_skips_the_modules = None
+    test_unknown_step = None
+    test_switch_is_gone = None
+    test_steps_lists = None
+
+
+class SplitIdempotenceTests(IdempotenceTests):
+    """The tests that read paths, with the configuration apart from the
+    core (ws help plan-v2, 8.1); the rest does not depend on it."""
+    SPLIT = True
+    test_purge_that_takes_more_stops = None
 
 
 if __name__ == "__main__":

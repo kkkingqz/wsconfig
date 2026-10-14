@@ -9,7 +9,7 @@ set -o pipefail
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
-. "$repo/lib/check.bash"
+. "$WS_CORE/lib/check.bash"
 
 case "${1:-}" in
     --json) check_json_mode ;;

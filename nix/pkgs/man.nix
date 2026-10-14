@@ -4,7 +4,7 @@
 runCommand "workstation-man" { nativeBuildInputs = [ lowdown ]; } ''
   mkdir -p work/man/man1
   cp -r ${../../docs} work/docs
-  WSCONFIG="$PWD/work" sh ${../../libexec/ws-doc-build} > /dev/null
+  WS_DOC_ROOT="$PWD/work" sh ${../../libexec/ws-doc-build} > /dev/null
   mkdir -p $out/share/man
   cp -r work/man/man1 $out/share/man/man1
 ''

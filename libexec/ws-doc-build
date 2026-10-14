@@ -4,8 +4,10 @@ set -eu
 # Man pages from docs/**/*.md, one per `title:` (lowdown -s -t man).
 # nix/pkgs/man.nix runs this in the Nix build with lowdown from nixpkgs; `ws apply`
 # installs the result. A run by hand writes the untracked man/ for preview.
+# Docs are code of the core: WS_DOC_ROOT (the Nix build) or this checkout,
+# never the configuration.
 
-repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
+repo="${WS_DOC_ROOT:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
 mandir="$repo/man/man1"
 
 mkdir -p "$mandir"
