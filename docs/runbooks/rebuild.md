@@ -550,7 +550,7 @@ workstation-hibernate@local (пункт Hibernate; хосты с resume= в kern
 командой:
 
 ```console
-ws-keyboard-install-extensions
+ws gnome extensions
 ```
 
 (шаг `extensions` в `ws apply`). После изменения `extension.js` на Wayland

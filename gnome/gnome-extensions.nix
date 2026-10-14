@@ -2,7 +2,7 @@
 # reads it: enabled-extensions (dconf, written by ws switch), the links of
 # pinned EGO extensions, and ~/.local/share/workstation/gnome/extensions.json
 # (order: every UUID in order; by_source: SOURCE: [UUID]; pins: UUID:
-# VERSION; helpws plan-v2, 2.6) for ws-keyboard-install-extensions,
+# VERSION; helpws plan-v2, 2.6) for ws gnome extensions,
 # ws-gnome check, test and status, ws check repo and ws update extensions.
 #
 # source:
@@ -16,7 +16,7 @@
 #           EGO download URL): built by nix/pkgs/gnome-extensions.nix and linked
 #           file by file by ws switch; not updated
 #   local   gnome/extensions/<uuid> in this repository, copied (schemas
-#           compiled) by ws-keyboard-install-extensions (ws apply extensions)
+#           compiled) by ws gnome extensions (ws apply extensions)
 #   nix     files delivered by a Home Manager module of a flake input (the
 #           wswidgets adapter, widgets/widgets.nix) on ws switch; only
 #           enabled here

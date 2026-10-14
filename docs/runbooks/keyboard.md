@@ -573,7 +573,7 @@ bin/ws-nautilus-current
 bin/ws-input-source
 bin/ws-caps-led
 bin/ws-tiling-apply
-bin/ws-keyboard-install-extensions
+bin/ws-gnome-extensions
 bin/ws-keyboard-check
 
 keyboard/xremap.nix
@@ -688,7 +688,7 @@ ws-tiling-apply
 Extension sources устанавливаются через:
 
 ```console
-ws-keyboard-install-extensions
+ws gnome extensions
 ```
 
 System-level baseline (uinput udev, GDM EN, Touch Bar native mode: udev rule,

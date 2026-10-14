@@ -187,7 +187,7 @@ keyboard, Tiling Assistant или extension baseline.
 ubuntu  gnome-shell-ubuntu-extensions (apt), включает режим сессии Ubuntu
 ego     extensions.gnome.org: ставит ws apply extensions, обновляет
         Extension Manager; с pin — версия через Nix (nix/pkgs/gnome-extensions.nix)
-local   gnome/extensions/<uuid>, копирует ws-keyboard-install-extensions
+local   gnome/extensions/<uuid>, копирует ws gnome extensions
 ```
 
 Из списка собираются:
@@ -199,7 +199,7 @@ local   gnome/extensions/<uuid>, копирует ws-keyboard-install-extensions
 - `~/.local/share/workstation/gnome/extensions.json` (`order` — все UUID по
   порядку, `by_source` — по источникам, `pins` — версии pin) — его читают
   `ws-gnome check`, `ws-gnome-test`, `ws-gnome-status`, `ws check repo`,
-  `ws update extensions` и `ws-keyboard-install-extensions`.
+  `ws update extensions` и `ws gnome extensions`.
 
 Все расширения списка обязательны. Посмотреть текущий список:
 

@@ -10,13 +10,16 @@ case "$cmd" in
     status) exec "$repo/bin/ws-gnome-status" "$@" ;;
     check) exec "$repo/bin/ws-gnome-check" "$@" ;;
     test) exec "$repo/bin/ws-gnome-test" "$@" ;;
+    extensions) exec "$repo/bin/ws-gnome-extensions" "$@" ;;
     -h|--help|help)
         cat <<'USAGE'
-Usage: ws-gnome [status|check|test]
+Usage: ws gnome [status|check|test|extensions]
 
   status     read-only GNOME inventory
   check      compare appearance/Dock state with gnome/gnome.nix
   test       final read-only GNOME host smoke-test
+  extensions install the EGO extensions without pin and the local ones of
+             gnome/gnome-extensions.nix (ws apply extensions)
 
 The profile is applied by `ws switch` (gnome/gnome.nix).
 USAGE

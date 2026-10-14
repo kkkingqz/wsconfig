@@ -10,7 +10,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
-APPLY = {"ws-keyboard-install-extensions": 0, "ws-tiling-apply": 69, "ws-keyboard-apply": 3,
+APPLY = {"ws-gnome": 0, "ws-tiling-apply": 69, "ws-keyboard-apply": 3,
          "wsflatpak": 0, "wsbox": 0, "wswidgets": 0}
 CHECK = ["ws-check-repo", "ws-check-home", "ws-keyboard", "ws-gnome", "wsflatpak", "wsbox", "wswin",
          "ws-suspend", "wsgame", "ws-workstation-verify"]
@@ -55,8 +55,8 @@ class StepsTests(unittest.TestCase):
         rc, out, _ = self.ws("apply")
         self.assertEqual(rc, 1)
         self.assertEqual(out, """
-=== extensions: ws-keyboard-install-extensions
-ws-keyboard-install-extensions 
+=== extensions: ws-gnome extensions
+ws-gnome extensions
 
 === tiling: ws-tiling-apply
 ws-tiling-apply 
@@ -86,7 +86,7 @@ wswidgets apply
         rc, out, _ = self.ws("apply", "widgets", "extensions")
         self.assertEqual(rc, 0)
         self.assertEqual([l for l in out.splitlines() if l.startswith("===")],
-                         ["=== extensions: ws-keyboard-install-extensions", "=== widgets: wswidgets apply",
+                         ["=== extensions: ws-gnome extensions", "=== widgets: wswidgets apply",
                           "=== ws apply"])
 
     def test_unknown_step(self):

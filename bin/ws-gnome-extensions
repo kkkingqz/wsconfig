@@ -3,6 +3,7 @@ set -euo pipefail
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws gnome extensions"
 
 for cmd in python3 glib-compile-schemas curl gnome-extensions gnome-shell; do
     command -v "$cmd" >/dev/null 2>&1 || die "$cmd not found"

@@ -25,6 +25,22 @@ function __ws_state_names -a dir
     test -d $d; and path basename $d/*/
 end
 
+# ws MODULE ARG...: the owner of the layer (ws modules); its arguments are
+# completed as if the owner were typed.
+function __ws_module_owner
+    set -l cmd (commandline -opc)
+    test (count $cmd) -ge 2; or return 1
+    ws modules 2>/dev/null | string replace -rf -- "^$cmd[2] " ''
+end
+
+function __ws_module_args
+    set -l owner (__ws_module_owner); or return
+    set -l cmd (commandline -opc)
+    complete -C "$owner $cmd[3..] "(commandline -ct)
+end
+
+complete -c ws -n __ws_needs_command -a '(ws modules 2>/dev/null | string replace -r " (.*)" "\tLayer module (\$1)")'
+complete -c ws -n '__ws_module_owner >/dev/null' -a '(__ws_module_args)'
 complete -c ws -n __ws_needs_command -a switch -d 'home-manager switch for this host'
 complete -c ws -n __ws_needs_command -a diff -d 'Package difference of the next generation'
 complete -c ws -n __ws_needs_command -a apply -d 'Run the layer owners in order'
@@ -40,7 +56,6 @@ complete -c ws -n __ws_needs_command -a btrfs -d 'Btrfs layout of a fresh instal
 complete -c ws -n '__ws_at btrfs' -a make -d '@, @home, @cache, @tmp, @log; two runs'
 complete -c ws -n '__ws_after btrfs' -l dry-run -d 'Only show the steps'
 complete -c ws -n '__ws_after btrfs' -l yes -d 'Answer its questions with yes'
-complete -c ws -n __ws_needs_command -a backup -d 'Native Btrfs backup to Unraid'
 complete -c ws -n '__ws_at backup' -a 'plan status list check send restore-test recovery-export'
 complete -c ws -n '__ws_at backup list' -l json -d 'Machine-readable list'
 complete -c ws -n '__ws_at backup plan; or __ws_at backup send' -a 'home vms all'

@@ -27,6 +27,8 @@ Usage:
   ws host [--for-marks]
   ws fact [--host HOST] NAME
   ws news
+  ws MODULE [ARG...]       flatpak box windows widgets game keyboard gnome
+                           suspend backup: the owner of that layer
 
 switch    home-manager switch for this user and host (pinned by flake.lock);
           names the data files not published yet (ws sync)
@@ -41,7 +43,7 @@ news      home-manager news of this flake (switch does not notify about them)
 diff      build the home generation without activating it and show the
           package difference against the current one (nvd)
 apply     run the layer owners in order, as by hand (no sudo steps):
-            extensions  ws-keyboard-install-extensions
+            extensions  ws gnome extensions
             tiling      ws-tiling-apply
             keyboard    ws-keyboard-apply
             flatpak     wsflatpak apply
@@ -131,6 +133,18 @@ host      print the flake host name used for this machine: WS_HOST, else
 fact      print a string fact of this host, or of --host HOST (hardware,
           boot, user, wsconfig, ...) from nix/hosts/<host>/facts.nix,
           without Nix (lib/ws_facts.py)
+MODULE    the owners of the layers, one command for each (helpws plan-v2,
+          2.8); ARG... as the owner takes them, see ws MODULE --help:
+            flatpak   Flatpak apps, remotes, overrides (wsflatpak)
+            box       Distrobox containers (wsbox)
+            windows   Windows programs in the Windows boxes (wswin)
+            widgets   Quickshell widgets (wswidgets)
+            game      Game Mode from Bazzite parts (wsgame)
+            keyboard  xremap and the GNOME shortcuts (ws-keyboard)
+            gnome     GNOME profile, extensions (ws-gnome)
+            suspend   suspend, hibernate, t2bce (ws-suspend)
+            backup    Timeshift snapshots to Unraid (wsbackup)
+          the old names still work: .desktop files and shortcuts call them
 USAGE
 }
 
@@ -354,6 +368,28 @@ cmd_diff() {
 }
 
 # Layer owners in apply order: name, command.
+# The modules: ws MODULE ARG... runs the owner of that layer (helpws
+# plan-v2, 2.8). The fish completion reads this table (ws modules).
+modules=(
+    "flatpak wsflatpak"
+    "box wsbox"
+    "windows wswin"
+    "widgets wswidgets"
+    "game wsgame"
+    "keyboard ws-keyboard"
+    "gnome ws-gnome"
+    "suspend ws-suspend"
+    "backup wsbackup"
+)
+
+module_owner() {
+    local m
+    for m in "${modules[@]}"; do
+        [[ "${m%% *}" == "$1" ]] && { echo "${m#* }"; return 0; }
+    done
+    return 1
+}
+
 # Step tables (apply_steps, update_steps, check_steps): "NAME COMMAND" per
 # entry. Shared by apply, update and check is only the walk (helpws plan-v2,
 # 2.5): names, the selection, the step header and the summary. What a result
@@ -400,7 +436,7 @@ steps_summary() {
 }
 
 apply_steps=(
-    "extensions ws-keyboard-install-extensions"
+    "extensions ws-gnome extensions"
     "tiling ws-tiling-apply"
     "keyboard ws-keyboard-apply"
     "flatpak wsflatpak apply"
@@ -1094,6 +1130,11 @@ cmd_check() {
     ((total_fail == 0))
 }
 
+if owner="$(module_owner "${1:-}")"; then
+    shift
+    exec "$WS_CORE/bin/$owner" "$@"
+fi
+
 case "${1:-}" in
     apply) shift; cmd_apply "$@" ;;
     sync) shift; cmd_sync "$@" ;;
@@ -1108,12 +1149,12 @@ case "${1:-}" in
     collect) shift; exec "$repo/bin/ws-collect" "$@" ;;
     container) shift; exec "$repo/bin/ws-container" "$@" ;;
     btrfs) shift; exec "$repo/bin/ws-btrfs" "$@" ;;
-    backup) shift; exec "$repo/bin/wsbackup" "$@" ;;
     host) shift; host "$@" ;;
     fact) shift; cmd_fact "$@" ;;
     # The data files and what of them is not published (ws check repo).
     data-files) printf '%s\n' "${data_files[@]}" ;;
     unpublished) unpublished_notice ;;
+    modules) printf '%s\n' "${modules[@]}" ;;
     # Step names of apply, update and check, one per line: the fish
     # completion reads them from here instead of keeping its own list.
     steps)

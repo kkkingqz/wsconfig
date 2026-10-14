@@ -862,7 +862,7 @@ wsconfig/
 │   ├── ws-keyboard-apply
 │   ├── ws-keyboard-status
 │   ├── ws-keyboard-check  ws-keyboard check
-│   ├── ws-keyboard-install-extensions
+│   ├── ws-gnome-extensions
 │   ├── ws-workstation-verify  связи между слоями (последний шаг ws check)
 │   ├── ws-check-repo, ws-check-home  ws check repo / home
 │   ├── ws-suspend, ws-suspend-check
