@@ -154,9 +154,8 @@ export_source() {
 # it before they change anything. The name must fit a mark (ws_marks.py).
 load_host() {
     [[ -z "${ws_host:-}" ]] || return 0
-    ws_host="$("$bin_dir/ws" host)" || die "unknown workstation (ws host)"
-    [[ "$ws_host" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ && "$ws_host" != all ]] \
-        || die "invalid workstation name for distrobox/hosts.txt: $ws_host"
+    ws_host="$("$bin_dir/ws" host --for-marks)" \
+        || die "no workstation for the marks of distrobox/hosts.txt (ws host --for-marks)"
 }
 
 this_host() {

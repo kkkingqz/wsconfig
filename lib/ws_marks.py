@@ -31,32 +31,27 @@ without its own mark and without all= applies everywhere.
 """
 from pathlib import Path
 import re
-import subprocess
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ws_facts  # noqa: E402
+from ws_facts import ALL, check_host  # noqa: E402
 
 STATES = ("yes", "no", "ask")
 MARK = re.compile(r"([A-Za-z0-9][A-Za-z0-9_-]*)=(yes|no|ask)\Z")
-ALL = "all"
 # flatpak/overrides.txt: APP KIND VALUE, then marks (a VALUE may be KEY=yes);
 # yes or no, applies everywhere unless marked no; a new line gets all=yes.
 OVERRIDES = dict(fixed=3, default="yes", new_all="yes", states=("yes", "no"))
 
 
-def check_host(host):
-    """HOST as it can stand in a mark: what the parser reads back."""
-    if host == ALL or not MARK.match(f"{host}=yes"):
-        raise ValueError(f"invalid workstation name {host!r} for a mark "
-                         "(letters, digits, - and _; not all)")
-    return host
-
-
 def current_host(repo):
-    """The flake host of this machine (WS_HOST or facts.nix hostname)."""
-    p = subprocess.run([str(Path(repo) / "bin/ws"), "host"], text=True, capture_output=True)
-    if p.returncode or not p.stdout.strip():
-        raise SystemExit(p.stderr.strip() or "ws host: unknown workstation")
+    """The flake host of this machine (WS_HOST or facts.nix hostname), as a
+    mark can hold it (lib/ws_facts.py)."""
+    host = ws_facts.find_host(repo)
+    if host is None:
+        raise SystemExit("ws host: unknown workstation")
     try:
-        return check_host(p.stdout.strip())
+        return check_host(host)
     except ValueError as e:
         raise SystemExit(str(e))
 

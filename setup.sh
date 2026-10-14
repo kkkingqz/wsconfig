@@ -48,9 +48,10 @@ ask() {
 done_step() { [[ -e "$state/$1.done" ]]; }
 mark_step() { mkdir -p "$state" && date -Is > "$state/$1.done"; }
 
-# A string fact of a facts.nix, as bin/ws reads it.
+# A string fact of a facts.nix (lib/ws_facts.py, after the clone); empty
+# when there is none.
 fact_in() {
-    sed -nE "s/^[[:space:]]*$2 = \"([^\"]*)\";.*/\1/p" "$1" 2>/dev/null | head -n1
+    python3 "$repo/lib/ws_facts.py" fact --file "$1" "$2" 2>/dev/null || true
 }
 
 ws() { "$repo/bin/ws" "$@"; }

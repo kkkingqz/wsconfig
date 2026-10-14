@@ -27,8 +27,10 @@ class ContainerTests(unittest.TestCase):
         (self.repo / 'bin').mkdir(parents=True)
         shutil.copyfile(ROOT / 'bin/ws-container', self.repo / 'bin/ws-container')
         (self.repo / 'lib').mkdir(exist_ok=True)
-        shutil.copyfile(ROOT / 'lib/common.bash', self.repo / 'lib/common.bash')
+        for name in ('common.bash', 'ws_common.py', 'ws_facts.py'):
+            shutil.copyfile(ROOT / 'lib' / name, self.repo / 'lib' / name)
         (self.repo / 'bin/ws-container').chmod(0o755)
+        shutil.copyfile(ROOT / '.gitignore', self.repo / '.gitignore')
         self.host('box', 'container')
         self.host('pc', 'grub')
         self.git('init', '-q')

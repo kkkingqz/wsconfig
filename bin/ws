@@ -23,8 +23,8 @@ Usage:
   ws btrfs make [--dry-run] [--yes]
   ws backup [plan|status|list|check|send|restore-test|recovery-export ...]
   ws container build|run|status HOST [--dry-run]
-  ws host
-  ws fact NAME
+  ws host [--for-marks]
+  ws fact [--host HOST] NAME
   ws news
 
 switch    home-manager switch for this user and host (pinned by flake.lock);
@@ -120,47 +120,21 @@ checkpoint  which commit matched which working state (home-manager
 container  image and container of a container host (boot = "container",
           helpws plan-wsgnomebox) on its server, see ws-container --help
 host      print the flake host name used for this machine: WS_HOST, else
-          the nix/hosts/<host> whose facts.nix has hostname = "$(hostname)"
-fact      print a string fact of this host (hardware, boot, user, wsconfig,
-          ...) from nix/hosts/<host>/facts.nix, without Nix
+          the nix/hosts/<host> whose facts.nix has hostname = "$(hostname)";
+          --for-marks: fail unless the name can stand in a list mark
+fact      print a string fact of this host, or of --host HOST (hardware,
+          boot, user, wsconfig, ...) from nix/hosts/<host>/facts.nix,
+          without Nix (lib/ws_facts.py)
 USAGE
 }
 
 [[ $EUID -ne 0 ]] || die "run as the desktop user, not root"
 
-# A string fact of a facts.nix (NAME = "VALUE"; on one line), read without
-# Nix: bootstrap.sh needs the facts before Nix exists, checks read them often.
-fact_in() {
-    sed -nE "s/^[[:space:]]*$2 = \"([^\"]*)\";.*/\1/p" "$1" 2>/dev/null | head -n1
-}
-
-# Flake host for this machine: WS_HOST, else the host whose facts.nix has
-# this hostname.
-host() {
-    local f
-    if [[ -n "${WS_HOST:-}" ]]; then
-        echo "$WS_HOST"
-        return
-    fi
-    for f in "$repo"/nix/hosts/*/facts.nix; do
-        if [[ "$(fact_in "$f" hostname)" == "$(hostname)" ]]; then
-            f="${f%/facts.nix}"
-            echo "${f##*/}"
-            return
-        fi
-    done
-    die "no nix/hosts/*/facts.nix with hostname = \"$(hostname)\"; add the host or set WS_HOST"
-}
-
-cmd_fact() {
-    local h value
-    [[ $# -eq 1 ]] || die "usage: ws fact NAME"
-    h="$(host)"
-    [[ -r "$repo/nix/hosts/$h/facts.nix" ]] || die "no nix/hosts/$h/facts.nix"
-    value="$(fact_in "$repo/nix/hosts/$h/facts.nix" "$1")"
-    [[ -n "$value" ]] || die "no string fact $1 in nix/hosts/$h/facts.nix"
-    echo "$value"
-}
+# Host and string facts: lib/ws_facts.py, the one reader (helpws plan-v2,
+# 2.2). host: WS_HOST, else the host whose facts.nix has this hostname.
+facts_py() { python3 "$WS_CORE/lib/ws_facts.py" "$@"; }
+host() { facts_py host "$@" || exit 1; }
+cmd_fact() { facts_py fact "$@"; }
 
 target() {
     echo "$repo#$(id -un)@$(host)"
@@ -825,12 +799,12 @@ cmd_check_apt() {
     h="$(host)"
     local -a lists=("$repo/nix/hosts/apt.txt" "$repo/nix/hosts/$h/apt.txt")
     # Real machines only, not a container host (helpws plan-wsgnomebox).
-    [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" boot)" == container ]] || lists+=("$repo/nix/hosts/machine-apt.txt")
+    [[ "$(facts_py fact --host "$h" boot 2>/dev/null)" == container ]] || lists+=("$repo/nix/hosts/machine-apt.txt")
     # VM packages only on hosts with vm = "yes" (helpws virt).
-    [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" vm)" != yes ]] || lists+=("$repo/virt/apt.txt")
+    [[ "$(facts_py fact --host "$h" vm 2>/dev/null)" != yes ]] || lists+=("$repo/virt/apt.txt")
     # Native Steam and the Game Mode session (helpws plan-legion-go).
-    [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" nativeSteam)" != yes ]] || lists+=("$repo/steam/apt.txt")
-    [[ "$(fact_in "$repo/nix/hosts/$h/facts.nix" gameMode)" != yes ]] || lists+=("$repo/gaming/apt.txt")
+    [[ "$(facts_py fact --host "$h" nativeSteam 2>/dev/null)" != yes ]] || lists+=("$repo/steam/apt.txt")
+    [[ "$(facts_py fact --host "$h" gameMode 2>/dev/null)" != yes ]] || lists+=("$repo/gaming/apt.txt")
     mapfile -t want < <(cat "${lists[@]}" 2>/dev/null \
         | sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' -e '/^ppa:/d' -e 's/^rec://' | sort -u)
     for pkg in $(printf '%s\n' "${want[@]}" | sed -n 's/^purge://p'); do
@@ -981,7 +955,7 @@ case "${1:-}" in
     container) shift; exec "$repo/bin/ws-container" "$@" ;;
     btrfs) shift; exec "$repo/bin/ws-btrfs" "$@" ;;
     backup) shift; exec "$repo/bin/wsbackup" "$@" ;;
-    host) host ;;
+    host) shift; host "$@" ;;
     fact) shift; cmd_fact "$@" ;;
     # Step names of apply, update and check, one per line: the fish
     # completion reads them from here instead of keeping its own list.

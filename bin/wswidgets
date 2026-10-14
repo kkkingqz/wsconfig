@@ -41,9 +41,8 @@ USAGE
 
 load_host() {
     [[ -z "${ws_host:-}" ]] || return 0
-    ws_host="$("$bin_dir/ws" host)" || die "unknown workstation (ws host)"
-    [[ "$ws_host" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ && "$ws_host" != all ]] \
-        || die "invalid workstation name for widgets/widgets.txt: $ws_host"
+    ws_host="$("$bin_dir/ws" host --for-marks)" \
+        || die "no workstation for the marks of widgets/widgets.txt (ws host --for-marks)"
 }
 
 # widgets = "yes"|"no" of this host's facts.nix: the layer itself.

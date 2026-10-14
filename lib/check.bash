@@ -39,7 +39,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 # A string fact of this host (ws fact: hardware, boot, ...), empty when the
 # host is unknown. Checks of hardware parts (T2, Touch Bar, dGPU) run only on
 # the hardware that has them. Needs $repo.
-host_fact() { "$repo/bin/ws" fact "$1" 2>/dev/null; }
+host_fact() { python3 "$WS_CORE/lib/ws_facts.py" fact "$1" 2>/dev/null; }
 
 # Prints the summary (text or JSON); returns 1 when a check failed.
 check_finish() {
