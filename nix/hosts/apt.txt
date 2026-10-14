@@ -29,6 +29,8 @@ curl
 # Python helpers use the host PyGObject and AT-SPI (ws-nautilus-current)
 python3-gi
 gir1.2-atspi-2.0
+# Edits of the host choices keep comments (lib/ws_catalog.py)
+python3-tomlkit
 
 # Qt applications under GNOME (rebuild.md 6.2)
 qgnomeplatform-qt5

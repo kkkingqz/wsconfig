@@ -1,0 +1,6 @@
+# a: Distrobox containers (fixture of lib/test-catalog.nix and tests/test_ws_catalog.py).
+yes = [
+    "arch",  # comment inside
+    "wine",
+]
+no = ["proton"]

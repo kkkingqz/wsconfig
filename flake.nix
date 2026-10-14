@@ -76,6 +76,8 @@
           pkgs.writeText "scale" "lib/scale.nix: sizes by the display scale";
         ws-marks = assert import ./lib/test-ws-marks.nix { inherit lib; };
           pkgs.writeText "ws-marks" "lib/ws_marks.nix reads the workstation marks";
+        catalog = assert import ./lib/test-catalog.nix { inherit lib; };
+          pkgs.writeText "catalog" "lib/catalog.nix reads the host choices";
       };
 
       # Tools `ws` runs, pinned by flake.lock.

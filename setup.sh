@@ -123,6 +123,9 @@ step_tools() {
     for c in git gh xdg-terminal-exec; do
         command -v "$c" >/dev/null 2>&1 || missing+=("$c")
     done
+    # The host choices are edited through tomlkit (lib/ws_catalog.py), the
+    # first time in step_choices.
+    python3 -c 'import tomlkit' 2>/dev/null || missing+=(python3-tomlkit)
     ((${#missing[@]})) || return 0
     say "apt: ${missing[*]}"
     sudo apt-get update
