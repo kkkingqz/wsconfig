@@ -90,10 +90,14 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
 - **Nix доставляет, владельцы остаются.** `ws flatpak`, `ws box`, `ws gnome`,
   `ws keyboard`, `ws suspend`, `ws windows` работают как раньше и читают
   собранное Nix.
-- **`bin/` и `libexec/` — ссылки на checkout.** Скрипты не собираются в store: им нужны
-  утилиты host (`gsettings`, `gdbus`, `busctl`, PyGObject), правка работает
-  сразу. Поэтому откат поколения home-manager не откатывает скрипты —
-  состояние задаёт коммит (`ws checkpoint`).
+- **Ядро — из store.** `ws` и внутренние исполнители (`bin/ws`,
+  `libexec/`, `lib/`, модули) — копия checkout в store без данных
+  (`nix/pkgs/ws.nix`); `~/.local/bin` ссылается на неё. Им по-прежнему нужны
+  утилиты host (`gsettings`, `gdbus`, `busctl`, PyGObject, python3). Правка
+  кода действует после `ws switch`; `~/wsconfig/bin/ws` берёт код из
+  checkout сразу. Откат поколения home-manager откатывает и инструменты;
+  fish и Ghostty остаются ссылками в checkout, поэтому ключ состояния —
+  коммит (`ws checkpoint`).
 - **Последние версии.** Закреплено только то, что нужно: ядро (`linux-t2`
   held, патч t2bce под него), xremap (`nix/pkgs/xremap.nix`), расширения с
   `pin`. Остальное обновляет `ws update`.

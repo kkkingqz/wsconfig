@@ -44,7 +44,7 @@ class FactsTests(unittest.TestCase):
 
     def cli(self, *args, **env):
         e = {k: v for k, v in os.environ.items() if k not in ("WS_HOST", "WS_CONFIG")}
-        e.update(WSCONFIG=str(self.config), **env)
+        e.update(WSCONFIG=str(self.config), WS_STATE=str(self.config / "state"), **env)
         return subprocess.run([sys.executable, str(ROOT / "lib/ws_facts.py"), *args],
                               text=True, capture_output=True, env=e)
 
@@ -65,6 +65,24 @@ class FactsTests(unittest.TestCase):
     def test_host_by_hostname_or_ws_host(self):
         self.assertEqual(self.cli("host").stdout, "this\n")
         self.assertEqual(self.cli("host", WS_HOST="other").stdout, "other\n")
+
+    def test_record_and_host_json(self):
+        p = self.cli("record", WS_HOST="other")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        record = json.loads((self.config / "state/host.json").read_text())
+        self.assertEqual(record, {"host": "other", "config": str(self.config)})
+        # Unchanged: not written again.
+        self.assertEqual(self.cli("record", WS_HOST="other").stderr, "")
+        # The record names the host of its configuration only.
+        self.assertEqual(self.cli("host").stdout, "other\n")
+        record["config"] = "/elsewhere"
+        (self.config / "state/host.json").write_text(json.dumps(record))
+        self.assertEqual(self.cli("host").stdout, "this\n")
+        # record finds the host again, not from the old record.
+        record["config"] = str(self.config)
+        (self.config / "state/host.json").write_text(json.dumps(record))
+        self.cli("record")
+        self.assertEqual(json.loads((self.config / "state/host.json").read_text())["host"], "this")
 
     def test_unknown_host(self):
         (self.config / "nix/hosts/this/host.toml").unlink()

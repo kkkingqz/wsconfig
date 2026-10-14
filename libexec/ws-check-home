@@ -27,10 +27,9 @@ is_tracked() {
 section "1. home-manager generation"
 
 # The active home-manager generation is the list of the user layer: every
-# file it links (bin/, libexec/, fish, ghostty, configs built from Nix) must
-# resolve to the same target from $HOME. Targets in the checkout must be
-# tracked, and those in bin/ and libexec/ executable in Git (they are run
-# through the link).
+# file it links (ws and its tools from the store, fish, ghostty, configs
+# built from Nix) must resolve to the same target from $HOME. Targets in the
+# checkout must be tracked.
 hm_gen="$(readlink -f "${XDG_STATE_HOME:-$HOME/.local/state}/nix/profiles/home-manager" 2>/dev/null || true)"
 hm_files="$(readlink -f "$hm_gen/home-files" 2>/dev/null || true)"
 if [[ -n "$hm_gen" && -e "$hm_gen/activate" && -d "$hm_files" ]]; then
@@ -49,27 +48,35 @@ if [[ -n "$hm_gen" && -e "$hm_gen/activate" && -d "$hm_files" ]]; then
         [[ "$want" == "$repo"/* && -f "$want" ]] || continue
         hm_repo=$((hm_repo + 1))
         path="${want#"$repo"/}"
-        if ! is_tracked "$path"; then
-            fail "~/$rel links to untracked $path"
-        elif [[ "$path" == bin/* || "$path" == libexec/* ]]; then
-            mode="$(git -C "$repo" ls-files -s -- "$path" | awk 'NR==1{print $1}')"
-            [[ "$mode" == 100755 && -x "$want" ]] \
-                || fail "$path linked into ~/.local/bin but not executable (Git mode ${mode:-?})"
-        fi
+        is_tracked "$path" || fail "~/$rel links to untracked $path"
     done < <(find "$hm_files" -mindepth 1 \( -type l -o -type f \) -print0 2>/dev/null)
     pass "home-manager files match the generation: $hm_ok ($hm_repo into the checkout)"
 else
     fail "no active home-manager generation (ws switch)"
 fi
 
-# home-manager links libexec for the callers without PATH (host.toml:
-# wsconfig).
-if [[ "$(readlink -f "$HOME/.local/share/workstation/libexec" 2>/dev/null)" == "$WS_CORE/libexec" ]]; then
-    pass "~/.local/share/workstation/libexec points at libexec/ of this checkout"
+# ws in PATH is the core in the store (nix/pkgs/ws.nix); libexec for the
+# callers without PATH is that of the same core.
+ws_real="$(readlink -f "$HOME/.local/bin/ws" 2>/dev/null || true)"
+core_installed="${ws_real%/bin/ws}"
+if [[ "$ws_real" == /nix/store/*/bin/ws && -e "$core_installed/.wsconfig-package" ]]; then
+    pass "~/.local/bin/ws is the core in the store: ${core_installed#/nix/store/}"
 else
-    fail "~/.local/share/workstation/libexec does not point at $WS_CORE/libexec (wsconfig in host.toml; ws switch)"
+    fail "~/.local/bin/ws is not the core in the store (${ws_real:-missing}); ws switch"
 fi
-
+if [[ -n "$core_installed" \
+    && "$(readlink -f "$HOME/.local/share/workstation/libexec" 2>/dev/null)" == "$core_installed/libexec" ]]; then
+    pass "~/.local/share/workstation/libexec is libexec/ of that core"
+else
+    fail "~/.local/share/workstation/libexec is not libexec/ of the installed core; ws switch"
+fi
+# host.json: the configuration and host of the ws in PATH.
+record="$(python3 "$WS_CORE/lib/ws_common.py" get "$WS_STATE/host.json" config 2>/dev/null || true)"
+if [[ "$record" == "$repo" ]]; then
+    pass "$WS_STATE/host.json names this configuration"
+else
+    warn "$WS_STATE/host.json names ${record:-no configuration}, not $repo; ws switch"
+fi
 
 section "2. Nix"
 

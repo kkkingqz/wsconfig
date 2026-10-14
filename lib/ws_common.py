@@ -7,8 +7,12 @@ lib/ on sys.path by its own location:
 
 CORE is where the running code is, CONFIG the data (nix/hosts, the lists
 and catalogs), STATE this machine only. WSCONFIG (tests, another checkout)
-sets CONFIG; WS_CONFIG and WS_STATE from ws are kept. Until stage 5 CORE
-and CONFIG are one checkout.
+sets CONFIG; WS_CONFIG and WS_STATE from ws are kept. Otherwise CONFIG is
+(helpws plan-v2, stage 5):
+- CORE itself when it is a checkout: until stage 8 code and data are one
+  repository, and ~/wsconfig/bin/ws works on its own checkout;
+- for the core in the store (marked by PACKAGE_MARK), the config of
+  host.json in STATE, else ~/wsconfig.
 """
 import os
 from pathlib import Path
@@ -18,8 +22,13 @@ import sys
 # terminal/fish/completions/ws.fish have it too (tests/test_common.py).
 STATE_NAME = "wsconfig"
 
+# A file at the root of the core in the store (nix/pkgs/ws.nix).
+PACKAGE_MARK = ".wsconfig-package"
+# The record of this machine in STATE: {"host": ID, "config": PATH}
+# (ws_facts.py record writes it).
+HOST_RECORD = "host.json"
+
 CORE = Path(__file__).resolve().parent.parent
-CONFIG = Path(os.environ.get("WSCONFIG") or os.environ.get("WS_CONFIG") or CORE)
 
 
 def state_dir():
@@ -29,6 +38,32 @@ def state_dir():
         return Path(os.environ["WS_STATE"])
     base = os.environ.get("XDG_STATE_HOME") or str(Path.home() / ".local/state")
     return Path(base) / STATE_NAME
+
+
+def host_record():
+    """host.json of the state as a dict; {} when it is missing or broken."""
+    import json
+    try:
+        data = json.loads((state_dir() / HOST_RECORD).read_text())
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def config_root(core=CORE):
+    """The data root (see the module text)."""
+    env = os.environ.get("WSCONFIG") or os.environ.get("WS_CONFIG")
+    if env:
+        return Path(env)
+    if not (core / PACKAGE_MARK).exists():
+        return core
+    recorded = host_record().get("config")
+    if isinstance(recorded, str) and recorded:
+        return Path(recorded)
+    return Path.home() / "wsconfig"
+
+
+CONFIG = config_root()
 
 
 def die(prog, message):
@@ -91,12 +126,16 @@ if __name__ == "__main__":
     # missing file or key:
     #   ws_common.py get FILE [KEY...]
     #   ws_common.py rows FILE FIELD,FIELD... [KEY...]
-    if len(sys.argv) >= 3 and sys.argv[1] == "get":
+    #   ws_common.py config       the data root (lib/common.bash)
+    if sys.argv[1:] == ["config"]:
+        out = [str(CONFIG)]
+    elif len(sys.argv) >= 3 and sys.argv[1] == "get":
         out = lines(get(load(sys.argv[2]), *sys.argv[3:]))
     elif len(sys.argv) >= 4 and sys.argv[1] == "rows":
         out = rows(get(load(sys.argv[2]), *sys.argv[4:]), sys.argv[3].split(","))
     else:
-        print("usage: ws_common.py get FILE [KEY...] | rows FILE FIELD,... [KEY...]", file=sys.stderr)
+        print("usage: ws_common.py get FILE [KEY...] | rows FILE FIELD,... [KEY...] | config",
+              file=sys.stderr)
         sys.exit(64)
     for line in out:
         print(line)

@@ -30,7 +30,9 @@ Usage:
   ws MODULE [ARG...]       flatpak box windows widgets game keyboard gnome
                            suspend backup: the owner of that layer
 
-switch    home-manager switch for this user and host (pinned by flake.lock);
+switch    home-manager switch for this user and host (pinned by flake.lock):
+          also ws and its tools in ~/.local/bin from the store; records the
+          host and this configuration in ~/.local/state/wsconfig/host.json;
           names the data files not published yet (ws sync)
 sync      publish the data files (flatpak/catalog.toml,
           nix/hosts/*/{flatpak,boxes,widgets}.toml, flake.lock): one commit
@@ -363,6 +365,9 @@ cmd_switch() {
     done < <(data_files)
     check_untracked || return
     "$nix" run "$repo#home-manager" -- switch --flake "$(target)" "$@" || return
+    # host.json: the ws in PATH, the core in the store, finds this
+    # configuration and host through it (lib/ws_common.py).
+    facts_py record || return
     unpublished_notice
 }
 

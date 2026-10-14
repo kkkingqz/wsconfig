@@ -485,9 +485,11 @@ data             ~/.local/share/<tool>/...
 `helpws readme`.
 
 Каталог checkout — настройка хоста: `wsconfig` в
-`nix/hosts/<host>/host.toml` (относительно `$HOME`). Скрипты находят
-checkout по собственному пути (ссылки в `~/.local/bin`), переменная
-`WSCONFIG` его переопределяет.
+`nix/hosts/<host>/host.toml` (относительно `$HOME`), по нему home-manager
+ставит ссылки fish и Ghostty. `ws` из PATH — ядро в store; checkout он
+берёт из `~/.local/state/wsconfig/host.json` (пишет `ws switch`), без него —
+`~/wsconfig`. `~/wsconfig/bin/ws` работает со своим checkout. Переменная
+`WSCONFIG` переопределяет оба.
 
 Реальные пути в `$HOME` используют symlink'и на repository. Git — прямо в
 checkout:
@@ -542,8 +544,9 @@ man ws-workstation
 ~/.config/fish/completions/   ws, helpws, wsbox, wsflatpak, wswin, ws-gnome
 ```
 
-Все файлы из `terminal/fish/` (и `terminal/ghostty/*.ghostty`, команды `bin/` и `libexec/`)
-подключены ссылками home-manager в checkout (`nix/home/links.nix`);
+Все файлы из `terminal/fish/` (и `terminal/ghostty/*.ghostty`)
+подключены ссылками home-manager в checkout; `ws` и его инструменты в
+`~/.local/bin` — ссылки на ядро в store (`nix/pkgs/ws.nix`) (`nix/home/links.nix`);
 новый файл подключается следующим `ws switch`. Man pages — из сборки Nix
 (`nix/home/man.nix`). fzf, zoxide, eza, micro — из Nix
 (`nix/home/cli.nix`). fzf ≥ 0.70 занимает Shift+Tab; `config.fish` возвращает туда

@@ -302,9 +302,10 @@ news`; `ws switch` о них не уведомляет (`news.display = "silent"
 `home-manager news` без `--flake` конфигурацию не находит.
 
 Checkpoint — какой коммит соответствовал какому рабочему состоянию.
-`bin/`, `libexec/`, fish и Ghostty — ссылки в checkout (`nix/home/links.nix`), поэтому
-откат поколения home-manager не откатывает пользовательский слой: ключ —
-коммит, поколение и системное дерево — то, что из него собрано.
+fish и Ghostty — ссылки в checkout (`nix/home/links.nix`), поэтому откат
+поколения home-manager не откатывает пользовательский слой целиком (`ws` и
+его инструменты он откатывает: они из store). Ключ — коммит, поколение и
+системное дерево — то, что из него собрано.
 
 ```console
 ws checkpoint create before-update   # тег checkpoint/before-update (локальный)

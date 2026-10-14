@@ -798,7 +798,7 @@ man ws-workstation
 
 ```text
 executable source   ~/wsconfig/bin/ws, ~/wsconfig/libexec/<tool>
-runtime link        ~/.local/bin/<tool>
+runtime link        ~/.local/bin/<tool> → ядро в store (nix/pkgs/ws.nix)
 config source       ~/wsconfig/<область>/...
 generated           ~/.local/share/workstation/...
 ```
@@ -897,7 +897,8 @@ wsconfig/
 ```
 
 Nix доставляет, владельцы слоёв не меняются (`helpws layers`):
-home-manager ставит ссылки на checkout (`~/.local/bin`, fish, Ghostty), man pages
+home-manager ставит `ws` и инструменты из store (`~/.local/bin`), ссылки на
+checkout (fish, Ghostty), man pages
 и CLI (fzf, zoxide, eza, micro, nvd, xremap), unit `xremap.service` с
 `xremap.yml` из store, `enabled-extensions` и закреплённые расширения
 GNOME (`nix/pkgs/gnome-extensions.nix`), конфиг `ws flatpak` из
@@ -907,7 +908,8 @@ GNOME (`nix/pkgs/gnome-extensions.nix`), конфиг `ws flatpak` из
 клавиатура — владельцы из `libexec/`, их по порядку вызывает `ws apply`.
 Основная проверка — `ws check`.
 
-Runtime helper paths в `~/.local/bin` используют symlink на repository.
+Инструменты в `~/.local/bin` — ссылки на ядро в store (`nix/pkgs/ws.nix`),
+fish и Ghostty — ссылки на checkout.
 GNOME extension runtime copies являются реальными directories в
 `~/.local/share/gnome-shell/extensions/`.
 

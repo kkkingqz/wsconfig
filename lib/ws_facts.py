@@ -18,8 +18,11 @@ printed as JSON by `section`.
                                        a host.toml outside nix/hosts (setup.sh)
     ws_facts.py section [--host HOST] NAME
                                        a section of host.toml as JSON (ws-container)
+    ws_facts.py record                 write host.json in the state: this host
+                                       and the data root (ws switch, setup.sh)
 
-The data root is WS_CONFIG (lib/ws_common.py).
+The data root is WS_CONFIG (lib/ws_common.py). host.json names the host
+only for the data root it records.
 """
 import json
 import os
@@ -80,12 +83,20 @@ def fact(host, name, config=None):
     return fact_in(facts_file(host, config), name)
 
 
-def find_host(config=None):
-    """WS_HOST, else the host whose host.toml has this hostname, else None."""
+def find_host(config=None, record=True):
+    """WS_HOST, else the host of host.json when it records this data root,
+    else the host whose host.toml has this hostname, else None."""
     if os.environ.get("WS_HOST"):
         return os.environ["WS_HOST"]
+    root = Path(config or ws_common.CONFIG)
+    if record:
+        rec = ws_common.host_record()
+        host = rec.get("host")
+        if (rec.get("config") == str(root) and isinstance(host, str) and HOST_NAME.match(host)
+                and facts_file(host, root).is_file()):
+            return host
     me = socket.gethostname()
-    for path in sorted((Path(config or ws_common.CONFIG) / "nix/hosts").glob("*/host.toml")):
+    for path in sorted((root / "nix/hosts").glob("*/host.toml")):
         if fact_in(path, "hostname") == me:
             return path.parent.name
     return None
@@ -112,7 +123,26 @@ def host_or_die(for_marks=False):
     return host
 
 
+def record():
+    """host.json: this host and the data root; written only when it
+    changes. The host is found as without the record (hostname, WS_HOST):
+    an old record does not keep itself."""
+    host = find_host(record=False) or host_or_die()
+    data = {"host": host, "config": str(ws_common.CONFIG)}
+    if ws_common.host_record() == data:
+        return
+    path = ws_common.state_dir() / ws_common.HOST_RECORD
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2) + "\n")
+    tmp.replace(path)
+    print(f"{PROG}: {path}: host {host}, configuration {data['config']}", file=sys.stderr)
+
+
 def main(argv):
+    if argv == ["record"]:
+        record()
+        return 0
     if argv[:1] == ["host"] and argv[1:] in ([], ["--for-marks"]):
         print(host_or_die(argv[1:] == ["--for-marks"]))
         return 0
@@ -144,7 +174,7 @@ def main(argv):
         print(value)
         return 0
     ws_common.die(PROG, "usage: ws_facts.py host [--for-marks] | fact [--host HOST|--file HOST_TOML] NAME"
-                  " | section [--host HOST] NAME")
+                  " | section [--host HOST] NAME | record")
 
 
 if __name__ == "__main__":

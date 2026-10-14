@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Workstation checkpoint: which Git commit matched which working state.
-# bin/, libexec/, fish and Ghostty are links into the checkout (nix/home/links.nix), so a
+# fish and Ghostty are links into the checkout (nix/home/links.nix), so a
 # home-manager generation alone is no rollback of the user layer; the commit is
 # the key, the generation and the system tree are what it built.
 

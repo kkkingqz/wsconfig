@@ -8,19 +8,28 @@
 #   WS_CORE    code: bin/ws, libexec/, lib/, gnome/extensions, hooks; where this file is
 #   WS_CONFIG  data: nix/hosts, the lists and catalogs, host choices
 #   WS_STATE   this machine only
-# WS_CORE is always where the running code is. WSCONFIG (tests, another
-# checkout) sets WS_CONFIG; WS_CONFIG and WS_STATE are exported and kept by
-# the tools ws runs. Until stage 5 code and data are one checkout, and
-# `repo`, what the tools still use for both, is WS_CONFIG: as before,
-# ${WSCONFIG:-the checkout of the tool}.
+# WS_CORE is always where the running code is: a checkout (~/wsconfig/bin/ws)
+# or the core in the store (nix/pkgs/ws.nix, ~/.local/bin/ws). WSCONFIG
+# (tests, another checkout) sets WS_CONFIG; WS_CONFIG and WS_STATE are
+# exported and kept by the tools ws runs. Otherwise WS_CONFIG is the
+# checkout itself (code and data are one repository until stage 8), and for
+# the core in the store the config of WS_STATE/host.json, else ~/wsconfig
+# (config_root of lib/ws_common.py). `repo`, what the tools use for the
+# data, is WS_CONFIG.
 #
 # The state directory name is also in lib/ws_common.py, flake.nix
 # (wsState) and terminal/fish/completions/ws.fish; tests/test_common.py
 # keeps them equal.
 
 WS_CORE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WS_CONFIG="${WSCONFIG:-${WS_CONFIG:-$WS_CORE}}"
 WS_STATE="${WS_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/wsconfig}"
+if [[ -n "${WSCONFIG:-${WS_CONFIG:-}}" ]]; then
+    WS_CONFIG="${WSCONFIG:-$WS_CONFIG}"
+elif [[ ! -e "$WS_CORE/.wsconfig-package" ]]; then
+    WS_CONFIG="$WS_CORE"
+else
+    WS_CONFIG="$(WS_STATE="$WS_STATE" python3 "$WS_CORE/lib/ws_common.py" config)"
+fi
 export WS_CORE WS_CONFIG WS_STATE
 # shellcheck disable=SC2034 # read by the tools that source this file
 repo="$WS_CONFIG"

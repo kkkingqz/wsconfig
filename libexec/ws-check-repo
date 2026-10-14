@@ -342,9 +342,8 @@ done < <(git -C "$repo" ls-files --others --exclude-standard -z)
 
 section "5. Executables"
 
-# bin/ and libexec/ are run through ~/.local/bin links (and ws-caps-led
-# through ~/.local/share/workstation/libexec): every file there is
-# executable in Git and on disk.
+# bin/ and libexec/ are run from the core in the store, which keeps the Git
+# mode: every file there is executable in Git and on disk.
 bin_bad=false
 while IFS= read -r -d '' path; do
     mode="$(git -C "$repo" ls-files -s -- "$path" | awk 'NR==1{print $1}')"

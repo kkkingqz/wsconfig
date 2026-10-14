@@ -44,6 +44,26 @@ class CommonTests(unittest.TestCase):
         p = self.run_tool('echo "$WS_CORE|$WS_CONFIG|$repo"\n', {"WSCONFIG": "/data"})
         self.assertEqual(p.stdout.strip(), f"{self.tmp / 'core'}|/data|/data")
 
+    def test_core_in_the_store_reads_host_json(self):
+        # The core of nix/pkgs/ws.nix: the data root is not the core.
+        (self.tmp / "core/.wsconfig-package").touch()
+        p = self.run_tool('echo "$WS_CONFIG"\n')
+        self.assertEqual(p.stdout.strip(), str(self.tmp / "home/wsconfig"))
+        state = self.tmp / "home/.local/state/wsconfig"
+        state.mkdir(parents=True)
+        (state / "host.json").write_text('{"host": "h", "config": "/cfg"}\n')
+        p = self.run_tool('echo "$WS_CONFIG"\n')
+        self.assertEqual(p.stdout.strip(), "/cfg")
+        py = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); "
+                             "import ws_common; print(ws_common.CONFIG)", str(self.tmp / "core/lib")],
+                            text=True, capture_output=True,
+                            env={k: v for k, v in os.environ.items()
+                                 if k not in ("WSCONFIG", "WS_CONFIG", "WS_STATE", "XDG_STATE_HOME")}
+                            | {"HOME": str(self.tmp / "home")})
+        self.assertEqual(py.stdout.strip(), "/cfg")
+        p = self.run_tool('echo "$WS_CONFIG"\n', {"WSCONFIG": "/data"})
+        self.assertEqual(p.stdout.strip(), "/data")
+
     def test_roots_from_ws_are_kept_and_exported(self):
         p = self.run_tool('bash -c \'echo "$WS_CONFIG|$WS_STATE"\'\n',
                           {"WS_CONFIG": "/cfg", "WS_STATE": "/st", "WS_CORE": "/elsewhere"})

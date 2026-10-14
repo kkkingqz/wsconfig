@@ -30,7 +30,7 @@
       mkHome = host: home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         extraSpecialArgs = {
-          inherit man wswidgets;
+          inherit man wswidgets core;
           facts = factsOf host;
           # The flake host (ws host): its choices nix/hosts/HOST/*.toml
           # (lib/catalog.nix).
@@ -42,6 +42,8 @@
         modules = [ ./nix/home ];
       };
 
+      # The core in the store: ws and its tools (nix/pkgs/ws.nix).
+      core = pkgs.callPackage ./nix/pkgs/ws.nix { };
       # Man pages from docs/ with lowdown from nixpkgs.
       man = pkgs.callPackage ./nix/pkgs/man.nix { };
       # System file tree of the host; `ws system diff|check` compares it.
@@ -58,7 +60,7 @@
         { name = "home-${host}"; value = (mkHome host).activationPackage; }
         { name = "system-${host}"; value = mkSystem host; }
       ]) // {
-        inherit man;
+        inherit man core;
         scale = assert import ./lib/test-scale.nix { inherit lib; };
           pkgs.writeText "scale" "lib/scale.nix: sizes by the display scale";
         host = assert import ./lib/test-host.nix { inherit lib; };
@@ -75,6 +77,7 @@
         nvd = pkgs.nvd;
         xremap = pkgs.callPackage ./nix/pkgs/xremap.nix { };
         man = man;
+        ws = core;
       };
     };
 }
