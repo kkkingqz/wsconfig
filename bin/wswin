@@ -5,7 +5,7 @@ set -euo pipefail
 # (profile wine: wine/winetricks; profile proton: umu-run). Programs with a
 # launcher are listed in windows/apps.nix. ws switch builds both files:
 #
-#   ~/.local/share/workstation/distrobox/boxes.ini   [BOX] home profile driver dpi
+#   ~/.local/share/workstation/distrobox/boxes.json  boxes: home profile driver dpi
 #                                                    init_overrides gpu
 #   ~/.local/share/workstation/windows/apps.ini      [wswin] default_box; [APP] ...
 #
@@ -16,7 +16,7 @@ set -euo pipefail
 # Commands run through `wsbox run`, which adds DRI_PRIME for gpu=amd boxes.
 
 data="${WSWIN_DATA:-$HOME/.local/share/workstation}"
-boxes_ini="$data/distrobox/boxes.ini"
+boxes_json="$data/distrobox/boxes.json"
 apps_ini="$data/windows/apps.ini"
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
@@ -77,12 +77,15 @@ sections() {
 }
 
 ensure_config() {
-    [[ -r "$boxes_ini" ]] || die "not found: $boxes_ini (ws switch)"
+    [[ -r "$boxes_json" ]] || die "not found: $boxes_json (ws switch)"
     [[ -r "$apps_ini" ]] || die "not found: $apps_ini (ws switch)"
 }
 
+# A value of a box in boxes.json (distrobox/distrobox.nix), ${HOME} expanded.
 box_value() {
-    ini_value "$boxes_ini" "$1" "$2"
+    local value
+    value="$(manifest_get "$boxes_json" "$1" "$2")"
+    printf '%s\n' "${value//\$\{HOME\}/$HOME}"
 }
 
 require_box() {
@@ -536,7 +539,7 @@ cmd_menu() {
                         printf 'Linked %s\n' "$(basename "$f")"
                     done
                 done
-            done < <(sections "$boxes_ini")
+            done < <(manifest_get "$boxes_json")
             ;;
         *)
             die "usage: wswin menu [--box BOX] [--prefix NAME] add | menu list|sync | menu remove ID"
@@ -804,7 +807,7 @@ cmd_list() {
             done
         fi
         printf '%-14s %-8s %s\n' "$box" "$(box_value "$box" profile)" "${names[*]:--}"
-    done < <(sections "$boxes_ini")
+    done < <(manifest_get "$boxes_json")
 }
 
 main() {

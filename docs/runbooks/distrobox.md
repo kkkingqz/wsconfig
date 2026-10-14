@@ -22,8 +22,9 @@ bin/wsbox                        владелец: apply, check, update, recreat
 
 ```text
 containers.ini   манифест distrobox assemble
-exports.ini      [BOX] ALIAS=.desktop внутри контейнера
-boxes.ini        [BOX] home, gpu; у Windows-боксов profile, driver, dpi (wswin)
+boxes.json       контейнеры по порядку: image, home, hooks, exports
+                 (ALIAS: .desktop внутри контейнера), gpu; у Windows-боксов
+                 profile, driver, dpi, init_overrides (wsbox, wswin)
 ```
 
 Host-пакеты (`podman`, `distrobox`, `uidmap`, …) — в `nix/hosts/apt.txt`,

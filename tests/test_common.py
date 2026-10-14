@@ -23,7 +23,8 @@ class CommonTests(unittest.TestCase):
         self.tool = self.tmp / "core/bin/tool"
         self.tool.parent.mkdir(parents=True)
         (self.tmp / "core/lib").mkdir()
-        (self.tmp / "core/lib/common.bash").write_bytes((ROOT / "lib/common.bash").read_bytes())
+        for name in ("common.bash", "ws_common.py"):
+            (self.tmp / "core/lib" / name).write_bytes((ROOT / "lib" / name).read_bytes())
 
     def run_tool(self, body, env=None):
         self.tool.write_text("#!/usr/bin/env bash\nset -euo pipefail\n" + SOURCE + "\n" + body)
@@ -80,6 +81,19 @@ class CommonTests(unittest.TestCase):
         with self.assertRaises(SystemExit) as e:
             ws_common.die("tool", "broken")
         self.assertEqual(str(e.exception), "tool: broken")
+
+    def test_manifest_get(self):
+        manifest = self.tmp / "m.json"
+        manifest.write_text('[{"name": "a", "home": "${HOME}/a", "exports": {"x": "/x.desktop", "y": "/y"},'
+                            ' "hooks": ["h1 arg", "h2"], "n": 3, "on": true}, {"name": "b"}]')
+        p = self.run_tool(f'''f={manifest}
+manifest_get "$f"; echo -
+manifest_get "$f" a exports; echo -
+manifest_get "$f" a exports y; manifest_get "$f" a hooks; manifest_get "$f" a n; manifest_get "$f" a on
+manifest_get "$f" a home; manifest_get "$f" b home; manifest_get "$f" c home; manifest_get /nope a; echo end
+''')
+        self.assertEqual(p.stdout.split("\n"), ["a", "b", "-", "x", "y", "-", "/y", "h1 arg", "h2", "3", "true",
+                                                "${HOME}/a", "end", ""])
 
     def test_state_name_is_the_same_everywhere(self):
         name = ws_common.STATE_NAME

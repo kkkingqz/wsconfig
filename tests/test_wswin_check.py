@@ -19,8 +19,8 @@ class WswinCheckTests(unittest.TestCase):
         root = Path(self.temp.name)
         (root / "distrobox").mkdir()
         (root / "windows").mkdir()
-        (root / "distrobox/boxes.ini").write_text(
-            "[here]\nprofile=wine\n\n[elsewhere]\nprofile=wine\n")
+        (root / "distrobox/boxes.json").write_text(
+            '[{"name": "here", "profile": "wine"}, {"name": "elsewhere", "profile": "wine"}]')
         (root / "windows/apps.ini").write_text(
             "[wswin]\ndefault_box=elsewhere\n\n"
             "[local]\nbox=here\nprefix=default\nexe=drive_c/local.exe\n\n"

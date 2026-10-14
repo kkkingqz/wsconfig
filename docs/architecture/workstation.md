@@ -520,8 +520,8 @@ bin/wsbox, bin/wswin, bin/ws-gpu
 Контейнеры объявлены в `distrobox/distrobox.nix` (общие
 значения по умолчанию, у контейнера — только образ, HOME, пакеты,
 экспорты). `ws switch` собирает из них `containers.ini` (формат
-`distrobox assemble`) и `exports.ini` в `~/.local/share/workstation/distrobox/`,
-`wsbox` читает оттуда. Изменение: правка `distrobox.nix`, `ws switch`,
+`distrobox assemble`) и `boxes.json` (контейнеры, hooks, экспорты) в
+`~/.local/share/workstation/distrobox/`, `wsbox` и `wswin` читают оттуда. Изменение: правка `distrobox.nix`, `ws switch`,
 затем `wsbox apply NAME` или `wsbox recreate NAME`.
 
 Managed containers:

@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import signal
@@ -20,7 +21,8 @@ class ShortcutTests(unittest.TestCase):
         (self.prefix / 'drive_c/App.exe').write_bytes(b'fixture')
         (self.root / 'distrobox').mkdir()
         (self.root / 'windows').mkdir()
-        (self.root / 'distrobox/boxes.ini').write_text(f'[wine]\nprofile=wine\nhome={self.root}/wine\n')
+        (self.root / 'distrobox/boxes.json').write_text(
+            json.dumps([{'name': 'wine', 'profile': 'wine', 'home': f'{self.root}/wine'}]))
         (self.root / 'windows/apps.ini').write_text('[wswin]\ndefault_box=wine\n')
         self.env = dict(os.environ, HOME=str(self.root), WSWIN_DATA=str(self.root))
 

@@ -41,3 +41,10 @@ nix_bin() {
     command -v nix 2>/dev/null \
         || die "nix not found (apt: nix-bin nix-setup-systemd; helpws history-nix, phase 0)"
 }
+
+# A value of a JSON manifest from Nix: manifest_get FILE KEY... prints a
+# scalar, the keys of an object or the names of a list, one per line
+# (lib/ws_common.py; no jq on the hosts).
+manifest_get() {
+    python3 "$WS_CORE/lib/ws_common.py" get "$@"
+}

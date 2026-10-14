@@ -20,14 +20,17 @@ case "${1:-}" in
 esac
 
 data="${WSWIN_DATA:-$HOME/.local/share/workstation}"
-boxes_ini="$data/distrobox/boxes.ini"
+boxes_json="$data/distrobox/boxes.json"
 apps_ini="$data/windows/apps.ini"
 # Both files are built by ws switch (distrobox/distrobox.nix, windows/apps.nix).
-win_boxes="$(awk '/^\[/ { box = substr($0, 2, length($0) - 2) } /^profile=/ { print box }' "$boxes_ini" 2>/dev/null)"
+# The Windows boxes: those with a profile (distrobox/distrobox.nix).
+win_boxes="$(for b in $(manifest_get "$boxes_json"); do
+    [[ -z "$(manifest_get "$boxes_json" "$b" profile)" ]] || echo "$b"
+done)"
 if [[ -n "$win_boxes" ]]; then
     pass "Windows boxes: $(echo $win_boxes)"
 else
-    fail "no Windows box in boxes.ini (distrobox/distrobox.nix)"
+    fail "no Windows box in boxes.json (distrobox/distrobox.nix)"
 fi
 
 # Launchers exist only where the box is marked yes (distrobox/hosts.txt,

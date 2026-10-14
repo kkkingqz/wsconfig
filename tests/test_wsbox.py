@@ -2,6 +2,7 @@
 distrobox/hosts.txt, with podman and distrobox replaced by shell stubs: a
 container is a file in the state directory. The checklist runs on a real
 pseudo terminal (pty.fork gives wsbox a controlling terminal)."""
+import json
 import os
 from pathlib import Path
 import pty
@@ -54,8 +55,9 @@ class WsboxTests(unittest.TestCase):
             (stubs / name).write_text(STUB)
             (stubs / name).chmod(0o755)
         (cfg / "containers.ini").write_text(CONTAINERS)
-        (cfg / "exports.ini").write_text("")
-        (cfg / "boxes.ini").write_text("")
+        (cfg / "boxes.json").write_text(json.dumps(
+            [{"name": n, "image": f"img-{n}", "home": "${HOME}/distrobox/" + n,
+              "pre_init_hooks": [], "init_hooks": [], "exports": {}} for n in "abc"]))
         self.hosts = root / "hosts.txt"
         self.env = dict(os.environ, PATH=f"{stubs}:{os.environ['PATH']}",
                         WSBOX_CONFIG=str(cfg), WSBOX_HOSTS=str(self.hosts),

@@ -2,13 +2,14 @@
 set -euo pipefail
 
 # Declared in distrobox/distrobox.nix; ws switch builds
-# ~/.local/share/workstation/distrobox. wsbox only reads it; the manifest is
-# rendered first (@HOST_VERSION_ID@: the host release from /etc/os-release).
+# ~/.local/share/workstation/distrobox. wsbox only reads it: boxes.json (the
+# containers, their hooks and exports) and containers.ini for distrobox
+# assemble, rendered first (@HOST_VERSION_ID@: the host release from
+# /etc/os-release).
 cfg="${WSBOX_CONFIG:-$HOME/.local/share/workstation/distrobox}"
 manifest_source="$cfg/containers.ini"
 manifest="${XDG_RUNTIME_DIR:-/tmp}/wsbox-$(id -u)/containers.ini"
-exports_manifest="$cfg/exports.ini"
-boxes_manifest="$cfg/boxes.ini"
+boxes_manifest="$cfg/boxes.json"
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 bin_dir="$WS_CORE/bin"
@@ -47,7 +48,6 @@ ensure_base() {
     need distrobox
     need distrobox-assemble
     [[ -r "$manifest_source" ]] || die "manifest not found: $manifest_source (run ws switch)"
-    [[ -r "$exports_manifest" ]] || die "exports manifest not found: $exports_manifest (run ws switch)"
     [[ -r "$boxes_manifest" ]] || die "boxes manifest not found: $boxes_manifest (run ws switch)"
     render_manifest
 }
@@ -73,81 +73,46 @@ render_manifest() {
     mv -f "$manifest.tmp" "$manifest"
 }
 
+# The containers of boxes.json, in order.
 managed_boxes() {
-    sed -nE 's/^\[([^]]+)\]$/\1/p' "$manifest"
+    manifest_get "$boxes_manifest"
 }
 
-ini_value() {
-    local file="$1" section="$2" key="$3" value
-
-    value="$({
-        awk -F= -v section="[$section]" -v key="$key" '
-            $0 == section {
-                inside=1
-                next
-            }
-
-            inside && /^\[/ {
-                exit
-            }
-
-            inside {
-                k=$1
-                gsub(/^[[:space:]]+|[[:space:]]+$/, "", k)
-
-                if (k == key) {
-                    sub(/^[^=]*=/, "", $0)
-                    gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
-                    print $0
-                    exit
-                }
-            }
-        ' "$file"
-    } || true)"
-
-    value="${value#\"}"
-    value="${value%\"}"
+# A value of a box in boxes.json: ${HOME} in home and the host release in
+# the image as containers.ini has them once rendered.
+box_value() {
+    local value
+    value="$(manifest_get "$boxes_manifest" "$@")"
     value="${value//\$\{HOME\}/$HOME}"
-
+    if [[ "$value" == *@HOST_VERSION_ID@* ]]; then
+        value="${value//@HOST_VERSION_ID@/$(host_version_id || true)}"
+    fi
     printf '%s\n' "$value"
 }
 
-manifest_value() {
-    ini_value "$manifest" "$1" "$2"
-}
-
+# The boxes with exports.
 export_sections() {
-    sed -nE 's/^\[([^]]+)\]$/\1/p' "$exports_manifest"
+    local name
+    while IFS= read -r name; do
+        [[ -z "$(manifest_get "$boxes_manifest" "$name" exports)" ]] || printf '%s\n' "$name"
+    done < <(managed_boxes)
 }
 
 export_aliases() {
-    local name="$1"
-
-    awk -F= -v section="[$name]" '
-        $0 == section {
-            inside=1
-            next
-        }
-
-        inside && /^\[/ {
-            exit
-        }
-
-        inside {
-            line=$0
-            sub(/[[:space:]]*[#;].*$/, "", line)
-            if (line !~ /=/) next
-
-            split(line, parts, "=")
-            key=parts[1]
-            gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
-            if (key != "") print key
-        }
-    ' "$exports_manifest"
+    manifest_get "$boxes_manifest" "$1" exports
 }
 
 export_source() {
-    ini_value "$exports_manifest" "$1" "$2"
+    box_value "$1" exports "$2"
+}
+
+# HOOK lines of every box (init_hooks, pre_init_hooks): the command first.
+box_hooks() {
+    local name
+    while IFS= read -r name; do
+        manifest_get "$boxes_manifest" "$name" pre_init_hooks
+        manifest_get "$boxes_manifest" "$name" init_hooks
+    done < <(managed_boxes)
 }
 
 # The workstation (ws host) into ws_host, once, in this shell: commands call
@@ -240,7 +205,7 @@ image_matches() {
 enter_flags() {
     local name="$1" prime
 
-    [[ "$(ini_value "$boxes_manifest" "$name" gpu)" == amd ]] || return 0
+    [[ "$(box_value "$name" gpu)" == amd ]] || return 0
     prime="$("$bin_dir/ws-gpu" env)"
     [[ -n "$prime" ]] || return 0
     printf '%s\n' --additional-flags "--env $prime"
@@ -387,8 +352,8 @@ status_one() {
     local actual_image
     local home_state
 
-    expected_image="$(manifest_value "$name" image)"
-    expected_home="$(manifest_value "$name" home)"
+    expected_image="$(box_value "$name" image)"
+    expected_home="$(box_value "$name" home)"
 
     if container_exists "$name"; then
         state="$(container_state "$name")"
@@ -550,7 +515,7 @@ cmd_check() {
         fail "boxes manifest missing"
     fi
 
-    if [[ -r "$exports_manifest" ]]; then
+    if [[ -r "$boxes_manifest" ]]; then
         pass "exports manifest present"
 
         while IFS= read -r name; do
@@ -568,8 +533,8 @@ cmd_check() {
     while IFS= read -r name; do
         [[ -n "$name" ]] || continue
 
-        expected_image="$(manifest_value "$name" image)"
-        expected_home="$(manifest_value "$name" home)"
+        expected_image="$(box_value "$name" image)"
+        expected_home="$(box_value "$name" home)"
 
         state="${states[$name]:-ask}"
 
@@ -631,7 +596,7 @@ cmd_check() {
         else
             pass "hook executable and tracked: $path"
         fi
-    done < <(sed -nE 's/^(pre_)?init_hooks="([^ "]+).*/\2/p' "$manifest_source" 2>/dev/null | sort -u)
+    done < <(box_hooks | awk '{ print $1 }' | sort -u)
 
     # wsbox-host-ntsync: the Arch package that stands in for the kernel
     # module the host provides (NTSYNC-MODULE).
@@ -666,10 +631,9 @@ cmd_check() {
                 pass "$name: container-local package absent: $pkg"
             fi
         done
-    done < <(awk -v hook="init_hooks=\"$ntsync_hook\"" '
-        /^\[/ { box = substr($0, 2, length($0) - 2) }
-        $0 == hook { print box }
-    ' "$manifest_source" 2>/dev/null)
+    done < <(for name in $(managed_boxes); do
+        manifest_get "$boxes_manifest" "$name" init_hooks | grep -Fxq -- "$ntsync_hook" && echo "$name"
+    done)
 
     check_finish
 }
@@ -727,7 +691,7 @@ cmd_apply() {
         elif [[ "$state" == yes ]]; then
             wanted[$box]=1
         elif [[ "$state" == ask || ( "$state" == no && "$reselect" == true ) ]]; then
-            items+=("$box"$'\t'"$(manifest_value "$box" image)")
+            items+=("$box"$'\t'"$(box_value "$box" image)")
             offered+=("$box")
             [[ "$state" == ask ]] || unchecked+=(--unchecked "$box")
         fi

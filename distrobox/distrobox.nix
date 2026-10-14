@@ -3,9 +3,10 @@
 # ~/.local/share/workstation/distrobox (one link to the store):
 #
 #   containers.ini  manifest for `distrobox assemble` (its own format)
-#   exports.ini     [BOX] ALIAS=desktop file inside the container (wsbox)
-#   boxes.ini       [BOX] home, gpu, and for Windows boxes profile, driver,
-#                   dpi (wsbox, wswin)
+#   boxes.json      the containers in order, for wsbox and wswin: name,
+#                   image, home, hooks, exports (ALIAS: desktop file inside
+#                   the container), gpu, and for Windows boxes profile,
+#                   driver, dpi, init_overrides (helpws plan-v2, 2.6)
 #
 # Change: edit this file, `ws switch`, then `wsbox apply NAME` (new container)
 # or `wsbox recreate NAME` (changed image or packages; rootfs is replaced,
@@ -160,32 +161,30 @@ let
     + lib.concatMapStrings (h: "pre_init_hooks=\"${h}\"\n") (c.preInitHooks or [ ])
     + lib.concatMapStrings (h: "init_hooks=\"${h}\"\n") (c.initHooks or [ ]);
 
-  boxSection = c:
+  # Values as strings, as the tools compare them.
+  boxEntry = c:
     let
       w = c.windows or { };
-      kv = k: v: lib.optionalString (v != null) "${k}=${toString v}\n";
+      opt = k: v: lib.optionalAttrs (v != null) { ${k} = toString v; };
     in
-    "[${c.name}]\n"
-    + kv "home" "\${HOME}/distrobox/${c.name}"
-    + kv "gpu" (c.gpu or null)
-    + kv "profile" (w.profile or null)
-    + kv "driver" (w.driver or null)
-    + kv "dpi" (w.dpi or null)
-    + kv "init_overrides" (w.initOverrides or null);
-
-  exportSection = c: ''
-    [${c.name}]
-  '' + lib.concatStrings (lib.mapAttrsToList (alias: desktop: "${alias}=${desktop}\n")
-    c.exports);
+    {
+      inherit (c) name image;
+      home = "\${HOME}/distrobox/${c.name}";
+      pre_init_hooks = c.preInitHooks or [ ];
+      init_hooks = c.initHooks or [ ];
+      exports = c.exports or { };
+    }
+    // opt "gpu" (c.gpu or null)
+    // opt "profile" (w.profile or null)
+    // opt "driver" (w.driver or null)
+    // opt "dpi" (w.dpi or null)
+    // opt "init_overrides" (w.initOverrides or null);
 
   distroboxConfig = pkgs.runCommandLocal "workstation-distrobox-config" { } ''
     mkdir -p $out
     cp ${pkgs.writeText "containers.ini"
       (lib.concatStringsSep "\n" (map containerSection containers))} $out/containers.ini
-    cp ${pkgs.writeText "exports.ini"
-      (lib.concatMapStrings exportSection (lib.filter (c: c ? exports) containers))} $out/exports.ini
-    cp ${pkgs.writeText "boxes.ini"
-      (lib.concatMapStringsSep "\n" boxSection containers)} $out/boxes.ini
+    cp ${pkgs.writeText "boxes.json" (builtins.toJSON (map boxEntry containers))} $out/boxes.json
   '';
 
   names = map (c: c.name) containers;
