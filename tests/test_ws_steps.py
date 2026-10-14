@@ -98,6 +98,18 @@ class StepsTests(unittest.TestCase):
         self.assertIn("  FAIL      home", out)
         self.assertIn("  SKIP      flatpak (home failed)", out)
 
+    def test_schema_is_checked_before_nix(self):
+        (self.w.repo / "wsconfig.toml").unlink()
+        self.w.take_calls()
+        rc, _, err = self.ws("apply")
+        self.assertEqual(rc, 2)
+        self.assertIn("wsconfig.toml: missing; this core reads schema 1", err)
+        (self.w.repo / "wsconfig.toml").write_text("schema = 7\n")
+        rc, _, err = self.ws("diff")
+        self.assertEqual(rc, 2)
+        self.assertIn("the configuration is schema 7, this core reads 1: it needs a migration", err)
+        self.assertEqual([c for c in self.w.take_calls() if c.startswith("nix")], [])
+
     def test_records_host_json(self):
         self.ws("apply", "home")
         record = json.loads((self.w.root / ".state/wsconfig/host.json").read_text())

@@ -10,7 +10,8 @@
 let
   root = ../..;
   data = map (p: lib.fileset.maybeMissing (root + p))
-    [ "/hosts" "/apt.txt" "/flatpak/catalog.toml" "/distrobox/catalog.toml" "/windows/apps.toml"
+    [ "/hosts" "/apt.txt" "/wsconfig.toml" "/flatpak/catalog.toml" "/distrobox/catalog.toml"
+      "/windows/apps.toml"
       "/gnome/config.toml" "/keyboard/config.toml" "/keyboard/xremap.yml" "/terminal/config.toml"
       "/home" "/flake.lock" "/tests" ];
   src = lib.fileset.toSource {

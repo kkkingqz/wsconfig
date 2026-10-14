@@ -10,14 +10,24 @@
 # from ROOT through the specialArg wsConfig, never relative to themselves.
 # INPUTS: nixpkgs, home-manager and wswidgets of the configuration (its
 # flake.lock pins them).
+# The schema of ROOT/wsconfig.toml must be one of lib/wsconfig-schema.toml,
+# as ws apply checks before Nix (ws help plan-v2, 8.5).
 { root, inputs }:
 let
   inherit (inputs) nixpkgs home-manager wswidgets;
+  supported = (builtins.fromTOML (builtins.readFile ./wsconfig-schema.toml)).supported;
+  schemaFile = root + "/wsconfig.toml";
+  schema =
+    if !builtins.pathExists schemaFile then
+      throw "wsconfig.toml: missing; this core reads schema ${toString supported} (ws help plan-v2, 8.5)"
+    else (builtins.fromTOML (builtins.readFile schemaFile)).schema or null;
+  checked = if builtins.elem schema supported then root
+    else throw "wsconfig.toml: the configuration is schema ${toString schema}, this core reads ${toString supported}: it needs a migration";
   system = "x86_64-linux";
   pkgs = nixpkgs.legacyPackages.${system};
   inherit (nixpkgs) lib;
 
-  hostsDir = root + "/hosts";
+  hostsDir = checked + "/hosts";
   # Every directory of hosts is a host: host.toml and apt.txt.
   hosts = lib.attrNames (lib.filterAttrs (_: type: type == "directory")
     (builtins.readDir hostsDir));

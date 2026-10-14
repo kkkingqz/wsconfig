@@ -1,0 +1,5 @@
+# The schema versions of wsconfig.toml this core reads (ws help plan-v2,
+# 8.5): the one place, read by lib/ws_common.py (ws apply, ws diff) and
+# lib/mkconfig.nix (every nix call). A configuration of another version
+# needs a migration before this core builds it.
+supported = [1]

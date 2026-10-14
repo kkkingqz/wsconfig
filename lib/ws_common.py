@@ -65,6 +65,27 @@ def config_root(core=CORE):
 
 CONFIG = config_root()
 
+SCHEMA_FILE = "wsconfig.toml"
+
+
+def schema_problem(config=None):
+    """Why this core cannot read the configuration (wsconfig.toml and
+    lib/wsconfig-schema.toml, ws help plan-v2, 8.5), None when it can."""
+    import tomllib
+    supported = tomllib.loads((CORE / "lib/wsconfig-schema.toml").read_text())["supported"]
+    path = Path(config or CONFIG) / SCHEMA_FILE
+    reads = ", ".join(map(str, supported))
+    try:
+        version = tomllib.loads(path.read_text()).get("schema")
+    except FileNotFoundError:
+        return f"{path}: missing; this core reads schema {reads} (ws help plan-v2, 8.5)"
+    except (OSError, tomllib.TOMLDecodeError) as e:
+        return f"{path}: {e}"
+    if version not in supported:
+        return (f"{path}: the configuration is schema {version}, this core reads {reads}: "
+                "it needs a migration")
+    return None
+
 
 def apply_module(*modules):
     """A command of a module changed what this host should have: ws apply
@@ -144,14 +165,22 @@ if __name__ == "__main__":
     #   ws_common.py get FILE [KEY...]
     #   ws_common.py rows FILE FIELD,FIELD... [KEY...]
     #   ws_common.py config       the data root (lib/common.bash)
+    #   ws_common.py schema       exit 2 with the message when the core
+    #                             cannot read the configuration
     if sys.argv[1:] == ["config"]:
         out = [str(CONFIG)]
+    elif sys.argv[1:] == ["schema"]:
+        problem = schema_problem()
+        if problem:
+            print(problem, file=sys.stderr)
+            sys.exit(2)
+        out = []
     elif len(sys.argv) >= 3 and sys.argv[1] == "get":
         out = lines(get(load(sys.argv[2]), *sys.argv[3:]))
     elif len(sys.argv) >= 4 and sys.argv[1] == "rows":
         out = rows(get(load(sys.argv[2]), *sys.argv[4:]), sys.argv[3].split(","))
     else:
-        print("usage: ws_common.py get FILE [KEY...] | rows FILE FIELD,... [KEY...] | config",
+        print("usage: ws_common.py get FILE [KEY...] | rows FILE FIELD,... [KEY...] | config | schema",
               file=sys.stderr)
         sys.exit(64)
     for line in out:

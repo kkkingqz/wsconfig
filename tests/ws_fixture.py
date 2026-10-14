@@ -92,6 +92,7 @@ class Workspace:
         (self.core / "system/apt.txt").write_text("")
         (self.core / "system/apt-machine.txt").write_text("")
         (self.repo / "apt.txt").write_text("")
+        (self.repo / "wsconfig.toml").write_text("schema = 1\n")
         (self.repo / "hosts/test/apt.txt").write_text("")
         self.write(self.bin / "nix", NIX)
         self.write(self.bin / "sudo", SUDO)

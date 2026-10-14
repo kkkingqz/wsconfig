@@ -388,8 +388,15 @@ cmd_news() {
     "$nix" run "$repo#home-manager" -- news --flake "$(target)" "$@"
 }
 
+# This core reads the configuration: wsconfig.toml has a schema of
+# lib/wsconfig-schema.toml (ws help plan-v2, 8.5); else exit 2 before Nix.
+check_schema() {
+    python3 "$WS_CORE/lib/ws_common.py" schema || return 2
+}
+
 cmd_diff() {
     local nix new old
+    check_schema || return
     nix="$(nix_bin)" || return
     check_untracked || return
     new="$("$nix" build --no-link --print-out-paths \
@@ -523,7 +530,8 @@ cmd_apply() {
     # shellcheck disable=SC2064 # the path now
     trap "rm -f '$notes'; trap - RETURN" RETURN
 
-    # 1. Host and roots.
+    # 1. Host and roots; this core reads the configuration.
+    check_schema || return 2
     host >/dev/null
     [[ "$(cmd_fact boot 2>/dev/null)" != container ]] || container=true
     stage_data || return 2
