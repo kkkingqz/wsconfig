@@ -10,6 +10,8 @@ cfg="${WSBOX_CONFIG:-$HOME/.local/share/workstation/distrobox}"
 manifest_source="$cfg/containers.ini"
 manifest="${XDG_RUNTIME_DIR:-/tmp}/wsbox-$(id -u)/containers.ini"
 boxes_manifest="$cfg/boxes.json"
+# The copies of the hooks the containers run (distrobox/distrobox.nix).
+hooks_dir="${WSBOX_HOOKS:-$HOME/.local/share/workstation/hooks}"
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 ws_prog="ws box"
@@ -105,7 +107,8 @@ export_source() {
     box_value "$1" exports "$2"
 }
 
-# HOOK lines of every box (init_hooks, pre_init_hooks): the command first.
+# HOOK lines of every box (init_hooks, pre_init_hooks): sh, the hook, its
+# arguments (distrobox/distrobox.nix).
 box_hooks() {
     local name
     while IFS= read -r name; do
@@ -465,11 +468,10 @@ cmd_check() {
     local expected_image
     local actual_image
     local expected_home
-    local repo hook path pkgbuild readme_sum ntsync_hook host state box_state marks_err
+    local hook path core_installed pkgbuild readme_sum ntsync_hook host state box_state marks_err
     local -A states=()
 
     # Result contract of ws check (--json): lib/check.bash.
-    repo="$WS_CORE"
     # shellcheck source=../lib/check.bash
     . "$WS_CORE/lib/check.bash"
     case "${1:-}" in
@@ -599,19 +601,21 @@ cmd_check() {
             2>/dev/null
     )
 
-    # Every hook the manifest runs: in the checkout, tracked, executable.
+    # Every hook the manifest runs: sh and a copy in hooks_dir of the hook
+    # of the installed core (ws switch renews the copies).
+    core_installed="$(readlink -f "$HOME/.local/share/workstation/libexec/.." 2>/dev/null || true)"
     while IFS= read -r hook; do
-        path="${hook#"$repo"/}"
-        if [[ "$hook" != "$repo"/* ]]; then
-            fail "hook outside the checkout: $hook"
-        elif ! git -C "$repo" ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
-            fail "hook not tracked: $path"
-        elif [[ "$(git -C "$repo" ls-files -s -- "$path" | awk 'NR==1{print $1}')" != 100755 || ! -x "$hook" ]]; then
-            fail "hook not executable (file and Git mode 100755): $path"
+        path="${hook#"$hooks_dir"/}"
+        if [[ "$hook" != "$hooks_dir"/* ]]; then
+            fail "hook not under $hooks_dir (run by sh): $hook"
+        elif [[ ! -r "$hook" ]]; then
+            fail "hook missing: $hook (ws switch)"
+        elif ! cmp -s -- "$hook" "$core_installed/distrobox/$path"; then
+            fail "hook differs from distrobox/$path of the installed core (ws switch)"
         else
-            pass "hook executable and tracked: $path"
+            pass "hook in place: distrobox/$path"
         fi
-    done < <(box_hooks | awk '{ print $1 }' | sort -u)
+    done < <(box_hooks | awk '$1 == "sh" { print $2; next } { print $1 }' | sort -u)
 
     # wsbox-host-ntsync: the Arch package that stands in for the kernel
     # module the host provides (NTSYNC-MODULE).
@@ -627,7 +631,7 @@ cmd_check() {
     else
         fail "wsbox-host-ntsync PKGBUILD sha256sums does not match README.md (makepkg fails; update it and pkgrel)"
     fi
-    ntsync_hook="$WS_CORE/distrobox/arch/wsbox-host-ntsync/install-hook"
+    ntsync_hook="$hooks_dir/arch/wsbox-host-ntsync/install-hook"
     while IFS= read -r name; do
         [[ -n "$name" ]] || continue
         if [[ "$(podman inspect -f '{{.State.Running}}' "$name" 2>/dev/null || true)" != true ]]; then
@@ -647,7 +651,7 @@ cmd_check() {
             fi
         done
     done < <(for name in $(managed_boxes); do
-        manifest_get "$boxes_manifest" "$name" init_hooks | grep -Fxq -- "$ntsync_hook" && echo "$name"
+        manifest_get "$boxes_manifest" "$name" init_hooks | grep -Fq -- "sh $ntsync_hook " && echo "$name"
     done)
 
     check_finish

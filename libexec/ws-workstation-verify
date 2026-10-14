@@ -216,11 +216,12 @@ else
         || fail "/dev/ntsync character device missing"
 fi
 
-ntsync_hook="$WS_CORE/distrobox/arch/wsbox-host-ntsync/install-hook"
+# The hook as distrobox/distrobox.nix writes it: sh, the copy, the user.
+ntsync_hook="sh $HOME/.local/share/workstation/hooks/arch/wsbox-host-ntsync/install-hook "
 ntsync_boxes="$(
-    awk -v hook="init_hooks=\"$ntsync_hook\"" '
+    awk -v hook="init_hooks=\"$ntsync_hook" '
         /^\[/ { box = substr($0, 2, length($0) - 2) }
-        $0 == hook { print box }
+        index($0, hook) == 1 { print box }
     ' "$HOME/.local/share/workstation/distrobox/containers.ini" 2>/dev/null
 )"
 [[ -n "$ntsync_boxes" ]] || fail "no box runs the NTSync hook (distrobox/distrobox.nix; ws switch)"

@@ -23,8 +23,9 @@ container.
 Installed automatically: `install-hook` is the init hook of the `arch`
 container in `distrobox/distrobox.nix`; distrobox runs it as root at the end
 of container setup (and at every start, where it does nothing once the
-package is installed). It builds the package as the owner of the checkout
-(makepkg refuses root) and installs it with pacman.
+package is installed). It builds the package as the user given as its
+argument, the host user that distrobox makes in the container (makepkg
+refuses root), and installs it with pacman.
 
 Recovery order:
 

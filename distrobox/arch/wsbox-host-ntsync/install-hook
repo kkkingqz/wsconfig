@@ -4,13 +4,14 @@
 # wsbox-host-ntsync, the virtual NTSYNC-MODULE provider (README.md), so
 # that nothing pulls an Arch kernel for ntsync-autoload. Does nothing once
 # the package is installed.
+#   install-hook USER    makepkg refuses root: it builds as USER, the user
+#                        distrobox made for the host user
 set -eu
 
 pacman -Q wsbox-host-ntsync >/dev/null 2>&1 && exit 0
 
+user="${1:?usage: install-hook USER}"
 src="$(dirname "$(readlink -f "$0")")"
-# makepkg refuses root: build as the owner of the checkout.
-user="$(stat -c %U "$src/PKGBUILD")"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 

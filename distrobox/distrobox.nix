@@ -14,15 +14,15 @@
 # ws box apply; the default), no (not offered; --select asks) or yes (on
 # every host without its own choice).
 #
-# Change: edit this file, `ws switch`, then `wsbox apply NAME` (new container)
-# or `wsbox recreate NAME` (changed image or packages; rootfs is replaced,
-# the custom HOME stays).
+# Change: edit this file, `ws switch`, then `ws box apply NAME` (new container)
+# or `ws box recreate NAME` (changed image or packages, hooks; rootfs is
+# replaced, the custom HOME stays).
 #
 # Images are tags, not digests: packages inside are updated in place by
-# `wsbox update` (distrobox upgrade), a new image is used on recreate. A
+# `ws box update` (distrobox upgrade), a new image is used on recreate. A
 # digest (repo@sha256:...) still works where a fixed image is needed; wsbox
 # check then compares the repo digest.
-{ config, lib, pkgs, facts, ... }:
+{ config, lib, pkgs, facts, core, ... }:
 let
   # LogPixels of new prefixes by the display scale (lib/scale.nix).
   scale = import ../lib/scale.nix { inherit lib facts; };
@@ -44,20 +44,29 @@ let
   # host release upgrade wsbox check reports image drift: wsbox recreate NAME.
   hostUbuntu = "docker.io/library/ubuntu:@HOST_VERSION_ID@";
 
-  # The checkout as seen inside a container (the host HOME is mounted there).
-  wsconfig = "${config.home.homeDirectory}/${facts.wsconfig}";
-
   # Hooks run as root on every container start (init_hooks at the end of
   # distrobox-init, pre_init_hooks before its package setup): each one
   # returns at once when its work is done.
   #
+  # Their path is fixed when a container is created, so it must not change:
+  # not the core in the store (a new path with every change, gone after a
+  # garbage collection; /nix is not even mounted in the container), but
+  # copies of distrobox/arch and distrobox/wine of the core in
+  # ~/.local/share/workstation/hooks, renewed by every switch (the host
+  # HOME is mounted in the container). Run through sh: no shebang or mode
+  # is needed, and a hook derives nothing from the owner or mode of its
+  # files; what it needs, such as the user of a build, is an argument
+  # (helpws plan-v2, stage 5).
+  hooks = "${config.home.homeDirectory}/.local/share/workstation/hooks";
+  #
   # Before any Wine package on Arch: the host kernel provides ntsync, the
   # virtual provider keeps pacman/paru from pulling an Arch kernel.
-  ntsyncHook = "${wsconfig}/distrobox/arch/wsbox-host-ntsync/install-hook";
+  # makepkg runs as the user of the container: distrobox makes the host user.
+  ntsyncHook = "sh ${hooks}/arch/wsbox-host-ntsync/install-hook ${facts.user}";
   # Packages that need the provider (wine -> ntsync-autoload), so not
   # additional_packages: those are installed before the init hooks.
-  pacmanHook = pkgs: "${wsconfig}/distrobox/arch/pacman-install-hook ${lib.concatStringsSep " " pkgs}";
-  multilibHook = "${wsconfig}/distrobox/arch/multilib-hook";
+  pacmanHook = pkgs: "sh ${hooks}/arch/pacman-install-hook ${lib.concatStringsSep " " pkgs}";
+  multilibHook = "sh ${hooks}/arch/multilib-hook";
 
   # Windows boxes (wswin, helpws history-windows):
   #   profile  wine: wine/winetricks; proton: umu-run
@@ -103,9 +112,9 @@ let
       image = hostUbuntu;
       packages = [ "ca-certificates" "icoutils" "mesa-vulkan-drivers" ];
       initHooks = [
-        "${wsconfig}/distrobox/wine/winehq-install-hook"
+        "sh ${hooks}/wine/winehq-install-hook"
         # The Arch boxes have every locale (glibc-locales).
-        "${wsconfig}/distrobox/wine/locale-hook ru_RU.UTF-8"
+        "sh ${hooks}/wine/locale-hook ru_RU.UTF-8"
       ];
       # WineHQ has no Mono/Gecko packages: wineboot would ask to download
       # them; winetricks adds them to a prefix that needs them.
@@ -220,4 +229,15 @@ in
   }) containers;
 
   config.xdg.dataFile."workstation/distrobox".source = distroboxConfig;
+
+  # The copies of the hooks (see hooks above): replaced as a whole.
+  config.home.activation.distroboxHooks = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    hooks=${lib.escapeShellArg hooks}
+    run rm -rf "$hooks.new"
+    run mkdir -p "$hooks.new"
+    run cp -r ${core}/distrobox/arch ${core}/distrobox/wine "$hooks.new/"
+    run chmod -R u+w "$hooks.new"
+    run rm -rf "$hooks"
+    run mv "$hooks.new" "$hooks"
+  '';
 }

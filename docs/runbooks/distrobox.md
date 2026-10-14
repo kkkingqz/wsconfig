@@ -28,6 +28,15 @@ boxes.json       контейнеры по порядку: image, home, hooks, e
                  (ws box, ws windows)
 ```
 
+Hooks контейнеры запускают через `sh` из `~/.local/share/workstation/hooks/`:
+это копии `distrobox/arch` и `distrobox/wine` ядра, `ws switch` обновляет
+их целиком. Путь hook запоминается при создании контейнера, поэтому он
+стабилен, а не путь в store (тот меняется с каждой версией ядра и исчезает
+после сборки мусора). Контейнеры, созданные раньше, запускают hooks из
+checkout (`~/wsconfig/distrobox/…`) до `ws box recreate NAME`. Hook ничего не
+выводит из владельца и прав своих файлов: пользователя сборки
+`install-hook` получает аргументом.
+
 Host-пакеты (`podman`, `distrobox`, `uidmap`, …) — в `nix/hosts/apt.txt`,
 модуль `ntsync` — `system/files/modules-load.d/ntsync.conf` (`ws system apply`).
 
