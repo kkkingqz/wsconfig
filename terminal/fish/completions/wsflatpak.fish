@@ -175,6 +175,6 @@ complete -c wsflatpak -n '__wsflatpak_using_command untalk; and __wsflatpak_at_p
 complete -c wsflatpak -n '__wsflatpak_using_command talk; and __wsflatpak_at_position 2' -a 'org.freedesktop.Flatpak org.kde.StatusNotifierWatcher'
 complete -c wsflatpak -n '__wsflatpak_using_command apply' -l select -d 'Спросить и о приложениях в no этой машины'
 for cmd in filesystem host env talk
-    complete -c wsflatpak -n "__wsflatpak_using_command $cmd" -l host -d 'Только для этой машины (nix/hosts/HOST/flatpak.toml)'
+    complete -c wsflatpak -n "__wsflatpak_using_command $cmd" -l host -d 'Только для этой машины (hosts/HOST/flatpak.toml)'
     complete -c wsflatpak -n "__wsflatpak_using_command un$cmd" -l all -d 'Убрать общее значение из каталога (у всех машин)'
 end

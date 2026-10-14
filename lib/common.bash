@@ -6,7 +6,7 @@
 #
 # Roots (ws help architecture-v2, 3):
 #   WS_CORE    code: bin/ws, libexec/, lib/, gnome/extensions, hooks; where this file is
-#   WS_CONFIG  data: nix/hosts, the lists and catalogs, host choices
+#   WS_CONFIG  data: hosts, the lists and catalogs, host choices
 #   WS_STATE   this machine only
 # WS_CORE is always where the running code is: a checkout (~/wsconfig/bin/ws)
 # or the core in the store (nix/pkgs/ws.nix, ~/.local/bin/ws). WSCONFIG

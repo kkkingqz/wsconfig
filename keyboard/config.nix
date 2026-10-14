@@ -1,4 +1,4 @@
-# keyboard/config.toml with the host file nix/hosts/HOST/keyboard.toml,
+# keyboard/config.toml with the host file hosts/HOST/keyboard.toml,
 # read and checked once for keyboard.nix (shortcuts, layouts) and
 # xremap.nix (the preset's xremap.yml); lib/config.nix. presets: the
 # presets of the core, NAME -> its .nix (keyboard/presets/NAME.nix) and
@@ -14,7 +14,7 @@ in
   inherit presets;
   data = (import ../lib/config.nix { inherit lib; }).read {
     file = wsConfig + "/keyboard/config.toml";
-    host = wsConfig + "/nix/hosts/${wsHost}/keyboard.toml";
+    host = wsConfig + "/hosts/${wsHost}/keyboard.toml";
     type = schema.table {
       keys = {
         preset = schema.oneOf (lib.attrNames presets);

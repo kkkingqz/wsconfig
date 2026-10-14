@@ -111,7 +111,7 @@ publish() {
         echo "Не опубликовано; позже: git -C $repo push (новый хост), ws sync (выбор)."
         return 0
     fi
-    if [[ -n "$(git -C "$repo" log --format=%h '@{u}..HEAD' -- nix/hosts 2>/dev/null)" ]]; then
+    if [[ -n "$(git -C "$repo" log --format=%h '@{u}..HEAD' -- hosts 2>/dev/null)" ]]; then
         push
     fi
     ws sync || die "ws sync failed; run setup.sh again or ws sync by hand"
@@ -169,7 +169,7 @@ step_pull() {
     fi
 }
 
-# Host name as a directory (nix/hosts/HOST, lib/ws_facts.py) and the receiver user
+# Host name as a directory (hosts/HOST, lib/ws_facts.py) and the receiver user
 # wsbackup-HOST on Unraid (backup/unraid/boot.sh: lowercase, 23 at most) can
 # carry it.
 valid_name() { [[ "$1" =~ ^[a-z0-9][a-z0-9_-]{0,22}$ && "$1" != all ]]; }
@@ -187,7 +187,7 @@ set_hostname() {
 }
 
 new_host() {
-    local name="$1" dir="$repo/nix/hosts/$1" vm=false widgets=true steam=false game=false
+    local name="$1" dir="$repo/hosts/$1" vm=false widgets=true steam=false game=false
     say "Новый хост $name (generic-pc, GRUB)"
     if ask "Виртуальные машины (libvirt, ws help virt)?" n; then
         vm=true
@@ -229,20 +229,20 @@ widgets = $widgets
 nativeSteam = $steam
 gameMode = $game
 EOF
-    printf '# apt packages of %s on top of nix/hosts/apt.txt.\n' "$name" > "$dir/apt.txt"
-    git -C "$repo" add "nix/hosts/$name"
-    git -C "$repo" commit -q -m "Hosts: $name from generic-pc (setup.sh)" -- "nix/hosts/$name"
+    printf '# apt packages of %s on top of system/apt.txt and apt.txt.\n' "$name" > "$dir/apt.txt"
+    git -C "$repo" add "hosts/$name"
+    git -C "$repo" commit -q -m "Hosts: $name from generic-pc (setup.sh)" -- "hosts/$name"
 }
 
 # What setup.sh needs from the facts of HOST, checked before the PC is renamed.
 check_facts() {
-    local facts="$repo/nix/hosts/$1/host.toml"
+    local facts="$repo/hosts/$1/host.toml"
     [[ "$(fact_in "$facts" user)" == "$(id -un)" ]] \
-        || die "nix/hosts/$1/host.toml: user = \"$(fact_in "$facts" user)\", this user is $(id -un)"
+        || die "hosts/$1/host.toml: user = \"$(fact_in "$facts" user)\", this user is $(id -un)"
     [[ "$(fact_in "$facts" wsconfig)" == wsconfig ]] \
-        || die "nix/hosts/$1/host.toml: setup.sh knows only wsconfig = \"wsconfig\" (~/wsconfig)"
+        || die "hosts/$1/host.toml: setup.sh knows only wsconfig = \"wsconfig\" (~/wsconfig)"
     [[ "$(fact_in "$facts" boot)" == grub ]] \
-        || die "boot = \"$(fact_in "$facts" boot)\" in nix/hosts/$1/host.toml: setup.sh knows only GRUB hosts; rEFInd: ws help rebuild"
+        || die "boot = \"$(fact_in "$facts" boot)\" in hosts/$1/host.toml: setup.sh knows only GRUB hosts; rEFInd: ws help rebuild"
 }
 
 step_host() {
@@ -251,7 +251,7 @@ step_host() {
         :
     else
         current="$(hostname)"
-        hosts="$(cd "$repo/nix/hosts" && ls -d */ | tr -d / | tr '\n' ' ')"
+        hosts="$(cd "$repo/hosts" && ls -d */ | tr -d / | tr '\n' ' ')"
         say "Хост для «$current» не найден"
         echo "Есть: $hosts"
         while :; do
@@ -264,9 +264,9 @@ step_host() {
             valid_name "$name" && break
             echo "только строчные латинские буквы, цифры, - и _, до 23 знаков"
         done
-        if [[ -r "$repo/nix/hosts/$name/host.toml" ]]; then
+        if [[ -r "$repo/hosts/$name/host.toml" ]]; then
             check_facts "$name"
-            set_hostname "$(fact_in "$repo/nix/hosts/$name/host.toml" hostname)"
+            set_hostname "$(fact_in "$repo/hosts/$name/host.toml" hostname)"
         else
             new_host "$name"
             set_hostname "$name"
@@ -433,9 +433,9 @@ step_finish() {
     # The data of ws sync (data_patterns of bin/ws); step_choices may have
     # made the host files, so untracked ones count.
     local -a data_files=(flatpak/catalog.toml distrobox/catalog.toml windows/apps.toml
-        gnome/config.toml keyboard/config.toml flake.lock 'nix/hosts/*/flatpak.toml'
-        'nix/hosts/*/boxes.toml' 'nix/hosts/*/widgets.toml' 'nix/hosts/*/gnome.toml'
-        'nix/hosts/*/keyboard.toml')
+        gnome/config.toml keyboard/config.toml flake.lock 'hosts/*/flatpak.toml'
+        'hosts/*/boxes.toml' 'hosts/*/widgets.toml' 'hosts/*/gnome.toml'
+        'hosts/*/keyboard.toml')
     say "Готово"
     ws apply home
     # A checkpoint needs a live system that matches its tree (ws system check).

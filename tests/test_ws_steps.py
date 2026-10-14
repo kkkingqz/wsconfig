@@ -142,7 +142,7 @@ class IdempotenceTests(unittest.TestCase):
         modules = {name: f'echo "{name} $*" >> "$CALLS"\n' for name in
                    ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsbox", "wswidgets")}
         self.w = Workspace(tmp.name, split=self.SPLIT, modules=modules)
-        (self.w.repo / "nix/hosts/test/apt.txt").write_text("pkg-a\npurge:old-b\n")
+        (self.w.repo / "hosts/test/apt.txt").write_text("pkg-a\npurge:old-b\n")
         (self.w.state / "installed").write_text("old-b\n")
         (self.w.state / "system-todo").write_text("file: /etc/x\n")
         self.w.git("add", ".")

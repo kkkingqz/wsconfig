@@ -40,7 +40,7 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | ba
    контейнеры Distrobox, при `widgets = true` виджеты и overrides Flatpak —
    всё, где у этого хоста нет выбора. `default` ask и yes отмечены, no — нет;
    overrides — общие значения каталога у приложений, которые на хосте будут.
-   Ответ — `yes`/`no` в `nix/hosts/HOST/*.toml` (снятый override — `skip`
+   Ответ — `yes`/`no` в `hosts/HOST/*.toml` (снятый override — `skip`
    хоста), затем публикация (`ws sync`); `ws apply` потом ничего не
    спрашивает. Esc — выход без записи. При `nativeSteam = true` Steam из
    Flatpak не предлагается: `no` без вопроса (Steam там из apt).

@@ -1,7 +1,7 @@
 # GNOME of the workstation (ws help gnome). ws apply writes these keys with
 # dconf on every run: a manual change of them is reverted by the next
 # apply, and a key removed here is reset to its default. A host adds or
-# replaces keys in nix/hosts/HOST/gnome.toml. ws sync publishes the file.
+# replaces keys in hosts/HOST/gnome.toml. ws sync publishes the file.
 #
 # Values are written explicitly even where they equal the Ubuntu default, so
 # a changed distribution default does not reach this machine unnoticed.
@@ -38,7 +38,7 @@
 
 # Extensions of the Ubuntu session mode that stay off: the mode enables them
 # whatever enabled-extensions says, only disabled-extensions wins. snapd is
-# purged (nix/hosts/apt.txt), so its prompt and Snap Store search have
+# purged (system/apt.txt), so its prompt and Snap Store search have
 # nothing to talk to.
 disabled_extensions = ["snapd-prompting@canonical.com", "snapd-search-provider@canonical.com"]
 

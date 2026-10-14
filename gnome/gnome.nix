@@ -1,5 +1,5 @@
 # GNOME appearance and Ubuntu Dock: the values are gnome/config.toml (and
-# nix/hosts/HOST/gnome.toml), what the user edits; home-manager writes them
+# hosts/HOST/gnome.toml), what the user edits; home-manager writes them
 # with `dconf load` on every `ws apply`. Here: the keys of the hardware,
 # the check against the keys of other owners and settings.json.
 #

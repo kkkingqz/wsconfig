@@ -13,7 +13,7 @@
 #              Assistant defaults; checked by ws-keyboard check
 #
 # The shortcuts are the preset of the core (keyboard/presets/macos.nix);
-# keyboard/config.toml (and nix/hosts/HOST/keyboard.toml) chooses the
+# keyboard/config.toml (and hosts/HOST/keyboard.toml) chooses the
 # preset and the layouts and may override keys of the preset.
 # Change: keyboard/config.toml, then `ws apply keyboard` (or `ws apply
 # tiling`). The original GNOME values of a key new in the preset are not in

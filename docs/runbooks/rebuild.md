@@ -69,7 +69,7 @@ Linux root    Btrfs, без отдельного /boot (раздел 3)
 ```
 
 UUID и PARTUUID новой установки другие: их записать в
-`nix/hosts/<host>/host.toml` (`rootUuid`, `refindEspPartuuid`) до `ws system
+`hosts/<host>/host.toml` (`rootUuid`, `refindEspPartuuid`) до `ws system
 apply` — из них собираются `refind_linux.conf`, `refind.conf` и manifest.
 Старые значения — в `boot/blkid.txt` архива.
 
@@ -145,7 +145,7 @@ Apple Wi‑Fi/Bluetooth firmware
 ```
 
 T2 repository (t2linux, codename `resolute`) — если installer его не
-подключил. Пакеты — `nix/hosts/mbp16/apt.txt` (ставит `bootstrap.sh`).
+подключил. Пакеты — `hosts/mbp16/apt.txt` (ставит `bootstrap.sh`).
 
 Firmware: `get-apple-firmware.service` (`ws apply system`) берёт её из macOS
 при загрузке. Без macOS — из архива:
@@ -239,11 +239,11 @@ ws check            # проверки всех владельцев и verify (
 
 `bootstrap.sh` (от пользователя, sudo вызывает сам; `--dry-run` только
 показывает шаги): subvolume `@nix` и строка `/nix` в fstab → пакеты из
-`nix/hosts/apt.txt`, `nix/hosts/machine-apt.txt` (Btrfs, Timeshift,
+`system/apt.txt`, `system/apt-machine.txt` (Btrfs, Timeshift,
 `steam-devices`; не для контейнера, `boot = "container"`) и
-`nix/hosts/<host>/apt.txt` (PPA fish и
+`hosts/<host>/apt.txt` (PPA fish и
 nautilus-my-computer; `purge:snapd` — без snap; в списке хоста
-`source:NAME` — репозиторий `nix/hosts/<host>/apt/NAME.sources` с ключом
+`source:NAME` — репозиторий `hosts/<host>/apt/NAME.sources` с ключом
 `NAME.asc`, `arch:NAME` — архитектура dpkg, оба до пакетов; пакеты
 ставятся без Recommends, кроме строк `rec:NAME` — метапакеты, у которых
 всё в Recommends: `ubuntu-restricted-extras`, Steam; apt берёт Recommends
@@ -258,16 +258,16 @@ bind-монтированиями в пути libvirt, пул и сеть `defau
 при `gameMode = true` — пакеты `gaming/apt.txt` → группы `nix-users`,
 `input` (xremap читает клавиатуры), при `vm = true` и `libvirt` → fish как
 login shell → первый `ws apply` (заменяемые файлы сохраняются как
-`*.pre-hm`). Хост определяется по `hostname` в `nix/hosts/*/host.toml` (`ws
+`*.pre-hm`). Хост определяется по `hostname` в `hosts/*/host.toml` (`ws
 host`, переопределяет `WS_HOST=<name>`); для новой машины — каталог
-`nix/hosts/<name>/` с `host.toml` (в том числе `vm`, `nativeSteam` и
+`hosts/<name>/` с `host.toml` (в том числе `vm`, `nativeSteam` и
 `gameMode` — `true` или `false`; разделы — `ws help layers`) и `apt.txt`. Повторный запуск ничего не меняет.
 
 Шаг `ws apply`, чей preflight не прошёл (exit 69), выводится в конце как
 `PREFLIGHT`; отдельный шаг — `ws apply keyboard`.
 
 Шаги `flatpak`, `distrobox` и `widgets` ставят то, что выбрано для этой
-машины (`yes` в `nix/hosts/HOST/flatpak.toml`, `boxes.toml`,
+машины (`yes` в `hosts/HOST/flatpak.toml`, `boxes.toml`,
 `widgets.toml`). Перед ними `ws apply` задаёт все вопросы сразу
 (`ws_catalog.py offer --all`): по каждому модулю о позициях в состоянии
 ask — «Поставить все? [Y/n]», на `n` — список с галочками (Space). Ответ
@@ -337,7 +337,7 @@ checkpoint/NAME`, `ws apply`, загрузка
 
 Flatpak: remotes, приложения и общие overrides — в каталоге
 `flatpak/catalog.toml`, выбор и свои overrides машины — в
-`nix/hosts/HOST/flatpak.toml` (оба правит `ws flatpak`, публикует
+`hosts/HOST/flatpak.toml` (оба правит `ws flatpak`, публикует
 `ws sync`); `ws apply` собирает из них
 `~/.local/share/wsconfig/flatpak/` и ставит `.desktop` Claude, шаг `flatpak`
 в `ws apply` (`ws flatpak apply`) добавляет remotes, ставит приложения и
@@ -378,7 +378,7 @@ Wine не устанавливать на host: Windows-программы жи�
 # 6.2. Host Qt integration
 
 `qgnomeplatform-qt5`, `qgnomeplatform-qt6`, `qtwayland5`, `qt6-wayland` — в
-`nix/hosts/apt.txt` (ставит `bootstrap.sh`, сверяет `ws check apt`).
+`system/apt.txt` (ставит `bootstrap.sh`, сверяет `ws check apt`).
 Глобальных Qt overrides (`QT_QPA_PLATFORM` и т. п.) нет, это проверяет
 `ws check home`. Qt5 и Qt6 сами берут native Wayland и QGnomePlatform.
 

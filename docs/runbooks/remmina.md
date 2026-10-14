@@ -22,7 +22,7 @@ remmina/package.nix     Remmina из nixpkgs + патчи
 remmina/patches/        mr2776, mr2777, reuse-file-context (.diff)
 remmina/remmina.nix     пакет, .desktop, иконки, ключи remmina.pref
 remmina/remmina-pref.py ставит эти ключи, остальное не трогает
-nix/hosts/machine-apt.txt  purge: пакетов remmina из apt
+system/apt-machine.txt  purge: пакетов remmina из apt
 ```
 
 `ws apply` ставит `remmina` в `~/.nix-profile/bin`, ярлыки

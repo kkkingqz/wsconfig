@@ -1,4 +1,7 @@
-# apt packages every host needs on top of a standard Ubuntu desktop.
+# apt packages the core needs on every host on top of a standard Ubuntu
+# desktop: without them a module of the core does not work (ws help
+# architecture-v2, 4). The packages the user wants on every host are in
+# apt.txt of the configuration, those of one host in hosts/<host>/apt.txt.
 # One package per line; `ppa:OWNER/NAME` adds an Ubuntu PPA first;
 # `purge:NAME` purges a package of the standard install (bootstrap.sh).
 # Packages are installed without their recommends; `rec:NAME` installs NAME
@@ -6,24 +9,25 @@
 # recommends only when it installs a package: on a host that already has
 # NAME, remove it and run bootstrap.sh again.
 # Host lists also take `source:NAME` (the repository
-# nix/hosts/<host>/apt/NAME.sources with its key NAME.asc, installed as
+# hosts/<host>/apt/NAME.sources with its key NAME.asc, installed as
 # /etc/apt/sources.list.d/ws-NAME.sources and /etc/apt/keyrings/ws-NAME.asc)
 # and `arch:NAME` (dpkg --add-architecture), both before the packages.
 # Installed by bootstrap.sh; `ws check apt` compares with apt-mark showmanual.
-# Host packages: nix/hosts/<name>/apt.txt; by facts in facts.nix: real
-# machines nix/hosts/machine-apt.txt (boot is not "container"), virtual
-# machines virt/apt.txt (vm = "yes"), native Steam steam/apt.txt
-# (nativeSteam = "yes"), Game Mode session gaming/apt.txt (gameMode = "yes").
+# The lists by facts (lib/apt.bash): real machines system/apt-machine.txt
+# (boot is not "container"), virtual machines virt/apt.txt (vm = true),
+# native Steam steam/apt.txt (nativeSteam = true), Game Mode session
+# gaming/apt.txt (gameMode = true).
 
 # Nix: delivers the user layer (ws help history-nix)
 nix-bin
 nix-setup-systemd
 
-# Login shell (fish 4.x: terminal/fish), terminal, repository
+# Login shell (fish 4.x: the completions and conf.d of the core), the
+# repositories (gh auth for git push and the private configuration)
 ppa:fish-shell/release-4
 fish
-ghostty
 git
+gh
 curl
 
 # Python helpers use the host PyGObject and AT-SPI (ws-nautilus-current)
@@ -32,7 +36,7 @@ gir1.2-atspi-2.0
 # Edits of the host choices keep comments (lib/ws_catalog.py)
 python3-tomlkit
 
-# Qt applications under GNOME (rebuild.md 6.2)
+# Qt applications under GNOME (rebuild.md 6.2; ws gnome check)
 qgnomeplatform-qt5
 qgnomeplatform-qt6
 qtwayland5
@@ -58,25 +62,5 @@ purge:snapd
 # (Ubuntu 26.04 moved sg/newgrp from login to util-linux-extra)
 util-linux-extra
 
-# Desktop and command-line tools on top of the standard install
-# Space preview in Nautilus (org.gnome.NautilusPreviewer)
-gnome-sushi
-# "This computer" (drives) in Nautilus (PPA of its author)
-ppa:yannmasoch/nautilus-my-computer
-nautilus-my-computer
+# Task manager of the keyboard preset (ws-window task-manager)
 gnome-system-monitor
-btop
-# GitHub CLI (gh auth for git push)
-gh
-# MPRIS players and PipeWire from the command line (playerctl, pactl)
-playerctl
-pulseaudio-utils
-# GNOME Keyring from the command line (secret-tool)
-libsecret-tools
-# Crash dumps (coredumpctl)
-systemd-coredump
-# Non-free codecs and Microsoft fonts (multiverse); the font installer asks
-# to accept its EULA during bootstrap.sh. Everything of it and of
-# ubuntu-restricted-addons is Recommends: gstreamer libav/bad/ugly,
-# ttf-mscorefonts-installer, unrar, the localsearch extractors.
-rec:ubuntu-restricted-extras

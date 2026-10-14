@@ -1,6 +1,6 @@
 # Distrobox containers: the catalog (ws help distrobox). distrobox.nix builds
 # containers.ini for distrobox assemble and boxes.json for ws box and
-# ws windows from it. Which host has which: nix/hosts/HOST/boxes.toml
+# ws windows from it. Which host has which: hosts/HOST/boxes.toml
 # (yes, no; ws box create/apply/remove). A container in neither has its
 # default: ask (offered by ws box apply; the default), no (not offered;
 # --select asks) or yes (on every host without its own choice).

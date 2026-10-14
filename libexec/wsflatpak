@@ -9,7 +9,7 @@ import sys
 
 # Declarations: flatpak/catalog.toml (remotes, apps, their overrides;
 # lib/flatpak_catalog.py) and the choice of each host
-# nix/hosts/HOST/flatpak.toml (yes, no and own overrides; lib/ws_catalog.py)
+# hosts/HOST/flatpak.toml (yes, no and own overrides; lib/ws_catalog.py)
 # in the configuration; desktop overrides in flatpak/flatpak.nix.
 # home-manager builds them into ~/.local/share/wsconfig/flatpak, which
 # wsflatpak reads. install, manage and unmanage edit the catalog and the
@@ -753,7 +753,7 @@ def cmd_reset_permissions(app):
 
     if managed_override(app) is not None:
         print(
-            f"NOTE: {app} has declared overrides ({CATALOG_NAME}, nix/hosts/HOST/flatpak.toml); "
+            f"NOTE: {app} has declared overrides ({CATALOG_NAME}, hosts/HOST/flatpak.toml); "
             "`ws flatpak apply` sets them again"
         )
 
@@ -1352,7 +1352,7 @@ OVERRIDE_HELP = """APP — ID, имя или однозначная часть �
 
 Без --host значение пишется в запись приложения в flatpak/catalog.toml и
 действует на каждой машине, где приложение стоит; с --host — в
-[overrides."APP"] файла nix/hosts/HOST/flatpak.toml этой машины (ws host).
+[overrides."APP"] файла hosts/HOST/flatpak.toml этой машины (ws host).
 Значение того же ключа (имя env, путь filesystem, имя шины) заменяется;
 значение машины заменяет значение каталога. un… убирает значение на этой
 машине: своё — из её flatpak.toml, общее — через skip там же; с --all общее
@@ -1370,7 +1370,7 @@ Runtime устанавливается для пользователя, даже
 Флаги --remote и --unmanaged указывайте перед APP.
 После APP можно указать другие приложения, ветку или аргументы flatpak install.
 Новые приложения добавляются в flatpak/catalog.toml и в yes этой машины
-(nix/hosts/HOST/flatpak.toml) и применяется: ws apply flatpak.
+(hosts/HOST/flatpak.toml) и применяется: ws apply flatpak.
 Объявленные overrides нового приложения применяются через ws flatpak apply.
 
 Примеры:
@@ -1395,7 +1395,7 @@ Runtime устанавливается для пользователя, даже
 """,
     "remove": """По умолчанию используется flatpak uninstall --user --delete-data.
 --keep-data сохраняет данные приложения.
-Управляемое приложение попадает в no этой машины (nix/hosts/HOST/flatpak.toml);
+Управляемое приложение попадает в no этой машины (hosts/HOST/flatpak.toml);
 запись в каталоге остаётся для других машин (убрать: unmanage).
 Затем выполняется ws apply flatpak; ws sync публикует файл.
 """,
@@ -1417,7 +1417,7 @@ Runtime устанавливается для пользователя, даже
 """,
     "apply": """Добавляет объявленные user remotes, устанавливает отсутствующие приложения
 и обеспечивает user runtime для всех установленных веток управляемых приложений.
-Что ставить на этой машине, решает её nix/hosts/HOST/flatpak.toml (HOST — имя
+Что ставить на этой машине, решает её hosts/HOST/flatpak.toml (HOST — имя
 из ws host): yes ставится без вопроса, no пропускается; приложение, которого
 нет ни там, ни там, получает default из каталога. О тех, что в состоянии ask,
 apply спрашивает «Поставить все? [Y/n]», на n — список, где Space ставит и
@@ -1453,7 +1453,7 @@ def build_parser():
 Приложения и runtimes — обычно ~/.local/share/flatpak, данные — ~/.var/app/APP_ID.
 Доступ к домашним файлам задаётся отдельно через filesystem/host.
 install/manage/unmanage редактируют flatpak/catalog.toml и выбор машины
-nix/hosts/HOST/flatpak.toml; filesystem/host/env/talk и un… — overrides там же.
+hosts/HOST/flatpak.toml; filesystem/host/env/talk и un… — overrides там же.
 ws apply flatpak собирает и применяет их.
 
 Справка по команде: ws flatpak help install или ws flatpak install --help.

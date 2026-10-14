@@ -1,4 +1,4 @@
-# gnome/config.toml with the host file nix/hosts/HOST/gnome.toml, read and
+# gnome/config.toml with the host file hosts/HOST/gnome.toml, read and
 # checked once for gnome.nix (settings) and gnome-extensions.nix
 # (extensions, disabled_extensions); lib/config.nix.
 { lib, wsHost, wsConfig }:
@@ -18,7 +18,7 @@ let
 in
 (import ../lib/config.nix { inherit lib; }).read {
   file = wsConfig + "/gnome/config.toml";
-  host = wsConfig + "/nix/hosts/${wsHost}/gnome.toml";
+  host = wsConfig + "/hosts/${wsHost}/gnome.toml";
   type = schema.table {
     keys = {
       settings = schema.attrsOf (schema.attrsOf dconfValue);

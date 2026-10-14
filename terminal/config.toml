@@ -1,7 +1,7 @@
 # Foreground colors of the terminal sessions in Ghostty (ws help terminal):
 # a session in a Distrobox container or over SSH gets its color while it
 # runs, the previous one comes back after it. A host adds or replaces in
-# nix/hosts/HOST/terminal.toml. Change: edit, then ws apply; ws sync
+# hosts/HOST/terminal.toml. Change: edit, then ws apply; ws sync
 # publishes the file.
 #
 #   [distrobox]  default: a box without its own color;

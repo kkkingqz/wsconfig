@@ -6,7 +6,7 @@ set -euo pipefail
 # The widgets come from the wswidgets flake input pinned by flake.lock
 # (github:kkkingqz/wswidgets), never from a local checkout: list, enable and
 # update read its catalog (lib.catalog) through Nix. Which host has which
-# widget: nix/hosts/HOST/widgets.toml, yes = [...] in panel order, no =
+# widget: hosts/HOST/widgets.toml, yes = [...] in panel order, no =
 # [...]; a widget in neither is ask (lib/ws_catalog.py). enable/disable/apply
 # edit it and run ws apply widgets; update moves flake.lock to the newest
 # wswidgets and applies. ws sync publishes both (ws help plan-v2, 2.7).
@@ -40,8 +40,8 @@ USAGE
 load_host() {
     [[ -z "${ws_host:-}" ]] || return 0
     ws_host="$("$WS_CORE/bin/ws" host --for-marks)" \
-        || die "no host for nix/hosts/HOST/widgets.toml (ws host --for-marks)"
-    list_file="nix/hosts/$ws_host/widgets.toml"
+        || die "no host for hosts/HOST/widgets.toml (ws host --for-marks)"
+    list_file="hosts/$ws_host/widgets.toml"
 }
 
 choice() {
@@ -60,7 +60,7 @@ layer() {
 require_layer() {
     load_host
     [[ "$(layer)" == yes ]] \
-        || die "widgets is not true in nix/hosts/$ws_host/host.toml: no widget layer here (ws help widgets)"
+        || die "widgets is not true in hosts/$ws_host/host.toml: no widget layer here (ws help widgets)"
 }
 
 # lib.catalog of the wswidgets in flake.lock, as JSON.
@@ -191,7 +191,7 @@ cmd_apply() {
     esac
     load_host
     if [[ "$(layer)" != yes ]]; then
-        echo "widgets is not true in nix/hosts/$ws_host/host.toml: no widget layer, nothing to apply"
+        echo "widgets is not true in hosts/$ws_host/host.toml: no widget layer, nothing to apply"
         return 0
     fi
     # Every widget of the catalog defaults to ask.
@@ -253,7 +253,7 @@ cmd_update() {
     done < <(python3 "$catalog_py" widgets used)
     if ((${#gone[@]})); then
         restore
-        die "wswidgets ${new:0:7} has no ${gone[*]}, enabled in nix/hosts/*/widgets.toml; disable them first (flake.lock unchanged)"
+        die "wswidgets ${new:0:7} has no ${gone[*]}, enabled in hosts/*/widgets.toml; disable them first (flake.lock unchanged)"
     fi
 
     echo "wswidgets ${old:0:7} -> ${new:0:7} ($(lock_field date))"

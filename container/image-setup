@@ -28,9 +28,9 @@ run() {
 
 [[ $# -eq 1 ]] || die "usage: container/image-setup HOST"
 host="$1"
-facts="$repo/nix/hosts/$host/host.toml"
-host_list="$repo/nix/hosts/$host/apt.txt"
-[[ -r "$facts" ]] || die "no nix/hosts/$host/host.toml"
+facts="$repo/hosts/$host/host.toml"
+host_list="$repo/hosts/$host/apt.txt"
+[[ -r "$facts" ]] || die "no hosts/$host/host.toml"
 
 # A string or true/false fact (yes/no), as lib/ws_facts.py prints it: the
 # base image has no python3. A line `NAME = "VALUE"` or `NAME = true|false`.
@@ -40,16 +40,16 @@ fact() {
         -e "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*false([[:space:]#].*)?\$/no/p" "$facts" | head -n1
 }
 
-[[ "$(fact boot)" == container ]] || die "nix/hosts/$host: boot is not \"container\""
+[[ "$(fact boot)" == container ]] || die "hosts/$host: boot is not \"container\""
 container=true
 vm="$(fact vm)"
 native_steam="$(fact nativeSteam)"
 game_mode="$(fact gameMode)"
 [[ "$vm$native_steam$game_mode" == nonono ]] \
-    || die "nix/hosts/$host: a container has no vm, nativeSteam or gameMode"
+    || die "hosts/$host: a container has no vm, nativeSteam or gameMode"
 user="$(fact user)"
 timezone="$(fact timezone)"
-[[ -n "$user" && -n "$timezone" ]] || die "nix/hosts/$host: user and timezone are needed"
+[[ -n "$user" && -n "$timezone" ]] || die "hosts/$host: user and timezone are needed"
 
 echo "== apt ($host)"
 # The EULA of ttf-mscorefonts-installer (rec:ubuntu-restricted-extras):

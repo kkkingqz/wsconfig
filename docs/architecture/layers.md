@@ -25,7 +25,7 @@ ws apply           всё по порядку: выбор новых позиц�
 ws check           проверки всех владельцев и связей между слоями
 ```
 
-Хост — `nix/hosts/<host>/` (`host.toml`, `apt.txt`): `mbp16`
+Хост — `hosts/<host>/` (`host.toml`, `apt.txt`): `mbp16`
 (MacBookPro16,1, T2) и `wsvm` (проверочная VM, generic-pc, GRUB; VM удалена
 2026-10-02), выбирается по `hostname` в `host.toml` (`ws host`).
 Пользовательский слой у всех хостов общий (`nix/home/default.nix`),
@@ -57,14 +57,14 @@ ws check           проверки всех владельцев и связе�
 слой             источник                              применяет            проверяет
 пользователь     nix/home/, terminal/, bin/, libexec/  ws apply            ws check home
 система          system/*.nix, system/files/           ws apply system      ws system check
-apt              nix/hosts/*apt.txt                    bootstrap.sh, apt    ws check apt
+apt              hosts/*apt.txt                    bootstrap.sh, apt    ws check apt
 клавиатура       keyboard/*.nix, xremap.yml            ws apply, ws keyboard apply   ws keyboard check
 GNOME            gnome/gnome.nix, gnome-extensions.nix ws apply, ws apply extensions ws gnome check
 виджеты          widgets/*.txt, flake input wswidgets  wswidgets, ws apply ws check widgets
 Flatpak          flatpak/*.txt, flatpak.nix            ws flatpak apply      ws flatpak check
 Distrobox        distrobox/catalog.toml, distrobox.nix ws box apply          ws box check
 Windows          windows/apps.toml (+ боксы Distrobox)  ws apply, ws windows     ws windows check
-Remmina          remmina/*.nix, machine-apt.txt        ws apply, bootstrap.sh  ws check apt
+Remmina          remmina/*.nix, system/apt-machine.txt        ws apply, bootstrap.sh  ws check apt
 suspend / T2     system/hardware, system/kernel/t2bce  ws apply system, ws suspend t2bce-*   ws suspend check
 VM               apt.txt, bootstrap.sh, virt/virt.nix   bootstrap.sh, virt-manager           ws check virt
 Steam (apt)      steam/apt.txt, steam/bootstrap.bash   bootstrap.sh         ws check steam
@@ -82,9 +82,9 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
   в Nix, по файлу на область. Скрипты применяют и проверяют то, что собрано
   из Nix, и не держат своих копий списков. Родные форматы программ остаются
   (`xremap.yml`, ghostty, fish, udev/modprobe, `*.gschema.xml`,
-  `containers.ini`); простой текст — `nix/hosts/*apt.txt` (его читает
+  `containers.ini`); простой текст — `hosts/*apt.txt` (его читает
   `bootstrap.sh` до Nix); TOML — каталог `flatpak/catalog.toml` и выбор машин
-  `nix/hosts/*/*.toml` (их правят `ws flatpak`, `ws box`, `ws widgets`).
+  `hosts/*/*.toml` (их правят `ws flatpak`, `ws box`, `ws widgets`).
 - **Владелец выдаёт список.** Системный слой — `ws system manifest`,
   пользовательский — активное поколение home-manager, Distrobox —
   `containers.ini`, расширения — собранный список. Проверки, baseline и

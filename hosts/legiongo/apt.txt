@@ -1,5 +1,5 @@
 # apt packages of legiongo (Lenovo Legion Go, gen 1) on top of
-# nix/hosts/apt.txt (ws help plan-legion-go). source:, arch: and rec: lines are
+# system/apt.txt (ws help plan-legion-go). source:, arch: and rec: lines are
 # described there.
 
 # XanMod kernel, MAIN branch for x86-64-v3 (lenovo-wmi-*, hid-lenovo-go);

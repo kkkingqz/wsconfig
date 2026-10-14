@@ -1,4 +1,4 @@
-"""wswidgets against the host choices nix/hosts/HOST/widgets.toml and a
+"""wswidgets against the host choices hosts/HOST/widgets.toml and a
 fixed catalog: list,
 enabled, enable, disable, apply without a terminal and update with nix and
 ws apply replaced by stubs, in a throwaway Git checkout."""
@@ -47,10 +47,10 @@ class WswidgetsTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
         self.repo = root / "repo"
-        (self.repo / "nix/hosts/test").mkdir(parents=True)
-        (self.repo / "nix/hosts/other").mkdir(parents=True)
-        self.list = self.repo / "nix/hosts/test/widgets.toml"
-        self.other = self.repo / "nix/hosts/other/widgets.toml"
+        (self.repo / "hosts/test").mkdir(parents=True)
+        (self.repo / "hosts/other").mkdir(parents=True)
+        self.list = self.repo / "hosts/test/widgets.toml"
+        self.other = self.repo / "hosts/other/widgets.toml"
         self.catalog = root / "catalog.json"
         self.catalog.write_text(json.dumps(CATALOG))
         self.log = root / "calls"
@@ -120,7 +120,7 @@ class WswidgetsTests(unittest.TestCase):
         self.list.write_text('no = ["example"]\n')
         result = self.run_w("enable", "example", WSWIDGETS_FACT="no")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('widgets is not true in nix/hosts/test/host.toml', result.stderr)
+        self.assertIn('widgets is not true in hosts/test/host.toml', result.stderr)
         result = self.run_w("apply", WSWIDGETS_FACT="no")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.list.read_text(), 'no = ["example"]\n')

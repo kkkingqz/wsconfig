@@ -1,4 +1,4 @@
-# apt packages of mbp16 (MacBookPro16,1, T2) on top of nix/hosts/apt.txt.
+# apt packages of mbp16 (MacBookPro16,1, T2) on top of system/apt.txt and apt.txt.
 # The T2 repository must already be configured (rebuild.md, section 4).
 
 # T2 kernel (held: patched t2bce modules exist per kernel, ws help suspend)

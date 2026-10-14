@@ -37,10 +37,10 @@ class OverrideTests(unittest.TestCase):
         self.declare({})
         self.config = self.root / 'config'
         (self.config / 'flatpak').mkdir(parents=True)
-        (self.config / 'nix/hosts/test').mkdir(parents=True)
+        (self.config / 'hosts/test').mkdir(parents=True)
         self.catalog = self.config / 'flatpak/catalog.toml'
         self.catalog_with('')
-        self.host = self.config / 'nix/hosts/test/flatpak.toml'
+        self.host = self.config / 'hosts/test/flatpak.toml'
         self.host.write_text(f'yes = ["{APP}"]\n')
         self.g = runpy.run_path(str(ROOT / 'libexec/wsflatpak'))['cmd_check'].__globals__
         self.g.update(CFG=cfg, MANIFEST=self.manifest, DESKTOP_OVERRIDES=cfg / 'desktop',
@@ -202,7 +202,7 @@ class OverrideTests(unittest.TestCase):
         self.assertEqual(host['overrides'][APP], {'skip': ['filesystem home']})
 
     def test_un_all_drops_the_catalog_value_and_the_skips(self):
-        other = self.config / 'nix/hosts/other'
+        other = self.config / 'hosts/other'
         other.mkdir()
         (other / 'flatpak.toml').write_text(f'[overrides."{APP}"]\nskip = ["env SCALE"]\n')
         app, host = self.edit('env = { SCALE = "2" }\n', '', (APP, 'env', 'SCALE'), remove=True, everywhere=True)

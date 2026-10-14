@@ -352,7 +352,7 @@ ws suspend swap-setup 32g    # @swap → /swap, /swap/swapfile, fstab; печа�
 ```
 
 Swapfile — в отдельном subvolume `@swap` (без снапшотов, без CoW).
-Параметры resume — в `nix/hosts/mbp16/host.toml` (`kernelParams`, все пункты
+Параметры resume — в `hosts/mbp16/host.toml` (`kernelParams`, все пункты
 rEFInd и GRUB):
 
 ```text
@@ -545,7 +545,7 @@ system/files/polkit/50-ws-hibernate.rules
 system/files/dracut/ws-hibernate.conf
 system/files/dracut/95ws-t2-resume/
 gnome/extensions/workstation-hibernate@local/
-nix/hosts/mbp16/host.toml              resume=, resume_offset=
+hosts/mbp16/host.toml              resume=, resume_offset=
 ```
 
 ## Не использовать

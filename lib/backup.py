@@ -77,7 +77,7 @@ def vm_layer():
     vm = p.stdout.strip()
     if p.returncode or vm not in {'yes', 'no'}:
         raise ValueError('vm fact of this host: ' + (p.stderr.strip() or vm or 'missing') +
-                         ' (vm = true or false in nix/hosts/<host>/host.toml)')
+                         ' (vm = true or false in hosts/<host>/host.toml)')
     return vm == 'yes'
 
 

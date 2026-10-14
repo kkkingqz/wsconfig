@@ -1,5 +1,5 @@
 # The facts of a host for Nix (ws help plan-v2, stage 4):
-# nix/hosts/HOST/host.toml with the sections [host], [platform], [layers]
+# hosts/HOST/host.toml with the sections [host], [platform], [layers]
 # and, on a container host, [container]. Only Nix checks the values;
 # lib/ws_facts.py reads the file without checking it.
 # facts: the keys of host, platform and layers in one set, plus container
@@ -84,7 +84,7 @@ rec {
       inherit (data) container;
     };
 
-  # The facts of nix/hosts/HOST under HOSTS.
+  # The facts of hosts/HOST under HOSTS.
   factsOf = hosts: host:
-    factsIn "nix/hosts/${host}/host.toml" (builtins.fromTOML (builtins.readFile (hosts + "/${host}/host.toml")));
+    factsIn "hosts/${host}/host.toml" (builtins.fromTOML (builtins.readFile (hosts + "/${host}/host.toml")));
 }

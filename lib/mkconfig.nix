@@ -5,7 +5,7 @@
 #
 #   outputs = inputs: inputs.wsconfig.lib.mkConfig { root = ./.; inherit inputs; };
 #
-# ROOT holds the data only (nix/hosts, the catalogs and TOML of the
+# ROOT holds the data only (hosts, the catalogs and TOML of the
 # modules); the code is always that of this file. The modules read the data
 # from ROOT through the specialArg wsConfig, never relative to themselves.
 # INPUTS: nixpkgs, home-manager and wswidgets of the configuration (its
@@ -17,8 +17,8 @@ let
   pkgs = nixpkgs.legacyPackages.${system};
   inherit (nixpkgs) lib;
 
-  hostsDir = root + "/nix/hosts";
-  # Every directory of nix/hosts is a host: host.toml and apt.txt.
+  hostsDir = root + "/hosts";
+  # Every directory of hosts is a host: host.toml and apt.txt.
   hosts = lib.attrNames (lib.filterAttrs (_: type: type == "directory")
     (builtins.readDir hostsDir));
   # The facts of host.toml, checked (lib/host.nix).
@@ -30,7 +30,7 @@ let
       inherit man wswidgets core;
       facts = factsOf host;
       # The root of the data: the modules read their catalogs and TOML and
-      # the host choices nix/hosts/HOST/*.toml from it (lib/catalog.nix).
+      # the host choices hosts/HOST/*.toml from it (lib/catalog.nix).
       wsConfig = root;
       # The flake host (ws host).
       wsHost = host;

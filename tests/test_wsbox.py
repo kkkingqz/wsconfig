@@ -1,5 +1,5 @@
 """wsbox apply, create, remove and check against the workstation marks of
-nix/hosts/HOST/boxes.toml, with podman and distrobox replaced by shell stubs: a
+hosts/HOST/boxes.toml, with podman and distrobox replaced by shell stubs: a
 container is a file in the state directory. The checklist runs on a real
 pseudo terminal (pty.fork gives wsbox a controlling terminal)."""
 import json
@@ -59,9 +59,9 @@ class WsboxTests(unittest.TestCase):
         self.defaults()
         config = root / "config"
         for host in ("test", "other"):
-            (config / "nix/hosts" / host).mkdir(parents=True)
-        self.hosts = config / "nix/hosts/test/boxes.toml"
-        self.other = config / "nix/hosts/other/boxes.toml"
+            (config / "hosts" / host).mkdir(parents=True)
+        self.hosts = config / "hosts/test/boxes.toml"
+        self.other = config / "hosts/other/boxes.toml"
         self.env = dict(os.environ, PATH=f"{stubs}:{os.environ['PATH']}",
                         WSBOX_CONFIG=str(cfg), WSCONFIG=str(config),
                         WSBOX_TEST_STATE=str(self.state), XDG_RUNTIME_DIR=str(root / "run"),
@@ -229,7 +229,7 @@ class WsboxTests(unittest.TestCase):
         self.assertIn("FAIL  managed container missing: a (yes on test; ws box apply)", out)
         self.assertIn("WARN  managed container exists but no on test: b", out)
         self.assertIn("INFO  managed container not offered on test yet: c", out)
-        self.assertIn("WARN  nix/hosts/test/boxes.toml chooses an undeclared container: ghost", out)
+        self.assertIn("WARN  hosts/test/boxes.toml chooses an undeclared container: ghost", out)
 
     def test_check_default_no_is_declined(self):
         self.marks('yes = ["a", "b"]\n')

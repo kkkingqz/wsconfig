@@ -382,7 +382,7 @@ Recovery        GRUB, AMD включена
   его initrd (rEFInd не следует по symlink). Их обновляет `ws-boot-links` из
   `/etc/kernel/postinst.d`, `/etc/kernel/postrm.d` и
   `/etc/initramfs/post-update.d`; первый раз — `ws apply system`.
-- Параметры ядра всех пунктов — из `nix/hosts/mbp16/host.toml`
+- Параметры ядра всех пунктов — из `hosts/mbp16/host.toml`
   (`kernelParams`, `rootUuid`): `refind_linux.conf`, GRUB (`grub.d`) и
   `@AMD_OPTIONS@` в `refind.conf` собираются из них; «Ubuntu» добавляет
   `refindDefaultParams` (`ws.dgpu=off`). Править только `host.toml`.
@@ -823,7 +823,7 @@ Shebang:
 Актуальная структура включает:
 
 Всё, что правится, лежит в `~/wsconfig` (каталог задаёт `wsconfig` в
-`nix/hosts/<host>/host.toml`), по областям: в каждой — её объявление в Nix
+`hosts/<host>/host.toml`), по областям: в каждой — её объявление в Nix
 и родные файлы программ. Сгенерированное и скачанное — в
 `~/.local/share/wsconfig/`, состояние (backup сочетаний, baseline) — в
 `~/.local/state/wsconfig/`, HOME контейнеров — в `~/distrobox/<имя>/`.
@@ -885,7 +885,7 @@ wsconfig/
 ├── lib/common.bash      корни WS_CORE, WS_CONFIG, WS_STATE, die, need, nix_bin
 ├── lib/ws_common.py    то же для Python-инструментов
 ├── lib/check.bash       общий формат результата проверок (--json для ws check)
-├── lib/ws_catalog.py   выбор хоста nix/hosts/HOST/*.toml, вопросы apply и setup.sh
+├── lib/ws_catalog.py   выбор хоста hosts/HOST/*.toml, вопросы apply и setup.sh
 ├── lib/flatpak_catalog.py  каталог Flatpak и overrides хоста
 ├── lib/catalog.nix      выбор хоста и overrides для Nix
 ├── lib/host.nix         факты host.toml для Nix и их проверка
@@ -929,7 +929,7 @@ git diff --cached
 явно.
 
 Файлы данных — каталог `flatpak/catalog.toml`, выбор хостов
-`nix/hosts/*/flatpak.toml`, `boxes.toml` и `widgets.toml`
+`hosts/*/flatpak.toml`, `boxes.toml` и `widgets.toml`
 (`lib/ws_catalog.py`), `flake.lock` — правят инструменты (выбор, каталог,
 `ws update nix`, `ws widgets update`). Их коммитит и
 публикует только `ws sync`: один коммит с тем, что изменилось, затем

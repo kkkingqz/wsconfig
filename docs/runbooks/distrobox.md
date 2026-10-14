@@ -38,7 +38,7 @@ checkout (`~/wsconfig/distrobox/…`) до `ws box recreate NAME`. Hook ниче
 выводит из владельца и прав своих файлов: пользователя сборки
 `install-hook` получает аргументом.
 
-Host-пакеты (`podman`, `distrobox`, `uidmap`, …) — в `nix/hosts/apt.txt`,
+Host-пакеты (`podman`, `distrobox`, `uidmap`, …) — в `system/apt.txt`,
 модуль `ntsync` — `system/files/modules-load.d/ntsync.conf` (`ws apply system`).
 
 ## Контейнеры
@@ -81,7 +81,7 @@ ws box export NAME APP | unexport NAME APP
 только rootfs; описание в `distrobox/catalog.toml` и HOME остаются.
 
 `distrobox/catalog.toml` — каталог: все контейнеры, которые можно создать. Какие
-есть на машине — её `nix/hosts/HOST/boxes.toml` (`lib/ws_catalog.py`,
+есть на машине — её `hosts/HOST/boxes.toml` (`lib/ws_catalog.py`,
 `ws help plan-v2`, этап 3):
 
 ```toml

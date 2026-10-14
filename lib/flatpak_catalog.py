@@ -17,7 +17,7 @@ flatpak/catalog.toml is every app a host may have, in order:
     talk = ["org.kde.StatusNotifierWatcher"]   # Session Bus Policy, talk
 
 The overrides of an app in the catalog apply on every host that has it.
-nix/hosts/HOST/flatpak.toml holds the choice of the host (yes, no;
+hosts/HOST/flatpak.toml holds the choice of the host (yes, no;
 lib/ws_catalog.py) and its own overrides on top:
 
     [overrides."com.anydesk.Anydesk"]
@@ -267,7 +267,7 @@ def remove_in(table, kind, key):
     return True
 
 
-# The overrides of a host: [overrides."APP"] of nix/hosts/HOST/flatpak.toml.
+# The overrides of a host: [overrides."APP"] of hosts/HOST/flatpak.toml.
 def host_section(choice, app):
     return choice.data.get("overrides", {}).get(app, {})
 

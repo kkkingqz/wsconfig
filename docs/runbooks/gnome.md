@@ -44,7 +44,7 @@ Source of truth (с 2026-09-27):
 
 ```text
 gnome/config.toml               значения: [settings."DCONF/DIR"] KEY = значение
-nix/hosts/HOST/gnome.toml       свои значения хоста поверх общих (если нужен)
+hosts/HOST/gnome.toml       свои значения хоста поверх общих (если нужен)
 gnome/gnome.nix                 логика: ключи железа, проверка чужих ключей
 ```
 
@@ -297,7 +297,7 @@ QT_SCALE_FACTOR
 Это важно: обычное Qt приложение получает native Wayland и GNOME appearance
 без workstation-specific environment hacks.
 
-Пакеты — `nix/hosts/apt.txt` (`ws check apt`), отсутствие overrides —
+Пакеты — `system/apt.txt` (`ws check apt`), отсутствие overrides —
 `ws check home`. Qt в контейнерах этим не настраивается.
 
 ---

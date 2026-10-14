@@ -71,10 +71,10 @@ class SetupTests(unittest.TestCase):
         (self.repo / 'flatpak/catalog.toml').write_text(CATALOG)
         (self.repo / 'distrobox/catalog.toml').write_text(BOXES)
         for host in ('mbp16', 'new'):
-            (self.repo / 'nix/hosts' / host).mkdir(parents=True)
-        (self.repo / 'nix/hosts/mbp16/boxes.toml').write_text('yes = ["arch", "t2bce-build"]\n')
+            (self.repo / 'hosts' / host).mkdir(parents=True)
+        (self.repo / 'hosts/mbp16/boxes.toml').write_text('yes = ["arch", "t2bce-build"]\n')
         # An own choice of new: not offered again.
-        (self.repo / 'nix/hosts/new/flatpak.toml').write_text('# mine\nno = ["org.example.Mine"]\n')
+        (self.repo / 'hosts/new/flatpak.toml').write_text('# mine\nno = ["org.example.Mine"]\n')
         self.asked = []
 
     def run_with(self, answers):
@@ -89,7 +89,7 @@ class SetupTests(unittest.TestCase):
             return ws_catalog.setup(self.repo, 'new', FakeTerm())
 
     def read(self, name):
-        path = self.repo / 'nix/hosts/new' / name
+        path = self.repo / 'hosts/new' / name
         return tomllib.loads(path.read_text()) if path.exists() else None
 
     def test_offers_positions_without_a_choice_checked_by_default(self):
@@ -105,38 +105,38 @@ class SetupTests(unittest.TestCase):
     def test_answers_become_the_choice_of_the_host(self):
         changed = self.run_with([['org.example.Asked', 'org.example.Nowhere'], [],
                                  ['org.example.Asked env GDK_SCALE=2', 'org.example.Nowhere filesystem host']])
-        self.assertEqual(changed, ['nix/hosts/new/flatpak.toml', 'nix/hosts/new/boxes.toml'])
+        self.assertEqual(changed, ['hosts/new/flatpak.toml', 'hosts/new/boxes.toml'])
         apps = self.read('flatpak.toml')
         self.assertEqual(apps['yes'], ['org.example.Asked', 'org.example.Nowhere'])
         self.assertEqual(apps['no'], ['org.example.Mine', 'org.example.Everywhere'])
         # Unchecked: a skip of this host.
         self.assertEqual(apps['overrides'], {'org.example.Asked': {'skip': ['talk org.kde.StatusNotifierWatcher']}})
-        self.assertTrue((self.repo / 'nix/hosts/new/flatpak.toml').read_text().startswith('# mine\n'))
+        self.assertTrue((self.repo / 'hosts/new/flatpak.toml').read_text().startswith('# mine\n'))
         self.assertEqual(self.read('boxes.toml')['no'], ['arch', 't2bce-build'])
-        self.assertEqual((self.repo / 'nix/hosts/mbp16/boxes.toml').read_text(), 'yes = ["arch", "t2bce-build"]\n')
+        self.assertEqual((self.repo / 'hosts/mbp16/boxes.toml').read_text(), 'yes = ["arch", "t2bce-build"]\n')
 
     def test_native_steam_host_gets_no_steam_flatpak(self):
         catalog = CATALOG + '\n[[apps]]\nid = "com.valvesoftware.Steam"\nremote = "flathub"\n'
         (self.repo / 'flatpak/catalog.toml').write_text(catalog)
-        (self.repo / 'nix/hosts/new/host.toml').write_text('[layers]\nnativeSteam = true\n')
+        (self.repo / 'hosts/new/host.toml').write_text('[layers]\nnativeSteam = true\n')
         self.run_with([[], [], []])
         self.assertNotIn('com.valvesoftware.Steam', self.asked[0][1])
         self.assertIn('com.valvesoftware.Steam', self.read('flatpak.toml')['no'])
         # The flatpak elsewhere: offered as before.
-        (self.repo / 'nix/hosts/new/host.toml').write_text('[layers]\nnativeSteam = false\n')
-        (self.repo / 'nix/hosts/new/flatpak.toml').write_text('')
+        (self.repo / 'hosts/new/host.toml').write_text('[layers]\nnativeSteam = false\n')
+        (self.repo / 'hosts/new/flatpak.toml').write_text('')
         self.asked.clear()
         self.run_with([[], [], []])
         self.assertIn('com.valvesoftware.Steam', self.asked[0][1])
 
     def test_widgets_some_host_has_are_offered_on_a_widget_host(self):
-        (self.repo / 'nix/hosts/mbp16/widgets.toml').write_text('yes = ["example", "compact"]\n')
-        (self.repo / 'nix/hosts/new/host.toml').write_text('[layers]\nwidgets = true\n')
-        (self.repo / 'nix/hosts/new/widgets.toml').write_text('# mine\nno = ["compact"]\n')
+        (self.repo / 'hosts/mbp16/widgets.toml').write_text('yes = ["example", "compact"]\n')
+        (self.repo / 'hosts/new/host.toml').write_text('[layers]\nwidgets = true\n')
+        (self.repo / 'hosts/new/widgets.toml').write_text('# mine\nno = ["compact"]\n')
         changed = self.run_with([[], [], ['example'], []])
         self.assertEqual(self.asked[2], ('Виджеты (ws widgets) на new', {'example': True}))
-        self.assertIn('nix/hosts/new/widgets.toml', changed)
-        text = (self.repo / 'nix/hosts/new/widgets.toml').read_text()
+        self.assertIn('hosts/new/widgets.toml', changed)
+        text = (self.repo / 'hosts/new/widgets.toml').read_text()
         self.assertTrue(text.startswith('# mine\n'), text)
         self.assertIn('yes = ["example"]', text)
 
@@ -167,8 +167,8 @@ class ApplyOfferTests(unittest.TestCase):
         self.config = root / 'config'
         (self.config / 'flatpak').mkdir(parents=True)
         (self.config / 'flatpak/catalog.toml').write_text(CATALOG)
-        (self.config / 'nix/hosts/new').mkdir(parents=True)
-        (self.config / 'nix/hosts/new/host.toml').write_text('[layers]\nwidgets = true\n')
+        (self.config / 'hosts/new').mkdir(parents=True)
+        (self.config / 'hosts/new/host.toml').write_text('[layers]\nwidgets = true\n')
         boxes = root / 'distrobox'
         boxes.mkdir()
         (boxes / 'boxes.json').write_text(json.dumps([{'name': 'arch'}, {'name': 't2', 'default': 'no'}]))
@@ -204,7 +204,7 @@ class ApplyOfferTests(unittest.TestCase):
         self.assertEqual([Path(p).name for p in written], ['flatpak.toml', 'widgets.toml'])
         flatpak = ws_catalog.Choice('flatpak', 'new', self.config)
         self.assertEqual((flatpak.yes(), flatpak.no()), (['org.example.Asked'], ['org.example.Mine']))
-        self.assertFalse((self.config / 'nix/hosts/new/boxes.toml').exists())
+        self.assertFalse((self.config / 'hosts/new/boxes.toml').exists())
 
     def test_without_a_terminal_names_the_positions(self):
         err = io.StringIO()

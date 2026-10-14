@@ -56,7 +56,7 @@ exit 0
                         PATH=str(self.bin) + ':' + os.environ['PATH'])
 
     def host(self, name, boot):
-        d = self.repo / 'nix/hosts' / name
+        d = self.repo / 'hosts' / name
         d.mkdir(parents=True)
         text = f'[host]\nuser = "tester"\n\n[platform]\nboot = "{boot}"\n'
         if boot == 'container':

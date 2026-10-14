@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Host and facts of nix/hosts/HOST/host.toml, read without Nix (ws help
+"""Host and facts of hosts/HOST/host.toml, read without Nix (ws help
 plan-v2, 2.2 and 4): the only reader. bootstrap.sh and setup.sh need the
 facts before Nix exists, the checks read them often. Only Nix checks the
 values (lib/host.nix); this reads what is there.
@@ -15,7 +15,7 @@ printed as JSON by `section`.
     ws_facts.py fact [--host HOST] NAME
                                        the fact of HOST (default: this host)
     ws_facts.py fact --file HOST_TOML NAME
-                                       a host.toml outside nix/hosts (setup.sh)
+                                       a host.toml outside hosts (setup.sh)
     ws_facts.py section [--host HOST] NAME
                                        a section of host.toml as JSON (ws-container)
     ws_facts.py record                 write host.json in the state: this host
@@ -44,7 +44,7 @@ FACT_SECTIONS = ("host", "platform", "layers")
 
 
 def facts_file(host, config=None):
-    return Path(config or ws_common.CONFIG) / "nix/hosts" / host / "host.toml"
+    return Path(config or ws_common.CONFIG) / "hosts" / host / "host.toml"
 
 
 def load(path):
@@ -96,7 +96,7 @@ def find_host(config=None, record=True):
                 and facts_file(host, root).is_file()):
             return host
     me = socket.gethostname()
-    for path in sorted((root / "nix/hosts").glob("*/host.toml")):
+    for path in sorted((root / "hosts").glob("*/host.toml")):
         if fact_in(path, "hostname") == me:
             return path.parent.name
     return None
@@ -113,7 +113,7 @@ def check_host(host):
 def host_or_die(for_marks=False):
     host = find_host()
     if host is None:
-        ws_common.die(PROG, f'no nix/hosts/*/host.toml with hostname = "{socket.gethostname()}"; '
+        ws_common.die(PROG, f'no hosts/*/host.toml with hostname = "{socket.gethostname()}"; '
                       "add the host or set WS_HOST")
     if for_marks:
         try:
@@ -153,11 +153,11 @@ def main(argv):
             where = str(path)
         elif len(args) == 3 and args[0] == "--host":
             path, name = facts_file(args[1]), args[2]
-            where = f"nix/hosts/{args[1]}/host.toml"
+            where = f"hosts/{args[1]}/host.toml"
         elif len(args) == 1:
             host = host_or_die()
             path, name = facts_file(host), args[0]
-            where = f"nix/hosts/{host}/host.toml"
+            where = f"hosts/{host}/host.toml"
         else:
             ws_common.die(PROG, f"usage: ws {command} [--host HOST] NAME")
         if not path.is_file():

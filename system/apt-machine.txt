@@ -1,6 +1,7 @@
-# apt packages of every real machine on top of nix/hosts/apt.txt: not for a
-# container host (boot = "container", ws help plan-wsgnomebox), whose disk,
-# devices and udev belong to the server. Same syntax as nix/hosts/apt.txt.
+# apt packages the core needs on every real machine on top of
+# system/apt.txt: not for a container host (boot = "container", ws help
+# plan-wsgnomebox), whose disk, devices and udev belong to the server. Same
+# syntax as system/apt.txt.
 
 # Btrfs subvolumes (bootstrap.sh, Timeshift hooks)
 btrfs-progs

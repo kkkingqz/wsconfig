@@ -4,7 +4,7 @@ set -o pipefail
 
 # Widget layer (ws help widgets): wswidgets delivered by ws apply on hosts
 # with widgets = true in host.toml; the runtime diagnostics are its own
-# (ws-widgets check --tsv), with the widgets yes in nix/hosts/HOST/widgets.toml.
+# (ws-widgets check --tsv), with the widgets yes in hosts/HOST/widgets.toml.
 # Read-only. ws check widgets; ws check runs it with --json (lib/check.bash).
 
 # shellcheck source=../lib/common.bash
@@ -20,7 +20,7 @@ case "${1:-}" in
 esac
 
 if [[ "$(host_fact widgets)" != yes ]]; then
-    info "widgets is not true in nix/hosts/$("$WS_CORE/bin/ws" host 2>/dev/null)/host.toml: no widget layer, nothing to check"
+    info "widgets is not true in hosts/$("$WS_CORE/bin/ws" host 2>/dev/null)/host.toml: no widget layer, nothing to check"
     check_finish
     exit
 fi
@@ -36,7 +36,7 @@ while IFS=$'\t' read -r level message; do
 done < <(ws-widgets check --tsv)
 
 # The manifest the runtime reads against yes of this host in
-# nix/hosts/HOST/widgets.toml (ws widgets enabled), in panel order.
+# hosts/HOST/widgets.toml (ws widgets enabled), in panel order.
 manifest="${XDG_DATA_HOME:-$HOME/.local/share}/workstation/widgets/manifest.json"
 expected="$("$WS_CORE/libexec/wswidgets" enabled | paste -sd ' ')"
 delivered="$(python3 -c 'import json, sys; print(" ".join(w["id"] for w in json.load(open(sys.argv[1]))["widgets"]))' "$manifest" 2>/dev/null)"

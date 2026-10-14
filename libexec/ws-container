@@ -31,7 +31,7 @@ USAGE
 
 # [container] of the host.toml of HOST as JSON.
 spec() {
-    [[ -r "$repo/nix/hosts/$1/host.toml" ]] || die "no nix/hosts/$1/host.toml"
+    [[ -r "$repo/hosts/$1/host.toml" ]] || die "no hosts/$1/host.toml"
     [[ "$(python3 "$WS_CORE/lib/ws_facts.py" fact --host "$1" boot 2>/dev/null)" == container ]] \
         || die "$1 is not a container host (boot = \"container\")"
     python3 "$WS_CORE/lib/ws_facts.py" section --host "$1" container

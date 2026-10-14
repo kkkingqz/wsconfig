@@ -1,4 +1,4 @@
-# terminal/config.toml with the host file nix/hosts/HOST/terminal.toml,
+# terminal/config.toml with the host file hosts/HOST/terminal.toml,
 # read and checked once for distrobox-colors.nix and ssh-colors.nix;
 # lib/config.nix.
 { lib, wsHost, wsConfig }:
@@ -9,7 +9,7 @@ let
 in
 (import ../lib/config.nix { inherit lib; }).read {
   file = wsConfig + "/terminal/config.toml";
-  host = wsConfig + "/nix/hosts/${wsHost}/terminal.toml";
+  host = wsConfig + "/hosts/${wsHost}/terminal.toml";
   type = schema.table {
     keys = {
       distrobox = schema.table {

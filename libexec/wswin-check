@@ -33,7 +33,7 @@ else
     fail "no Windows box in boxes.json (distrobox/catalog.toml)"
 fi
 
-# Launchers exist only where the box is yes (nix/hosts/HOST/boxes.toml, else
+# Launchers exist only where the box is yes (hosts/HOST/boxes.toml, else
 # the default of the box; windows/apps.toml); the programs of other boxes are
 # not checked here.
 declare -A box_state=()

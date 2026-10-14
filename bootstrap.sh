@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # First steps on a fresh Ubuntu (ws help rebuild, ws help history-nix):
-# @nix subvolume at /nix → apt packages (nix/hosts/apt.txt, nix/hosts/<host>/apt.txt,
-# nix/hosts/machine-apt.txt,
+# @nix subvolume at /nix → apt packages (system/apt.txt, apt.txt, hosts/<host>/apt.txt,
+# system/apt-machine.txt,
 # virt/apt.txt, steam/apt.txt, gaming/apt.txt) → VM state on @vms (images,
 # nvram, qemu XML bound into libvirt), pool and network (virt/bootstrap.bash)
 # → Steam data on @steam (steam/bootstrap.bash) → local backup copies on
@@ -14,7 +14,7 @@ set -euo pipefail
 # "container") skips what its image or the server holds.
 #
 # Runs as the desktop user from the checkout at ~/<wsconfig of
-# nix/hosts/<host>/host.toml> and calls sudo itself. Every step checks
+# hosts/<host>/host.toml> and calls sudo itself. Every step checks
 # the current state first, so a second run changes nothing.
 #
 #   ./bootstrap.sh [--dry-run]
@@ -49,8 +49,8 @@ run() {
 [[ $EUID -ne 0 ]] || die "run as the desktop user, not root"
 command -v sudo >/dev/null 2>&1 || die "sudo not found"
 host="$("$repo/bin/ws" host)"
-host_list="$repo/nix/hosts/$host/apt.txt"
-toml="nix/hosts/$host/host.toml"
+host_list="$repo/hosts/$host/apt.txt"
+toml="hosts/$host/host.toml"
 [[ -r "$repo/$toml" ]] || die "no $toml"
 # The checkout path is a fact of the host: home-manager links point there.
 expected="$HOME/$("$repo/bin/ws" fact wsconfig)" || die "no wsconfig in [host] of $toml"

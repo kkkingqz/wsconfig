@@ -1,6 +1,6 @@
 # Flatpak: the remotes and every app a host may have (ws help flatpak), in
 # order. Which host has which app, and its own overrides:
-# nix/hosts/HOST/flatpak.toml. An app without a choice of the host has its
+# hosts/HOST/flatpak.toml. An app without a choice of the host has its
 # default: ask (offered by ws flatpak apply; the default), no or yes.
 # filesystems, env and talk of an app apply on every host that has it.
 # ws flatpak install|manage|unmanage and filesystem|env|talk edit this file
@@ -77,7 +77,7 @@ id = "org.onlyoffice.desktopeditors"
 remote = "flathub"
 
 [[apps]]
-# Browser (snapd is purged, nix/hosts/apt.txt)
+# Browser (snapd is purged, system/apt.txt)
 id = "org.mozilla.firefox"
 remote = "flathub"
 

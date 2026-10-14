@@ -1,4 +1,4 @@
-"""wswin check follows the host choice of the boxes (nix/hosts/HOST/
+"""wswin check follows the host choice of the boxes (hosts/HOST/
 boxes.toml, else the default of the box): the launchers of windows/apps.nix
 exist only where the box is yes, so programs and the .exe default of other
 boxes are not checked."""
@@ -29,10 +29,10 @@ class WswinCheckTests(unittest.TestCase):
             "remote": {"box": "elsewhere", "prefix": "default", "exe": "drive_c/remote.exe"},
             "all": {"box": "everywhere", "prefix": "default", "exe": "drive_c/all.exe"}}}))
         for host in ("test", "other"):
-            (root / "config/nix/hosts" / host).mkdir(parents=True)
-        self.hosts = root / "config/nix/hosts/test/boxes.toml"
+            (root / "config/hosts" / host).mkdir(parents=True)
+        self.hosts = root / "config/hosts/test/boxes.toml"
         self.hosts.write_text('yes = ["here"]\n')
-        (root / "config/nix/hosts/other/boxes.toml").write_text('yes = ["elsewhere"]\n')
+        (root / "config/hosts/other/boxes.toml").write_text('yes = ["elsewhere"]\n')
         self.env = dict(os.environ, HOME=str(root), WSWIN_DATA=str(root),
                         WSCONFIG=str(root / "config"), WS_HOST="test")
 

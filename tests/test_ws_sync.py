@@ -102,13 +102,13 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(self.git("rev-parse", "HEAD"), head)
 
     def test_host_choices_new_and_changed(self):
-        host = self.repo / "nix/hosts/mbp16"
+        host = self.repo / "hosts/mbp16"
         host.mkdir(parents=True)
         (host / "widgets.toml").write_text('yes = ["a"]\n')
         p = self.ws()
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertEqual(self.git("log", "-1", "--format=%s"), "ws sync: nix/hosts/mbp16/widgets.toml")
-        self.assertIn("nix/hosts/mbp16/widgets.toml: a=yes", self.git("log", "-1", "--format=%b"))
+        self.assertEqual(self.git("log", "-1", "--format=%s"), "ws sync: hosts/mbp16/widgets.toml")
+        self.assertIn("hosts/mbp16/widgets.toml: a=yes", self.git("log", "-1", "--format=%b"))
         (host / "widgets.toml").write_text('yes = []\nno = ["a"]\n')
         p = self.ws()
         self.assertEqual(p.returncode, 0, p.stderr)

@@ -1,7 +1,7 @@
 # apt packages of wsgnomebox (GNOME in a container on tower) on top of
-# nix/hosts/apt.txt (ws help plan-wsgnomebox). The image installs them
+# system/apt.txt (ws help plan-wsgnomebox). The image installs them
 # (container/Dockerfile), bootstrap.sh then finds them present. rec: lines
-# are described in nix/hosts/apt.txt.
+# are described in system/apt.txt.
 
 # What the installer puts on a real machine and ubuntu:26.04 lacks:
 # systemd as init, sudo, locales, the GNOME desktop with GDM. The desktop

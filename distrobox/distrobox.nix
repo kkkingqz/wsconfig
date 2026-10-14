@@ -11,7 +11,7 @@
 #                   the container), gpu, default, and for Windows boxes
 #                   profile, driver, dpi, init_overrides (ws help plan-v2, 2.6)
 #
-# Which host has which: nix/hosts/HOST/boxes.toml (lib/ws_catalog.py).
+# Which host has which: hosts/HOST/boxes.toml (lib/ws_catalog.py).
 { config, lib, pkgs, facts, core, wsConfig, ... }:
 let
   # LogPixels of new prefixes by the display scale (lib/scale.nix).

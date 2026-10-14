@@ -25,13 +25,13 @@ class CatalogTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.config = Path(tmp.name)
-        shutil.copytree(FIXTURE, self.config / "nix/hosts")
+        shutil.copytree(FIXTURE, self.config / "hosts")
 
     def choice(self, module="boxes", host="a"):
         return ws_catalog.Choice(module, host, self.config)
 
     def path(self, module="boxes", host="a"):
-        return self.config / "nix/hosts" / host / f"{module}.toml"
+        return self.config / "hosts" / host / f"{module}.toml"
 
     def cli(self, *args, host="a"):
         env = {k: v for k, v in os.environ.items() if not k.startswith("WS")}

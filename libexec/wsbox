@@ -15,7 +15,7 @@ hooks_dir="${WSBOX_HOOKS:-$HOME/.local/share/wsconfig/hooks}"
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 ws_prog="ws box"
-# Which containers this host has: nix/hosts/HOST/boxes.toml in the
+# Which containers this host has: hosts/HOST/boxes.toml in the
 # configuration, yes = [...], no = [...]; a container in neither has its
 # default of distrobox/catalog.toml (boxes.json; lib/ws_catalog.py). create/apply NAME
 # put it in yes, remove in no, apply asks about the containers in state ask;
@@ -123,8 +123,8 @@ box_hooks() {
 load_host() {
     [[ -z "${ws_host:-}" ]] || return 0
     ws_host="$("$WS_CORE/bin/ws" host --for-marks)" \
-        || die "no host for nix/hosts/HOST/boxes.toml (ws host --for-marks)"
-    hosts_file="nix/hosts/$ws_host/boxes.toml"
+        || die "no host for hosts/HOST/boxes.toml (ws host --for-marks)"
+    hosts_file="hosts/$ws_host/boxes.toml"
 }
 
 choice() {
@@ -480,13 +480,13 @@ cmd_check() {
         *) die "usage: ws box check [--json]" ;;
     esac
 
-    # Host packages (podman, distrobox, uidmap, …) are listed in nix/hosts/apt.txt
+    # Host packages (podman, distrobox, uidmap, …) are listed in system/apt.txt
     # and checked by `ws check apt`.
     for p in podman distrobox distrobox-assemble; do
         if command -v "$p" >/dev/null 2>&1; then
             pass "command present: $p"
         else
-            fail "command missing: $p (nix/hosts/apt.txt, ws check apt)"
+            fail "command missing: $p (system/apt.txt, ws check apt)"
         fi
     done
 
@@ -514,7 +514,7 @@ cmd_check() {
         while read -r name state; do
             [[ -n "$name" ]] && states[$name]="$state"
         done <<<"$box_state"
-        hosts_file="nix/hosts/$host/boxes.toml"
+        hosts_file="hosts/$host/boxes.toml"
         pass "host choice read: $host ($hosts_file)"
         while read -r name; do
             [[ -n "$name" ]] || continue
@@ -776,7 +776,7 @@ cmd_update() {
         done < <(managed_boxes)
     fi
 
-    # A host may have none (nix/hosts/HOST/boxes.toml): nothing to update.
+    # A host may have none (hosts/HOST/boxes.toml): nothing to update.
     if ((${#names[@]} == 0)); then
         echo "no managed container on this workstation: nothing to update (ws box apply)"
         return 0
@@ -895,7 +895,7 @@ cmd_remove() {
 
     # The host and a readable choice first: a failure leaves the container
     # in place rather than gone but still in yes.
-    choice chosen >/dev/null || die "cannot read nix/hosts/HOST/boxes.toml"
+    choice chosen >/dev/null || die "cannot read hosts/HOST/boxes.toml"
 
     distrobox rm \
         --force \

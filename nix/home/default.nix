@@ -1,7 +1,7 @@
 # User layer of every host: links into the checkout and terminal CLI; layer
 # owners (wsflatpak reads flatpak/flatpak.nix; wsbox, wswin, ws-gnome,
 # ws-keyboard*, ws-suspend) stay as they are. What differs between hosts
-# comes from facts (nix/hosts/<host>/host.toml, lib/host.nix).
+# comes from facts (hosts/<host>/host.toml, lib/host.nix).
 { lib, facts, ... }:
 {
   imports = [

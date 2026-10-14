@@ -1,12 +1,12 @@
 # Widget layer (ws help widgets), on hosts with widgets = "yes": the
 # Quickshell runtime, QML, GNOME adapter files and ws-widgets come from the
 # wswidgets flake input (pinned by flake.lock; ws widgets update); this
-# repository chooses the widgets per host (nix/hosts/HOST/widgets.toml,
+# repository chooses the widgets per host (hosts/HOST/widgets.toml,
 # ws widgets enable|disable; lib/ws_catalog.py) and enables the adapter
 # (gnome/gnome-extensions.nix).
 { lib, wswidgets, wsHost, wsConfig, ... }:
 let
-  catalog = import ../lib/catalog.nix { inherit lib; hosts = wsConfig + "/nix/hosts"; };
+  catalog = import ../lib/catalog.nix { inherit lib; hosts = wsConfig + "/hosts"; };
 in
 {
   imports = [ wswidgets.homeManagerModules.default ];

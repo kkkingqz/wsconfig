@@ -24,7 +24,7 @@ class FlatpakCatalogTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.config = Path(tmp.name)
-        shutil.copytree(FIXTURE, self.config / "nix/hosts")
+        shutil.copytree(FIXTURE, self.config / "hosts")
         (self.config / "flatpak").mkdir()
         shutil.copyfile(FIXTURE / "catalog.toml", self.config / "flatpak/catalog.toml")
         self.catalog = flatpak_catalog.Catalog(self.config)
@@ -71,7 +71,7 @@ class FlatpakCatalogTests(unittest.TestCase):
     def test_host_section_must_fit_the_catalog(self):
         choice = self.choice()
         flatpak_catalog.check_host(choice, self.catalog)
-        path = self.config / "nix/hosts/a/flatpak.toml"
+        path = self.config / "hosts/a/flatpak.toml"
         path.write_text('[overrides."org.example.Unknown"]\nenv = { A = "1" }\n')
         with self.assertRaisesRegex(ValueError, "not in"):
             flatpak_catalog.check_host(self.choice(), self.catalog)

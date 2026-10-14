@@ -14,7 +14,7 @@ GUI-приложения — Flatpak (user installation), host остаётся 
 ```text
 flatpak/catalog.toml          каталог: remotes и все приложения, по порядку;
                               у приложения remote, default и общие overrides
-nix/hosts/HOST/flatpak.toml   выбор машины (yes, no) и её свои overrides
+hosts/HOST/flatpak.toml   выбор машины (yes, no) и её свои overrides
 flatpak/flatpak.nix           свои .desktop; собирает каталог и выбор машины
 flatpak/desktop/*.desktop     полные .desktop, заменяющие штатные
 libexec/wsflatpak             владелец: install, apply, check
@@ -43,7 +43,7 @@ env = { GDK_SCALE = "2" }
 talk = ["org.kde.StatusNotifierWatcher"]
 ```
 
-Какие приложения на какой машине — её `nix/hosts/HOST/flatpak.toml`
+Какие приложения на какой машине — её `hosts/HOST/flatpak.toml`
 (`lib/ws_catalog.py`, `ws help plan-v2`, этап 3); имя машины — `ws host`:
 
 ```toml
@@ -124,7 +124,7 @@ ws sync                              # публикует: коммит, pull --
 ```
 
 `ws apply` добавляет изменённые `catalog.toml` и выбор машин
-`nix/hosts/*/*.toml` в сборку и ничего не коммитит: в конце он называет
+`hosts/*/*.toml` в сборку и ничего не коммитит: в конце он называет
 неопубликованные файлы данных. Коммит и push делает только `ws sync`
 (`ws help plan-v2`, 2.7).
 
@@ -151,7 +151,7 @@ APP — ID, имя или часть имени установленного п�
 каталоге (`ws flatpak manage APP`). Значение — одно слово без `#`.
 
 ```toml
-# nix/hosts/legiongo/flatpak.toml
+# hosts/legiongo/flatpak.toml
 [overrides."com.anydesk.Anydesk"]
 env = { GDK_SCALE = "1" }                       # вместо GDK_SCALE=2 каталога
 skip = ["talk org.kde.StatusNotifierWatcher"]   # значение каталога не здесь

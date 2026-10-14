@@ -2,7 +2,7 @@
 # ws help architecture-v2, 10): the defaults of the core, then the common
 # file of the configuration, then the file of the host when it has one.
 #
-#   read { file = ../gnome/config.toml; host = ../nix/hosts/mbp16/gnome.toml;
+#   read { file = ../gnome/config.toml; host = ../hosts/mbp16/gnome.toml;
 #          type = schema.table { … }; defaults = { … }; }
 #
 # Merge: tables merge by key, a scalar or a list of a later file replaces

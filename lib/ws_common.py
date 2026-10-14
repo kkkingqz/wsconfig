@@ -5,7 +5,7 @@ lib/ on sys.path by its own location:
     sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
     import ws_common
 
-CORE is where the running code is, CONFIG the data (nix/hosts, the lists
+CORE is where the running code is, CONFIG the data (hosts, the lists
 and catalogs), STATE this machine only. WSCONFIG (tests, another checkout)
 sets CONFIG; WS_CONFIG and WS_STATE from ws are kept. Otherwise CONFIG is
 (ws help plan-v2, stage 5):

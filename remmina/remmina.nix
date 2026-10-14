@@ -1,5 +1,5 @@
 # Remmina from Nix instead of apt (ws help remmina): package.nix, with H.264
-# and files through the RDP clipboard; machine-apt.txt purges the Ubuntu one.
+# and files through the RDP clipboard; system/apt-machine.txt purges the Ubuntu one.
 #
 # ~/.nix-profile/share is not in XDG_DATA_DIRS (targets.genericLinux is
 # off, nix/home/default.nix): the launchers go to ~/.local/share/applications

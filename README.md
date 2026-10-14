@@ -41,7 +41,7 @@ nix/            flake-хосты (host.toml, apt.txt), home-manager, пакет�
 system/         системные файлы в /etc, /boot, /usr/local, ядро t2bce (ws system)
 keyboard/       macOS-клавиатура: xremap, сочетания GNOME и Tiling Assistant
 gnome/          профиль GNOME, расширения (свои — gnome/extensions/)
-widgets/        слой виджетов: wswidgets из flake.lock; выбор — nix/hosts/*/widgets.toml
+widgets/        слой виджетов: wswidgets из flake.lock; выбор — hosts/*/widgets.toml
 terminal/       Ghostty, fish, micro, xdg-terminal-exec
 flatpak/        каталог приложений, remotes и overrides (catalog.toml, ws flatpak)
 distrobox/      контейнеры Distrobox и их hooks (ws box)
@@ -57,7 +57,7 @@ docs/           документация, из неё собираются man-�
 Хосты — `mbp16` (эта машина), `legiongo` (Lenovo Legion Go, Game Mode;
 `ws help plan-legion-go`) и `wsvm` (проверочная VM фазы 6; сама VM удалена
 2026-10-02, описание оставлено), выбираются по `hostname` в `host.toml`
-(`ws host`). Хост — каталог `nix/hosts/<name>/` (`host.toml`, `apt.txt`);
+(`ws host`). Хост — каталог `hosts/<name>/` (`host.toml`, `apt.txt`);
 новый на GRUB делает `setup.sh` из generic-pc (`ws help setup`).
 
 ## Документация

@@ -126,7 +126,7 @@ class UserRuntimeTests(unittest.TestCase):
             + (f'default = "{default}"\n' if default else "") for a in apps))
 
     def choose(self, text):
-        """nix/hosts/test/flatpak.toml."""
+        """hosts/test/flatpak.toml."""
         self.host.write_text(text)
 
     def chosen(self):
@@ -143,9 +143,9 @@ class UserRuntimeTests(unittest.TestCase):
         self.manifest = cfg / "flatpak.json"
         config = root / "config"
         (config / "flatpak").mkdir(parents=True)
-        (config / "nix/hosts/test").mkdir(parents=True)
+        (config / "hosts/test").mkdir(parents=True)
         self.catalog = config / "flatpak/catalog.toml"
-        self.host = config / "nix/hosts/test/flatpak.toml"
+        self.host = config / "hosts/test/flatpak.toml"
         self.declare(APP)
         self.g = runpy.run_path(str(SCRIPT))["cmd_install"].__globals__
         self.g.update(MANIFEST=cfg / "flatpak.json", REPO=config,

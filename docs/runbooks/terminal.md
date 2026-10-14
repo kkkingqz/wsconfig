@@ -210,7 +210,7 @@ Ctrl+Enter  → Alt+Enter
 После выхода, ошибки подключения или Ctrl+C возвращается цвет темы Ghostty.
 Алиасы из `~/.ssh/config` определяются по итоговому `HostName` (`ssh -G`).
 Цвета задаются в `terminal/config.toml` конфигурации (`[ssh]`; хост может
-дополнить их в `nix/hosts/HOST/terminal.toml`), изменения применяются через
+дополнить их в `hosts/HOST/terminal.toml`), изменения применяются через
 `ws apply`; функцию собирает `terminal/ssh-colors.nix` ядра.
 Home Manager генерирует `~/.config/fish/functions/ssh.fish`; Fish загружает его
 при первом вызове `ssh`, в том числе в уже открытом shell.
@@ -487,7 +487,7 @@ data             ~/.local/share/<tool>/...
 `ws help readme`.
 
 Каталог checkout — настройка хоста: `wsconfig` в
-`nix/hosts/<host>/host.toml` (относительно `$HOME`), по нему home-manager
+`hosts/<host>/host.toml` (относительно `$HOME`), по нему home-manager
 ставит ссылки fish и Ghostty. `ws` из PATH — ядро в store; checkout он
 берёт из `~/.local/state/wsconfig/host.json` (пишет `ws apply`), без него —
 `~/wsconfig`. `~/wsconfig/bin/ws` работает со своим checkout. Переменная

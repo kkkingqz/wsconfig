@@ -1,6 +1,6 @@
 # Flatpak declarations: the catalog flatpak/catalog.toml (remotes, apps,
 # overrides; lib/flatpak_catalog.py), the choice of this host
-# nix/hosts/HOST/flatpak.toml (yes, no and own overrides; lib/catalog.nix)
+# hosts/HOST/flatpak.toml (yes, no and own overrides; lib/catalog.nix)
 # and desktop overrides. wsflatpak stays the owner of apply/check and reads
 # what is built here from ~/.local/share/wsconfig/flatpak (one link to
 # the store):
@@ -20,7 +20,7 @@
 # app (elsewhere the launcher would start nothing).
 { lib, pkgs, wsHost, wsConfig, facts, core, ... }:
 let
-  catalog = import ../lib/catalog.nix { inherit lib; hosts = wsConfig + "/nix/hosts"; };
+  catalog = import ../lib/catalog.nix { inherit lib; hosts = wsConfig + "/hosts"; };
   # @claude@, @chatgpt@ in the desktop files: the scale factors of the host;
   # @ws-gpu@: ws-gpu of the core in the store.
   scale = import ../lib/scale.nix { inherit lib facts; };
@@ -89,10 +89,10 @@ in
     message = "flatpak/catalog.toml: ${a.id} uses undeclared remote ${a.remote}";
   }) apps ++ map (k: {
     assertion = false;
-    message = "flatpak: ${k} has two values on ${wsHost} (catalog.toml and nix/hosts/${wsHost}/flatpak.toml)";
+    message = "flatpak: ${k} has two values on ${wsHost} (catalog.toml and hosts/${wsHost}/flatpak.toml)";
   }) duplicateKeys ++ map (app: {
     assertion = lib.any (a: a.id == app) apps;
-    message = "nix/hosts/${wsHost}/flatpak.toml: overrides of ${app}, not in flatpak/catalog.toml";
+    message = "hosts/${wsHost}/flatpak.toml: overrides of ${app}, not in flatpak/catalog.toml";
   }) (lib.attrNames hostOverrides);
 
   xdg.dataFile = {

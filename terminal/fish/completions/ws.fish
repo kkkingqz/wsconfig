@@ -63,7 +63,7 @@ complete -c ws -n '__ws_at backup check' -l remote -d 'Check configured receiver
 complete -c ws -n __ws_needs_command -a host -d 'Flake host of this machine'
 complete -c ws -n __ws_needs_command -a fact -d 'String fact of this host'
 complete -c ws -n '__ws_after host' -l for-marks -d 'Fail unless the name fits a list mark'
-complete -c ws -n '__ws_after fact' -l host -x -a '(path basename ~/wsconfig/nix/hosts/*/)' -d 'Fact of another host'
+complete -c ws -n '__ws_after fact' -l host -x -a '(path basename ~/wsconfig/hosts/*/)' -d 'Fact of another host'
 complete -c ws -n __ws_needs_command -a news -d 'home-manager news'
 
 complete -c ws -n '__ws_after apply' -a '(ws steps apply)'

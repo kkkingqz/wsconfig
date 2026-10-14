@@ -9,7 +9,7 @@ default, what a host without its own choice gets:
     no   not offered (apply --select still asks)
     yes  on every host without its own choice, without a question
 
-The choice of a host is nix/hosts/HOST/MODULE.toml, written only on that
+The choice of a host is hosts/HOST/MODULE.toml, written only on that
 host:
 
     yes = ["a", "b"]   installed here (widgets: the panel order)
@@ -66,7 +66,7 @@ MODULES = {
 
 
 def hosts_dir(config=None):
-    return Path(config or ws_common.CONFIG) / "nix/hosts"
+    return Path(config or ws_common.CONFIG) / "hosts"
 
 
 def current_host(config=None):
@@ -81,7 +81,7 @@ def tomlkit():
         import tomlkit as module
     except ImportError:
         raise ValueError("python3-tomlkit is missing: sudo apt install python3-tomlkit "
-                         "(nix/hosts/apt.txt)") from None
+                         "(system/apt.txt)") from None
     return module
 
 
@@ -95,7 +95,7 @@ def names_of(data, key, path):
 
 
 class Choice:
-    """The choice of HOST for MODULE: nix/hosts/HOST/MODULE.toml."""
+    """The choice of HOST for MODULE: hosts/HOST/MODULE.toml."""
 
     def __init__(self, module, host=None, config=None):
         if module not in MODULES:

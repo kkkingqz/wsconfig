@@ -10,10 +10,12 @@
 # variables from the facts; ws help plan-v2, 2.3).
 
 # The apt lists of the host, by its facts: the only place that chooses them.
+# Those of the core (what its modules need) come from WS_CORE, the user's
+# (apt.txt, the host's) from the configuration.
 apt_lists() {
-    printf '%s\n' "$repo/nix/hosts/apt.txt" "$host_list"
+    printf '%s\n' "${WS_CORE:-$repo}/system/apt.txt" "$repo/apt.txt" "$host_list"
     # Real machines only, not a container host (ws help plan-wsgnomebox).
-    [[ "$container" == true ]] || echo "$repo/nix/hosts/machine-apt.txt"
+    [[ "$container" == true ]] || echo "${WS_CORE:-$repo}/system/apt-machine.txt"
     # VM packages only on hosts with vm = true (ws help virt).
     [[ "$vm" == no ]] || echo "${WS_CORE:-$repo}/virt/apt.txt"
     # Native Steam and the Game Mode session (ws help plan-legion-go).
@@ -36,7 +38,7 @@ apt_lines() {
 # set them themselves. A layer fact that is not "yes" counts as no.
 apt_host() {
     host="$1"
-    host_list="$repo/nix/hosts/$host/apt.txt"
+    host_list="$repo/hosts/$host/apt.txt"
     container=false
     [[ "$(apt_fact boot)" != container ]] || container=true
     vm=no native_steam=no game_mode=no
@@ -66,16 +68,16 @@ apt_install() {
             added=true
         fi
     done
-    # Other repositories of the host: nix/hosts/<host>/apt/NAME.sources (deb822)
+    # Other repositories of the host: hosts/<host>/apt/NAME.sources (deb822)
     # with its key NAME.asc, installed as ws-NAME; the file must point
     # Signed-By at the installed key.
     for name in "${sources[@]}"; do
-        src="$repo/nix/hosts/$host/apt/$name.sources"
-        key="$repo/nix/hosts/$host/apt/$name.asc"
+        src="$repo/hosts/$host/apt/$name.sources"
+        key="$repo/hosts/$host/apt/$name.asc"
         [[ -r "$src" && -r "$key" ]] \
-            || die "source:$name needs nix/hosts/$host/apt/$name.sources and $name.asc"
+            || die "source:$name needs hosts/$host/apt/$name.sources and $name.asc"
         grep -qx "Signed-By: /etc/apt/keyrings/ws-$name.asc" "$src" \
-            || die "nix/hosts/$host/apt/$name.sources: Signed-By must be /etc/apt/keyrings/ws-$name.asc"
+            || die "hosts/$host/apt/$name.sources: Signed-By must be /etc/apt/keyrings/ws-$name.asc"
         if cmp -s "$src" "/etc/apt/sources.list.d/ws-$name.sources" \
             && cmp -s "$key" "/etc/apt/keyrings/ws-$name.asc"; then
             echo "source present: $name"

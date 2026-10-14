@@ -32,7 +32,7 @@ Usage:
                            suspend backup: the owner of that layer
 
 sync      publish the data files (flatpak/catalog.toml,
-          nix/hosts/*/{flatpak,boxes,widgets}.toml, flake.lock): one commit
+          hosts/*/{flatpak,boxes,widgets}.toml, flake.lock): one commit
           with what changed, then git pull --rebase and git push when the
           branch has an upstream (no remote: the commit stays local);
           refuses during a Git operation, on a detached HEAD, with changes
@@ -89,7 +89,7 @@ check     run the owners' checks with --json and summarize their result
           check repo: the checkout (Git, hygiene, syntax, executables);
           check home: home-manager generation, Nix, man pages, session;
           check widgets: the wswidgets runtime, adapter and IPC (ws-widgets
-          check) and its manifest against nix/hosts/HOST/widgets.toml (hosts with
+          check) and its manifest against hosts/HOST/widgets.toml (hosts with
           widgets = true);
           check virt: KVM, libvirt, VM storage @vms, NAT network, OVMF/TPM
           (hosts with vm = true in host.toml);
@@ -98,8 +98,8 @@ check     run the owners' checks with --json and summarize their result
           check gaming: the Game Mode packages, services, display manager
           and session names (ws game check; hosts with gameMode = true);
           check backup: local copy root on its own subvolume, SSH alias and key;
-          check apt compares nix/hosts/apt.txt, nix/hosts/<host>/apt.txt,
-          nix/hosts/machine-apt.txt (not in a container) and, with
+          check apt compares system/apt.txt, apt.txt, hosts/<host>/apt.txt,
+          system/apt-machine.txt (not in a container) and, with
           vm = true, virt/apt.txt, with nativeSteam = true, steam/apt.txt,
           with gameMode = true, gaming/apt.txt (the
           lists of bootstrap.sh) with the installed packages, report only;
@@ -141,10 +141,10 @@ checkpoint  which commit matched which working state (home-manager
 container  image and container of a container host (boot = "container",
           ws help plan-wsgnomebox) on its server, see ws-container --help
 host      print the flake host name used for this machine: WS_HOST, else
-          the nix/hosts/<host> whose host.toml has hostname = "$(hostname)";
+          the hosts/<host> whose host.toml has hostname = "$(hostname)";
           --for-marks: fail unless the name can stand in a list mark
 fact      print a fact of this host, or of --host HOST (hardware, boot,
-          user, vm, ...) from nix/hosts/<host>/host.toml, without Nix
+          user, vm, ...) from hosts/<host>/host.toml, without Nix
           (lib/ws_facts.py); true and false print as yes and no
 MODULE    the owners of the layers, one command for each (ws help plan-v2,
           2.8); ARG... as the owner takes them, see ws MODULE --help:
@@ -195,8 +195,8 @@ current_generation() {
 # them before the build; sync and ws check repo read them (ws data-files).
 data_patterns=(flatpak/catalog.toml distrobox/catalog.toml windows/apps.toml gnome/config.toml
     keyboard/config.toml keyboard/xremap.yml terminal/config.toml flake.lock
-    'nix/hosts/*/flatpak.toml' 'nix/hosts/*/boxes.toml' 'nix/hosts/*/widgets.toml'
-    'nix/hosts/*/gnome.toml' 'nix/hosts/*/keyboard.toml' 'nix/hosts/*/terminal.toml' 'home/*')
+    'hosts/*/flatpak.toml' 'hosts/*/boxes.toml' 'hosts/*/widgets.toml'
+    'hosts/*/gnome.toml' 'hosts/*/keyboard.toml' 'hosts/*/terminal.toml' 'home/*')
 
 is_data_file() {
     local f
@@ -251,7 +251,7 @@ def revs(path):
 old, new = revs(sys.argv[1]), revs(sys.argv[2])
 print(", ".join(k for k in sorted(set(old) | set(new)) if old.get(k) != new.get(k) and k != "root"))
 PY
-    elif [[ "$f" == nix/hosts/*.toml ]]; then
+    elif [[ "$f" == hosts/*.toml ]]; then
         python3 "$WS_CORE/lib/ws_catalog.py" summary "$old" "$repo/$f"
     else
         python3 "$WS_CORE/lib/flatpak_catalog.py" summary "$old" "$repo/$f"
@@ -783,11 +783,11 @@ cmd_check_apt() {
     done
     # Repositories and architectures of the host list (bootstrap.sh).
     for name in $(printf '%s\n' "${want[@]}" | sed -n 's/^source://p'); do
-        if cmp -s "$repo/nix/hosts/$h/apt/$name.sources" "/etc/apt/sources.list.d/ws-$name.sources" \
-            && cmp -s "$repo/nix/hosts/$h/apt/$name.asc" "/etc/apt/keyrings/ws-$name.asc"; then
+        if cmp -s "$repo/hosts/$h/apt/$name.sources" "/etc/apt/sources.list.d/ws-$name.sources" \
+            && cmp -s "$repo/hosts/$h/apt/$name.asc" "/etc/apt/keyrings/ws-$name.asc"; then
             pass "apt source: $name"
         else
-            warn "apt source $name missing or not as nix/hosts/$h/apt/$name.* (bootstrap.sh)"
+            warn "apt source $name missing or not as hosts/$h/apt/$name.* (bootstrap.sh)"
         fi
     done
     # ws-NAME without its source: line: bootstrap.sh removes it.

@@ -661,7 +661,7 @@ home-manager перезапускает сервис (`--watch=config` store-ф�
 
 Сочетания GNOME профиля и private chords Tiling Assistant — пресет ядра
 `keyboard/presets/macos.nix`: они связаны с `xremap.yml` и `ws-input-source`.
-`keyboard/config.toml` (и `nix/hosts/HOST/keyboard.toml`) выбирает пресет и
+`keyboard/config.toml` (и `hosts/HOST/keyboard.toml`) выбирает пресет и
 раскладки и может переопределить ключи пресета; новый ключ — ошибка сборки.
 `ws apply` собирает из них
 `~/.local/share/wsconfig/keyboard/keyboard.json` (shortcuts и tiling);

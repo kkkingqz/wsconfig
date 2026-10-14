@@ -85,12 +85,14 @@ class Workspace:
         shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
         (self.repo / "flatpak/catalog.toml").write_text("[remotes]\n")
         (self.repo / "flake.lock").write_text('{"nodes": {"root": {}}}\n')
-        (self.repo / "nix/hosts/test").mkdir(parents=True)
-        (self.repo / "nix/hosts/test/host.toml").write_text(
+        (self.repo / "hosts/test").mkdir(parents=True)
+        (self.repo / "hosts/test/host.toml").write_text(
             '[platform]\nboot = "grub"\n\n[layers]\nvm = false\nnativeSteam = false\ngameMode = false\n')
-        (self.repo / "nix/hosts/apt.txt").write_text("")
-        (self.repo / "nix/hosts/machine-apt.txt").write_text("")
-        (self.repo / "nix/hosts/test/apt.txt").write_text("")
+        (self.core / "system").mkdir(exist_ok=True)
+        (self.core / "system/apt.txt").write_text("")
+        (self.core / "system/apt-machine.txt").write_text("")
+        (self.repo / "apt.txt").write_text("")
+        (self.repo / "hosts/test/apt.txt").write_text("")
         self.write(self.bin / "nix", NIX)
         self.write(self.bin / "sudo", SUDO)
         for name, body in APT.items():

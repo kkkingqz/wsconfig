@@ -26,7 +26,7 @@ class CompletionTests(unittest.TestCase):
             '[[apps]]\n# managed app\nid = "org.example.Removed"\nremote = "flathub"\nfilesystems = ["host"]\n\n'
             f'[[apps]]\nid = "{APP}"\nremote = "flathub"\nfilesystems = ["home:ro"]\n'
             'env = { GDK_SCALE = "2" }\n')
-        host = root / "repo/nix/hosts/mbp16"
+        host = root / "repo/hosts/mbp16"
         host.mkdir(parents=True)
         (host / "flatpak.toml").write_text(f'[overrides."{APP}"]\ntalk = ["org.example.Service"]\n')
         cfg = root / "cfg"

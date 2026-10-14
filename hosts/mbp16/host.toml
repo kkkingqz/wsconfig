@@ -46,7 +46,7 @@ displayScale = 1.5
 vm = true
 # Widget layer (ws help widgets): wswidgets — Quickshell runtime, QML and
 # the GNOME panel adapter (widgets/widgets.nix) with the widgets of
-# nix/hosts/HOST/widgets.toml, ws check widgets.
+# hosts/HOST/widgets.toml, ws check widgets.
 widgets = true
 # Native Steam (ws help plan-legion-go): the apt Steam (steam/apt.txt, i386)
 # with its data on @steam in ~/.local/share/Steam (bootstrap.sh, ws check

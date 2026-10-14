@@ -18,7 +18,7 @@ wswidgets: <https://github.com/kkkingqz/wswidgets>, полное описани�
 Слой включается фактом хоста, как `vm`:
 
 ```toml
-# nix/hosts/<host>/host.toml
+# hosts/<host>/host.toml
 [layers]
 widgets = true   # false — без виджетов
 ```
@@ -34,7 +34,7 @@ widgets = true   # false — без виджетов
 ## Какие виджеты на каком хосте
 
 Каталог — виджеты `catalog.nix` закреплённой версии wswidgets. Выбор
-хоста — `nix/hosts/HOST/widgets.toml` (`lib/ws_catalog.py`, `ws help
+хоста — `hosts/HOST/widgets.toml` (`lib/ws_catalog.py`, `ws help
 plan-v2`, этап 3):
 
 ```toml
@@ -74,7 +74,7 @@ wsconfig закреплён на коммите wswidgets в `flake.lock`, ка�
 `ws widgets update`: `nix flake update wswidgets`, ссылка на сравнение
 коммитов на GitHub, новые и удалённые виджеты, `ws apply`; `flake.lock`
 публикует `ws sync`. Если в новой версии нет виджета из `yes` какого-либо хоста
-(`nix/hosts/*/widgets.toml`), update отказывается и не трогает `flake.lock`: сначала
+(`hosts/*/widgets.toml`), update отказывается и не трогает `flake.lock`: сначала
 `ws widgets disable`. Неудачный `ws apply` возвращает прежний `flake.lock`.
 `ws update nix` тоже обновляет wswidgets вместе с остальными inputs.
 

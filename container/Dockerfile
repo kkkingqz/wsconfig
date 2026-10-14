@@ -27,8 +27,9 @@ RUN apt-get update \
 # this layer.
 COPY lib/apt.bash /ws/lib/apt.bash
 COPY container/image-setup /ws/container/image-setup
-COPY nix/hosts/apt.txt /ws/nix/hosts/apt.txt
-COPY nix/hosts/${HOST}/ /ws/nix/hosts/${HOST}/
+COPY system/apt.txt /ws/system/apt.txt
+COPY apt.txt /ws/apt.txt
+COPY hosts/${HOST}/ /ws/hosts/${HOST}/
 RUN /ws/container/image-setup "${HOST}" \
     && apt-get clean && rm -rf /var/lib/apt/lists/* /ws
 

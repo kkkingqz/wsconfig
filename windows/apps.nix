@@ -5,11 +5,11 @@
 # on an .exe.
 #
 # The launchers only on a host that has the box: yes in
-# nix/hosts/HOST/boxes.toml, else the default of the box in
+# hosts/HOST/boxes.toml, else the default of the box in
 # distrobox/catalog.toml (lib/catalog.nix); apps.json lists every program.
 { config, lib, wsHost, wsConfig, core, ... }:
 let
-  catalog = import ../lib/catalog.nix { inherit lib; hosts = wsConfig + "/nix/hosts"; };
+  catalog = import ../lib/catalog.nix { inherit lib; hosts = wsConfig + "/hosts"; };
   hasBox = box: catalog.has wsHost "boxes" box (config.ws.boxDefaults.${box} or "ask");
 
   schema = import ../lib/schema.nix { inherit lib; };
