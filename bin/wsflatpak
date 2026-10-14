@@ -1250,6 +1250,9 @@ def cmd_apply(reselect=False):
             items.append((app, cat.default(app), remote))
 
     wanted = {app for _, app in entries if app in installed or state_of(app) == "yes"}
+    if os.environ.get("WS_OFFERED") and not reselect:
+        # ws apply asked already (ws_catalog offer --all).
+        items = []
     try:
         chosen = ws_catalog.offer(choice, items, reselect, "приложения Flatpak")
     except ws_select.NoTerminal:

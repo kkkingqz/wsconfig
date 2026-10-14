@@ -8,7 +8,7 @@ not strings (lists, container) are read by Nix (`nix eval`).
 
     ws_facts.py host [--for-marks]     WS_HOST, else the host whose facts.nix
                                        has this hostname; --for-marks: also a
-                                       name a mark can hold (lib/ws_marks.py)
+                                       name a host file can hold (lib/ws_catalog.py)
     ws_facts.py fact [--host HOST] NAME
                                        the fact of HOST (default: this host)
     ws_facts.py fact --file FACTS NAME a facts.nix outside nix/hosts (setup.sh)

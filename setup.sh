@@ -10,9 +10,9 @@ set -euo pipefail
 # → ~/wsconfig → the host: the one whose facts.nix has this hostname, else
 # asked (an existing one gives the PC its hostname, a new one is made from
 # generic-pc and committed) → all questions at once: Flatpak apps,
-# Distrobox boxes and overrides without a mark of this host (checklists,
-# lib/setup_marks.py), package licenses, the go; the host and the marks are
-# published after a question (ws sync) → ws btrfs make → reboot → ws btrfs
+# Distrobox boxes, widgets and overrides without a choice of this host
+# (checklists, lib/ws_catalog.py offer --all --setup), package licenses, the
+# go; the host and its choices are published after a question (ws sync) → ws btrfs make → reboot → ws btrfs
 # make → bootstrap.sh → reboot → ws system apply, ws apply → reboot → ws
 # apply, ws check (FAIL does not stop: listed at the end) → Timeshift and
 # its first snapshot, the backup key → ws switch, ws checkpoint create setup,
@@ -169,7 +169,7 @@ step_pull() {
     fi
 }
 
-# Host name as a directory, a mark (lib/ws_marks.py) and the receiver user
+# Host name as a directory (nix/hosts/HOST, lib/ws_facts.py) and the receiver user
 # wsbackup-HOST on Unraid (backup/unraid/boot.sh: lowercase, 23 at most) can
 # carry it.
 valid_name() { [[ "$1" =~ ^[a-z0-9][a-z0-9_-]{0,22}$ && "$1" != all ]]; }
@@ -277,10 +277,10 @@ step_choices() {
     local changed rc=0
     done_step choices && return 0
     say "Что будет на $host"
-    changed="$(python3 "$repo/lib/setup_marks.py" "$repo" "$host")" || rc=$?
-    ((rc == 0)) || die "lists not answered (setup_marks exit $rc); run setup.sh again"
+    changed="$(python3 "$repo/lib/ws_catalog.py" --host "$host" offer --all --setup)" || rc=$?
+    ((rc == 0)) || die "lists not answered (ws_catalog exit $rc); run setup.sh again"
     if [[ -n "$changed" ]]; then
-        echo "Пометки $host: $(echo $changed)"
+        echo "Выбор $host: $(echo $changed)"
     fi
     publish
     # Licenses apt would ask about in the middle of bootstrap.sh.

@@ -42,13 +42,16 @@ sync      publish the data files (flatpak/catalog.toml,
 news      home-manager news of this flake (switch does not notify about them)
 diff      build the home generation without activating it and show the
           package difference against the current one (nvd)
-apply     run the layer owners in order, as by hand (no sudo steps):
+apply     run the layer owners in order, as by hand (no sudo steps); with
+          flatpak, distrobox or widgets every question comes first: the
+          positions in state ask of those modules (lib/ws_catalog.py
+          offer --all), so the steps then ask nothing:
             extensions  ws gnome extensions
             tiling      ws-tiling-apply
             keyboard    ws-keyboard-apply
             flatpak     ws flatpak apply
             distrobox   ws box apply
-            widgets     ws widgets apply (offers widgets not offered yet)
+            widgets     ws widgets apply
           a step whose preflight fails (exit 69: e.g. new extensions need a
           logout/login) is reported at the end; on a new machine:
           ws apply, log out and in, ws apply
@@ -461,7 +464,7 @@ apply_steps=(
     "widgets wswidgets apply"
 )
 
-# The marks the apply steps may write, to see whether they changed.
+# The choices the apply steps may write, to see whether they changed.
 marks_state() {
     local f
     while IFS= read -r f; do
@@ -471,12 +474,29 @@ marks_state() {
 
 cmd_apply() {
     local step name cmd rc marks_before
-    local -a results=() selected=()
+    local -a results=() selected=() modules=()
     local failed=false
 
     steps_check apply_steps apply "$@"
     marks_before="$(marks_state)"
     mapfile -t selected < <(steps_selected apply_steps "$@")
+    # Every question first: the positions in state ask of the modules
+    # selected (lib/ws_catalog.py offer --all); their apply steps then ask
+    # nothing (WS_OFFERED).
+    mapfile -t modules < <(printf '%s\n' "${selected[@]%% *}" \
+        | sed -n 's/^flatpak$/flatpak/p; s/^distrobox$/boxes/p; s/^widgets$/widgets/p')
+    if ((${#modules[@]})); then
+        step_header "choices: ws_catalog offer --all ${modules[*]}"
+        rc=0
+        python3 "$WS_CORE/lib/ws_catalog.py" offer --all "${modules[@]}" >/dev/null || rc=$?
+        if ((rc == 0)); then
+            results+=("OK        choices")
+        else
+            results+=("FAIL      choices (exit $rc)")
+            failed=true
+        fi
+        export WS_OFFERED=1
+    fi
     for step in "${selected[@]}"; do
         name="${step%% *}"
         cmd="${step#* }"
@@ -492,10 +512,10 @@ cmd_apply() {
     done
 
     steps_summary "ws apply" "${results[@]}"
-    # wsflatpak/wsbox apply may have written marks: switch links the desktop
-    # entries of what this workstation now has.
+    # The choices may have changed: switch links the desktop entries of
+    # what this host now has.
     if [[ "$(marks_state)" != "$marks_before" ]]; then
-        printf '  marks changed: ws switch (links the desktop entries)\n'
+        printf '  choices changed: ws switch (links the desktop entries)\n'
     fi
     unpublished_notice | sed 's/^/  /'
     [[ "$failed" == false ]]

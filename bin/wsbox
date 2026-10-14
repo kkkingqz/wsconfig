@@ -715,6 +715,8 @@ cmd_apply() {
         fi
     done <<<"$states"
 
+    # ws apply asked already (ws_catalog offer --all).
+    [[ -z "${WS_OFFERED:-}" || ${#select[@]} -gt 0 ]] || items=()
     if ((${#items[@]})); then
         chosen="$(choice offer "${select[@]}" --what "контейнеры Distrobox" -- "${items[@]}")" || rc=$?
         case "$rc" in

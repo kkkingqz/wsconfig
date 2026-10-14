@@ -133,6 +133,12 @@ class WswidgetsTests(unittest.TestCase):
         self.assertEqual(self.list.read_text(), 'yes = ["example"]\n')
         self.assertEqual(self.calls(), [])
 
+    def test_apply_after_ws_apply_asked_offers_nothing(self):
+        self.list.write_text('yes = ["example"]\n')
+        result = self.run_w("apply", WS_OFFERED="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("no widgets to offer on test", result.stdout)
+
     def test_apply_with_nothing_to_offer(self):
         self.list.write_text('yes = ["example", "compact"]\nno = ["clock"]\n')
         result = self.run_w("apply")

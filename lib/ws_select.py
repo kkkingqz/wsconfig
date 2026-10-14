@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Interactive choice of the items apply would install, for wsflatpak
-(apps) and wsbox (containers): the items not offered to this workstation yet
-(ws_marks: state ask).
+"""Interactive choice of the items apply would install (lib/ws_catalog.py
+offer: the positions in state ask on this host).
 
 Asks "Поставить все? [Y/n]"; on "n" a checklist (Space toggles, a toggles
-all, Enter confirms, Esc/q cancels). The caller writes the answer into its
-list (ws_marks): chosen items yes, the rest no; a cancel answers only the
+all, Enter confirms, Esc/q cancels). The caller writes the answer into the
+host choice: chosen items yes, the rest no; a cancel answers only the
 question (the items stay ask, the rest of apply goes on).
 
-Used by wsbox as a command:
+As a command:
 
     ws_select.py --what TEXT [--unchecked NAME]... -- NAME<TAB>LABEL...
 

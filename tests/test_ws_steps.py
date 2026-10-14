@@ -25,6 +25,9 @@ class StepsTests(unittest.TestCase):
         shutil.copytree(ROOT / "lib", self.repo / "lib", ignore=shutil.ignore_patterns("__pycache__"))
         shutil.copy(ROOT / "bin/ws", self.repo / "bin/ws")
         shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
+        # The catalogs ws apply asks about first: nothing to ask.
+        (self.repo / "flatpak").mkdir()
+        (self.repo / "flatpak/catalog.toml").write_text("[remotes]\n")
         for name, rc in APPLY.items():
             self.stub(name, f'echo "{name} $*"\n[ "$1" = check ] && exit 0\nexit {rc}\n')
         result = json.dumps({"status": "warn", "passes": 1, "warnings": 1, "failures": 0,
@@ -55,6 +58,8 @@ class StepsTests(unittest.TestCase):
         rc, out, _ = self.ws("apply")
         self.assertEqual(rc, 1)
         self.assertEqual(out, """
+=== choices: ws_catalog offer --all flatpak boxes widgets
+
 === extensions: ws-gnome extensions
 ws-gnome extensions
 
@@ -74,6 +79,7 @@ wsbox apply
 wswidgets apply
 
 === ws apply
+  OK        choices
   OK        extensions
   PREFLIGHT tiling (log out and in, then: ws apply tiling)
   FAIL      keyboard (exit 3)
@@ -86,8 +92,16 @@ wswidgets apply
         rc, out, _ = self.ws("apply", "widgets", "extensions")
         self.assertEqual(rc, 0)
         self.assertEqual([l for l in out.splitlines() if l.startswith("===")],
-                         ["=== extensions: ws-gnome extensions", "=== widgets: wswidgets apply",
+                         ["=== choices: ws_catalog offer --all widgets",
+                          "=== extensions: ws-gnome extensions", "=== widgets: wswidgets apply",
                           "=== ws apply"])
+
+    def test_steps_ask_nothing_after_the_choices(self):
+        self.stub("wsflatpak", 'echo "offered=${WS_OFFERED:-}"\n')
+        rc, out, _ = self.ws("apply", "flatpak")
+        self.assertIn("offered=1", out)
+        rc, out, _ = self.ws("apply", "keyboard")
+        self.assertNotIn("choices", out)
 
     def test_unknown_step(self):
         for kind in ("apply", "update"):

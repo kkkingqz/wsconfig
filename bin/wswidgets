@@ -201,6 +201,8 @@ cmd_apply() {
         state="$(state_of "$id")"
         if [[ "$state" == ask || ( "$state" == no && ${#select[@]} -gt 0 ) ]]; then echo "$id"; fi
     done)"
+    # ws apply asked already (ws_catalog offer --all).
+    [[ -z "${WS_OFFERED:-}" || ${#select[@]} -gt 0 ]] || offered=""
     if [[ -z "$offered" ]]; then
         echo "no widgets to offer on $ws_host"
         return 0

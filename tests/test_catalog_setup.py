@@ -1,3 +1,8 @@
+"""ws_catalog offer --all --setup: the choices of setup.sh (helpws setup)
+and the start of ws apply (apply_offer)."""
+import io
+import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -8,7 +13,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'lib'))
 
-import setup_marks  # noqa: E402
+import ws_catalog  # noqa: E402
 import ws_select  # noqa: E402
 
 CATALOG = '''[remotes]
@@ -36,7 +41,7 @@ filesystems = ["host"]
 id = "org.example.Mine"
 remote = "flathub"
 '''
-# distrobox.nix as setup_marks reads it: name, then default.
+# distrobox.nix as setup reads it without Nix: name, then default.
 BOXES = '''  containers = [
     {
       name = "arch";
@@ -58,7 +63,7 @@ class FakeTerm:
         self.text += text
 
 
-class SetupMarksTests(unittest.TestCase):
+class SetupTests(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
@@ -83,7 +88,7 @@ class SetupMarksTests(unittest.TestCase):
             return next(replies)
 
         with mock.patch.object(ws_select, 'checklist', checklist):
-            return setup_marks.run(self.repo, 'new', FakeTerm())
+            return ws_catalog.setup(self.repo, 'new', FakeTerm())
 
     def read(self, name):
         path = self.repo / 'nix/hosts/new' / name
@@ -138,7 +143,7 @@ class SetupMarksTests(unittest.TestCase):
         self.assertIn('yes = ["example"]', text)
 
     def test_box_catalog_of_the_repository(self):
-        self.assertEqual(setup_marks.box_catalog(ROOT), [
+        self.assertEqual(ws_catalog.box_catalog(ROOT), [
             ('arch', 'ask'), ('wine-wayland', 'ask'), ('wine', 'ask'), ('proton', 'ask'),
             ('t2bce-build', 'no'), ('touchbar-build', 'no')])
 
@@ -152,6 +157,67 @@ class SetupMarksTests(unittest.TestCase):
         self.asked.clear()
         self.assertEqual(self.run_with([]), [])
         self.assertEqual(self.asked, [])
+
+
+class ApplyOfferTests(unittest.TestCase):
+    """apply_offer: what ws apply asks before its steps."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        self.config = root / 'config'
+        (self.config / 'flatpak').mkdir(parents=True)
+        (self.config / 'flatpak/catalog.toml').write_text(CATALOG)
+        (self.config / 'nix/hosts/new').mkdir(parents=True)
+        (self.config / 'nix/hosts/new/facts.nix').write_text('{\n  widgets = "yes";\n}\n')
+        boxes = root / 'distrobox'
+        boxes.mkdir()
+        (boxes / 'boxes.json').write_text(json.dumps([{'name': 'arch'}, {'name': 't2', 'default': 'no'}]))
+        home = root / 'home/.local/share/workstation/widgets'
+        home.mkdir(parents=True)
+        (home / 'catalog.json').write_text(json.dumps([{'id': 'clock', 'label': 'Clock'}]))
+        patches = [mock.patch.object(ws_catalog.ws_common, 'CONFIG', self.config),
+                   mock.patch.dict(os.environ, {'WSBOX_CONFIG': str(boxes), 'HOME': str(root / 'home')}),
+                   mock.patch.object(Path, 'home', lambda: root / 'home')]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        self.asked = []
+
+    def choose(self, answers):
+        replies = iter(answers)
+
+        def choose(offered, what, unchecked, tty):
+            self.asked.append((what, [n for n, _ in offered], list(unchecked)))
+            return next(replies)
+        return mock.patch.object(ws_select, 'choose', choose)
+
+    def test_asks_each_module_about_its_ask_positions(self):
+        err = io.StringIO()
+        with self.choose([['org.example.Asked'], None, ['clock']]):
+            written = ws_catalog.apply_offer('new', ['flatpak', 'boxes', 'widgets'], err=err)
+        self.assertEqual(self.asked, [
+            ('приложения Flatpak', ['org.example.Asked', 'org.example.Mine'], []),
+            ('контейнеры Distrobox', ['arch'], []),
+            ('виджеты wswidgets', ['clock'], [])])
+        # The cancel of the boxes left them ask; the rest was written.
+        self.assertIn('выбор отменён, контейнеры Distrobox не тронуты', err.getvalue())
+        self.assertEqual([Path(p).name for p in written], ['flatpak.toml', 'widgets.toml'])
+        flatpak = ws_catalog.Choice('flatpak', 'new', self.config)
+        self.assertEqual((flatpak.yes(), flatpak.no()), (['org.example.Asked'], ['org.example.Mine']))
+        self.assertFalse((self.config / 'nix/hosts/new/boxes.toml').exists())
+
+    def test_without_a_terminal_names_the_positions(self):
+        err = io.StringIO()
+        with mock.patch.object(ws_select, 'open_tty', return_value=None):
+            self.assertEqual(ws_catalog.apply_offer('new', ['boxes'], err=err), [])
+        self.assertIn('no terminal to ask): arch;', err.getvalue())
+
+    def test_select_offers_the_declined(self):
+        with self.choose([[]]):
+            ws_catalog.apply_offer('new', ['boxes'], select=True)
+        self.assertEqual(self.asked, [('контейнеры Distrobox', ['arch', 't2'], ['t2'])])
 
 
 if __name__ == '__main__':

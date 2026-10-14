@@ -885,7 +885,9 @@ wsconfig/
 ├── lib/common.bash      корни WS_CORE, WS_CONFIG, WS_STATE, die, need, nix_bin
 ├── lib/ws_common.py    то же для Python-инструментов
 ├── lib/check.bash       общий формат результата проверок (--json для ws check)
-├── lib/setup_marks.py   списки с галочками setup.sh (выбор хоста)
+├── lib/ws_catalog.py   выбор хоста nix/hosts/HOST/*.toml, вопросы apply и setup.sh
+├── lib/flatpak_catalog.py  каталог Flatpak и overrides хоста
+├── lib/catalog.nix      выбор хоста и overrides для Nix
 ├── lib/btrfs_layout.py  fstab и stub GRUB для ws btrfs make
 ├── README.md
 └── docs/                architecture/, runbooks/, plans/, history/, superpowers/

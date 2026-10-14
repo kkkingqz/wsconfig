@@ -29,14 +29,24 @@ For the bash tools (HOST: ws host --for-marks unless --host):
     ws_catalog.py MODULE used                                 names in yes on any host
     ws_catalog.py [--host H] MODULE offer [--select] --what TEXT -- NAME<TAB>DEFAULT<TAB>LABEL...
     ws_catalog.py summary OLD NEW                             changes of a host file (ws sync)
+    ws_catalog.py [--host H] offer --all [--select] [MODULE...]  ws apply: every module
+    ws_catalog.py [--host H] offer --all --setup              setup.sh: checklists
 
 offer asks about the positions in state ask (with --select also no, those
 unchecked), writes the answer (chosen yes, the rest no) and prints the
 names it set yes; exit 2 when cancelled (nothing written: the positions
 stay ask), 3 without a terminal (it prints the names it would ask about),
 130 on Ctrl+C.
+
+offer --all asks about flatpak, boxes and widgets (or the MODULEs) in turn
+and prints the files it wrote; a cancel or no terminal leaves a module ask
+and goes on (setup, apply_offer). With --setup it asks as setup.sh does,
+about everything without a choice of the host: exit 2 when cancelled
+(nothing written), 3 without a terminal.
 """
+import os
 from pathlib import Path
+import re
 import sys
 import tomllib
 
@@ -223,6 +233,180 @@ def summary(old_text, new_text):
     return ", ".join(out)
 
 
+# All the modules at once: setup.sh before the long part (--setup) and the
+# start of ws apply.
+STEAM_FLATPAK = "com.valvesoftware.Steam"
+CANCELLED, NO_TERMINAL = ws_select.CANCELLED, ws_select.NO_TERMINAL
+
+
+def box_catalog(config=None):
+    """[(name, default)] of the containers: boxes.json of the build
+    (distrobox.nix through ws switch), else distrobox/distrobox.nix read
+    without Nix (setup runs before bootstrap installs it): its name = "..."
+    lines and the default = "..." after them (helpws plan-v2: TOML at
+    stage 7)."""
+    built = ws_common.load(Path(os.environ.get("WSBOX_CONFIG") or
+                                Path.home() / ".local/share/workstation/distrobox") / "boxes.json")
+    if isinstance(built, list) and config is None:
+        return [(b["name"], b.get("default", "ask")) for b in built]
+    boxes = []
+    path = Path(config or ws_common.CONFIG) / "distrobox/distrobox.nix"
+    for line in (path.read_text() if path.exists() else "").splitlines():
+        m = re.fullmatch(r'\s*(name|default) = "([^"]+)";', line)
+        if m and m[1] == "name":
+            boxes.append([m[2], "ask"])
+        elif m and boxes:
+            boxes[-1][1] = m[2]
+    return [tuple(b) for b in boxes]
+
+
+def widget_catalog(config=None):
+    """[(id, label)] of the pinned wswidgets as ws switch built it, else
+    the widgets some host has in yes (the full catalog needs Nix)."""
+    built = ws_common.load(Path.home() / ".local/share/workstation/widgets/catalog.json")
+    if isinstance(built, list) and config is None:
+        return [(w["id"], w.get("label", "")) for w in built]
+    return [(name, "") for name in used("widgets", config)]
+
+
+def checklist(term, title, items):
+    """items: [(name, label, checked)]; the checked names, None when
+    cancelled."""
+    if not items:
+        return []
+    term.write(f"\n{title}: {len(items)}\n")
+    return ws_select.checklist(term, title, [(n, l) for n, l, _ in items],
+                               [c for _, _, c in items])
+
+
+def setup(config, host, term):
+    """The choices of setup.sh (helpws setup), as checklists, so ws apply
+    asks nothing afterwards: the apps of flatpak/catalog.toml and the
+    containers of distrobox.nix without a choice of this host, with
+    widgets = "yes" the widgets some host has in yes (ws widgets apply
+    offers the rest later), and the catalog overrides of the apps the host
+    gets. Default ask and yes start checked, no unchecked; an unchecked
+    override becomes a skip of the host. Nothing is written until all the
+    lists are answered (None: cancelled). With nativeSteam = "yes" the
+    Steam flatpak is no without a question: Steam is the apt one there.
+    Returns the files written."""
+    import flatpak_catalog
+    config = Path(config)
+    catalog = flatpak_catalog.Catalog(config)
+    apps = Choice("flatpak", host, config)
+    boxes = Choice("boxes", host, config)
+    widgets = Choice("widgets", host, config)
+
+    if (ws_facts.fact(host, "nativeSteam", config) == "yes" and catalog.app(STEAM_FLATPAK) is not None
+            and STEAM_FLATPAK not in apps.yes() + apps.no()):
+        apps.set(STEAM_FLATPAK, "no")
+        term.write(f"\n{STEAM_FLATPAK}: no на {host} (nativeSteam = \"yes\": Steam из apt)\n")
+
+    remote = lambda app: catalog.app(app)["remote"]
+    lists = [(apps, f"Flatpak-приложения на {host}",
+              [(a, catalog.default(a)) for a in catalog.ids()], remote),
+             (boxes, f"Контейнеры Distrobox на {host}", box_catalog(config), lambda n: "")]
+    # The widget layer only where facts.nix has it (helpws widgets).
+    if ws_facts.fact(host, "widgets", config) == "yes":
+        lists.append((widgets, f"Виджеты (ws widgets) на {host}",
+                      [(n, "ask") for n, _ in widget_catalog(config)], lambda n: ""))
+    for choice, title, positions, label in lists:
+        items = [(name, label(name), default != "no") for name, default in positions
+                 if name not in choice.yes() + choice.no()]
+        chosen = checklist(term, title, items)
+        if chosen is None:
+            return None
+        for name, _, _ in items:
+            choice.set(name, "yes" if name in chosen else "no")
+
+    # The catalog overrides of the apps this host gets; unchecked: a skip.
+    items, keys = [], {}
+    for app in catalog.ids():
+        if apps.state(app, catalog.default(app)) != "yes":
+            continue
+        for kind, value in flatpak_catalog.effective(catalog, apps, app):
+            if (kind, value) in catalog.values(app):
+                name = f"{app} {kind} {value}"
+                items.append((name, "", True))
+                keys[name] = (app, kind, flatpak_catalog.key_of(kind, value))
+    chosen = checklist(term, f"Overrides Flatpak на {host}", items)
+    if chosen is None:
+        return None
+    for name, _, _ in items:
+        if name not in chosen:
+            flatpak_catalog.set_skip(apps, *keys[name], True)
+
+    return [str(c.path.relative_to(config)) for c in (apps, boxes, widgets) if c.save()]
+
+
+def apply_offer(host, modules, select=False, tty=None, err=sys.stderr):
+    """The start of ws apply: for each of MODULES (flatpak, boxes, widgets)
+    the positions in state ask (with SELECT also no), as each module's
+    apply asks: "Поставить все? [Y/n]", then a checklist. A cancel or a
+    missing terminal leaves that module's positions ask and goes on.
+    Returns the files written."""
+    import flatpak_catalog
+    written = []
+    for module in modules:
+        choice = Choice(module, host)
+        if module == "flatpak":
+            catalog = flatpak_catalog.Catalog()
+            items = [(a, catalog.default(a), catalog.app(a)["remote"]) for a in catalog.ids()]
+            what = "приложения Flatpak"
+        elif module == "boxes":
+            items = [(n, d, "") for n, d in box_catalog()]
+            what = "контейнеры Distrobox"
+        elif module == "widgets":
+            if ws_facts.fact(host, "widgets") != "yes":
+                continue
+            items = [(n, "ask", label) for n, label in widget_catalog()]
+            what = "виджеты wswidgets"
+        else:
+            raise ValueError(f"unknown module {module!r}")
+        before = choice.text
+        try:
+            chosen = offer(choice, items, select, what, tty)
+        except ws_select.NoTerminal:
+            names = [n for n, d, _ in items if choice.state(n, d) == "ask"]
+            err.write(f"Not offered on {host} yet (no terminal to ask): {' '.join(names)}; "
+                      "run ws apply in a terminal\n")
+            continue
+        if chosen is None:
+            err.write(f"ws apply: выбор отменён, {what} не тронуты (спросит в следующий раз)\n")
+            continue
+        if choice.text != before:
+            written.append(str(choice.path))
+    return written
+
+
+def cli_offer_all(host, args):
+    setup_mode = "--setup" in args
+    select = "--select" in args
+    modules = [a for a in args if not a.startswith("--")] or ["flatpak", "boxes", "widgets"]
+    host = ws_facts.check_host(host) if host else current_host()
+    if not setup_mode:
+        for path in apply_offer(host, modules, select):
+            print(path)
+        return 0
+    fd = ws_select.open_tty()
+    if fd is None:
+        sys.stderr.write(f"{PROG}: no terminal to ask on\n")
+        return NO_TERMINAL
+    try:
+        changed = setup(ws_common.CONFIG, host, ws_select.Terminal(fd))
+    except KeyboardInterrupt:
+        sys.stderr.write(f"\n{PROG}: interrupted, nothing written\n")
+        return ws_select.INTERRUPTED
+    finally:
+        os.close(fd)
+    if changed is None:
+        sys.stderr.write(f"{PROG}: cancelled, nothing written\n")
+        return CANCELLED
+    for path in changed:
+        print(path)
+    return 0
+
+
 def main(argv):
     host = None
     if argv[:1] == ["--host"] and len(argv) >= 2:
@@ -231,6 +415,8 @@ def main(argv):
         print(__doc__, file=sys.stderr)
         return 64
     try:
+        if argv[:2] == ["offer", "--all"]:
+            return cli_offer_all(host, argv[2:])
         if argv[0] == "summary" and len(argv) == 3:
             read = lambda p: Path(p).read_text() if Path(p).exists() else ""
             print(summary(read(argv[1]), read(argv[2])))

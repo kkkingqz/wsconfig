@@ -36,7 +36,7 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | ba
    (`hardware = "generic-pc"`, GRUB, `quiet splash`) с тремя вопросами: VM,
    Steam из apt, Game Mode. Новый хост коммитится; публикуется он вместе с
    выбором после вопроса «Опубликовать (ws sync)?».
-4. Списки с галочками (`lib/setup_marks.py`): приложения каталога Flatpak,
+4. Списки с галочками (`lib/ws_catalog.py offer --all --setup`): приложения каталога Flatpak,
    контейнеры Distrobox, при `widgets = "yes"` виджеты и overrides Flatpak —
    всё, где у этого хоста нет выбора. `default` ask и yes отмечены, no — нет;
    overrides — общие значения каталога у приложений, которые на хосте будут.

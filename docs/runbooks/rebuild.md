@@ -266,12 +266,15 @@ host`, переопределяет `WS_HOST=<name>`); для новой маш�
 Шаг `ws apply`, чей preflight не прошёл (exit 69), выводится в конце как
 `PREFLIGHT`; отдельный шаг — `ws apply keyboard`.
 
-Шаги `flatpak` и `distrobox` ставят то, что выбрано для этой машины
-(`yes` в `nix/hosts/HOST/flatpak.toml` и `boxes.toml`), и
-спрашивают о не предложенных: «Поставить все? [Y/n]», на `n` — список с
-галочками (Space). Ответ записывается в выбор этой машины;
-публикует `ws sync`. Новая машина получает вопрос обо всём, что по
-умолчанию ask (`helpws flatpak`, `helpws distrobox`).
+Шаги `flatpak`, `distrobox` и `widgets` ставят то, что выбрано для этой
+машины (`yes` в `nix/hosts/HOST/flatpak.toml`, `boxes.toml`,
+`widgets.toml`). Перед ними `ws apply` задаёт все вопросы сразу
+(`ws_catalog.py offer --all`): по каждому модулю о позициях в состоянии
+ask — «Поставить все? [Y/n]», на `n` — список с галочками (Space). Ответ
+записывается в выбор этой машины, публикует `ws sync`; сами шаги потом не
+спрашивают. Отмена или отсутствие терминала оставляет позиции ask до
+следующего раза. Новая машина получает вопрос обо всём, что по умолчанию
+ask (`helpws flatpak`, `helpws distrobox`).
 
 `ws system diff` сравнивает системные файлы (`/etc`, `/boot`, `/usr/local`,
 `/usr/lib/systemd/system-sleep`), собранные Nix из `system/`, с

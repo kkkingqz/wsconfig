@@ -1,9 +1,0 @@
-# Виджеты wswidgets (catalog.nix закреплённой версии; wswidgets list):
-# ID HOST=STATE... all=STATE, по одному в строке (lib/ws_marks.py). HOST —
-# `ws host`; STATE yes (включён там), no (отказались), ask (не предложен;
-# wswidgets apply спрашивает). all= — для хоста без своей пометки. Порядок
-# строк — порядок кнопок на панели GNOME. Только на хостах с widgets = "yes"
-# в facts.nix. wswidgets enable|disable правят этот файл и применяют
-# ws switch (он коммитит файл); helpws widgets.
-example mbp16=yes all=ask
-compact mbp16=yes all=ask
