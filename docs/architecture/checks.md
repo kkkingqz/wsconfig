@@ -20,8 +20,7 @@ wsflatpak check         remotes, приложения apps.txt, overrides, .desk
 wsbox check             контейнеры, образы, HOME, экспорты, hooks, wsbox-host-ntsync
 wswin check             Windows-боксы, программы, .exe, ссылки меню
 ws-suspend check        deep sleep, t2bce stateful sleep, Touch Bar
-ws system check         файлы и units manifest, шаблон grub, nofail, раскладка GDM,
-                        устаревшие файлы (старый recovery, /.snapshots)
+ws system check         файлы и units manifest, шаблон grub, nofail, раскладка GDM
 ws check apt            apt-списки против установленного, purge: (snapd) снят
 ws check virt           KVM, libvirt, @vms без CoW, пул и сеть default, OVMF и swtpm,
                         NVRAM VM в qcow2, проход qemu в HOME (пулы в ~/VMs)

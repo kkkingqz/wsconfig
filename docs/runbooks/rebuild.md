@@ -702,6 +702,5 @@ sudo btrfs subvolume get-default /     # новый ID, path @
 
 До 2026-10-02 recovery делал `system-backup-snapshot`: `/.snapshots/backup-ro`
 и `/.snapshots/recovery`, пункт GRUB «Backup snapshot», копии ядра в
-`/boot/recovery` (`helpws history-nix`). Скрипт, пункт GRUB и `/boot/recovery*`
-убирает `ws system apply`; subvolume `.snapshots` со старыми снапшотами и его
-строку в fstab — вручную.
+`/boot/recovery` (`helpws history-nix`). На mbp16 всё это убрано (проверено
+2026-10-14, helpws plan-v2); на новых машинах этого не было.

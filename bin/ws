@@ -89,8 +89,7 @@ system    build the host system file tree (system) and compare it
           apply (sudo) backs up and installs the files that differ, edits
           /etc/default/keyboard (GDM: EN only), resets /etc/default/grub to
           the package template (an installer may edit it; settings live in
-          grub.d), removes known obsolete files,
-          enables and restarts units, reloads udev, rebuilds the initramfs
+          grub.d), enables and restarts units, reloads udev, rebuilds the initramfs
           if modprobe.d changed, runs update-grub if grub.d changed and
           sysctl --system if sysctl.d changed;
           it does not touch the ESP and does not reboot;
@@ -456,17 +455,6 @@ system_check_extra() {
     [[ "$layout" == us ]] \
         && pass "GDM/login X11 layout: us" \
         || fail "GDM/login X11 layout is '${layout:-unknown}', expected us (ws system apply)"
-    [[ -f "$obsolete_uinput" ]] && warn "obsolete $obsolete_uinput (ws system apply removes it)"
-    [[ -f "$obsolete_tiny_cfg" ]] && ! tiny_dfr_installed \
-        && warn "obsolete $obsolete_tiny_cfg (ws system apply removes it)"
-    systemctl list-unit-files tiny-dfr-sleep.service 2>/dev/null | grep -q '^tiny-dfr-sleep\.service' \
-        && warn "obsolete tiny-dfr-sleep.service still installed"
-    [[ -f "$obsolete_t2gmux_hook" ]] && warn "obsolete $obsolete_t2gmux_hook (ws system apply removes it)"
-    local f
-    for f in "${obsolete_backup_snapshot[@]}"; do
-        [[ -e "$f" ]] && warn "obsolete $f (ws system apply removes it)"
-    done
-    [[ -d /.snapshots ]] && warn "obsolete /.snapshots (recovery before Timeshift; helpws rebuild, Recovery)"
     return 0
 }
 
@@ -577,20 +565,6 @@ sys.stdout.write(text)
 PY
 }
 
-# Obsolete files of earlier baselines: path, the only content line that
-# allows removal (empty: remove whenever the condition in apply holds).
-obsolete_uinput=/etc/udev/rules.d/70-workstation-uinput.rules
-obsolete_uinput_line='KERNEL=="uinput", TAG+="uaccess", OPTIONS+="static_node=uinput"'
-obsolete_tiny_cfg=/etc/tiny-dfr/config.toml
-# Sleep hook of the first t2gmux test boots (helpws plan-dgpu, 2026-10-01):
-# the card leaves the PCI bus again, so S3 needs nothing.
-obsolete_t2gmux_hook=/usr/lib/systemd/system-sleep/70-ws-dgpu-t2gmux
-# Recovery snapshot before Timeshift (2026-10-02): the script, its GRUB entry
-# and the kernel copies it made; /.snapshots itself is removed by hand
-# (helpws rebuild, Recovery).
-obsolete_backup_snapshot=(/usr/local/sbin/system-backup-snapshot /etc/grub.d/41_backup_snapshot
-    /boot/recovery /boot/recovery.previous)
-
 tiny_dfr_installed() {
     dpkg-query -W -f='${Status}' tiny-dfr 2>/dev/null | grep -q 'install ok installed'
 }
@@ -690,36 +664,6 @@ cmd_system_apply() {
         changed=$((changed + 1))
         grub=true
     fi
-
-    echo
-    echo "== Obsolete files"
-    if [[ -f "$obsolete_uinput" ]]; then
-        if grep -Fxq "$obsolete_uinput_line" "$obsolete_uinput"; then
-            save "$obsolete_uinput"
-            sudo rm -f -- "$obsolete_uinput"
-            echo "removed: $obsolete_uinput"
-        else
-            echo "WARN    $obsolete_uinput does not match the known old rule; left untouched"
-        fi
-    fi
-    if [[ -f "$obsolete_tiny_cfg" ]] && ! tiny_dfr_installed; then
-        save "$obsolete_tiny_cfg"
-        sudo rm -f -- "$obsolete_tiny_cfg"
-        sudo rmdir --ignore-fail-on-non-empty "$(dirname "$obsolete_tiny_cfg")"
-        echo "removed: $obsolete_tiny_cfg"
-    fi
-    if [[ -f "$obsolete_t2gmux_hook" ]]; then
-        save "$obsolete_t2gmux_hook"
-        sudo rm -f -- "$obsolete_t2gmux_hook"
-        echo "removed: $obsolete_t2gmux_hook"
-    fi
-    for f in "${obsolete_backup_snapshot[@]}"; do
-        [[ -e "$f" ]] || continue
-        [[ -d "$f" ]] || save "$f"
-        sudo rm -rf -- "$f"
-        echo "removed: $f"
-        [[ "$f" != /etc/grub.d/* ]] || grub=true
-    done
 
     echo
     echo "== Units"
