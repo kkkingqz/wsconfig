@@ -72,7 +72,8 @@ volume: User Commands
    `~/.local/state/wsconfig`), 3 (каталоги, выбор хоста в
    `nix/hosts/HOST/*.toml`, `ws_catalog`) и 4 (факты хоста в
    `host.toml`) выполнены 2026-10-14. Этап 5 (ядро из Nix store, в PATH
-   `ws` и `helpws`) и 6 (один `ws apply`) выполнены.
+   `ws` и `helpws`) 6 (один `ws apply`) и 7 (данные модулей в TOML,
+   кроме backup — он на этапе 8) выполнены.
 
 Отложено:
 
