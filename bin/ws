@@ -108,12 +108,12 @@ system    build the host system file tree (system) and compare it
           built tree (files/, esp/, manifest); both are what ws-baseline
           and the checks read
           apply records the tree it installed in
-          ~/.local/state/workstation/system (applied: link and GC root,
+          ~/.local/state/wsconfig/system (applied: link and GC root,
           history: date, commit, tree, result)
 baseline  functional baseline, see ws-baseline --help
 collect   archive of the machine state a rebuild needs and the repository
           does not hold (baseline, boot and disks, apt, Apple firmware,
-          ~/.local/state/workstation), see ws-collect --help; asks sudo
+          ~/.local/state/wsconfig), see ws-collect --help; asks sudo
 btrfs     make: the Btrfs layout of a fresh install (@, @home, @cache, @tmp,
           @log) from the installed system, before bootstrap.sh: run it,
           reboot through GRUB, run it again; see ws-btrfs --help and

@@ -91,7 +91,7 @@ else
         || pass "xremap not switched off by ws keyboard restore"
     [[ -s "$WS_STATE/keyboard/gsettings-backup.tsv" ]] \
         && pass "original GNOME shortcuts saved for ws keyboard restore" \
-        || warn "no ~/.local/state/workstation/keyboard/gsettings-backup.tsv; ws keyboard restore has nothing to restore"
+        || warn "no ~/.local/state/wsconfig/keyboard/gsettings-backup.tsv; ws keyboard restore has nothing to restore"
     [[ -n "$xremap_env_bin" && "$xremap_env_bin" == "$xremap_real" ]] \
         && pass "xremap.service runs the same binary as ~/.local/bin/xremap" \
         || fail "xremap.service XREMAP_BIN ${xremap_env_bin:-unset} differs from ~/.local/bin/xremap"

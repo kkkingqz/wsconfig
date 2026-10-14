@@ -260,7 +260,7 @@ system/files/systemd/system/ws-touchbar-fn.service
 ```
 
 Generated `gschemas.compiled` не является source file и не коммитится. Machine-local state (backup сочетаний GNOME, флаг выключенного
-xremap) — в `~/.local/state/workstation/`, не в checkout.
+xremap) — в `~/.local/state/wsconfig/`, не в checkout.
 
 Полный справочник:
 
@@ -827,7 +827,7 @@ Shebang:
 `nix/hosts/<host>/facts.nix`), по областям: в каждой — её объявление в Nix
 и родные файлы программ. Сгенерированное и скачанное — в
 `~/.local/share/workstation/`, состояние (backup сочетаний, baseline) — в
-`~/.local/state/workstation/`, HOME контейнеров — в `~/distrobox/<имя>/`.
+`~/.local/state/wsconfig/`, HOME контейнеров — в `~/distrobox/<имя>/`.
 
 ```text
 wsconfig/

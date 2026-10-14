@@ -33,7 +33,7 @@ laptop before reinstalling.
               platform_profile, firmware-attributes, displays, audio (ALSA,
               PipeWire), fwupd devices, modules, kernel warnings; no serial
               numbers
-  state/      ~/.local/state/workstation without baseline/ (keyboard backup,
+  state/      ~/.local/state/wsconfig without baseline/ (keyboard backup,
               checkpoints)
   virt/       libvirt definitions (virsh dumpxml of VMs, networks, pools),
               UEFI variables (nvram/) and TPM state (swtpm/); the disk

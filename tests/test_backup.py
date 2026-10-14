@@ -72,7 +72,7 @@ class SendFixture:
         ssh = self.b.bin / 'ssh'
         ssh.write_text('#!/usr/bin/env python3\nimport os,sys\nos.environ["SSH_ORIGINAL_COMMAND"]=sys.argv[-1]\nos.execv("/bin/bash",["bash",' + repr(str(ROOT / 'backup/unraid/wsbackup-receiver')) + ',' + repr(str(self.rcfg)) + '])\n')
         ssh.chmod(0o755)
-        self.config_dir = self.b.root / 'state/workstation/backup'
+        self.config_dir = self.b.root / 'state/wsconfig/backup'
         self.config_dir.mkdir(parents=True)
         self.config_dir.joinpath('config.json').write_text(json.dumps({
             'schema_version': 1, 'ssh_host': 'backup-nas', 'remote_host_id': 'mbp16',
@@ -128,7 +128,7 @@ class TransferTests(SendFixture, unittest.TestCase):
         self.assertEqual(json.loads((received / '.fixture-meta').read_text())['stream_parent'], first_uuid)
 
     def test_concurrent_backup_refused_before_snapshot(self):
-        state = self.b.root / 'state/workstation/backup'
+        state = self.b.root / 'state/wsconfig/backup'
         state.mkdir(parents=True, exist_ok=True)  # holds config.json
         with (state / 'lock').open('w') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
@@ -182,7 +182,7 @@ class TransferTests(SendFixture, unittest.TestCase):
         self.b.update(send_error=True)
         p = self.cli('send', 'home')
         self.assertNotEqual(p.returncode, 0)
-        state = self.b.root / 'state/workstation/backup'
+        state = self.b.root / 'state/wsconfig/backup'
         records = [json.loads(x.read_text()) for x in (state / 'operations').glob('*.json')]
         self.assertEqual(records[0]['status'], 'failed')
         self.assertIn('transfer', records[0]['phase'])
@@ -278,7 +278,7 @@ os.execvp(a[1], a[1:])
             pid = None
             self.assertEqual(os.waitstatus_to_exitcode(status), 0, output.decode(errors='replace'))
             self.assertTrue(marker.exists())
-            last = json.loads((self.b.root / 'state/workstation/backup/last-success.json').read_text())
+            last = json.loads((self.b.root / 'state/wsconfig/backup/last-success.json').read_text())
             self.assertEqual((self.remote / 'mbp16/home' / last['home']['id'] / 'payload').read_text(), 'preserved data')
             self.assertEqual((self.b.root / 'restore' / last['home']['id'] / 'payload').read_text(), 'preserved data')
         finally:
@@ -299,7 +299,7 @@ os.execvp(a[1], a[1:])
         self.b.update(receive_delay=10)
         p = subprocess.Popen([str(ROOT / 'bin/wsbackup'), 'send', 'home'],
                              env=self.env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        operations = self.b.root / 'state/workstation/backup/operations'
+        operations = self.b.root / 'state/wsconfig/backup/operations'
         deadline = time.monotonic() + 8
         try:
             while time.monotonic() < deadline:

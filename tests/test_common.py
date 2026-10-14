@@ -38,7 +38,7 @@ class CommonTests(unittest.TestCase):
     def test_roots_default_to_the_tool_checkout(self):
         p = self.run_tool('echo "$WS_CORE|$WS_CONFIG|$WS_STATE|$repo"\n')
         core = str(self.tmp / "core")
-        self.assertEqual(p.stdout.strip(), f"{core}|{core}|{self.tmp}/home/.local/state/workstation|{core}")
+        self.assertEqual(p.stdout.strip(), f"{core}|{core}|{self.tmp}/home/.local/state/wsconfig|{core}")
 
     def test_wsconfig_sets_config_only(self):
         p = self.run_tool('echo "$WS_CORE|$WS_CONFIG|$repo"\n', {"WSCONFIG": "/data"})
@@ -53,7 +53,7 @@ class CommonTests(unittest.TestCase):
 
     def test_xdg_state_home(self):
         p = self.run_tool('echo "$WS_STATE"\n', {"XDG_STATE_HOME": "/xdg"})
-        self.assertEqual(p.stdout.strip(), "/xdg/workstation")
+        self.assertEqual(p.stdout.strip(), "/xdg/wsconfig")
 
     def test_die_uses_the_command_name_or_ws_prog(self):
         p = self.run_tool('die "broken"\n')

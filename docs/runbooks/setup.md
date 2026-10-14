@@ -71,13 +71,13 @@ ws switch, ws checkpoint create setup, git push
 После каждой перезагрузки после входа setup.sh продолжает сам: до конца в
 `~/.config/autostart/ws-setup.desktop` лежит его запуск в терминале
 (`xdg-terminal-exec`); в конце файл удаляется. Пройденные шаги —
-`~/.local/state/workstation/setup/*.done`, остальное определяется по
+`~/.local/state/wsconfig/setup/*.done`, остальное определяется по
 системе; повторный запуск начинает с первого непройденного. Ошибка
 команды останавливает с сообщением, окно автозапуска ждёт Enter.
 
 FAIL в `ws check` setup.sh не останавливает: снимок Timeshift получает
 комментарий «setup, ws check FAIL», в конце печатаются строки FAIL (весь
-вывод — `~/.local/state/workstation/setup/check.txt`). `ws checkpoint
+вывод — `~/.local/state/wsconfig/setup/check.txt`). `ws checkpoint
 create setup` при расхождении системы с деревом не создаётся. После
 исправления: `ws check`, `sudo timeshift --create --comments checked`,
 `ws checkpoint create setup`.

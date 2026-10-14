@@ -1,5 +1,5 @@
 # Completions for ws. Step names come from ws itself (ws steps), baseline and
-# checkpoint names from ~/.local/state/workstation.
+# checkpoint names from ~/.local/state/wsconfig.
 complete -c ws -f
 
 function __ws_needs_command
@@ -21,7 +21,7 @@ function __ws_after
 end
 
 function __ws_state_names -a dir
-    set -l d ~/.local/state/workstation/$dir
+    set -l d ~/.local/state/wsconfig/$dir
     test -d $d; and path basename $d/*/
 end
 

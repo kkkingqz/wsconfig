@@ -17,7 +17,7 @@ Usage:
   ws-baseline list
 
 capture   snapshot of owner checks, GNOME, Flatpak, Distrobox, user links,
-          system files and tools into ~/.local/state/workstation/baseline/NAME;
+          system files and tools into ~/.local/state/wsconfig/baseline/NAME;
           system files are those of `ws system manifest` (file and watch)
           --no-boxes    skip `wsbox check` (it starts the containers)
           --with-sudo   also dpkg --verify, the initramfs listing, the default

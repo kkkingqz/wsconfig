@@ -82,7 +82,7 @@ HOME snapshot согласован на уровне filesystem; для важн
 ## Локальная конфигурация
 
 Пример-шаблон: `backup/config.example.json`. Рабочий файл:
-`~/.local/state/workstation/backup/config.json`, рядом с состоянием backup
+`~/.local/state/wsconfig/backup/config.json`, рядом с состоянием backup
 (не хранить machine-local адреса и ключи в Git).
 
 Пример после настройки NAS — заменить все значения:
@@ -274,7 +274,7 @@ Timeshift batch сначала проверяет pending ID: совпадающ
 новый ID и клон сохранённой ro-копии; старый partial не заменяется и не удаляется.
 Legacy `send` создаёт новый ID при повторном запуске.
 
-`~/.local/state/workstation/backup/` содержит last-success.json, записи
+`~/.local/state/wsconfig/backup/` содержит last-success.json, записи
 snapshots, журналы operations и restore-tests. Ошибка/SIGINT/SIGTERM записывают
 отказ; SIGKILL/потеря питания могут оставить статус running. Такой запуск
 следует считать незавершённым до проверки, не успешным.

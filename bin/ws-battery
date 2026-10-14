@@ -56,7 +56,7 @@ usage: ws-battery now [SECONDS]      power per rail, averaged over SECONDS (10)
        ws-battery sleep              suspend now; after resume: energy spent, wakeups
 
 Devices: screen, keyboard and Touch Bar backlight, Wi-Fi, Bluetooth.
-Logs: ~/.local/state/workstation/battery/ (idle-*.tsv, sleep.tsv)."""
+Logs: ~/.local/state/wsconfig/battery/ (idle-*.tsv, sleep.tsv)."""
 
 
 def die(msg):

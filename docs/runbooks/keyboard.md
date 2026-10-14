@@ -599,7 +599,7 @@ gnome/extensions/workstation-input-source@local/
 
 Generated `gnome/extensions/*/schemas/gschemas.compiled` не коммитится.
 
-Machine-local state — вне checkout, в `~/.local/state/workstation/keyboard/`:
+Machine-local state — вне checkout, в `~/.local/state/wsconfig/keyboard/`:
 `gsettings-backup.tsv` (сочетания GNOME до первого `ws keyboard apply`, их
 возвращает `ws keyboard restore`) и `xremap.disabled`.
 
@@ -637,7 +637,7 @@ home-manager перезапускает сервис (`--watch=config` store-ф�
 
 Включает сервис home-manager; решает, работает ли xremap, по-прежнему
 `ws keyboard`. `restore` и неудачный `apply` создают флаг
-`~/.local/state/workstation/keyboard/xremap.disabled` (в unit —
+`~/.local/state/wsconfig/keyboard/xremap.disabled` (в unit —
 `ConditionPathExists=!…`), поэтому xremap не стартует и после
 перезагрузки; `ws keyboard apply` и `ws keyboard start` флаг удаляют.
 

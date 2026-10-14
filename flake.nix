@@ -49,7 +49,7 @@
           # flatpak/apps.txt and distrobox/hosts.txt (lib/ws_marks.nix).
           wsHost = host;
           # The state directory under $HOME (WS_STATE of lib/common.bash).
-          wsState = ".local/state/workstation";
+          wsState = ".local/state/wsconfig";
           xremap = pkgs.callPackage ./nix/pkgs/xremap.nix { };
         };
         modules = [ ./nix/home ];

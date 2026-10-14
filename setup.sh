@@ -19,13 +19,13 @@ set -euo pipefail
 # what is not published yet: after the question (ws sync).
 #
 # Each run starts where the last one stopped: the state of the system and
-# the steps done in ~/.local/state/workstation/setup. Until the end a GNOME
+# the steps done in ~/.local/state/wsconfig/setup. Until the end a GNOME
 # autostart entry runs it again after each login, so after a reboot the
 # user only logs in. GRUB hosts only: rEFInd (mbp16) is helpws rebuild.
 
 repo_url=https://github.com/kkkingqz/wsconfig.git
 repo="$HOME/wsconfig"
-state="${XDG_STATE_HOME:-$HOME/.local/state}/workstation/setup"
+state="${XDG_STATE_HOME:-$HOME/.local/state}/wsconfig/setup"
 autostart="$HOME/.config/autostart/ws-setup.desktop"
 
 die() {

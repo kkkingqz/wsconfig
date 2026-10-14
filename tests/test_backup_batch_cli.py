@@ -7,11 +7,11 @@ from test_backup_timeshift import TransferFixture, ROOT
 class BatchCLI(TransferFixture, unittest.TestCase):
     def setUp(self):
         super().setUp()
-        self.config_dir = self.b.root / 'state/workstation/backup'
+        self.config_dir = self.b.root / 'state/wsconfig/backup'
         self.config_dir.mkdir(parents=True)
         self.config_file = self.config_dir / 'config.json'
         self.config_file.write_text(json.dumps(self.c))
-        self.state = self.b.root / 'state/workstation/backup'
+        self.state = self.b.root / 'state/wsconfig/backup'
         self.cli_env = dict(self.env, WSCONFIG=str(ROOT),
                             XDG_CONFIG_HOME=str(self.b.root / 'config'),
                             XDG_STATE_HOME=str(self.b.root / 'state'))

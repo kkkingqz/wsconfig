@@ -14,7 +14,7 @@
 #
 # Change: edit here, `ws switch`, `ws apply keyboard` (or `ws apply tiling`).
 # The original GNOME values of a newly added key are not in the existing
-# backup (~/.local/state/workstation/keyboard/gsettings-backup.tsv).
+# backup (~/.local/state/wsconfig/keyboard/gsettings-backup.tsv).
 { config, lib, facts, ... }:
 let
   # GVariant text as it is, for values that are not strings or string arrays.

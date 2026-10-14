@@ -20,7 +20,7 @@
 
 WS_CORE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WS_CONFIG="${WSCONFIG:-${WS_CONFIG:-$WS_CORE}}"
-WS_STATE="${WS_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/workstation}"
+WS_STATE="${WS_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/wsconfig}"
 export WS_CORE WS_CONFIG WS_STATE
 # shellcheck disable=SC2034 # read by the tools that source this file
 repo="$WS_CONFIG"

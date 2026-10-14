@@ -16,14 +16,14 @@ import sys
 
 # The state directory name; lib/common.bash, flake.nix (wsState) and
 # terminal/fish/completions/ws.fish have it too (tests/test_common.py).
-STATE_NAME = "workstation"
+STATE_NAME = "wsconfig"
 
 CORE = Path(__file__).resolve().parent.parent
 CONFIG = Path(os.environ.get("WSCONFIG") or os.environ.get("WS_CONFIG") or CORE)
 
 
 def state_dir():
-    """WS_STATE, else $XDG_STATE_HOME/workstation; read when called, so a
+    """WS_STATE, else $XDG_STATE_HOME/wsconfig; read when called, so a
     test can set the environment after import."""
     if os.environ.get("WS_STATE"):
         return Path(os.environ["WS_STATE"])

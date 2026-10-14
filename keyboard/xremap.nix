@@ -6,7 +6,7 @@
 # - The unit is the former systemd/user/xremap.service. home-manager owns the
 #   unit and its graphical-session.target.wants link; ws-keyboard still decides
 #   whether xremap runs: `ws-keyboard restore` and a failed apply create
-#   ~/.local/state/workstation/keyboard/xremap.disabled, apply/start remove it.
+#   ~/.local/state/wsconfig/keyboard/xremap.disabled, apply/start remove it.
 # - ~/.local/bin/xremap stays for `ws-keyboard devices` and the status tools.
 { config, lib, pkgs, xremap, facts, wsState, ... }:
 let

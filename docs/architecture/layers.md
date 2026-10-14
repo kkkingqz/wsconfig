@@ -86,7 +86,7 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
 ```text
 ~/wsconfig                      всё, что правится (git, GitHub kkkingqz/wsconfig)
 ~/.local/share/workstation      собранное Nix и скачанное (ссылки в store, сборка t2bce)
-~/.local/state/workstation      состояние: backup сочетаний, baseline, checkpoints,
+~/.local/state/wsconfig      состояние: backup сочетаний, baseline, checkpoints,
                                 применённое системное дерево
 ~/distrobox/<имя>               HOME каждого контейнера
 /var/lib/vms                    всё состояние VM: subvolume @vms вне snapshots @

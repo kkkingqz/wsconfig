@@ -29,7 +29,7 @@ ws checkpoint create before-reinstall
   `lsusb`, устройства ввода, датчики, hwmon, iio, светодиоды, батарея,
   `platform_profile`, firmware-attributes, экраны, звук (ALSA, PipeWire),
   устройства fwupd, модули, предупреждения ядра; без серийных номеров;
-- `state/` — `~/.local/state/workstation` (backup сочетаний, checkpoints);
+- `state/` — `~/.local/state/wsconfig` (backup сочетаний, checkpoints);
 - `virt/` — описания VM, сетей и пулов, NVRAM и TPM (без дисков: backup
   `@vms` — `helpws plan-final`);
 - `meta/` — коммит и незакоммиченные изменения.
@@ -314,7 +314,7 @@ ws checkpoint remove before-update
 `create` без sudo и только для согласованного состояния: checkout без
 изменений, активное поколение собрано из этого коммита (иначе `ws switch`),
 `ws system check` без различий (иначе `ws system apply`). Записывает в
-`~/.local/state/workstation/checkpoints/NAME/` коммит, поколение, системное
+`~/.local/state/wsconfig/checkpoints/NAME/` коммит, поколение, системное
 дерево, ядро, установленные ядра и held-пакеты, держит поколение и дерево
 GC roots и снимает `ws baseline capture checkpoint-NAME --no-boxes`.
 Сам ничего не откатывает; `show` печатает шаги: `git switch --detach
@@ -326,7 +326,7 @@ checkpoint/NAME`, `ws switch`, `ws system apply`, `ws apply`, загрузка
 локальных расширений применяются отдельно. Checkpoint возвращает
 конфигурацию; данные приложений и версии установленных Flatpak/контейнеров
 восстанавливаются своими средствами.
-`ws system apply` дополнительно пишет в `~/.local/state/workstation/system/`
+`ws system apply` дополнительно пишет в `~/.local/state/wsconfig/system/`
 ссылку `applied` на поставленное дерево и строку в `history` (дата, коммит,
 дерево, результат).
 
@@ -612,7 +612,7 @@ ws check
 
 ```console
 tar -xzf ws-collect-HOST-DATE.tar.gz
-cp -a ws-collect-HOST-DATE/baseline ~/.local/state/workstation/baseline/before-reinstall
+cp -a ws-collect-HOST-DATE/baseline ~/.local/state/wsconfig/baseline/before-reinstall
 ws baseline capture after-reinstall
 ws baseline diff before-reinstall after-reinstall
 ```
