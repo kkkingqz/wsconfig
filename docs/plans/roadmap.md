@@ -72,7 +72,8 @@ volume: User Commands
    `~/.local/state/wsconfig`), 3 (каталоги, выбор хоста в
    `nix/hosts/HOST/*.toml`, `ws_catalog`) и 4 (факты хоста в
    `host.toml`) выполнены 2026-10-14. Этап 5 (ядро из Nix store, в PATH
-   `ws` и `helpws`) в коде, на mbp16 не применён.
+   `ws` и `helpws`) выполнен; этап 6 (один `ws apply`) в коде, на mbp16 не
+   применён.
 
 Отложено:
 

@@ -12,7 +12,7 @@
 #   desktop/APP.desktop
 #
 # Change: the catalog and the choice through wsflatpak (install, manage,
-# filesystem, env, talk, ...), the rest here; then `ws switch`,
+# filesystem, env, talk, ...), the rest here; then `ws apply`,
 # `wsflatpak apply` (or `ws apply`).
 # apply resets the overrides of every managed app before setting the declared
 # ones, so a key removed here disappears too. Desktop overrides are linked

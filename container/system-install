@@ -4,7 +4,7 @@ set -euo pipefail
 # The system tree of the host (ws system tree) into the image, as root at
 # image build (container/Dockerfile, helpws plan-wsgnomebox): its files and
 # unit states. ws system check compares the running container with the
-# same tree; ws system apply installs a newer one until the next image.
+# same tree; ws apply system installs a newer one until the next image.
 #
 #   container/system-install TREE
 

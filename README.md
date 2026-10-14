@@ -23,16 +23,16 @@ git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
 ~/wsconfig/bin/ws btrfs make  # раскладка Btrfs: @, @home, @cache, @tmp, @log
 # reboot через GRUB, ещё раз ~/wsconfig/bin/ws btrfs make (раздел 3)
 # mbp16: ядро T2 и rEFInd (разделы 4–5)
-~/wsconfig/bootstrap.sh     # @nix, apt-списки, @vms и libvirt, @steam, группы, fish, первый ws switch
-# logout/login
-ws system apply             # системные файлы (sudo)
-ws apply                    # расширения → tiling → клавиатура → Flatpak → Distrobox
-# logout/login, затем ещё раз ws apply
+~/wsconfig/bootstrap.sh     # @nix, apt-списки, @vms и libvirt, @steam, группы, fish, первый ws apply home
+# reboot
+ws apply                    # apt, системные файлы (sudo), home-manager, расширения → tiling →
+                            # клавиатура → Flatpak → Distrobox → виджеты
+# logout/login, если ws apply так сказал, затем ещё раз ws apply
 ws check                    # все проверки
 ```
 
-Дальше: правка файла → `ws switch` (пользовательский слой) или
-`ws system apply` (системный) → `ws check`. Обновления — `ws update`.
+Дальше: правка файла → `ws apply` (только нужное: `ws apply flatpak`,
+`ws apply system`, …) → `ws check`. Обновления — `ws update`.
 
 ## Слои
 

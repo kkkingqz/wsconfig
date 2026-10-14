@@ -209,7 +209,7 @@ Ctrl+Enter  → Alt+Enter
 `tower.local` и `192.168.113.113` — жёлтый, остальные серверы — бледно-красный.
 После выхода, ошибки подключения или Ctrl+C возвращается цвет темы Ghostty.
 Алиасы из `~/.ssh/config` определяются по итоговому `HostName` (`ssh -G`).
-Цвета задаются в `terminal/ssh-colors.nix`, изменения применяются через `ws switch`.
+Цвета задаются в `terminal/ssh-colors.nix`, изменения применяются через `ws apply`.
 Home Manager генерирует `~/.config/fish/functions/ssh.fish`; Fish загружает его
 при первом вызове `ssh`, в том числе в уже открытом shell.
 Если Ghostty включает `ssh-env` или `ssh-terminfo`, его функция `ssh`
@@ -225,7 +225,7 @@ Home Manager генерирует `~/.config/fish/functions/ssh.fish`; Fish за
 `distrobox enter NAME`, `distrobox-enter -n NAME` и `ws box enter NAME`
 меняют обычный цвет текста Ghostty на время сессии. Цвет каждого контейнера
 и fallback для остальных задаются в `terminal/distrobox-colors.nix`;
-после правки — `ws switch`. Имя определяется из аргументов или
+после правки — `ws apply`. Имя определяется из аргументов или
 `DBX_CONTAINER_NAME`; без явного имени применяется fallback.
 
 Восстановлением цветов SSH и Distrobox управляет `terminal/session-colors.nix`.
@@ -487,7 +487,7 @@ data             ~/.local/share/<tool>/...
 Каталог checkout — настройка хоста: `wsconfig` в
 `nix/hosts/<host>/host.toml` (относительно `$HOME`), по нему home-manager
 ставит ссылки fish и Ghostty. `ws` из PATH — ядро в store; checkout он
-берёт из `~/.local/state/wsconfig/host.json` (пишет `ws switch`), без него —
+берёт из `~/.local/state/wsconfig/host.json` (пишет `ws apply`), без него —
 `~/wsconfig`. `~/wsconfig/bin/ws` работает со своим checkout. Переменная
 `WSCONFIG` переопределяет оба.
 
@@ -506,11 +506,11 @@ Markdown в `docs/` — источник истины (`architecture/`, `runbook
 `plans/`, `history/`); `helpws` находит страницу по `title:`.
 
 Man pages собирает Nix из `docs/` (`nix/pkgs/man.nix`: `ws-doc-build` с
-lowdown из nixpkgs) и ставит `ws switch` в `~/.local/share/man/man1`; в git их
+lowdown из nixpkgs) и ставит `ws apply` в `~/.local/share/man/man1`; в git их
 нет. После правки документа:
 
 ```console
-ws switch
+ws apply
 ```
 
 Просмотр:
@@ -547,7 +547,7 @@ man ws-workstation
 Все файлы из `terminal/fish/` (и `terminal/ghostty/*.ghostty`)
 подключены ссылками home-manager в checkout (`nix/home/links.nix`); `ws` и
 `helpws` в `~/.local/bin` — ссылки на ядро в store (`nix/pkgs/ws.nix`);
-новый файл подключается следующим `ws switch`. Man pages — из сборки Nix
+новый файл подключается следующим `ws apply`. Man pages — из сборки Nix
 (`nix/home/man.nix`). fzf, zoxide, eza, micro — из Nix
 (`nix/home/cli.nix`). fzf ≥ 0.70 занимает Shift+Tab; `config.fish` возвращает туда
 `complete-and-search` fish.

@@ -241,7 +241,7 @@ CANCELLED, NO_TERMINAL = ws_select.CANCELLED, ws_select.NO_TERMINAL
 
 def box_catalog(config=None):
     """[(name, default)] of the containers: boxes.json of the build
-    (distrobox.nix through ws switch), else distrobox/distrobox.nix read
+    (distrobox.nix through ws apply), else distrobox/distrobox.nix read
     without Nix (setup runs before bootstrap installs it): its name = "..."
     lines and the default = "..." after them (helpws plan-v2: TOML at
     stage 7)."""
@@ -261,7 +261,7 @@ def box_catalog(config=None):
 
 
 def widget_catalog(config=None):
-    """[(id, label)] of the pinned wswidgets as ws switch built it, else
+    """[(id, label)] of the pinned wswidgets as ws apply built it, else
     the widgets some host has in yes (the full catalog needs Nix)."""
     built = ws_common.load(Path.home() / ".local/share/workstation/widgets/catalog.json")
     if isinstance(built, list) and config is None:

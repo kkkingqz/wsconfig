@@ -14,7 +14,7 @@ import sys
 # home-manager builds them into ~/.local/share/wsconfig/flatpak, which
 # wsflatpak reads. install, manage and unmanage edit the catalog and the
 # choice; filesystem, host, env, talk and their un… edit the overrides.
-# `ws switch` builds them, `ws sync` publishes them.
+# `ws apply` builds them, `ws sync` publishes them.
 SOURCE = "flatpak/flatpak.nix"
 sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
 import ws_common  # noqa: E402
@@ -95,7 +95,7 @@ def need_flatpak():
 def ensure_cfg():
     if not MANIFEST.is_file():
         raise SystemExit(
-            f"ws flatpak: {CFG} is missing; run `ws switch` "
+            f"ws flatpak: {CFG} is missing; run `ws apply flatpak` "
             f"(built from {CATALOG_NAME})"
         )
 
@@ -104,7 +104,7 @@ def declare_hint(action, snippet):
     raise SystemExit(
         f"ws flatpak: Flatpak remotes are declared in {CATALOG_NAME}.\n"
         f"{action}:\n\n    {snippet}\n\n"
-        "then: ws switch && ws flatpak apply"
+        "then: ws apply flatpak"
     )
 
 
@@ -112,7 +112,7 @@ def manifest():
     ensure_cfg()
     data = ws_common.load(MANIFEST)
     if not isinstance(data, dict):
-        raise SystemExit(f"ws flatpak: {MANIFEST} is not a manifest; run `ws switch`")
+        raise SystemExit(f"ws flatpak: {MANIFEST} is not a manifest; run `ws apply flatpak`")
     return data
 
 
@@ -158,10 +158,7 @@ def list_add(app, remote):
         raise SystemExit(f"ws flatpak: {e}")
     choice.save()
     added_text = f"Added to {CATALOG_NAME}: {remote} {app}\n" if added else ""
-    print(
-        f"{added_text}yes on {host} in {choice_name(choice)}: {app}\n"
-        "then: ws switch (links the desktop entries), ws sync"
-    )
+    print(f"{added_text}yes on {host} in {choice_name(choice)}: {app}")
 
 
 def list_remove(app):
@@ -179,10 +176,8 @@ def list_remove(app):
         if choice.save():
             print(f"Dropped from {choice_name(choice)}: {app}")
     cat.save()
-    print(
-        f"Removed from {CATALOG_NAME}: {app} (with its overrides)\n"
-        "then: ws switch, ws sync"
-    )
+    print(f"Removed from {CATALOG_NAME}: {app} (with its overrides)")
+    ws_common.apply_module("flatpak")
 
     if (DESKTOP_OVERRIDES / f"{app}.desktop").exists():
         print(f"NOTE: {app} still has a desktop file in {SOURCE}")
@@ -257,10 +252,8 @@ def overrides_add(entry, own=False):
         print(f"Already declared in {where}: {' '.join(entry)}")
         return
     action = {"added": "Added to", "replaced": "Replaced in", "same": "Applies here from"}[result]
-    print(
-        f"{action} {where}: {' '.join(entry)}\n"
-        "then: ws switch && ws flatpak apply; ws sync"
-    )
+    print(f"{action} {where}: {' '.join(entry)}")
+    ws_common.apply_module("flatpak")
 
 
 def overrides_remove(entry, everywhere=False):
@@ -300,7 +293,7 @@ def overrides_remove(entry, everywhere=False):
     choice.save()
     for line in done:
         print(f"{line}: {app} {kind} {key}")
-    print("then: ws switch && ws flatpak apply; ws sync")
+    ws_common.apply_module("flatpak")
 
 
 def cmd_override(ns):
@@ -703,15 +696,20 @@ def cmd_install(ns):
     for ref in sorted(targets):
         ensure_user_runtime(ref, install_args)
 
+    listed = False
     for app in sorted({ref.split("/")[1] for ref in targets}):
         if is_managed(app):
             apply_override(app)
             list_add(app, ns.remote)
+            listed = True
         elif ns.unmanaged:
             print(f"\nNot managed (--unmanaged): {app}")
         else:
             print()
             list_add(app, ns.remote)
+            listed = True
+    if listed:
+        ws_common.apply_module("flatpak")
 
 def cmd_remove(ns):
     need_flatpak()
@@ -736,7 +734,8 @@ def cmd_remove(ns):
         return
     choice.set(app, "no")
     choice.save()
-    print(f"\nno on {host} in {choice_name(choice)}: {app}\nthen: ws switch, ws sync")
+    print(f"\nno on {host} in {choice_name(choice)}: {app}")
+    ws_common.apply_module("flatpak")
 
 
 
@@ -1033,7 +1032,7 @@ def cmd_check(json_mode=False):
     if listed == built:
         passed(f"{CATALOG_NAME} built")
     else:
-        warn(f"{CATALOG_NAME} differs from the build; run ws switch")
+        warn(f"{CATALOG_NAME} differs from the build; run ws apply flatpak")
     for app in choice.yes() + choice.no():
         if cat.app(app) is None:
             warn(f"{choice_name(choice)} chooses an app not in {CATALOG_NAME}: {app}")
@@ -1128,7 +1127,7 @@ def cmd_check(json_mode=False):
                     f"{app}: {name}={policy}"
                 )
 
-    # Linked by ws switch only where the app is yes (flatpak.nix).
+    # Linked by ws apply only where the app is yes (flatpak.nix).
     for source in managed_desktop_entries():
         app = source.name.removesuffix(".desktop")
         linked = desktop_override_ok(source)
@@ -1137,10 +1136,10 @@ def cmd_check(json_mode=False):
                 passed(f"managed desktop override applied: {source.name}")
             else:
                 fail(f"managed desktop override not applied: {source.name} "
-                     f"(yes on {host}; run ws switch)")
+                     f"(yes on {host}; run ws apply flatpak)")
         elif linked:
             warn(f"managed desktop override linked but {app} is not yes "
-                 f"on {host}: {source.name} (run ws switch)")
+                 f"on {host}: {source.name} (run ws apply flatpak)")
         else:
             info(f"managed desktop override not linked: {app} is not on {host}")
 
@@ -1270,9 +1269,9 @@ def cmd_apply(reselect=False):
         chosen = []
     wanted |= set(chosen)
     choice.save()
-    if choice.text != before:
-        print(f"Choice of {host} written to {choice_name(choice)}; then: ws switch "
-              "(links the desktop entries), ws sync")
+    if choice.text != before and not os.environ.get("WS_APPLYING"):
+        print(f"Choice of {host} written to {choice_name(choice)}; then: ws apply flatpak "
+              "(links the desktop entries)")
 
     for remote, app in entries:
         if app not in wanted:
@@ -1358,7 +1357,7 @@ OVERRIDE_HELP = """APP — ID, имя или однозначная часть �
 значение машины заменяет значение каталога. un… убирает значение на этой
 машине: своё — из её flatpak.toml, общее — через skip там же; с --all общее
 удаляется из каталога. Чтобы применить:
-  ws switch && ws flatpak apply
+  ws apply flatpak
 При apply текущие overrides управляемого приложения сбрасываются и заменяются
 объявленными. Ручные изменения через Flatseal при этом исчезают.
 """
@@ -1371,7 +1370,7 @@ Runtime устанавливается для пользователя, даже
 Флаги --remote и --unmanaged указывайте перед APP.
 После APP можно указать другие приложения, ветку или аргументы flatpak install.
 Новые приложения добавляются в flatpak/catalog.toml и в yes этой машины
-(nix/hosts/HOST/flatpak.toml); затем выполните ws switch.
+(nix/hosts/HOST/flatpak.toml) и применяется: ws apply flatpak.
 Объявленные overrides нового приложения применяются через ws flatpak apply.
 
 Примеры:
@@ -1383,13 +1382,13 @@ Runtime устанавливается для пользователя, даже
     "manage": """APP — ID, имя или однозначная часть имени установленного приложения.
 Без REMOTE используется origin приложения, затем flathub как запасной вариант.
 Приложение добавляется в flatpak/catalog.toml (если его там нет) и в yes этой
-машины; выполните ws switch.
+машины; применяется через ws apply flatpak.
 
 Пример: ws flatpak manage org.videolan.VLC
 """,
     "unmanage": """Укажите точный App ID из flatpak/catalog.toml. Приложение не удаляется.
 Запись уходит из каталога вместе с overrides, а из файлов всех машин — их
-выбор и overrides приложения. Выполните ws switch, чтобы обновить собранный
+выбор и overrides приложения. ws apply flatpak обновляет собранный
 список управляемых приложений.
 
 Пример: ws flatpak unmanage org.videolan.VLC
@@ -1398,13 +1397,13 @@ Runtime устанавливается для пользователя, даже
 --keep-data сохраняет данные приложения.
 Управляемое приложение попадает в no этой машины (nix/hosts/HOST/flatpak.toml);
 запись в каталоге остаётся для других машин (убрать: unmanage).
-Затем ws switch; ws sync публикует файл.
+Затем выполняется ws apply flatpak; ws sync публикует файл.
 """,
     "reset-permissions": """Объявленные overrides остаются в конфигурации и восстанавливаются при apply.
 Для постоянного изменения используйте unfilesystem, unhost, unenv или untalk.
 """,
     "remote-add": """Команда печатает строку NAME = "URL" для [remotes] в flatpak/catalog.toml.
-После правки файла выполните ws switch && ws flatpak apply.
+После правки файла выполните ws apply flatpak.
 
 Пример: ws flatpak remote-add example https://example.org/repo.flatpakrepo
 """,
@@ -1425,8 +1424,8 @@ apply спрашивает «Поставить все? [Y/n]», на n — сп
 снимает галочку; ответ пишется в yes / no. --select спрашивает снова и о no.
 Без терминала не предложенные не ставятся.
 Затем сбрасывает их overrides, применяет объявленные значения и запускает check.
-Перед apply выполните ws switch, чтобы собрать изменения конфигурации.
-Ссылки на свои .desktop устанавливаются через ws switch.
+Обычно запускается из ws apply (ws apply flatpak): тот сначала собирает
+конфигурацию и ставит ссылки на свои .desktop.
 """,
     "check": """Код возврата 1 означает ошибки, 0 — отсутствие ошибок; предупреждения допустимы.
 --json выводит объект с status, passes, warnings, failures и messages.
@@ -1449,13 +1448,13 @@ def build_parser():
   ws flatpak install org.videolan.VLC
   ws flatpak install --unmanaged org.gimp.GIMP
   ws flatpak install --remote flatpark com.anthropic.ClaudeDesktop
-  ws switch && ws flatpak apply
+  ws apply flatpak
 
 Приложения и runtimes — обычно ~/.local/share/flatpak, данные — ~/.var/app/APP_ID.
 Доступ к домашним файлам задаётся отдельно через filesystem/host.
 install/manage/unmanage редактируют flatpak/catalog.toml и выбор машины
 nix/hosts/HOST/flatpak.toml; filesystem/host/env/talk и un… — overrides там же.
-ws switch собирает их; apply применяет собранную конфигурацию.
+ws apply flatpak собирает и применяет их.
 
 Справка по команде: ws flatpak help install или ws flatpak install --help.
 Подробное руководство: helpws flatpak / man ws-flatpak.
@@ -1581,6 +1580,7 @@ def main():
         need_flatpak()
         app = resolve_user_app(ns.app)
         list_add(app, ns.remote or installed_origin(app) or "flathub")
+        ws_common.apply_module("flatpak")
     elif ns.cmd == "unmanage":
         list_remove(ns.app)
     elif ns.cmd in DECLARE:

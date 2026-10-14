@@ -77,13 +77,13 @@ install_ego() {
     echo "installed from extensions.gnome.org: $uuid"
 }
 
-# gnome/gnome-extensions.nix; ws switch builds the list, enables the
+# gnome/gnome-extensions.nix; ws apply builds the list, enables the
 # extensions (enabled-extensions) and links the pinned EGO ones.
 list="$HOME/.local/share/wsconfig/gnome/extensions.json"
-[[ -r "$list" ]] || die "extension list missing: $list (run ws switch)"
+[[ -r "$list" ]] || die "extension list missing: $list (run ws apply)"
 mapfile -t local_extensions < <(manifest_get "$list" by_source local)
 ((${#local_extensions[@]})) || die "no local extensions in $list"
-# EGO without a pin: a pinned one comes from Nix (ws switch).
+# EGO without a pin: a pinned one comes from Nix (ws apply).
 mapfile -t ego_extensions < <(for uuid in $(manifest_get "$list" by_source ego); do
     [[ -n "$(manifest_get "$list" pins "$uuid")" ]] || echo "$uuid"
 done)
@@ -97,5 +97,5 @@ for uuid in "${local_extensions[@]}"; do
 done
 
 echo
-echo "GNOME workstation extensions installed (enabled by ws switch)."
+echo "GNOME workstation extensions installed (enabled by ws apply)."
 echo "A new or changed extension loads after log out and log in on Wayland."

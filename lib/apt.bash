@@ -5,6 +5,7 @@
 # (container/apt-install, helpws plan-wsgnomebox).
 #
 # Needs: those variables, run (prints instead with --dry-run) and die.
+# purge: is checked by a simulation first (apt_purge_check).
 # ws check apt and ws-baseline read the same lists (apt_host sets the
 # variables from the facts; helpws plan-v2, 2.3).
 
@@ -149,5 +150,21 @@ apt_install() {
             echo "not installed: $pkg"
         fi
     done
-    ((${#present[@]} == 0)) || run "${apt_get[@]}" purge -y "${present[@]}"
+    ((${#present[@]} == 0)) && return 0
+    apt_purge_check "${present[@]}"
+    run "${apt_get[@]}" purge -y "${present[@]}"
+}
+
+# purge: removes only what the list names. apt would take the packages that
+# depend on them too: the simulation (no root needed) shows it, and then
+# nothing is removed; the person decides (helpws plan-v2, stage 6).
+apt_purge_check() {
+    local sim extra
+    sim="$(apt-get -s -o Debug::NoLocking=1 purge "$@" 2>&1)" \
+        || die "apt-get -s purge $* failed:
+$sim"
+    extra="$(sed -nE 's/^(Purg|Remv) ([^ ]+).*/\2/p' <<<"$sim" | sed 's/:[a-z0-9]*$//' \
+        | grep -vxF -f <(printf '%s\n' "$@") || true)"
+    [[ -z "$extra" ]] || die "purge: of $* would also remove: $(echo $extra)
+nothing removed; remove them by hand or drop the purge: line"
 }

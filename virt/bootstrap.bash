@@ -127,7 +127,7 @@ else
 fi
 # UEFI variables in qcow2: libvirt takes internal snapshots of a UEFI VM
 # only with them and cannot convert the raw template of the ovmf package
-# itself. The descriptor in /etc/qemu/firmware (ws system apply) points
+# itself. The descriptor in /etc/qemu/firmware (ws apply system) points
 # new VMs here; rerun after an ovmf update changes the template.
 vars=/usr/share/OVMF/OVMF_VARS_4M.ms.fd
 vars_qcow2="$vms/firmware/OVMF_VARS_4M.ms.qcow2"

@@ -8,31 +8,32 @@ set -euo pipefail
 # update read its catalog (lib.catalog) through Nix. Which host has which
 # widget: nix/hosts/HOST/widgets.toml, yes = [...] in panel order, no =
 # [...]; a widget in neither is ask (lib/ws_catalog.py). enable/disable/apply
-# edit it and run ws switch; update moves flake.lock to the newest
-# wswidgets and switches. ws sync publishes both (helpws plan-v2, 2.7).
+# edit it and run ws apply widgets; update moves flake.lock to the newest
+# wswidgets and applies. ws sync publishes both (helpws plan-v2, 2.7).
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 ws_prog="ws widgets"
 catalog_py="$WS_CORE/lib/ws_catalog.py"
-# Tests replace the catalog (a JSON file), ws switch and the layer fact.
+# Tests replace the catalog (a JSON file), ws apply and the layer fact.
 catalog_file="${WSWIDGETS_CATALOG:-}"
-switch_cmd="${WSWIDGETS_SWITCH:-$WS_CORE/bin/ws switch}"
+apply_cmd="${WSWIDGETS_APPLY:-$WS_CORE/bin/ws apply widgets}"
 
 usage() {
     cat <<'USAGE'
 Usage:
   ws widgets list                 widgets of the pinned wswidgets and their state here
   ws widgets enabled              IDs enabled on this workstation, in panel order
-  ws widgets enable [-n] ID...    yes on this host, then ws switch
-  ws widgets disable [-n] ID...   no on this host, then ws switch
-  ws widgets apply [--select]     offer the widgets not offered here yet, then ws switch
-  ws widgets update [-n]          newest wswidgets from GitHub: flake.lock, ws switch
+  ws widgets enable [-n] ID...    yes on this host, then ws apply widgets
+  ws widgets disable [-n] ID...   no on this host, then ws apply widgets
+  ws widgets apply [--select]     offer the widgets not offered here yet (ws apply
+                                  widgets runs it; alone it names ws apply widgets)
+  ws widgets update [-n]          newest wswidgets from GitHub: flake.lock, ws apply widgets
   ws widgets version              the pinned wswidgets revision
   ws widgets status               ws-widgets status (the running runtime)
   ws widgets check [--json]       ws check widgets
 
--n (--no-switch): only edit the list or flake.lock; ws switch applies it later.
+-n (--no-apply): only edit the list or flake.lock; ws apply applies it later.
 USAGE
 }
 
@@ -88,17 +89,20 @@ state_of() {
     choice state "$1"
 }
 
-do_switch() {
+# ws apply widgets after a change (not inside ws apply, which applies it
+# itself); with -n only the hint.
+do_apply() {
+    [[ -z "${WS_APPLYING:-}" ]] || return 0
     if [[ "$1" == true ]]; then
-        echo "then: ws switch (applies it), ws sync (publishes $list_file)"
+        echo "then: ws apply widgets (applies it), ws sync (publishes $list_file)"
     else
-        # shellcheck disable=SC2086 # switch_cmd is a fixed command line
-        $switch_cmd
+        # shellcheck disable=SC2086 # apply_cmd is a fixed command line
+        $apply_cmd
     fi
 }
 
-no_switch_flag() {
-    case "${1:-}" in -n|--no-switch) return 0 ;; esac
+no_apply_flag() {
+    case "${1:-}" in -n|--no-apply) return 0 ;; esac
     return 1
 }
 
@@ -144,8 +148,8 @@ cmd_enabled() {
 }
 
 cmd_enable() {
-    local no_switch=false id ids
-    if no_switch_flag "${1:-}"; then no_switch=true; shift; fi
+    local no_apply=false id ids
+    if no_apply_flag "${1:-}"; then no_apply=true; shift; fi
     (($#)) || die "usage: ws widgets enable [-n] ID..."
     require_layer
     ids="$(catalog_ids)" || exit 1
@@ -157,12 +161,12 @@ cmd_enable() {
     for id in "$@"; do
         echo "enabled on $ws_host: $id"
     done
-    do_switch "$no_switch"
+    do_apply "$no_apply"
 }
 
 cmd_disable() {
-    local no_switch=false id
-    if no_switch_flag "${1:-}"; then no_switch=true; shift; fi
+    local no_apply=false id
+    if no_apply_flag "${1:-}"; then no_apply=true; shift; fi
     (($#)) || die "usage: ws widgets disable [-n] ID..."
     require_layer
     for id in "$@"; do
@@ -172,7 +176,7 @@ cmd_disable() {
     for id in "$@"; do
         echo "disabled on $ws_host: $id (no in $list_file)"
     done
-    do_switch "$no_switch"
+    do_apply "$no_apply"
 }
 
 # yes: enabled; ask: offered (the answer goes to widgets.toml); no: left
@@ -208,7 +212,7 @@ cmd_apply() {
     fi
     choice offer "${select[@]}" --what "виджеты wswidgets" -- "${items[@]}" >/dev/null || rc=$?
     case "$rc" in
-        0) do_switch false ;;
+        0) [[ -n "${WS_APPLYING:-}" ]] || echo "then: ws apply widgets (applies the choice)" ;;
         2) echo "ws widgets: выбор отменён, предложенные виджеты не тронуты (спросит в следующий раз)" >&2 ;;
         3)
             ((${#select[@]} == 0)) || die "ws widgets apply --select: needs a terminal"
@@ -219,8 +223,8 @@ cmd_apply() {
 }
 
 cmd_update() {
-    local no_switch=false old new nix backup gone=() missing id
-    if no_switch_flag "${1:-}"; then no_switch=true; shift; fi
+    local no_apply=false old new nix backup gone=() missing id rc
+    if no_apply_flag "${1:-}"; then no_apply=true; shift; fi
     (($# == 0)) || die "usage: ws widgets update [-n]"
     nix="$(nix_bin)"
     git -C "$repo" diff --quiet HEAD -- flake.lock \
@@ -259,16 +263,24 @@ cmd_update() {
     missing="$(comm -23 <(sort <<<"$old_ids") <(sort <<<"$new_ids") | paste -sd ' ')"
     [[ -z "$missing" ]] || echo "  removed widgets: $missing"
 
-    if [[ "$no_switch" == false ]]; then
-        # shellcheck disable=SC2086 # switch_cmd is a fixed command line
-        if ! $switch_cmd; then
+    if [[ "$no_apply" == false ]]; then
+        # flake.lock goes back only when nothing was applied (exit 2 of ws
+        # apply: the build failed); once applying began part of the system is
+        # of the new version (helpws architecture-v2, 12.3).
+        rc=0
+        # shellcheck disable=SC2086 # apply_cmd is a fixed command line
+        $apply_cmd || rc=$?
+        if ((rc == 2)); then
             restore
-            die "ws switch failed; flake.lock restored to ${old:0:7}"
+            die "ws apply built nothing; flake.lock restored to ${old:0:7}"
+        elif ((rc != 0)); then
+            rm -f "$backup"
+            die "ws apply failed after applying began; flake.lock stays at ${new:0:7}: fix it and ws apply, or git checkout flake.lock and ws apply"
         fi
     fi
     rm -f "$backup"
     echo "flake.lock: wswidgets ${new:0:7}, not published (ws sync)"
-    [[ "$no_switch" == false ]] || echo "then: ws switch"
+    [[ "$no_apply" == false ]] || echo "then: ws apply widgets"
 }
 
 cmd_version() {

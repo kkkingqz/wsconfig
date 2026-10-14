@@ -34,7 +34,7 @@ USAGE
 
 t2_commit() {
     local kver="$1"
-    [[ -r "$t2_sources" ]] || die "missing $t2_sources (ws switch)"
+    [[ -r "$t2_sources" ]] || die "missing $t2_sources (ws apply)"
     manifest_get "$t2_sources" "$kver"
 }
 
@@ -57,7 +57,7 @@ cmd_status() {
 cmd_build() {
     local kver="$1" commit ver major work
     commit="$(t2_commit "$kver")"
-    [[ -n "$commit" ]] || die "no pinned linux-t2-patches commit for $kver in system/kernel/t2bce/t2bce.nix (ws switch after adding it)"
+    [[ -n "$commit" ]] || die "no pinned linux-t2-patches commit for $kver in system/kernel/t2bce/t2bce.nix (ws apply after adding it)"
     [[ -r "/boot/config-$kver" ]] || die "missing /boot/config-$kver"
     [[ -r "/usr/src/linux-headers-$kver/Module.symvers" ]] || die "kernel headers missing: /usr/src/linux-headers-$kver"
     command -v podman >/dev/null 2>&1 || die "podman not found"

@@ -66,6 +66,23 @@ def config_root(core=CORE):
 CONFIG = config_root()
 
 
+def apply_module(*modules):
+    """A command of a module changed what this host should have: ws apply
+    MODULE... builds and applies it (helpws plan-v2, stage 6); nothing
+    inside ws apply (WS_APPLYING). WS_APPLY_CMD replaces the command
+    (tests). Exits with its status when it fails."""
+    import shlex
+    import subprocess
+    if os.environ.get("WS_APPLYING"):
+        return
+    print(f"\napplying: ws apply {' '.join(modules)}", flush=True)
+    cmd = shlex.split(os.environ["WS_APPLY_CMD"]) if os.environ.get("WS_APPLY_CMD") \
+        else [str(CORE / "bin/ws"), "apply"]
+    rc = subprocess.run([*cmd, *modules]).returncode
+    if rc:
+        raise SystemExit(rc)
+
+
 def die(prog, message):
     """PROG: MESSAGE on stderr, exit 1 (die of lib/common.bash): SystemExit
     with a text prints it and exits 1; callers may catch it."""

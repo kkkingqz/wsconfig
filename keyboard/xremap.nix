@@ -2,7 +2,7 @@
 #
 # - xremap.yml is built into the store with @core@ replaced by the core in
 #   the store (nix/pkgs/ws.nix): the tools it launches; an edit takes effect
-#   on `ws switch`, which restarts the service because its unit changes.
+#   on `ws apply`, which restarts the service because its unit changes.
 # - The unit is the former systemd/user/xremap.service. home-manager owns the
 #   unit and its graphical-session.target.wants link; ws-keyboard still decides
 #   whether xremap runs: `ws-keyboard restore` and a failed apply create

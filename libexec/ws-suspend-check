@@ -44,7 +44,7 @@ aspm="$(grep -Eo 'pcie_aspm[^ ]*' /proc/cmdline | tr '\n' ' ')"
 if grep -qw 'ws.dgpu=off' /proc/cmdline; then
     [[ "$aspm" == *pcie_aspm=force* && "$aspm" == *pcie_aspm.policy=powersave* ]] \
         && pass "kernel owns ASPM: ${aspm% }" \
-        || warn "default entry without pcie_aspm=force pcie_aspm.policy=powersave (${aspm:-none}); ~2 W more idle (refind_linux.conf, ws system apply)"
+        || warn "default entry without pcie_aspm=force pcie_aspm.policy=powersave (${aspm:-none}); ~2 W more idle (refind_linux.conf, ws apply system)"
     # The AMD's CPU port parked like macOS does (ws-dgpu-park; at boot from
     # ws-dgpu-off, after resume from its sleep hook): last word of this boot.
     park="$(journalctl -b -q -o cat _SYSTEMD_UNIT=ws-dgpu-off.service + SYSLOG_IDENTIFIER=ws-dgpu-park 2>/dev/null \
@@ -68,7 +68,7 @@ t2bce_param="$(cat /sys/module/t2bce_core/parameters/stateful_sleep 2>/dev/null 
 if systemctl is-active --quiet ws-tb-acpi-seed.service 2>/dev/null; then
     pass "Thunderbolt ACPI regions seeded before the first suspend (ws-tb-acpi-seed)"
 else
-    warn "ws-tb-acpi-seed.service not active: resume ~20 s slower (journalctl -b -u ws-tb-acpi-seed; ws system apply)"
+    warn "ws-tb-acpi-seed.service not active: resume ~20 s slower (journalctl -b -u ws-tb-acpi-seed; ws apply system)"
 fi
 
 section "2. Hibernation"

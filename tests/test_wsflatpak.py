@@ -151,6 +151,10 @@ class UserRuntimeTests(unittest.TestCase):
         self.g.update(MANIFEST=cfg / "flatpak.json", REPO=config,
                       this_host=lambda: "test", cmd_check=lambda: 0)
         self.addCleanup(patch.stopall)
+        # The commands apply their module themselves (ws apply flatpak).
+        self.applied = []
+        patch.object(self.g["ws_common"], "apply_module",
+                     side_effect=lambda *m: self.applied.append(m)).start()
         # No terminal: apply asks nothing (apps not offered stay so).
         patch.object(self.g["ws_select"], "open_tty", return_value=None).start()
         patch("shutil.which", return_value="/fake/flatpak").start()
@@ -270,6 +274,8 @@ class UserRuntimeTests(unittest.TestCase):
         self.execute(state)
         self.assertEqual(self.chosen(), ([APP], []))
         self.assertEqual(self.catalog.read_text().count("[[apps]]"), 1)
+        # Once, after the choice: ws apply flatpak builds and applies it.
+        self.assertEqual(self.applied, [("flatpak",)])
 
     def test_install_adds_a_new_app_to_the_catalog(self):
         state = FlatpakState(system_runtime=True)
@@ -288,6 +294,7 @@ class UserRuntimeTests(unittest.TestCase):
             self.g["cmd_remove"](SimpleNamespace(app=APP, keep_data=True))
         self.assertEqual(self.chosen(), ([], [APP]))
         self.assertIn(APP, self.catalog.read_text())
+        self.assertEqual(self.applied, [("flatpak",)])
 
     def test_unmanage_drops_the_app_everywhere(self):
         self.declare(APP, OTHER)

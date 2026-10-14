@@ -55,10 +55,10 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | ba
 ws btrfs make --yes      раскладка Btrfs, шаг 1 (helpws rebuild, раздел 3)
 reboot
 ws btrfs make --yes      шаг 2: проверка, старый корень удаляется
-bootstrap.sh             @nix, apt, @vms, @steam, @wsbackup, группы, fish, ws switch
+bootstrap.sh             @nix, apt, @vms, @steam, @wsbackup, группы, fish, ws apply home
 reboot
-ws system apply
-ws apply                 первый проход: новые расширения GNOME — после входа
+ws apply                 первый проход: apt, системные файлы, home-manager, модули;
+                         новые расширения GNOME — после входа
 reboot
 ws apply
 ws check                 FAIL не останавливает: список — в конце
@@ -66,7 +66,7 @@ Timeshift                /etc/timeshift/timeshift.json, если его нет: 
                          @home, monthly 1, weekly 3, boot 3 (как mbp16);
                          снимок «setup» («setup, ws check FAIL» при FAIL)
 backup                   ключ ~/.ssh/wsbackup_ed25519 (@wsbackup — bootstrap.sh)
-ws switch, ws checkpoint create setup, git push
+ws apply home, ws checkpoint create setup, git push
 ```
 
 После каждой перезагрузки после входа setup.sh продолжает сам: до конца в

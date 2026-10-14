@@ -1,103 +1,56 @@
-import os
-from pathlib import Path
-import shutil
-import subprocess
+"""ws update: nix through ws apply, flake.lock back only when nothing was
+applied (helpws plan-v2, stage 6); extensions."""
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
+from ws_fixture import Workspace
+
+MODULES = ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsbox", "wswidgets")
 
 
 class UpdateTests(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name)
-        self.repo = self.root / 'repo'
-        (self.repo / 'bin').mkdir(parents=True)
-        (self.repo / 'flatpak').mkdir()
-        shutil.copyfile(ROOT / 'bin/ws', self.repo / 'bin/ws')
-        (self.repo / 'lib').mkdir(exist_ok=True)
-        for name in ('common.bash', 'ws_common.py', 'ws_facts.py'):
-            shutil.copyfile(ROOT / 'lib' / name, self.repo / 'lib' / name)
-        (self.repo / 'flatpak/catalog.toml').write_text('[remotes]\n')
-        self.git('init', '-q')
-        self.git('config', 'user.name', 'Test')
-        self.git('config', 'user.email', 'test@example.org')
-        self.git('add', '.')
-        self.git('commit', '-qm', 'initial')
-        self.initial = self.git('rev-parse', 'HEAD')
-        (self.repo / 'flatpak/catalog.toml').write_text('[remotes]\nflathub = "u"\n')
-        self.bin = self.root / 'bin'
-        self.bin.mkdir()
-        nix = self.bin / 'nix'
-        nix.write_text('''#!/bin/sh
-printf '%s\n' "$*" >> "$CALLS"
-case "$1" in
-    flake) exit 0 ;;
-    build) echo /tmp/test-generation; exit "${BUILD_STATUS:-0}" ;;
-    run)
-        case "$2" in
-            *'#home-manager') exit "${SWITCH_STATUS:-0}" ;;
-            *'#nvd') exit 0 ;;
-            *) exit 99 ;;
-        esac ;;
-    *) exit 99 ;;
-esac
-''')
-        nix.chmod(0o755)
-        gdbus = self.bin / 'gdbus'
-        gdbus.write_text('#!/bin/sh\nexit "${DBUS_STATUS:-0}"\n')
-        gdbus.chmod(0o755)
-        extensions = self.root / '.local/share/wsconfig/gnome'
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.w = Workspace(tmp.name, modules={m: "exit 0\n" for m in MODULES})
+        self.initial = self.w.git("rev-parse", "HEAD")
+        (self.w.repo / "flatpak/catalog.toml").write_text('[remotes]\nflathub = "u"\n')
+        self.w.stub("gdbus", 'exit "${DBUS_STATUS:-0}"\n', where="bin")
+        extensions = self.w.root / ".local/share/wsconfig/gnome"
         extensions.mkdir(parents=True)
-        (extensions / 'extensions.json').write_text(
+        (extensions / "extensions.json").write_text(
             '{"order": ["example@local"], "by_source": {"local": ["example@local"]}, "pins": {}}')
-        self.calls = self.root / 'calls'
-        self.env = dict(os.environ, HOME=str(self.root), WSCONFIG=str(self.repo),
-                        XDG_STATE_HOME=str(self.root / 'state'), WS_HOST='test',
-                        PATH=str(self.bin) + ':' + os.environ['PATH'], CALLS=str(self.calls))
 
-    def git(self, *args):
-        return subprocess.check_output(['git', '-C', str(self.repo), *args], text=True).strip()
+    def update(self, step="nix", **env):
+        return self.w.ws("update", step, **env)
 
-    def update(self, step='nix', **statuses):
-        return subprocess.run(['bash', str(self.repo / 'bin/ws'), 'update', step],
-                              env=dict(self.env, **statuses), capture_output=True, text=True)
+    def test_failed_activation_keeps_the_new_lock(self):
+        rc, out, err = self.update(SWITCH_STATUS="42")
+        self.assertNotEqual(rc, 0, out)
+        self.assertIn("FAIL  nix (exit 1)", out)
+        self.assertIn("flake.lock stays new", err)
+        self.assertTrue(any("#home-manager" in c for c in self.w.take_calls()))
+        self.assertEqual(self.w.git("rev-parse", "HEAD"), self.initial)
 
-    def test_failed_activation_is_reported_without_committing_lists(self):
-        generation = self.root / 'old-generation'
-        generation.mkdir()
-        profile = self.root / 'state/nix/profiles/home-manager'
-        profile.parent.mkdir(parents=True)
-        profile.symlink_to(generation)
-        result = self.update(SWITCH_STATUS='42')
-        self.assertNotEqual(result.returncode, 0, result.stdout)
-        self.assertIn('FAIL  nix (exit 42)', result.stdout)
-        self.assertTrue(any('#home-manager' in call for call in self.calls.read_text().splitlines()),
-                        'activation was not reached after diffing the existing generation')
-        self.assertEqual(self.git('rev-parse', 'HEAD'), self.initial)
+    def test_failed_build_restores_the_lock(self):
+        rc, out, err = self.update(BUILD_STATUS="41")
+        self.assertNotEqual(rc, 0, out)
+        self.assertIn("flake.lock restored", err)
+        self.assertFalse(any(c.startswith("nix run") and "home-manager" in c for c in self.w.take_calls()))
 
-    def test_failed_build_stops_before_activation(self):
-        result = self.update(BUILD_STATUS='41')
-        self.assertNotEqual(result.returncode, 0, result.stdout)
-        self.assertIn('FAIL  nix (exit 41)', result.stdout)
-        self.assertFalse(any(call.startswith('run ') for call in self.calls.read_text().splitlines()))
-        self.assertEqual(self.git('rev-parse', 'HEAD'), self.initial)
-
-    def test_successful_activation_names_what_is_not_published(self):
-        result = self.update()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('OK    nix', result.stdout)
+    def test_success_names_what_is_not_published(self):
+        rc, out, err = self.update()
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("OK    nix", out)
         # Nothing is committed: ws sync publishes (helpws plan-v2, 2.7).
-        self.assertEqual(self.git('rev-parse', 'HEAD'), self.initial)
-        self.assertIn('not published: flatpak/catalog.toml (ws sync)', result.stdout)
+        self.assertEqual(self.w.git("rev-parse", "HEAD"), self.initial)
+        self.assertIn("not published: flatpak/catalog.toml (ws sync)", out)
 
     def test_failed_extension_update_is_reported(self):
-        result = self.update('extensions', DBUS_STATUS='42')
-        self.assertNotEqual(result.returncode, 0, result.stdout)
-        self.assertIn('FAIL  extensions (exit 42)', result.stdout)
+        rc, out, _ = self.update("extensions", DBUS_STATUS="42")
+        self.assertNotEqual(rc, 0, out)
+        self.assertIn("FAIL  extensions (exit 42)", out)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

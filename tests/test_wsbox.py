@@ -66,6 +66,12 @@ class WsboxTests(unittest.TestCase):
                         WSBOX_CONFIG=str(cfg), WSCONFIG=str(config),
                         WSBOX_TEST_STATE=str(self.state), XDG_RUNTIME_DIR=str(root / "run"),
                         WS_HOST="test")
+        # ws apply after a change of the choice: recorded, not run.
+        self.applied = root / "applied"
+        apply = stubs / "ws-apply"
+        apply.write_text(f'#!/bin/sh\necho "$*" >> {self.applied}\n')
+        apply.chmod(0o755)
+        self.env["WS_APPLY_CMD"] = str(apply)
 
     def marks(self, text):
         self.hosts.write_text(text)
@@ -192,6 +198,8 @@ class WsboxTests(unittest.TestCase):
         self.assertEqual(self.containers(), set())
         self.assertEqual(self.hosts.read_text(), 'yes = []\nno = ["a", "b"]\n')
         self.assertEqual(self.other.read_text(), 'yes = ["b"]\n')
+        # The launchers go with the next home-manager switch.
+        self.assertEqual(self.applied.read_text(), "home\nhome\n")
 
     def test_remove_checks_host_and_choice_before_removing(self):
         self.exists("a")

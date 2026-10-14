@@ -7,7 +7,7 @@
 # (flake.lock, `ws update nix`). nixpkgs builds xremap from source without
 # the gnome feature by default and lags behind (nixos-26.05: 0.15.7).
 # Update: version and hash here, the sha256 in ws-workstation-verify
-# (section 7), ws switch.
+# (section 7), ws apply.
 { stdenvNoCC, fetchurl, unzip }:
 
 stdenvNoCC.mkDerivation rec {

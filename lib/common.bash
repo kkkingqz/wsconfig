@@ -58,6 +58,27 @@ ws_run() {
     fi
 }
 
+# The flake sees only files known to git; a new .nix file that is not added
+# would silently be missing from the build.
+check_untracked() {
+    local untracked
+    untracked="$(git -C "$repo" ls-files --others --exclude-standard -- \
+        '*.nix' flake.lock)"
+    [[ -z "$untracked" ]] || die "untracked flake files (git add them first):
+$untracked"
+}
+
+# A command of a module changed what this host should have: ws apply
+# MODULE... builds and applies it (helpws plan-v2, stage 6). Nothing inside
+# ws apply (WS_APPLYING): it applies everything itself. WS_APPLY_CMD
+# replaces the command (tests).
+apply_module() {
+    [[ -z "${WS_APPLYING:-}" ]] || return 0
+    printf '\napplying: ws apply %s\n' "$*"
+    # shellcheck disable=SC2086 # WS_APPLY_CMD is a command line
+    ${WS_APPLY_CMD:-"$WS_CORE/bin/ws" apply} "$@"
+}
+
 nix_bin() {
     command -v nix 2>/dev/null \
         || die "nix not found (apt: nix-bin nix-setup-systemd; helpws history-nix, phase 0)"

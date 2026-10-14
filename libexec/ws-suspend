@@ -23,7 +23,7 @@ Usage: ws suspend <command> [KERNEL]
 
   status                 show sleep mode, t2bce state and runtime drift (read-only)
   check [--json]         deep sleep, t2bce stateful sleep, Touch Bar mode (ws check)
-  apply                  install the system files: ws system apply (sudo)
+  apply                  install the system files: ws apply system (sudo)
   t2bce-build [KERNEL]   build patched t2bce modules into ~/.local/share/wsconfig/t2bce
   t2bce-install [KERNEL] install built modules into /lib/modules/KERNEL/updates/t2bce (sudo)
   t2bce-rollback [KERNEL] remove them; the in-tree modules take over (sudo)
@@ -36,7 +36,7 @@ USAGE
 
 t2bce_commit() {
     local kver="$1"
-    [[ -r "$t2bce_sources" ]] || die "missing $t2bce_sources (ws switch)"
+    [[ -r "$t2bce_sources" ]] || die "missing $t2bce_sources (ws apply)"
     manifest_get "$t2bce_sources" "$kver"
 }
 
@@ -69,15 +69,15 @@ cmd_status() {
 }
 
 # Since phase 4 of helpws history-nix one owner installs all system
-# files, including the suspend layer: `ws system apply` (system).
+# files, including the suspend layer: `ws apply system` (system).
 cmd_apply() {
-    exec "$WS_CORE/bin/ws" system apply
+    exec "$WS_CORE/bin/ws" apply system
 }
 
 cmd_t2bce_build() {
     local kver="$1" commit headers work src out m
     commit="$(t2bce_commit "$kver")"
-    [[ -n "$commit" ]] || die "no pinned linux-t2-patches commit for $kver in system/kernel/t2bce/t2bce.nix (ws switch after adding it)"
+    [[ -n "$commit" ]] || die "no pinned linux-t2-patches commit for $kver in system/kernel/t2bce/t2bce.nix (ws apply after adding it)"
     headers="/usr/src/linux-headers-$kver"
     [[ -d "$headers" ]] || die "kernel headers missing: $headers"
     command -v podman >/dev/null 2>&1 || die "podman not found"
@@ -196,7 +196,7 @@ cmd_swap_setup() {
     offset="$(sudo btrfs inspect-internal map-swapfile -r /swap/swapfile)"
     echo
     echo "host.toml kernelParams: \"resume=UUID=$uuid\", \"resume_offset=$offset\""
-    echo "then: ws system apply; sudo update-initramfs -u; reboot (helpws suspend, Hibernate)"
+    echo "then: ws apply system; sudo update-initramfs -u; reboot (helpws suspend, Hibernate)"
 }
 
 cmd="${1:-status}"

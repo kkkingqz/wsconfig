@@ -21,7 +21,7 @@ Usage: ws gnome [status|check|test|extensions]
   extensions install the EGO extensions without pin and the local ones of
              gnome/gnome-extensions.nix (ws apply extensions)
 
-The profile is applied by `ws switch` (gnome/gnome.nix).
+The profile is applied by `ws apply` (gnome/gnome.nix).
 USAGE
         ;;
     *)

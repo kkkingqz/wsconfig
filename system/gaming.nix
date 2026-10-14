@@ -1,7 +1,7 @@
 # Hosts with gameMode = "yes" (helpws plan-legion-go, 3.4, 4.3): the system
 # files of the Game Mode session switch. They are inert until `wsgame
 # install` (stage 6) brings sddm, steamos-manager and gamescope-session:
-# setup.sh runs ws system apply at stage 4 already. Installing sddm makes it
+# setup.sh runs ws apply system at stage 4 already. Installing sddm makes it
 # the display manager (debconf), so no unit is switched here. The session
 # names of steamos-manager (platform.toml [session]: ubuntu.desktop,
 # gamescope-session-plus@steam) come with its package (gaming/).

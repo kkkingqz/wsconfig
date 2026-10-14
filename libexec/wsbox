@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Declared in distrobox/distrobox.nix; ws switch builds
+# Declared in distrobox/distrobox.nix; ws apply builds
 # ~/.local/share/wsconfig/distrobox. wsbox only reads it: boxes.json (the
 # containers, their hooks and exports) and containers.ini for distrobox
 # assemble, rendered first (@HOST_VERSION_ID@: the host release from
@@ -48,8 +48,8 @@ ensure_base() {
     need podman
     need distrobox
     need distrobox-assemble
-    [[ -r "$manifest_source" ]] || die "manifest not found: $manifest_source (run ws switch)"
-    [[ -r "$boxes_manifest" ]] || die "boxes manifest not found: $boxes_manifest (run ws switch)"
+    [[ -r "$manifest_source" ]] || die "manifest not found: $manifest_source (run ws apply distrobox)"
+    [[ -r "$boxes_manifest" ]] || die "boxes manifest not found: $boxes_manifest (run ws apply distrobox)"
     render_manifest
 }
 
@@ -602,16 +602,16 @@ cmd_check() {
     )
 
     # Every hook the manifest runs: sh and a copy in hooks_dir of the hook
-    # of the installed core (ws switch renews the copies).
+    # of the installed core (ws apply home renews the copies).
     core_installed="$(readlink -f "$HOME/.local/share/wsconfig/libexec/.." 2>/dev/null || true)"
     while IFS= read -r hook; do
         path="${hook#"$hooks_dir"/}"
         if [[ "$hook" != "$hooks_dir"/* ]]; then
             fail "hook not under $hooks_dir (run by sh): $hook"
         elif [[ ! -r "$hook" ]]; then
-            fail "hook missing: $hook (ws switch)"
+            fail "hook missing: $hook (ws apply home)"
         elif ! cmp -s -- "$hook" "$core_installed/distrobox/$path"; then
-            fail "hook differs from distrobox/$path of the installed core (ws switch)"
+            fail "hook differs from distrobox/$path of the installed core (ws apply home)"
         else
             pass "hook in place: distrobox/$path"
         fi
@@ -727,7 +727,8 @@ cmd_apply() {
                 while IFS= read -r box; do
                     [[ -z "$box" ]] || wanted[$box]=1
                 done <<<"$chosen"
-                printf 'Choice of %s written to %s; then: ws switch (links the launchers), ws sync\n' "$host" "$hosts_file"
+                [[ -n "${WS_APPLYING:-}" ]] \
+                    || printf 'Choice of %s written to %s; then: ws apply distrobox (links the launchers)\n' "$host" "$hosts_file"
                 ;;
             2)
                 # Cancel answers only the question: the offered containers
@@ -903,10 +904,12 @@ cmd_remove() {
 
     # The host choice: no. The definition in distrobox.nix stays.
     mark_box "$name" no
-    echo "no on $ws_host in $hosts_file: $name (then: ws switch, ws sync)"
+    echo "no on $ws_host in $hosts_file: $name"
 
     echo \
         "Managed definition and custom HOME were kept. Use 'ws box apply $name' to recreate it."
+    # The launchers of the container go with the next home-manager switch.
+    apply_module home
 }
 
 # --replace removes the old container with distrobox rm, which also deletes

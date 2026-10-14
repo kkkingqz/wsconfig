@@ -46,11 +46,11 @@ Source of truth (с 2026-09-27):
 gnome/gnome.nix
 ```
 
-Профиль — `dconf.settings` home-manager. Его записывает `ws switch`
+Профиль — `dconf.settings` home-manager. Его записывает `ws apply`
 (`dconf load`) при каждой активации:
 
 - ручное изменение этих ключей (в Settings, Tweaks, `gsettings set`)
-  откатывается следующим `ws switch`; менять значение — в `gnome.nix`;
+  откатывается следующим `ws apply`; менять значение — в `gnome.nix`;
 - ключ, убранный из `gnome.nix`, при следующем switch сбрасывается к
   значению по умолчанию;
 - значения пишутся явно, даже если совпадают с дефолтом Ubuntu, чтобы
@@ -60,11 +60,11 @@ gnome/gnome.nix
 
 ```console
 $EDITOR ~/wsconfig/gnome/gnome.nix
-ws switch
+ws apply
 ws gnome check
 ```
 
-Откат — `git revert`/правка и `ws switch` (или активация предыдущего
+Откат — `git revert`/правка и `ws apply` (или активация предыдущего
 поколения home-manager).
 
 Текущий профиль фиксирует только небольшой curated набор GNOME/GTK и Ubuntu
@@ -107,7 +107,7 @@ Wine settings
 
 Keyboard shortcuts не перенесены в `dconf.settings`: `ws keyboard restore`
 и откат неудачного apply возвращают сочетания GNOME, а home-manager
-записывал бы их обратно при каждом `ws switch`.
+записывал бы их обратно при каждом `ws apply`.
 
 # ws gnome
 
@@ -119,8 +119,8 @@ ws gnome check
 ws gnome test
 ```
 
-Применяет профиль `ws switch`; откат — правка в репозитории и снова
-`ws switch`.
+Применяет профиль `ws apply`; откат — правка в репозитории и снова
+`ws apply`.
 
 ## status
 
@@ -193,7 +193,7 @@ local   gnome/extensions/<uuid>, копирует ws gnome extensions
 Из списка собираются:
 
 - `enabled-extensions` (ego + local, `dconf.settings`) и пустой
-  `disabled-extensions` — пишет `ws switch`. Расширение, включённое или
+  `disabled-extensions` — пишет `ws apply`. Расширение, включённое или
   выключенное вручную (Extension Manager, `gnome-extensions`), следующий
   switch вернёт к списку; добавлять и убирать — в `gnome-extensions.nix`.
 - `~/.local/share/wsconfig/gnome/extensions.json` (`order` — все UUID по

@@ -7,7 +7,7 @@
 # input-source extension runs ws-caps-led).
 # home-manager owns the links; the files stay in the checkout and are edited
 # there (mkOutOfStoreSymlink: no copy in the store, no switch after edits).
-# New files in the listed directories are linked on the next `ws switch`.
+# New files in the listed directories are linked on the next `ws apply`.
 { config, lib, facts, core, ... }:
 let
   repo = "${config.home.homeDirectory}/${facts.wsconfig}";

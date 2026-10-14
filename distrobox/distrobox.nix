@@ -14,7 +14,7 @@
 # ws box apply; the default), no (not offered; --select asks) or yes (on
 # every host without its own choice).
 #
-# Change: edit this file, `ws switch`, then `ws box apply NAME` (new container)
+# Change: edit this file, `ws apply`, then `ws box apply NAME` (new container)
 # or `ws box recreate NAME` (changed image or packages, hooks; rootfs is
 # replaced, the custom HOME stays).
 #

@@ -1,0 +1,479 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# The system layer (phase 4 of helpws history-nix): the tree Nix builds for
+# this host (system/, nix build .#system-HOST) against the live system.
+#   ws system diff|check [--json]|manifest|tree   read-only
+#   ws-system pending   what apply would change, one line each, without
+#                       sudo; nothing printed: nothing differs (ws apply)
+#   ws-system apply     install what differs (sudo); run by ws apply system
+# With WS_APPLY_NOTES set, apply appends what is left to do to that file
+# (reboot: ..., one per line) for the summary of ws apply.
+
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws system"
+
+host() { python3 "$WS_CORE/lib/ws_facts.py" host || exit 1; }
+# What is left to do after apply: printed, and kept for ws apply.
+note() {
+    echo "$*"
+    [[ -z "${WS_APPLY_NOTES:-}" ]] || printf '%s\n' "$*" >> "$WS_APPLY_NOTES"
+}
+cmd_fact() { python3 "$WS_CORE/lib/ws_facts.py" fact "$@"; }
+
+system_tree() {
+    local nix
+    nix="$(nix_bin)"
+    check_untracked
+    "$nix" build --no-link --print-out-paths "$repo#system-$(host)"
+}
+
+# Result of one entry: ws system check reports it through lib/check.bash
+# (pass/fail, --json for ws check); diff prints only the problems.
+system_report() {
+    if [[ "$system_mode" == check ]]; then
+        "$1" "$2"
+    elif [[ "$1" != pass ]]; then
+        printf '%s\n' "$2"
+    fi
+}
+
+# Compare one built file with the live one: content, mode and root:root.
+# Reports it (diff also prints the content difference); returns 1 on a
+# difference.
+system_compare() {
+    local built="$1" live="$2" want="$3" have
+    if [[ ! -e "$live" ]]; then
+        system_report fail "missing: $live"
+        return 1
+    fi
+    if [[ ! -r "$live" ]]; then
+        system_report fail "not readable: $live"
+        return 1
+    fi
+    if ! cmp -s "$built" "$live"; then
+        system_report fail "differs: $live"
+        [[ "$system_mode" == diff ]] && { diff -u --label "$live" --label "built" "$live" "$built" || true; }
+        return 1
+    fi
+    have="$(stat -c '%a %U:%G' "$live")"
+    if [[ "$have" != "${want#0} root:root" ]]; then
+        system_report fail "differs: $live ($have, want ${want#0} root:root)"
+        return 1
+    fi
+    system_report pass "$live"
+}
+
+# What the system layer relies on without installing it, and what apply
+# removes: checked by ws system check after the manifest entries.
+system_check_extra() {
+    local mounts layout
+    # /etc/default/grub belongs to the grub package (ucf); workstation
+    # settings live only in grub.d drop-ins. A container has no GRUB.
+    if [[ "$(cmd_fact boot)" == container ]]; then
+        info "container: no GRUB (helpws plan-wsgnomebox)"
+    elif cmp -s /usr/share/grub/default/grub /etc/default/grub; then
+        pass "/etc/default/grub is the package template"
+    else
+        warn "/etc/default/grub differs from /usr/share/grub/default/grub; settings belong in grub.d (ws apply system resets it)"
+    fi
+    [[ -e /etc/default/grub.d/90-pcie-aspm.cfg ]] \
+        && warn "/etc/default/grub.d/90-pcie-aspm.cfg forces ASPM on GRUB/recovery kernels (helpws suspend)"
+    # Recovery must not stop in emergency mode when a non-system disk is absent.
+    mounts="$(awk '$0 !~ /^[[:space:]]*#/ && NF >= 4 && $2 ~ /^\/mnt\// && $4 !~ /(^|,)nofail(,|$)/ { print $2 }' /etc/fstab 2>/dev/null)"
+    if [[ -z "$mounts" ]]; then
+        pass "fstab: /mnt/* mounts are nofail"
+    else
+        warn "fstab: /mnt/* without nofail ($(echo $mounts)); boot/recovery would stop in emergency mode"
+    fi
+    # GDM/login: /etc/default/keyboard as apply edits it (keyboard_default).
+    layout="$(busctl get-property org.freedesktop.locale1 /org/freedesktop/locale1 \
+        org.freedesktop.locale1 X11Layout 2>/dev/null | sed -E 's/^s "(.*)"$/\1/')"
+    [[ "$layout" == us ]] \
+        && pass "GDM/login X11 layout: us" \
+        || fail "GDM/login X11 layout is '${layout:-unknown}', expected us (ws apply system)"
+    return 0
+}
+
+cmd_system() {
+    local tree kind a b esp state
+    system_mode="${1:-}"
+
+    case "$system_mode" in
+        diff) ;;
+        check)
+            # shellcheck source=../lib/check.bash
+            . "$WS_CORE/lib/check.bash"
+            case "${2:-}" in
+                --json) check_json_mode ;;
+                "") ;;
+                *) die "usage: ws system check [--json]" ;;
+            esac
+            ;;
+        tree) system_tree; return ;;
+        manifest) cat "$(system_tree)/manifest"; return ;;
+        *) die "usage: ws system diff|check [--json]|manifest|tree (apply: ws apply system)" ;;
+    esac
+    tree="$(system_tree)"
+    local problems=0 files=0
+
+    while IFS=$'\t' read -r kind a b; do
+        case "$kind" in
+            file)
+                files=$((files + 1))
+                system_compare "$tree/files$b" "$b" "$a" || problems=$((problems + 1))
+                ;;
+            esp)
+                files=$((files + 1))
+                esp="$(findmnt -rno TARGET "/dev/disk/by-partuuid/$a" 2>/dev/null | head -n1 || true)"
+                if [[ -z "$esp" ]]; then
+                    [[ "$system_mode" == check ]] && info "ESP:$b not compared (ESP not mounted)"
+                    continue
+                fi
+                system_compare "$tree/esp/$b" "$esp/$b" 0644 || problems=$((problems + 1))
+                ;;
+            unit)
+                [[ "$system_mode" == check ]] || continue
+                state="$(systemctl is-enabled "$b" 2>/dev/null || true)"
+                if [[ "$state" == "$a" ]]; then
+                    pass "unit $b ($state)"
+                else
+                    fail "unit $b is ${state:-unknown}, want $a"
+                fi
+                ;;
+        esac
+    done < "$tree/manifest"
+
+    if [[ "$system_mode" == check ]]; then
+        info "tree: $tree"
+        system_check_extra
+        check_finish
+    elif ((problems == 0)); then
+        echo "no differences ($files files)"
+    else
+        return 1
+    fi
+}
+
+# What apply would change, read-only and without sudo (ws apply asks for
+# sudo only when there is something): the files of the manifest (content,
+# mode, root:root), the units, /etc/default/keyboard and /etc/default/grub
+# as apply edits them, the first /boot/ws. Prints one line per difference,
+# nothing when nothing differs. A file it cannot read counts as a
+# difference.
+system_pending() {
+    local tree kind a b state tmp has_bootlinks=false
+    tree="$(system_tree)" || return
+    while IFS=$'\t' read -r kind a b; do
+        case "$kind" in
+            file)
+                [[ "$b" != /usr/local/sbin/ws-boot-links ]] || has_bootlinks=true
+                if [[ ! -r "$b" ]] || ! cmp -s "$tree/files$b" "$b" \
+                    || [[ "$(stat -c '%a %U:%G' "$b")" != "${a#0} root:root" ]]; then
+                    echo "file: $b"
+                fi
+                ;;
+            unit)
+                state="$(systemctl is-enabled "$b" 2>/dev/null || true)"
+                if [[ "$state" != "$a" ]]; then
+                    echo "unit: $b ${state:-unknown}, want $a"
+                fi
+                ;;
+        esac
+    done < "$tree/manifest"
+    tmp="$(mktemp)"
+    keyboard_default /etc/default/keyboard > "$tmp"
+    if ! cmp -s "$tmp" /etc/default/keyboard; then
+        echo "edit: /etc/default/keyboard"
+    fi
+    rm -f "$tmp"
+    if [[ -r /usr/share/grub/default/grub ]] && ! cmp -s /usr/share/grub/default/grub /etc/default/grub; then
+        echo "reset: /etc/default/grub"
+    fi
+    if [[ "$has_bootlinks" == true && ! -e /boot/ws/vmlinuz ]]; then
+        echo "create: /boot/ws"
+    fi
+    return 0
+}
+
+# GDM/login keyboard: /etc/default/keyboard belongs to keyboard-configuration
+# and is edited, not replaced: XKBLAYOUT=us, no variant, no grp:/grp_led:
+# options (layouts are switched by the workstation input-source extension).
+# Prints the edited file.
+keyboard_default() {
+    python3 - "$1" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+text = Path(sys.argv[1]).read_text()
+
+def get_value(name, default=""):
+    m = re.search(
+        rf'(?m)^\s*{re.escape(name)}\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\n#]*))',
+        text,
+    )
+    if not m:
+        return default
+    return next((g.strip() for g in m.groups() if g is not None), default)
+
+def set_value(name, value):
+    global text
+    line = f'{name}="{value}"'
+    pat = rf'(?m)^\s*{re.escape(name)}\s*=.*$'
+    if re.search(pat, text):
+        text = re.sub(pat, line, text, count=1)
+    else:
+        if text and not text.endswith("\n"):
+            text += "\n"
+        text += line + "\n"
+
+model = get_value("XKBMODEL", "pc105") or "pc105"
+kept = [
+    o for o in (x.strip() for x in get_value("XKBOPTIONS", "").split(","))
+    if o and not o.startswith(("grp:", "grp_led:"))
+]
+
+set_value("XKBMODEL", model)
+set_value("XKBLAYOUT", "us")
+set_value("XKBVARIANT", "")
+set_value("XKBOPTIONS", ",".join(kept))
+sys.stdout.write(text)
+PY
+}
+
+tiny_dfr_installed() {
+    dpkg-query -W -f='${Status}' tiny-dfr 2>/dev/null | grep -q 'install ok installed'
+}
+
+# The tree ws apply system installed: a link that is also a GC root, and one
+# history line per apply (date, commit, dirty files, tree, result).
+system_record() {
+    local tree="$1" rc="$2" dir="$WS_STATE/system"
+    mkdir -p "$dir"
+    "$(nix_bin)" build --out-link "$dir/applied" "$tree"
+    printf '%s\t%s\t%s\t%s\t%s\n' "$(date --iso-8601=seconds)" \
+        "$(git -C "$repo" rev-parse --short HEAD 2>/dev/null || echo '?')" \
+        "dirty=$(git -C "$repo" status --porcelain 2>/dev/null | wc -l)" \
+        "$tree" "$([[ "$rc" == 0 ]] && echo ok || echo problems)" >> "$dir/history"
+}
+
+# One owner of the system files (phase 4 of helpws history-nix), for the
+# whole tree.
+# Only files that differ are backed up and replaced; the ESP is not touched,
+# nothing reboots.
+cmd_system_apply() {
+    local tree kind a b backup tmp unit changed=0 modprobe=false grub=false logind=false sysctl=false
+    local refind=false d3cold=false touchbar=false gdm=false bootlinks=false has_bootlinks=false saved=false dev cfg out rc=0
+    local -a restart=()
+
+    command -v sudo >/dev/null 2>&1 || die "sudo not found"
+    command -v python3 >/dev/null 2>&1 || die "python3 not found"
+    tree="$(system_tree)"
+    backup="/var/backups/workstation/system-$(date +%Y%m%d-%H%M%S)"
+
+    # Back up a live file under $backup before it is replaced or removed.
+    save() {
+        [[ -e "$1" ]] || return 0
+        sudo install -d -m0700 "$backup" "$backup$(dirname "$1")"
+        sudo cp -a -- "$1" "$backup$1"
+        saved=true
+    }
+
+    sudo -v
+    echo "== Files ($tree)"
+    while IFS=$'\t' read -r kind a b; do
+        case "$kind" in
+            file)
+                case "$b" in
+                    /etc/udev/rules.d/90-touchbar-native.rules) touchbar=true ;;
+                    /usr/local/sbin/ws-boot-links) has_bootlinks=true ;;
+                esac
+                if [[ -e "$b" ]] && cmp -s "$tree/files$b" "$b" \
+                    && [[ "$(stat -c '%a %U:%G' "$b")" == "${a#0} root:root" ]]; then
+                    continue
+                fi
+                save "$b"
+                sudo install -D -m"$a" -o root -g root "$tree/files$b" "$b"
+                echo "installed: $b"
+                changed=$((changed + 1))
+                case "$b" in
+                    /etc/modprobe.d/*) modprobe=true ;;
+                    /etc/default/grub.d/*) grub=true ;;
+                    /etc/grub.d/*) grub=true ;;
+                    /etc/systemd/logind.conf.d/*) logind=true ;;
+                    /etc/sysctl.d/*) sysctl=true ;;
+                    /boot/refind_linux.conf) refind=true ;;
+                    /usr/local/sbin/ws-boot-links) bootlinks=true ;;
+                    */70-bcm4364-no-d3cold.rules) d3cold=true ;;
+                    /usr/share/gdm/dconf/*) gdm=true ;;
+                esac
+                ;;
+            restart) restart+=("$b") ;;
+        esac
+    done < "$tree/manifest"
+
+    echo
+    echo "== GDM/login keyboard"
+    tmp="$(mktemp)"
+    keyboard_default /etc/default/keyboard > "$tmp"
+    if cmp -s "$tmp" /etc/default/keyboard; then
+        echo "unchanged: /etc/default/keyboard"
+    else
+        save /etc/default/keyboard
+        sudo install -m0644 -o root -g root "$tmp" /etc/default/keyboard
+        echo "edited: /etc/default/keyboard"
+        changed=$((changed + 1))
+    fi
+    rm -f "$tmp"
+
+    # The installer of a new machine edits /etc/default/grub (Ubuntu 26.04:
+    # empty GRUB_CMDLINE_LINUX_DEFAULT); workstation settings are grub.d
+    # drop-ins over the package template.
+    echo
+    echo "== /etc/default/grub"
+    if [[ ! -r /usr/share/grub/default/grub ]] || cmp -s /usr/share/grub/default/grub /etc/default/grub; then
+        echo "unchanged: /etc/default/grub"
+    else
+        save /etc/default/grub
+        sudo install -m0644 -o root -g root /usr/share/grub/default/grub /etc/default/grub
+        echo "reset to the package template: /etc/default/grub"
+        changed=$((changed + 1))
+        grub=true
+    fi
+
+    echo
+    echo "== Units"
+    sudo systemctl daemon-reload
+    while IFS=$'\t' read -r kind a b; do
+        [[ "$kind" == unit ]] || continue
+        case "$a" in
+            enabled) sudo systemctl enable --quiet "$b"; echo "enabled: $b" ;;
+            # Units a container host has no use for (system/boot/container.nix).
+            masked) sudo systemctl mask --quiet "$b"; echo "masked: $b" ;;
+        esac
+    done < "$tree/manifest"
+    for unit in "${restart[@]}"; do
+        sudo systemctl restart "$unit"
+        echo "restarted: $unit"
+    done
+    if [[ "$sysctl" == true ]]; then
+        sudo sysctl --system >/dev/null
+        echo "applied: sysctl.d"
+    fi
+    # logind rereads logind.conf.d on reload; a restart would end sessions.
+    if [[ "$logind" == true ]]; then
+        sudo systemctl reload systemd-logind
+        echo "reloaded: systemd-logind"
+    fi
+
+    # A container has no udev of its own (system/boot/container.nix).
+    if [[ "$(cmd_fact boot)" != container ]]; then
+        echo
+        echo "== udev"
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --subsystem-match=input --action=change || true
+        sudo udevadm settle || true
+    fi
+
+    # The hooks keep /boot/ws current from now on; create it the first time.
+    if [[ "$has_bootlinks" == true ]] && [[ "$bootlinks" == true || ! -e /boot/ws/vmlinuz ]]; then
+        echo
+        echo "== /boot/ws (rEFInd \"Ubuntu (AMD)\")"
+        sudo /usr/local/sbin/ws-boot-links
+    fi
+
+    # hid-appletb-kbd options are read from the initramfs at boot.
+    if [[ "$modprobe" == true ]]; then
+        echo
+        echo "== initramfs (modprobe.d changed)"
+        sudo update-initramfs -u -k "$(uname -r)"
+        sudo lsinitrd 2>/dev/null | grep -E 't2bce|appletb|modprobe.d' || true
+    fi
+    # gdm compiles its dconf database at start; generate-config does the
+    # same now and tells the greeter's dconf-service, without ending sessions.
+    if [[ "$gdm" == true ]] && [[ -x /usr/share/gdm/generate-config ]]; then
+        echo
+        echo "== GDM greeter settings"
+        sudo /usr/share/gdm/generate-config
+        echo "compiled: /var/lib/gdm3/greeter-dconf-defaults"
+    fi
+    if [[ "$grub" == true ]]; then
+        echo
+        echo "== GRUB (grub.d changed)"
+        sudo update-grub
+    fi
+
+    echo
+    echo "== Check"
+    [[ "$saved" == true ]] && echo "backup: $backup"
+    out="$(cmd_system check)" || rc=1
+    grep -E '^ *(WARN|FAIL) ' <<<"$out" || echo "ws system check: no problems"
+    for unit in "${restart[@]}"; do
+        if systemctl is-active --quiet "$unit"; then
+            echo "OK      $unit active"
+        else
+            echo "FAIL    $unit not active"
+            rc=1
+        fi
+    done
+    python3 - /etc/default/keyboard <<'PY' || rc=1
+from pathlib import Path
+import re
+import sys
+
+text = Path(sys.argv[1]).read_text()
+
+def value(name):
+    m = re.search(
+        rf'(?m)^\s*{re.escape(name)}\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\n#]*))',
+        text,
+    )
+    if not m:
+        return None
+    return next((g.strip() for g in m.groups() if g is not None), "")
+
+options = value("XKBOPTIONS") or ""
+if (value("XKBLAYOUT") == "us" and value("XKBVARIANT") in ("", None)
+        and not any(x.startswith(("grp:", "grp_led:")) for x in options.split(","))):
+    print("OK      GDM/login keyboard: EN only")
+else:
+    print("FAIL    GDM/login keyboard is not EN only")
+    sys.exit(1)
+PY
+    printf 'MemorySleepMode: %s\n' \
+        "$(systemd-analyze cat-config systemd/sleep.conf 2>/dev/null \
+            | sed -n 's/^MemorySleepMode=//p' | tail -n1)"
+
+    if [[ "$touchbar" == true ]]; then
+        if tiny_dfr_installed; then
+            echo "WARN    tiny-dfr is installed; it switches the Touch Bar to display mode (helpws touchbar)"
+        fi
+        for dev in /sys/bus/usb/devices/*; do
+            [[ "$(cat "$dev/idVendor" 2>/dev/null):$(cat "$dev/idProduct" 2>/dev/null)" == "05ac:8302" ]] || continue
+            cfg="$(cat "$dev/bConfigurationValue" 2>/dev/null || true)"
+            if [[ "$cfg" == 1 ]]; then
+                echo "OK      Touch Bar: USB configuration 1 (native)"
+            else
+                note "reboot: the Touch Bar is in USB configuration '${cfg:-0}', the udev rule applies after it"
+            fi
+        done
+    fi
+
+    system_record "$tree" "$rc"
+
+    echo
+    echo "$changed file(s) changed."
+    [[ "$refind" == true ]] && note "reboot: refind_linux.conf changed, the kernel command line applies on the next boot"
+    [[ "$refind" == true ]] && note "by hand: refind.conf on the ESP is not installed by apply; copy system/files/esp/refind.conf (helpws workstation, GRAPHICS)"
+    [[ "$d3cold" == true ]] && note "reboot: the d3cold rule takes effect on the next boot"
+    [[ "$modprobe" == true ]] && note "reboot: the initramfs has new modprobe.d options"
+    return "$rc"
+}
+
+case "${1:-}" in
+    apply) shift; cmd_system_apply "$@" ;;
+    pending) shift; system_pending "$@" ;;
+    *) cmd_system "$@" ;;
+esac

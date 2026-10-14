@@ -46,7 +46,7 @@ ws suspend swap-setup [SIZE]
 ws suspend check
 ```
 
-`ws suspend apply` — обёртка над `ws system apply`: ставит все системные
+`ws suspend apply` — обёртка над `ws apply system`: ставит все системные
 файлы хоста из `system` (Nix), а не только слой suspend; проверка
 без изменений — `ws system diff`.
 
@@ -263,7 +263,7 @@ deqrocks/t2bce#9                          черновик исправлени�
 ```text
 system/kernel/t2bce/nostate-fix.patch   патч к drivers/staging/t2bce из linux-t2-patches 1001
 system/kernel/t2bce/t2bce.nix           версия ядра -> коммит linux-t2-patches
-                                        (ws switch собирает ~/.local/share/wsconfig/t2bce/sources.json)
+                                        (ws apply собирает ~/.local/share/wsconfig/t2bce/sources.json)
 ```
 
 Патч:
@@ -361,7 +361,7 @@ resume_offset=31286754                              btrfs inspect-internal map-s
 ```
 
 После пересоздания swapfile offset меняется: обновить `host.toml`,
-`ws system apply`, перезагрузка. После изменения модуля dracut или
+`ws apply system`, перезагрузка. После изменения модуля dracut или
 `ws-t2-detach` — `sudo update-initramfs -u` (`ws suspend check`
 предупреждает, если initrd старше).
 
@@ -426,7 +426,7 @@ Hibernate проверен только с пунктом rEFInd «Ubuntu» (`ws
    `linux-t2-patches`). Если да — локальный патч больше не нужен.
 2. Если нет — найти коммит `linux-t2-patches`, из которого собрано новое
    ядро, добавить его в `sources` в `system/kernel/t2bce/t2bce.nix` и
-   выполнить `ws switch`.
+   выполнить `ws apply`.
 3. Снять hold, обновить ядро, собрать и поставить модули, вернуть hold:
 
 ```console

@@ -3,7 +3,7 @@
 # apple-gmux. `ws-gmux build` fetches modules/t2gmux at this commit and builds
 # it for a kernel in podman.
 #
-# Newer commit: change it here, `ws switch`, `ws-gmux build`, `ws-gmux
+# Newer commit: change it here, `ws apply`, `ws-gmux build`, `ws-gmux
 # install`, test (helpws plan-dgpu).
 #
 # Built into ~/.local/share/wsconfig/t2gmux/source.json (repo, commit;

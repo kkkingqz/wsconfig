@@ -91,7 +91,7 @@ ws windows menu remove ID
 - Двойной клик по `.exe` в «Файлах» — `ws windows exec --box wine-wayland FILE`:
   стандартный prefix `wine-wayland` (создаётся при первом запуске), запуск
   из каталога файла. Обработчик `ws-win-exe.desktop` (`windows/apps.nix`),
-  `ws switch` делает его приложением по умолчанию для типов `.exe`
+  `ws apply` делает его приложением по умолчанию для типов `.exe`
   (`xdg-mime`, только эти ключи `~/.config/mimeapps.list`). Установщик,
   запущенный так, работает, но пунктов меню не предлагает (нет терминала для
   вопросов): для этого — `ws windows install` или потом `ws windows menu add`.
@@ -127,7 +127,7 @@ ws windows portable --prefix tools ~/Downloads/tool.zip
 системы с сохранённым HOME — `ws windows menu sync`.
 
 Программы, которые должны возвращаться вместе с репозиторием, — в
-`windows/apps.nix` (`exe` — путь внутри prefix), `ws switch`: launcher
+`windows/apps.nix` (`exe` — путь внутри prefix), `ws apply`: launcher
 `ws-win-NAME.desktop` (`ws windows run NAME`), как у WinBox. Launcher ставится
 только на машине, где box программы в `yes` её
 `nix/hosts/HOST/boxes.toml` (или без выбора с `default = "yes"`; `helpws
@@ -174,7 +174,7 @@ ws windows prefix --box BOX NAME remove
 
 1. `ws box remove BOX` — rootfs (пока контейнер ещё в `distrobox.nix`);
 2. убрать контейнер из `distrobox/distrobox.nix` и его программы из
-   `windows/apps.nix`, `ws switch`;
+   `windows/apps.nix`, `ws apply`;
 3. `rm -rf ~/distrobox/BOX` — HOME: prefixes, программы, сохранения;
 4. `ws windows menu sync` — убрать ссылки меню, ставшие битыми (`ws check`
    предупреждает о них).

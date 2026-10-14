@@ -147,7 +147,7 @@ Apple Wi‑Fi/Bluetooth firmware
 T2 repository (t2linux, codename `resolute`) — если installer его не
 подключил. Пакеты — `nix/hosts/mbp16/apt.txt` (ставит `bootstrap.sh`).
 
-Firmware: `get-apple-firmware.service` (`ws system apply`) берёт её из macOS
+Firmware: `get-apple-firmware.service` (`ws apply system`) берёт её из macOS
 при загрузке. Без macOS — из архива:
 
 ```console
@@ -172,9 +172,9 @@ rEFInd — основное меню. Всё, что ему нужно, соби
 (`host.toml`: `kernelParams`, `refindDefaultParams`, `rootUuid`):
 
 ```text
-/boot/refind_linux.conf      ставит ws system apply
+/boot/refind_linux.conf      ставит ws apply system
 EFI/BOOT/refind.conf (ESP)   копируется вручную (helpws workstation, GRAPHICS)
-grub.d drop-ins              ставит ws system apply (GRUB — recovery)
+grub.d drop-ins              ставит ws apply system (GRUB — recovery)
 ```
 
 Параметры ядра: `intel_iommu=on iommu=pt pm_async=off`. Пункт «Ubuntu»
@@ -230,10 +230,10 @@ systemctl --user is-active wireplumber
 ~/wsconfig/bootstrap.sh
 # reboot: группы nix-users, libvirt, input, PATH из 00-nix.fish, fish как login shell
 #   (logout/login не хватает, пока открыта другая сессия пользователя, например ssh)
-ws system apply     # системные файлы (sudo); затем reboot, если менялись modprobe/udev/cmdline
-ws apply            # расширения → tiling → клавиатура → Flatpak → Distrobox
-# logout/login: новые расширения GNOME активируются только в новой сессии
-ws apply            # шаг keyboard, не прошедший preflight в первый раз
+ws apply            # apt, системные файлы (sudo), home-manager, расширения → tiling →
+                    # клавиатура → Flatpak → Distrobox → виджеты; в конце — что осталось:
+                    # reboot (modprobe/udev/cmdline), logout/login (новые расширения GNOME)
+ws apply            # после входа: шаги, не прошедшие preflight в первый раз
 ws check            # проверки всех владельцев и verify (связи между слоями)
 ```
 
@@ -257,7 +257,7 @@ bind-монтированиями в пути libvirt, пул и сеть `defau
 `~/.local/share/Steam` (`steam/bootstrap.bash`; до первого запуска Steam);
 при `gameMode = true` — пакеты `gaming/apt.txt` → группы `nix-users`,
 `input` (xremap читает клавиатуры), при `vm = true` и `libvirt` → fish как
-login shell → первый `ws switch` (заменяемые файлы сохраняются как
+login shell → первый `ws apply` (заменяемые файлы сохраняются как
 `*.pre-hm`). Хост определяется по `hostname` в `nix/hosts/*/host.toml` (`ws
 host`, переопределяет `WS_HOST=<name>`); для новой машины — каталог
 `nix/hosts/<name>/` с `host.toml` (в том числе `vm`, `nativeSteam` и
@@ -298,7 +298,7 @@ Manager; ставятся после logout/login). Отдельный шаг �
 Закреплены намеренно: ядро (`linux-t2`, `system/kernel/t2bce/t2bce.nix`),
 xremap (`nix/pkgs/xremap.nix`), расширения с `pin`, образы по digest.
 Новости home-manager (изменения опций после обновления `flake.lock`) — `ws
-news`; `ws switch` о них не уведомляет (`news.display = "silent"`), а
+news`; `ws apply` о них не уведомляет (`news.display = "silent"`), а
 `home-manager news` без `--flake` конфигурацию не находит.
 
 Checkpoint — какой коммит соответствовал какому рабочему состоянию.
@@ -317,13 +317,13 @@ ws checkpoint remove before-update
 ```
 
 `create` без sudo и только для согласованного состояния: checkout без
-изменений, активное поколение собрано из этого коммита (иначе `ws switch`),
-`ws system check` без различий (иначе `ws system apply`). Записывает в
+изменений, активное поколение собрано из этого коммита (иначе `ws apply`),
+`ws system check` без различий (иначе `ws apply system`). Записывает в
 `~/.local/state/wsconfig/checkpoints/NAME/` коммит, поколение, системное
 дерево, ядро, установленные ядра и held-пакеты, держит поколение и дерево
 GC roots и снимает `ws baseline capture checkpoint-NAME --no-boxes`.
 Сам ничего не откатывает; `show` печатает шаги: `git switch --detach
-checkpoint/NAME`, `ws switch`, `ws system apply`, `ws apply`, загрузка
+checkpoint/NAME`, `ws apply`, загрузка
 записанного ядра. После этого logout/login для загрузки скопированных
 расширений GNOME, повторный `ws apply` для шагов, ожидавших новую сессию,
 и `ws check`. Применение владельцев обязательно: home-manager доставляет
@@ -331,14 +331,14 @@ checkpoint/NAME`, `ws switch`, `ws system apply`, `ws apply`, загрузка
 локальных расширений применяются отдельно. Checkpoint возвращает
 конфигурацию; данные приложений и версии установленных Flatpak/контейнеров
 восстанавливаются своими средствами.
-`ws system apply` дополнительно пишет в `~/.local/state/wsconfig/system/`
+`ws apply system` дополнительно пишет в `~/.local/state/wsconfig/system/`
 ссылку `applied` на поставленное дерево и строку в `history` (дата, коммит,
 дерево, результат).
 
 Flatpak: remotes, приложения и общие overrides — в каталоге
 `flatpak/catalog.toml`, выбор и свои overrides машины — в
 `nix/hosts/HOST/flatpak.toml` (оба правит `ws flatpak`, публикует
-`ws sync`); `ws switch` собирает из них
+`ws sync`); `ws apply` собирает из них
 `~/.local/share/wsconfig/flatpak/` и ставит `.desktop` Claude, шаг `flatpak`
 в `ws apply` (`ws flatpak apply`) добавляет remotes, ставит приложения и
 применяет overrides (`helpws flatpak`).
@@ -360,9 +360,9 @@ Source of truth:
 gnome/gnome.nix
 ```
 
-Профиль записывает `ws switch` (home-manager `dconf.settings`); отдельного
+Профиль записывает `ws apply` (home-manager `dconf.settings`); отдельного
 шага в `ws apply` нет. Drift в `ws gnome check` значит, что ключ изменили
-вручную: следующий `ws switch` запишет значение из `gnome.nix` снова.
+вручную: следующий `ws apply` запишет значение из `gnome.nix` снова.
 
 Профиль не управляет display scale, `monitors.xml`, Mutter
 experimental flags, keyboard/input sources, extension enablement, wallpaper,
@@ -386,7 +386,7 @@ Wine не устанавливать на host: Windows-программы жи�
 # 6.3. Distrobox / Podman managed layer
 
 Host-пакеты (`podman`, `distrobox`, `uidmap`, …) ставит `bootstrap.sh`,
-модуль `ntsync` — `ws system apply`, контейнеры — шаг `distrobox` в `ws
+модуль `ntsync` — `ws apply system`, контейнеры — шаг `distrobox` в `ws
 apply` (`ws box apply`). HOME контейнеров (`~/distrobox/<имя>/`) приходит с
 восстановленным HOME пользователя; без него контейнеры создаются пустыми.
 
@@ -424,7 +424,7 @@ ws box check
 # 6.4. Keyboard / shortcuts
 
 Системная часть (uinput, GDM/login только US, Touch Bar: udev, modprobe,
-`ws-touchbar-fn`) — `ws system apply` (раздел 6.0; при изменении modprobe
+`ws-touchbar-fn`) — `ws apply system` (раздел 6.0; при изменении modprobe
 пересобирает initramfs). Пользовательская — шаги `extensions`, `tiling`,
 `keyboard` в `ws apply`; после первой установки расширений нужен
 logout/login и ещё один `ws apply`.
@@ -453,7 +453,7 @@ Intel UHD 630  → primary desktop GPU
 AMD dGPU       → выключена в rEFInd «Ubuntu» (ws.dgpu=off), render/offload в «Ubuntu (AMD)»
 ```
 
-Выключение AMD ставит `ws system apply` (`ws-dgpu-off`, `helpws workstation`,
+Выключение AMD ставит `ws apply system` (`ws-dgpu-off`, `helpws workstation`,
 GRAPHICS). Других AMD power tweaks не воспроизводить.
 
 После восстановления проверить реальное распределение GPU, а не только наличие двух adapters.
@@ -466,7 +466,7 @@ GRAPHICS). Других AMD power tweaks не воспроизводить.
 deep / S3
 ```
 
-Файлы слоя сна уже поставил `ws system apply` (раздел 6.0). Патченые модули
+Файлы слоя сна уже поставил `ws apply system` (раздел 6.0). Патченые модули
 t2bce собираются под установленное ядро:
 
 ```console
@@ -514,7 +514,7 @@ Touch Bar USB runtime PM специально не оптимизировать.
 Родной режим Touch Bar: кнопки рисует T2, режимом управляет
 `hid-appletb-kbd`, Fn за xremap пробрасывает `ws-touchbar-fn`. Отдельный
 пакет не нужен; `tiny-dfr` **не устанавливать** (причины: `helpws touchbar`).
-Всё ставит `ws system apply` (раздел 6.0), режим меняется после reboot.
+Всё ставит `ws apply system` (раздел 6.0), режим меняется после reboot.
 
 Целевое поведение:
 
@@ -550,7 +550,7 @@ workstation-hibernate@local (пункт Hibernate; хосты с resume= в kern
 ```
 
 Список всех расширений и источник каждого — `gnome/gnome-extensions.nix`;
-`enabled-extensions` из него пишет `ws switch`.
+`enabled-extensions` из него пишет `ws apply`.
 
 `workstation-*` sources находятся в `wsconfig` и устанавливаются
 командой:
@@ -567,8 +567,8 @@ ws gnome extensions
 `window-monitor-pro@muhammed.hussien2030.gmail.com`) ставит тот же шаг
 `extensions`, если их нет: последнюю версию для текущего GNOME Shell
 (`gnome-extensions install`). Дальше их обновляет Extension Manager (или
-`ws update extensions`). Включает их `ws switch` (`enabled-extensions`); на
-новой машине — logout/login после первого `ws switch` и `ws apply`.
+`ws update extensions`). Включает их `ws apply` (`enabled-extensions`); на
+новой машине — logout/login после первого `ws apply`, затем ещё раз `ws apply`.
 
 Закрепить версию: `pin = { version = N; hash = "sha256-…"; }` у расширения
 в `gnome/gnome-extensions.nix` (N — номер из ссылки на zip EGO), `ws
@@ -662,7 +662,7 @@ plan-final`; игры Steam — заново из Steam).
 sudo timeshift --create --comments "after-reinstall"
 ```
 
-Что добавляет репозиторий (`system/common.nix`, `ws system apply`):
+Что добавляет репозиторий (`system/common.nix`, `ws apply system`):
 
 ```text
 /etc/grub.d/42_ws_timeshift          подменю GRUB «Timeshift snapshots»

@@ -70,7 +70,7 @@
     "ws-tb-acpi-seed.service" = "enabled";
   };
 
-  # Restarted by every `ws system apply`.
+  # Restarted by every `ws apply system`.
   restart = [
     "ws-touchbar-fn.service"
     # Also start save/restore in the current boot; apply only triggers input udev events.

@@ -103,7 +103,7 @@ baseline от него не зависит.
 # GNOME MANAGED APPEARANCE
 
 Штатный GNOME appearance/Dock baseline хранится декларативно в
-`dconf.settings` home-manager и записывается `ws switch`:
+`dconf.settings` home-manager и записывается `ws apply`:
 
 ```text
 gnome/gnome.nix
@@ -324,7 +324,7 @@ Intel используется для desktop: `apple-gmux force_igd=y` пере
 родитель на шине PNP: `path_id` не определяет его путь, и стандартное
 правило `99-systemd.rules` пропускает запуск службы. Правило
 `system/files/udev/99-z-gmux-backlight.rules` запускает её без `path_id`;
-оно устанавливается профилем `t2-mbp16` через `ws system apply`.
+оно устанавливается профилем `t2-mbp16` через `ws apply system`.
 При apply служба также перезапускается для текущего сеанса. Уровень
 сохраняется при выключении в
 `/var/lib/systemd/backlight/backlight:gmux_backlight` и восстанавливается
@@ -337,7 +337,7 @@ Intel используется для desktop: `apple-gmux force_igd=y` пере
 ставит свою яркость при загрузке и при каждом logout, а mutter нового сеанса
 берёт тот уровень, который застал. Поэтому `system/common.nix` кладёт
 `/usr/share/gdm/dconf/95-ws-greeter` (`ambient-enabled=false` для экрана
-входа), и `ws system apply` пересобирает базу GDM
+входа), и `ws apply system` пересобирает базу GDM
 (`/usr/share/gdm/generate-config`, сеансы не завершаются). В сеансе
 автояркость — обычная настройка GNOME (Настройки → Дисплеи).
 
@@ -381,7 +381,7 @@ Recovery        GRUB, AMD включена
   `/boot/ws/vmlinuz` и `/boot/ws/initrd.img`, жёсткие ссылки на новейшее ядро и
   его initrd (rEFInd не следует по symlink). Их обновляет `ws-boot-links` из
   `/etc/kernel/postinst.d`, `/etc/kernel/postrm.d` и
-  `/etc/initramfs/post-update.d`; первый раз — `ws system apply`.
+  `/etc/initramfs/post-update.d`; первый раз — `ws apply system`.
 - Параметры ядра всех пунктов — из `nix/hosts/mbp16/host.toml`
   (`kernelParams`, `rootUuid`): `refind_linux.conf`, GRUB (`grub.d`) и
   `@AMD_OPTIONS@` в `refind.conf` собираются из них; «Ubuntu» добавляет
@@ -389,7 +389,7 @@ Recovery        GRUB, AMD включена
 - «Ubuntu» с `ws.dgpu=off` проверен, включая S3 (`helpws suspend`);
   «Ubuntu (AMD)» загружается, Proton и Steam в нём работают на AMD; S3 в
   нём не проверялся.
-- `refind.conf` лежит на отдельном ESP (`nvme0n1p3`), `ws system apply` его не
+- `refind.conf` лежит на отдельном ESP (`nvme0n1p3`), `ws apply system` его не
   ставит; копируется собранный (`ws system check` сравнивает его, когда ESP
   смонтирован):
 
@@ -510,7 +510,7 @@ Source of truth:
 
 ```text
 distrobox/distrobox.nix                контейнеры и экспорты
-system/files/modules-load.d/ntsync.conf         ставит ws system apply
+system/files/modules-load.d/ntsync.conf         ставит ws apply system
 distrobox/arch/wsbox-host-ntsync/  PKGBUILD NTSYNC-MODULE для Arch-контейнеров
 distrobox/arch/*-hook, wine/       хуки установки Windows-контейнеров
 windows/apps.nix                   Windows-программы с launcher (helpws windows)
@@ -519,9 +519,9 @@ bin/wsbox, bin/wswin, bin/ws-gpu
 
 Контейнеры объявлены в `distrobox/distrobox.nix` (общие
 значения по умолчанию, у контейнера — только образ, HOME, пакеты,
-экспорты). `ws switch` собирает из них `containers.ini` (формат
+экспорты). `ws apply` собирает из них `containers.ini` (формат
 `distrobox assemble`) и `boxes.json` (контейнеры, hooks, экспорты) в
-`~/.local/share/wsconfig/distrobox/`, `ws box` и `ws windows` читают оттуда. Изменение: правка `distrobox.nix`, `ws switch`,
+`~/.local/share/wsconfig/distrobox/`, `ws box` и `ws windows` читают оттуда. Изменение: правка `distrobox.nix`, `ws apply`,
 затем `ws box apply NAME` или `ws box recreate NAME`.
 
 Managed containers:
@@ -764,11 +764,11 @@ Micro help-viewer использует true-color scheme и Markdown syntax high
 
 Man pages собирает Nix (`nix/pkgs/man.nix`): `bin/ws-doc-build` —
 `lowdown -s -t man` (lowdown из nixpkgs), по странице на `title:` каждого
-`docs/**/*.md`. `ws switch` ставит их ссылками в `~/.local/share/man/man1`; в git `man/` нет,
+`docs/**/*.md`. `ws apply` ставит их ссылками в `~/.local/share/man/man1`; в git `man/` нет,
 `ws check home` предупреждает, если страницы старше `docs/`. После правки документа:
 
 ```console
-ws switch
+ws apply
 ```
 
 Просмотр:
@@ -830,7 +830,7 @@ Shebang:
 ```text
 wsconfig/
 ├── setup.sh              новый ПК с GRUB: GitHub, хост, выбор, ws btrfs make, bootstrap.sh, слои, Timeshift
-├── bootstrap.sh          новая машина (после ws btrfs make): @nix → apt → @vms/libvirt → @steam → @wsbackup → группы → fish → ws switch
+├── bootstrap.sh          новая машина (после ws btrfs make): @nix → apt → @vms/libvirt → @steam → @wsbackup → группы → fish → ws apply
 ├── flake.nix, flake.lock nixpkgs 26.05 + home-manager, обновляет ws update nix
 ├── nix/
 │   ├── hosts/            apt.txt всех хостов; <host>/host.toml, apt.txt
@@ -901,7 +901,7 @@ checkout (fish, Ghostty), man pages
 `xremap.yml` из store, `enabled-extensions` и закреплённые расширения
 GNOME (`nix/pkgs/gnome-extensions.nix`), конфиг `ws flatpak` из
 `flatpak/flatpak.nix`, профиль внешнего вида GNOME
-(`gnome/gnome.nix`, `dconf.settings`); `ws system apply` ставит копии
+(`gnome/gnome.nix`, `dconf.settings`); `ws apply system` ставит копии
 системных файлов из сборки `system`; GNOME, Flatpak, Distrobox,
 клавиатура — владельцы из `libexec/`, их по порядку вызывает `ws apply`.
 Основная проверка — `ws check`.
@@ -935,7 +935,7 @@ git diff --cached
 `git pull --rebase` и `git push`, если у ветки есть upstream (без remote
 коммит остаётся локальным). `ws sync` отказывается при операции Git,
 отсоединённом HEAD, изменениях кода и неопубликованных коммитах кода — их
-коммитит и пушит разработчик (`helpws plan-v2`, 2.7). `ws switch`, `ws apply`
+коммитит и пушит разработчик (`helpws plan-v2`, 2.7). `ws apply`
 и `ws update nix` в конце называют неопубликованное.
 
 ---

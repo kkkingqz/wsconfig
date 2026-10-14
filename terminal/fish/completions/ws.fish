@@ -41,14 +41,13 @@ end
 
 complete -c ws -n __ws_needs_command -a '(ws modules 2>/dev/null | string replace -r " (.*)" "\tLayer module (\$1)")'
 complete -c ws -n '__ws_module_owner >/dev/null' -a '(__ws_module_args)'
-complete -c ws -n __ws_needs_command -a switch -d 'home-manager switch for this host'
 complete -c ws -n __ws_needs_command -a diff -d 'Package difference of the next generation'
-complete -c ws -n __ws_needs_command -a apply -d 'Run the layer owners in order'
+complete -c ws -n __ws_needs_command -a apply -d 'Apply the configuration: apt, system, home, modules'
 complete -c ws -n __ws_needs_command -a sync -d 'Publish the data files (commit, pull --rebase, push)'
 complete -c ws -n '__ws_after sync' -l dry-run -d 'Only show what it would do'
 complete -c ws -n __ws_needs_command -a update -d 'Update everything not pinned'
 complete -c ws -n __ws_needs_command -a check -d 'All owner checks and cross-layer verify'
-complete -c ws -n __ws_needs_command -a system -d 'System file tree: diff, check, apply'
+complete -c ws -n __ws_needs_command -a system -d 'System file tree: diff, check, manifest, tree'
 complete -c ws -n __ws_needs_command -a baseline -d 'Functional baseline: capture, diff, list'
 complete -c ws -n __ws_needs_command -a checkpoint -d 'Commit <-> working state'
 complete -c ws -n __ws_needs_command -a collect -d 'Machine state archive for a rebuild'
@@ -74,7 +73,7 @@ complete -c ws -n '__ws_at check' -a 'apt repo home virt steam gaming backup' -d
 complete -c ws -n '__ws_at check' -s v -l verbose -d 'All messages'
 complete -c ws -n '__ws_at check apt; or __ws_at check repo; or __ws_at check home; or __ws_at check virt; or __ws_at check steam; or __ws_at check gaming; or __ws_at check backup' -l json -d 'Result object'
 
-complete -c ws -n '__ws_at system' -a 'diff check apply manifest tree'
+complete -c ws -n '__ws_at system' -a 'diff check manifest tree'
 complete -c ws -n '__ws_at system check' -l json -d 'Result object'
 
 complete -c ws -n '__ws_at baseline' -a 'capture diff list'

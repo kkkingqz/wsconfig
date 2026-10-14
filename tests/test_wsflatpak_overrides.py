@@ -16,7 +16,7 @@ APP = 'org.example.App'
 
 class OverrideTests(unittest.TestCase):
     def declare(self, overrides, app=APP):
-        """The flatpak.json of ws switch with these overrides."""
+        """The flatpak.json of ws apply with these overrides."""
         self.manifest.write_text(json.dumps({
             'remotes': {'flathub': 'https://example.org/repo'},
             'apps': [{'remote': 'flathub', 'app': app}], 'overrides': overrides}))
@@ -47,6 +47,9 @@ class OverrideTests(unittest.TestCase):
                       REPO=self.config, this_host=lambda: 'test')
         self.runtime = ''
         self.addCleanup(patch.stopall)
+        self.applied = []
+        patch.object(self.g['ws_common'], 'apply_module',
+                     side_effect=lambda *m: self.applied.append(m)).start()
         patch('shutil.which', return_value='/fake/flatpak').start()
         patch('subprocess.run', side_effect=self.flatpak).start()
 
@@ -89,7 +92,7 @@ class OverrideTests(unittest.TestCase):
                                 for level in ('fail', 'warn', 'info')}
         status, result = self.check()
         self.assertEqual(status, 1)
-        self.assertIn(f'managed desktop override not applied: {APP}.desktop (yes on test; run ws switch)',
+        self.assertIn(f'managed desktop override not applied: {APP}.desktop (yes on test; run ws apply flatpak)',
                       texts(result)['fail'])
         self.assertIn('managed desktop override not linked: org.example.Other is not on test',
                       texts(result)['info'])
@@ -98,7 +101,7 @@ class OverrideTests(unittest.TestCase):
         status, result = self.check()
         self.assertEqual(result['failures'], 0)
         self.assertIn('managed desktop override linked but org.example.Other is not yes '
-                      'on test: org.example.Other.desktop (run ws switch)', texts(result)['warn'])
+                      'on test: org.example.Other.desktop (run ws apply flatpak)', texts(result)['warn'])
 
     def test_app_without_declaration_rejects_filesystem_override(self):
         self.runtime = '[Context]\nfilesystems=home;\n'
@@ -169,6 +172,7 @@ class OverrideTests(unittest.TestCase):
         app, host = self.edit('', '', (APP, 'env', 'SCALE=2'))
         self.assertEqual(app['env'], {'SCALE': '2'})
         self.assertNotIn('overrides', host)
+        self.assertEqual(self.applied, [('flatpak',)])
 
     def test_host_value_replaces_the_catalog_value_here(self):
         app, host = self.edit('env = { SCALE = "2" }\n', '', (APP, 'env', 'SCALE=1'), own=True)

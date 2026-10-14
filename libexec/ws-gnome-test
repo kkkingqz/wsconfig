@@ -161,13 +161,13 @@ expect_gsetting "$dock_schema" show-trash "false" "Dock trash hidden"
 
 section "4. GNOME extension policy"
 
-# Every extension of gnome/gnome-extensions.nix (built by ws switch).
+# Every extension of gnome/gnome-extensions.nix (built by ws apply).
 ext_list_file="$HOME/.local/share/wsconfig/gnome/extensions.json"
 required_extensions=()
 if [[ -r "$ext_list_file" ]]; then
     mapfile -t required_extensions < <(manifest_get "$ext_list_file" order)
 fi
-((${#required_extensions[@]})) || fail "extension list missing: $ext_list_file (ws switch)"
+((${#required_extensions[@]})) || fail "extension list missing: $ext_list_file (ws apply)"
 
 if have gnome-extensions; then
     enabled="$(gnome-extensions list --enabled 2>/dev/null || true)"

@@ -58,7 +58,7 @@ hm_profile() {
         "/nix/var/nix/profiles/per-user/$(id -un)/home-manager"; do
         [[ -e "$p" ]] && { echo "$p"; return; }
     done
-    die "no home-manager generation (ws switch)"
+    die "no home-manager generation (ws apply)"
 }
 
 home_built() {
@@ -89,14 +89,14 @@ cmd_create() {
     gen="$(readlink -f "$profile")"
     home="$(home_built "$nix")"
     [[ "$home" == "$gen" ]] \
-        || die "the active generation ($gen_link) is not built from this commit; ws switch first"
+        || die "the active generation ($gen_link) is not built from this commit; ws apply first"
     echo "$gen_link = this commit"
 
     echo "== system"
     tree="$("$WS_CORE/bin/ws" system tree)"
     out="$("$WS_CORE/bin/ws" system check)" || {
         grep -E '^ *(WARN|FAIL) ' <<<"$out" >&2
-        die "the live system differs from the system tree of this commit; ws system apply first"
+        die "the live system differs from the system tree of this commit; ws apply system first"
     }
     echo "live system = ${tree#/nix/store/}"
 
@@ -151,15 +151,13 @@ cmd_show() {
 
 Return to it (by hand; the commands are not run):
   git -C $repo switch --detach checkpoint/$name
-  ws switch                 # home-manager generation of that commit (built from flake.lock)
-  ws system apply           # its system files (sudo)
-  ws apply                  # extensions, tiling, keyboard, Flatpak and Distrobox
+  ws apply                  # that commit: system files (sudo), home-manager, the modules
 EOF
     [[ "$kernel" == "$(uname -r)" ]] \
         || echo "  boot kernel $kernel (rEFInd); installed now: $(cd /boot && ls vmlinuz-* 2>/dev/null | sed 's/^vmlinuz-//' | paste -sd' ')"
     cat <<EOF
 Back to the latest state:
-  git -C $repo switch main && ws switch && ws system apply && ws apply
+  git -C $repo switch main && ws apply
 
 After either sequence:
   log out and log in        # load the copied GNOME extensions on Wayland

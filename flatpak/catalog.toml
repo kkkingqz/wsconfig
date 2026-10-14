@@ -4,7 +4,7 @@
 # default: ask (offered by ws flatpak apply; the default), no or yes.
 # filesystems, env and talk of an app apply on every host that has it.
 # ws flatpak install|manage|unmanage and filesystem|env|talk edit this file
-# (lib/flatpak_catalog.py), ws switch builds it, ws sync publishes it.
+# (lib/flatpak_catalog.py), ws apply builds it, ws sync publishes it.
 
 [remotes]
 flathub = "https://dl.flathub.org/repo/flathub.flatpakrepo"

@@ -41,7 +41,7 @@ if [[ "$("$WS_CORE/bin/ws" fact boot 2>/dev/null)" == container ]]; then
     # (keyboard/keyboard.nix, helpws plan-wsgnomebox).
     info "container: no xremap, keys over RDP (GNOME shortcuts below)"
     systemctl --user cat xremap.service >/dev/null 2>&1 \
-        && fail "xremap.service installed in a container (ws switch)" \
+        && fail "xremap.service installed in a container (ws apply)" \
         || pass "no xremap.service"
 else
 
@@ -51,11 +51,11 @@ else
     xremap_cfg="$(tr ' ' '\n' <<<"$xremap_env" | sed -n 's/^XREMAP_CONFIG=//p')"
     xremap_env_bin="$(tr ' ' '\n' <<<"$xremap_env" | sed -n 's/^XREMAP_BIN=//p')"
     if [[ "$xremap_cfg" != /nix/store/* || ! -r "$xremap_cfg" ]]; then
-        fail "xremap.service has no store XREMAP_CONFIG (${xremap_cfg:-unset}); run ws switch"
+        fail "xremap.service has no store XREMAP_CONFIG (${xremap_cfg:-unset}); run ws apply"
     elif core_installed="$(readlink -f "$HOME/.local/bin/ws" 2>/dev/null)" \
         && [[ "$(sed "s|@core@|${core_installed%/bin/ws}|g" "$WS_CORE/keyboard/xremap.yml" | sha256sum)" \
             != "$(sha256sum < "$xremap_cfg")" ]]; then
-        warn "xremap store config differs from keyboard/xremap.yml; run ws switch"
+        warn "xremap store config differs from keyboard/xremap.yml; run ws apply"
     else
         pass "xremap store config matches keyboard/xremap.yml (${xremap_cfg#/nix/store/})"
     fi
@@ -87,7 +87,7 @@ else
     # `ws-keyboard restore` switches xremap off with a ConditionPathExists flag.
     [[ -L "$HOME/.config/systemd/user/graphical-session.target.wants/xremap.service" ]] \
         && pass "xremap.service wanted by graphical-session.target" \
-        || fail "xremap.service wants link missing; run ws switch"
+        || fail "xremap.service wants link missing; run ws apply"
     [[ -e "$WS_STATE/keyboard/xremap.disabled" ]] \
         && warn "xremap switched off by ws keyboard restore (ws keyboard apply turns it on)" \
         || pass "xremap not switched off by ws keyboard restore"
@@ -152,7 +152,7 @@ if have gsettings && gsettings list-keys "$ta_schema" >/dev/null 2>&1; then
             gcontains "$ta_schema" "$key" "'$binding'" "private $key: $binding"
         done < <(manifest_rows "$kb_json" key,binding tiling)
     else
-        fail "missing $kb_json (ws switch)"
+        fail "missing $kb_json (ws apply)"
     fi
 else
     fail "Tiling Assistant GSettings schema missing"

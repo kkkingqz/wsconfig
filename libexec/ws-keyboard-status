@@ -43,7 +43,7 @@ fi
 if [[ -L "$HOME/.config/systemd/user/xremap.service" ]]; then
     printf '  %-24s %s\n' "Service unit" "$(readlink -f "$HOME/.config/systemd/user/xremap.service")"
 else
-    warn "Service unit" "MISSING (ws switch)"
+    warn "Service unit" "MISSING (ws apply)"
 fi
 [[ -e "$WS_STATE/keyboard/xremap.disabled" ]] \
     && warn "Restore flag" "xremap off (ws keyboard apply turns it on)"
@@ -52,9 +52,9 @@ systemctl --user is-active --quiet xremap.service 2>/dev/null && ok "Service" ||
 
 echo
 echo "GNOME bindings"
-# Keys of the profile in keyboard/keyboard.nix (built by ws switch).
+# Keys of the profile in keyboard/keyboard.nix (built by ws apply).
 kb_shortcuts="${WS_KEYBOARD_MANIFEST:-$HOME/.local/share/wsconfig/keyboard/keyboard.json}"
-[[ -r "$kb_shortcuts" ]] || warn "Shortcut data" "missing $kb_shortcuts (ws switch)"
+[[ -r "$kb_shortcuts" ]] || warn "Shortcut data" "missing $kb_shortcuts (ws apply)"
 [[ -r "$kb_shortcuts" ]] && while IFS=$'\t' read -r schema key _ _; do
     [[ -n "$schema" ]] || continue
     if gsettings list-keys "$schema" 2>/dev/null | grep -Fxq "$key"; then

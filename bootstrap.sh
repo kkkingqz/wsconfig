@@ -8,7 +8,7 @@ set -euo pipefail
 # nvram, qemu XML bound into libvirt), pool and network (virt/bootstrap.bash)
 # → Steam data on @steam (steam/bootstrap.bash) → local backup copies on
 # @wsbackup → groups nix-users, libvirt, input → fish as login shell → first
-# `ws switch`. The VM parts only with
+# `ws apply`. The VM parts only with
 # vm = true in host.toml [layers], the Steam parts with nativeSteam = true,
 # the Game Mode list with gameMode = true. A container host (boot =
 # "container") skips what its image or the server holds.
@@ -19,8 +19,8 @@ set -euo pipefail
 #
 #   ./bootstrap.sh [--dry-run]
 #
-# Afterwards: reboot, then ws system apply → ws apply → log out and
-# in → ws apply → ws check.
+# Afterwards: reboot, then ws apply → log out and in → ws apply →
+# ws check.
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.bash
@@ -217,18 +217,20 @@ else
 fi
 
 echo
-echo "== 8. First ws switch"
-# Before the first switch there is no ~/.config/nix/nix.conf yet, and the
-# nix-users membership applies only to new logins: sg (util-linux-extra on
-# Ubuntu 26.04) runs the switch with it when this session lacks the group.
-# Files home-manager would replace are kept as *.pre-hm.
-switch="NIX_CONFIG='experimental-features = nix-command flakes' '$repo/bin/ws' switch -b pre-hm"
+echo "== 8. First ws apply home"
+# The Nix stages of ws apply only (build, home-manager switch): the system
+# files and the modules follow after the reboot, with the new groups.
+# Before it there is no ~/.config/nix/nix.conf yet, and the nix-users
+# membership applies only to new logins: sg (util-linux-extra on Ubuntu
+# 26.04) runs it with the group when this session lacks it. Files
+# home-manager would replace are kept as *.pre-hm.
+first="NIX_CONFIG='experimental-features = nix-command flakes' HOME_MANAGER_BACKUP_EXT=pre-hm '$repo/bin/ws' apply home"
 if id -nG | tr ' ' '\n' | grep -qx nix-users; then
-    run bash -c "$switch"
+    run bash -c "$first"
 elif [[ "$dry_run" == true ]]; then
-    echo "would run: sg nix-users -c \"$switch\""
+    echo "would run: sg nix-users -c \"$first\""
 else
-    sg nix-users -c "$switch"
+    sg nix-users -c "$first"
 fi
 
 echo
@@ -240,7 +242,7 @@ if [[ "$container" == true ]]; then
     echo "Done. Log out and in (PATH from 00-nix.fish), then:"
 else
     echo "Done. Reboot (groups ${groups[*]}; PATH from 00-nix.fish), then:"
-    echo "  ws system apply     # system files (sudo)"
 fi
-echo "  ws apply            # user layer; log out and in; ws apply again"
+echo "  ws apply            # everything (sudo for apt and system files when needed);"
+echo "                      # log out and in when it says so, then ws apply again"
 echo "  ws check"

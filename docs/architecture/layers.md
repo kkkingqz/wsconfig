@@ -15,11 +15,13 @@ Ubuntu остаётся базовой системой; Nix и home-manager д�
 ```text
 setup.sh           новый ПК с GRUB: всё ниже по порядку, вопросы в начале (helpws setup)
 ws btrfs make      раскладка Btrfs свежей установки: @, @home, @cache, @tmp, @log
-bootstrap.sh       @nix, apt-списки, @vms и libvirt, @steam, группы, fish, первый ws switch
-ws switch          home-manager: пользовательский слой, собранные списки
-ws system apply    системные файлы из system/ (sudo)
-ws apply           владельцы по порядку: расширения, tiling, клавиатура,
-                   Flatpak, Distrobox
+bootstrap.sh       @nix, apt-списки, @vms и libvirt, @steam, группы, fish,
+                   первый ws apply home
+ws apply           всё по порядку: выбор новых позиций, сборка, apt и
+                   системные файлы (sudo — только когда есть что делать),
+                   home-manager, затем владельцы: расширения, tiling,
+                   клавиатура, Flatpak, Distrobox, виджеты; в конце — что
+                   осталось (вход, перезагрузка, ws sync)
 ws check           проверки всех владельцев и связей между слоями
 ```
 
@@ -45,7 +47,7 @@ ws check           проверки всех владельцев и связе�
 
 Проверяет файл только Nix (`lib/host.nix`): неизвестный раздел или ключ,
 не тот тип, нет обязательного, `gameMode = true` без `nativeSteam = true`
-— ошибка `ws switch` с именем файла. Без Nix факты читает
+— ошибка `ws apply` с именем файла. Без Nix факты читает
 `lib/ws_facts.py` (`ws fact`, setup.sh, bootstrap.sh); `true` и `false`
 он печатает как `yes` и `no`.
 
@@ -53,17 +55,17 @@ ws check           проверки всех владельцев и связе�
 
 ```text
 слой             источник                              применяет            проверяет
-пользователь     nix/home/, terminal/, bin/, libexec/  ws switch            ws check home
-система          system/*.nix, system/files/           ws system apply      ws system check
+пользователь     nix/home/, terminal/, bin/, libexec/  ws apply            ws check home
+система          system/*.nix, system/files/           ws apply system      ws system check
 apt              nix/hosts/*apt.txt                    bootstrap.sh, apt    ws check apt
-клавиатура       keyboard/*.nix, xremap.yml            ws switch, ws keyboard apply   ws keyboard check
-GNOME            gnome/gnome.nix, gnome-extensions.nix ws switch, ws apply extensions ws gnome check
-виджеты          widgets/*.txt, flake input wswidgets  wswidgets, ws switch ws check widgets
+клавиатура       keyboard/*.nix, xremap.yml            ws apply, ws keyboard apply   ws keyboard check
+GNOME            gnome/gnome.nix, gnome-extensions.nix ws apply, ws apply extensions ws gnome check
+виджеты          widgets/*.txt, flake input wswidgets  wswidgets, ws apply ws check widgets
 Flatpak          flatpak/*.txt, flatpak.nix            ws flatpak apply      ws flatpak check
 Distrobox        distrobox/distrobox.nix               ws box apply          ws box check
-Windows          windows/apps.nix (+ боксы Distrobox)  ws switch, ws windows     ws windows check
-Remmina          remmina/*.nix, machine-apt.txt        ws switch, bootstrap.sh  ws check apt
-suspend / T2     system/hardware, system/kernel/t2bce  ws system apply, ws suspend t2bce-*   ws suspend check
+Windows          windows/apps.nix (+ боксы Distrobox)  ws apply, ws windows     ws windows check
+Remmina          remmina/*.nix, machine-apt.txt        ws apply, bootstrap.sh  ws check apt
+suspend / T2     system/hardware, system/kernel/t2bce  ws apply system, ws suspend t2bce-*   ws suspend check
 VM               apt.txt, bootstrap.sh, virt/virt.nix   bootstrap.sh, virt-manager           ws check virt
 Steam (apt)      steam/apt.txt, steam/bootstrap.bash   bootstrap.sh         ws check steam
 Game Mode        gaming/*, system/gaming.nix           ws game               ws game check
@@ -94,7 +96,7 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
   `libexec/`, `lib/`, модули) — копия checkout в store без данных
   (`nix/pkgs/ws.nix`); `~/.local/bin` ссылается на неё. Им по-прежнему нужны
   утилиты host (`gsettings`, `gdbus`, `busctl`, PyGObject, python3). Правка
-  кода действует после `ws switch`; `~/wsconfig/bin/ws` берёт код из
+  кода действует после `ws apply`; `~/wsconfig/bin/ws` берёт код из
   checkout сразу. Откат поколения home-manager откатывает и инструменты;
   fish и Ghostty остаются ссылками в checkout, поэтому ключ состояния —
   коммит (`ws checkpoint`).

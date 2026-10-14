@@ -29,7 +29,7 @@ refuses root), and installs it with pacman.
 
 Recovery order:
 
-1. Load `ntsync` on the host (`ws system apply`: modules-load.d/ntsync.conf).
+1. Load `ntsync` on the host (`ws apply system`: modules-load.d/ntsync.conf).
 2. `ws box apply arch` or `ws box recreate arch` (the hook installs this package).
 3. Install Wine / WinBox (paru).
 4. Run `ws box apply arch` to restore managed application exports.

@@ -2,7 +2,7 @@
 set -u
 set -o pipefail
 
-# Widget layer (helpws widgets): wswidgets delivered by ws switch on hosts
+# Widget layer (helpws widgets): wswidgets delivered by ws apply on hosts
 # with widgets = true in host.toml; the runtime diagnostics are its own
 # (ws-widgets check --tsv), with the widgets yes in nix/hosts/HOST/widgets.toml.
 # Read-only. ws check widgets; ws check runs it with --json (lib/check.bash).
@@ -26,7 +26,7 @@ if [[ "$(host_fact widgets)" != yes ]]; then
 fi
 
 if ! have ws-widgets; then
-    fail "ws-widgets not in PATH: the widget layer is not delivered (ws switch)"
+    fail "ws-widgets not in PATH: the widget layer is not delivered (ws apply)"
     check_finish
     exit
 fi
@@ -43,7 +43,7 @@ delivered="$(python3 -c 'import json, sys; print(" ".join(w["id"] for w in json.
 if [[ "$delivered" == "$expected" ]]; then
     pass "manifest matches widgets.toml of this host: ${expected:-(none)}"
 else
-    fail "manifest has \"$delivered\", widgets.toml of this host \"$expected\" (ws switch)"
+    fail "manifest has \"$delivered\", widgets.toml of this host \"$expected\" (ws apply)"
 fi
 
 check_finish

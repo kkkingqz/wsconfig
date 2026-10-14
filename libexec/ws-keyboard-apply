@@ -12,10 +12,10 @@ backup="$state_dir/gsettings-backup.tsv"
 xremap_off="$state_dir/xremap.disabled"
 
 # The GNOME shortcuts of the profile: keyboard/keyboard.nix, built by
-# ws switch (SCHEMA<TAB>KEY<TAB>VALUE<TAB>required|optional).
+# ws apply (SCHEMA<TAB>KEY<TAB>VALUE<TAB>required|optional).
 shortcuts="${WS_KEYBOARD_MANIFEST:-$HOME/.local/share/wsconfig/keyboard/keyboard.json}"
 
-[[ -r "$shortcuts" ]] || { echo "ws-keyboard-apply: missing $shortcuts (run ws switch)" >&2; exit 66; }
+[[ -r "$shortcuts" ]] || { echo "ws-keyboard-apply: missing $shortcuts (run ws apply)" >&2; exit 66; }
 
 schema_has_key() {
     local schema="$1" key="$2"
@@ -116,7 +116,7 @@ rdp=false
 
 if [[ "$rdp" == false ]]; then
     command -v xremap >/dev/null 2>&1 || { echo "xremap not found in PATH" >&2; preflight_failed=true; }
-    systemctl --user cat xremap.service >/dev/null 2>&1 || { echo "xremap.service not installed; run ws switch" >&2; preflight_failed=true; }
+    systemctl --user cat xremap.service >/dev/null 2>&1 || { echo "xremap.service not installed; run ws apply" >&2; preflight_failed=true; }
     if ! id -nG | tr ' ' '\n' | grep -Fxq input; then
         # A group added by bootstrap.sh reaches GNOME only through a new systemd
         # user manager: a log out keeps the old one while another session (ssh)

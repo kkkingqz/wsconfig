@@ -10,7 +10,7 @@ let
 in
 {
   watch = [
-    "/etc/default/keyboard" # edited by ws system apply (GDM/login: EN only)
+    "/etc/default/keyboard" # edited by ws apply system (GDM/login: EN only)
     "/etc/fstab"
   ];
 
@@ -20,7 +20,7 @@ in
     # Login screen without automatic brightness: it must not replace the level
     # systemd-backlight restores at boot and the session leaves at logout.
     # Next to the package's 00-upstream-settings, as that file asks;
-    # compiled by gdm's generate-config (ws system apply runs it).
+    # compiled by gdm's generate-config (ws apply system runs it).
     (file "/usr/share/gdm/dconf/95-ws-greeter" "system/files/gdm/95-ws-greeter" "0644")
   ] ++ [
     # No snaps: snapd is purged (nix/hosts/apt.txt) and pinned out.

@@ -19,7 +19,7 @@ printed as JSON by `section`.
     ws_facts.py section [--host HOST] NAME
                                        a section of host.toml as JSON (ws-container)
     ws_facts.py record                 write host.json in the state: this host
-                                       and the data root (ws switch, setup.sh)
+                                       and the data root (ws apply, setup.sh)
 
 The data root is WS_CONFIG (lib/ws_common.py). host.json names the host
 only for the data root it records.

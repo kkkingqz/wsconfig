@@ -148,7 +148,7 @@ CapsLock физически не используется как letter-case mod
 переключение раскладки работает как прежде. Без опции настоящий CapsLock
 включался через сочетания, которые xremap пропускает
 (`Shift/Ctrl/Super+CapsLock`), и любым нажатием, пока xremap перезапускается
-(`ws switch`): текст шёл заглавными при обычном индикаторе. На GDM/login
+(`ws apply`): текст шёл заглавными при обычном индикаторе. На GDM/login
 опция не действует, там CapsLock обычный.
 
 ### Ukrainian override
@@ -616,12 +616,12 @@ xremap binary — из Nix: `nix/pkgs/xremap.nix`, upstream
 ~/.local/bin/xremap -> /nix/store/…-xremap-gnome-0.15.13/bin/xremap
 ```
 
-Обновление xremap: версия и hash в `nix/pkgs/xremap.nix`, затем `ws switch`
+Обновление xremap: версия и hash в `nix/pkgs/xremap.nix`, затем `ws apply`
 и `ws keyboard restart`.
 
 xremap service — `systemd.user.services.xremap` home-manager
 (`keyboard/xremap.nix`); unit и ссылку в
-`graphical-session.target.wants` ставит `ws switch`:
+`graphical-session.target.wants` ставит `ws apply`:
 
 ```text
 ~/.config/systemd/user/xremap.service -> /nix/store/…-xremap.service
@@ -632,7 +632,7 @@ ExecStart=/usr/bin/bash ~/wsconfig/bin/ws-xremap
 
 `XREMAP_CONFIG` — сборка `keyboard/xremap.yml` в store: `@repo@` в
 путях `launch` (`@repo@/bin/ws-input-source`) заменяется на checkout этого
-home. Правка `xremap.yml` применяется через `ws switch`: unit меняется, и
+home. Правка `xremap.yml` применяется через `ws apply`: unit меняется, и
 home-manager перезапускает сервис (`--watch=config` store-файл не видит).
 Без `XREMAP_CONFIG` `ws-xremap` не запускается.
 
@@ -656,7 +656,7 @@ home-manager перезапускает сервис (`--watch=config` store-ф�
 ## Apply
 
 Сочетания GNOME профиля и private chords Tiling Assistant объявлены данными
-в `keyboard/keyboard.nix`. `ws switch` собирает из них
+в `keyboard/keyboard.nix`. `ws apply` собирает из них
 `~/.local/share/wsconfig/keyboard/keyboard.json` (shortcuts и tiling);
 по ним работают `ws-keyboard-apply` (preflight, backup, установка),
 `ws-tiling-apply`, `ws keyboard check` и `ws-keyboard-status`. Это не `dconf.settings`:
@@ -667,7 +667,7 @@ home-manager перезапускает сервис (`--watch=config` store-ф�
 
 ```console
 $EDITOR ~/wsconfig/keyboard/keyboard.nix
-ws switch
+ws apply
 ws keyboard apply      # или ws-tiling-apply для Tiling
 ```
 
@@ -697,7 +697,7 @@ modprobe options, `ws-touchbar-fn.service`) применяется отдель�
 требует `sudo`:
 
 ```console
-ws system apply
+ws apply system
 ```
 
 Она ставит все системные файлы хоста из

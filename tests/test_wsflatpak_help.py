@@ -16,7 +16,7 @@ class HelpTests(unittest.TestCase):
         result = self.cli("help")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("--unmanaged", result.stdout)
-        self.assertIn("ws switch", result.stdout)
+        self.assertIn("ws apply flatpak", result.stdout)
 
     def test_help_topic_does_not_require_topic_arguments(self):
         result = self.cli("help", "install")

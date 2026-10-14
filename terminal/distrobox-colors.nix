@@ -1,4 +1,4 @@
-# Distrobox foreground colors. Change these here, then run `ws switch`.
+# Distrobox foreground colors. Change these here, then run `ws apply`.
 { lib, ... }:
 let
   defaultColor = "#FFB3B3";

@@ -5,7 +5,7 @@ set -o pipefail
 # GNOME owner check: the session against the managed profile of
 # gnome/gnome.nix (appearance, Ubuntu Dock) and the extensions of
 # gnome/gnome-extensions.nix (enabled set, pins, local sources, schemas).
-# Read-only; ws switch writes the profile, ws apply extensions installs.
+# Read-only; ws apply writes the profile, ws apply extensions installs.
 # ws check runs it with --json (lib/check.bash).
 
 # shellcheck source=../lib/common.bash
@@ -24,7 +24,7 @@ Usage:
   ws-gnome-check --json    result object for ws check
 
 The profile (appearance and Ubuntu Dock) is declared in
-gnome/gnome.nix and applied by `ws switch`; home-manager builds
+gnome/gnome.nix and applied by `ws apply`; home-manager builds
 ~/.local/share/wsconfig/gnome/settings.json ({schema, key, value}) for this check.
 USAGE
 }
@@ -74,7 +74,7 @@ section "1. Managed profile (gnome/gnome.nix)"
 if ! have gsettings; then
     fail "gsettings not found"
 elif [[ ! -r "$profile" ]]; then
-    fail "profile missing: $profile (ws switch)"
+    fail "profile missing: $profile (ws apply)"
 else
     total=0
     drift=0
@@ -86,7 +86,7 @@ else
             fail "$schema $key: schema/key unavailable"
         elif [[ "$current" != "$desired" ]]; then
             ((drift += 1))
-            fail "$schema $key = $current, profile: $desired (ws switch writes it again)"
+            fail "$schema $key = $current, profile: $desired (ws apply writes it again)"
         fi
     done < <(manifest_rows "$profile" schema,key,value)
     if ((total == 0)); then
@@ -101,14 +101,14 @@ section "2. Extensions (gnome/gnome-extensions.nix)"
 # Every extension of gnome/gnome-extensions.nix is required.
 mapfile -t required_gnome_extensions < <(ext_list)
 
-# enabled-extensions = ego + local + nix extensions, in list order (ws switch).
+# enabled-extensions = ego + local + nix extensions, in list order (ws apply).
 declared_enabled="[$(for uuid in $(ext_list ego) $(ext_list local) $(ext_list nix); do printf "'%s', " "$uuid"; done)"
 declared_enabled="${declared_enabled%, }]"
 actual_enabled="$(gsettings get org.gnome.shell enabled-extensions 2>/dev/null || true)"
 if [[ "$actual_enabled" == "$declared_enabled" ]]; then
     pass "enabled-extensions matches gnome/gnome-extensions.nix"
 else
-    fail "enabled-extensions differs from gnome/gnome-extensions.nix (changed by hand?); ws switch writes it again"
+    fail "enabled-extensions differs from gnome/gnome-extensions.nix (changed by hand?); ws apply writes it again"
 fi
 
 if have gnome-extensions; then
@@ -160,18 +160,18 @@ for uuid in $(ext_list ego); do
     if [[ -n "$ext_pin" ]]; then
         ext_foreign="$(find "$ext_dir" -type f 2>/dev/null | head -n1)"
         if [[ -n "$ext_foreign" ]]; then
-            fail "$uuid pinned, but has files not from Nix ($(q "$ext_foreign")); move the directory away and ws switch"
+            fail "$uuid pinned, but has files not from Nix ($(q "$ext_foreign")); move the directory away and ws apply"
         elif [[ "$ext_meta" == /nix/store/*-gnome-shell-extension-*-"$ext_pin"/share/gnome-shell/extensions/"$uuid"/metadata.json ]]; then
             pass "$uuid pinned to EGO version $ext_pin: ${ext_meta#/nix/store/}"
         else
-            fail "$uuid pinned to EGO version $ext_pin, not installed from Nix (${ext_meta:-missing}); ws switch"
+            fail "$uuid pinned to EGO version $ext_pin, not installed from Nix (${ext_meta:-missing}); ws apply"
         fi
         continue
     fi
     if [[ ! -f "$ext_dir/metadata.json" ]]; then
         fail "$uuid not installed; ws apply extensions"
     elif [[ -n "$(find "$ext_dir" -type l -lname '/nix/store/*' 2>/dev/null | head -n1)" ]]; then
-        fail "$uuid still has links into the Nix store (no pin any more); ws switch, then ws apply extensions"
+        fail "$uuid still has links into the Nix store (no pin any more); ws apply extensions"
     else
         ext_ver="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("version", "?"), " ".join(map(str, d.get("shell-version", []))))' "$ext_dir/metadata.json" 2>/dev/null || echo '? ?')"
         if [[ -n "$shell_major" && " ${ext_ver#* } " != *" $shell_major "* ]]; then

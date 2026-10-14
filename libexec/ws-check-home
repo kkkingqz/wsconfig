@@ -41,7 +41,7 @@ if [[ -n "$hm_gen" && -e "$hm_gen/activate" && -d "$hm_files" ]]; then
         want="$(readlink -f -- "$entry" 2>/dev/null || true)"
         got="$(readlink -f -- "$HOME/$rel" 2>/dev/null || true)"
         if [[ -z "$want" || "$got" != "$want" ]]; then
-            fail "~/$rel is not the generation's (${got:-missing}, want ${want:-broken}); ws switch"
+            fail "~/$rel is not the generation's (${got:-missing}, want ${want:-broken}); ws apply"
             continue
         fi
         hm_ok=$((hm_ok + 1))
@@ -52,7 +52,7 @@ if [[ -n "$hm_gen" && -e "$hm_gen/activate" && -d "$hm_files" ]]; then
     done < <(find "$hm_files" -mindepth 1 \( -type l -o -type f \) -print0 2>/dev/null)
     pass "home-manager files match the generation: $hm_ok ($hm_repo into the checkout)"
 else
-    fail "no active home-manager generation (ws switch)"
+    fail "no active home-manager generation (ws apply)"
 fi
 
 # ws in PATH is the core in the store (nix/pkgs/ws.nix); libexec for the
@@ -62,20 +62,20 @@ core_installed="${ws_real%/bin/ws}"
 if [[ "$ws_real" == /nix/store/*/bin/ws && -e "$core_installed/.wsconfig-package" ]]; then
     pass "~/.local/bin/ws is the core in the store: ${core_installed#/nix/store/}"
 else
-    fail "~/.local/bin/ws is not the core in the store (${ws_real:-missing}); ws switch"
+    fail "~/.local/bin/ws is not the core in the store (${ws_real:-missing}); ws apply"
 fi
 if [[ -n "$core_installed" \
     && "$(readlink -f "$HOME/.local/share/wsconfig/libexec" 2>/dev/null)" == "$core_installed/libexec" ]]; then
     pass "~/.local/share/wsconfig/libexec is libexec/ of that core"
 else
-    fail "~/.local/share/wsconfig/libexec is not libexec/ of the installed core; ws switch"
+    fail "~/.local/share/wsconfig/libexec is not libexec/ of the installed core; ws apply"
 fi
 # host.json: the configuration and host of the ws in PATH.
 record="$(python3 "$WS_CORE/lib/ws_common.py" get "$WS_STATE/host.json" config 2>/dev/null || true)"
 if [[ "$record" == "$repo" ]]; then
     pass "$WS_STATE/host.json names this configuration"
 else
-    warn "$WS_STATE/host.json names ${record:-no configuration}, not $repo; ws switch"
+    warn "$WS_STATE/host.json names ${record:-no configuration}, not $repo; ws apply"
 fi
 
 section "2. Nix"
@@ -146,7 +146,7 @@ if have nix; then
         link="$HOME/.local/share/man/man1/$page.1"
         if [[ ! -e "$link" ]]; then
             man_missing=true
-            warn "man page missing: $page (ws switch)"
+            warn "man page missing: $page (ws apply)"
         elif [[ -n "$man_built" && "$(readlink -f "$link")" != "$man_built/"* ]]; then
             man_stale=true
         fi
@@ -155,7 +155,7 @@ if have nix; then
     if [[ -z "$man_built" ]]; then
         warn "cannot evaluate the man package of the flake"
     elif [[ "$man_stale" == true ]]; then
-        warn "man pages are older than docs/ (ws switch)"
+        warn "man pages are older than docs/ (ws apply)"
     else
         pass "man pages match docs/ (${man_built#/nix/store/})"
     fi

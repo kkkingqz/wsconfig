@@ -7,7 +7,7 @@ set -euo pipefail
 # plan-dgpu): the AMD dGPU of MacBookPro16,1 goes off through ACPI PWRD like
 # on macOS (CPU package PC7 with the card off) and can come back on.
 
-# REPO COMMIT, from system/kernel/t2gmux/t2gmux.nix (ws switch).
+# REPO COMMIT, from system/kernel/t2gmux/t2gmux.nix (ws apply).
 source_file="$HOME/.local/share/wsconfig/t2gmux/source.json"
 # Build results per kernel: generated, not edited.
 cache="$HOME/.local/share/wsconfig/t2gmux"
@@ -33,7 +33,7 @@ USAGE
 }
 
 pinned() { # -> "REPO COMMIT"
-    [[ -r "$source_file" ]] || die "missing $source_file (ws switch)"
+    [[ -r "$source_file" ]] || die "missing $source_file (ws apply)"
     printf '%s %s\n' "$(manifest_get "$source_file" repo)" "$(manifest_get "$source_file" commit)"
 }
 
@@ -111,7 +111,7 @@ cmd_install() {
     # apple-gmux and t2gmux both answer pnp:dAPP000B: exactly one of them
     # must be blacklisted before t2gmux is on the module path.
     grep -qsE '^\s*blacklist\s+(t2gmux|apple_gmux|apple-gmux)\b' /etc/modprobe.d/*.conf ||
-        die "neither t2gmux nor apple_gmux is blacklisted in /etc/modprobe.d (ws system apply)"
+        die "neither t2gmux nor apple_gmux is blacklisted in /etc/modprobe.d (ws apply system)"
 
     sudo install -d -m0755 "$dest"
     sudo install -m0644 "$ko" "$dest/t2gmux.ko"

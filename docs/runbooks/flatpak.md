@@ -20,11 +20,11 @@ flatpak/desktop/*.desktop     полные .desktop, заменяющие шта
 libexec/wsflatpak             владелец: install, apply, check
 ```
 
-`ws switch` собирает `~/.local/share/wsconfig/flatpak/` (`flatpak.json`:
+`ws apply` собирает `~/.local/share/wsconfig/flatpak/` (`flatpak.json`:
 remotes, приложения каталога и overrides этой машины; `desktop/`) и ставит
 свои `.desktop` в `~/.local/share/applications` — только приложений, которые
 на этой машине в состоянии yes: у не поставленного приложения ярлык ничего
-бы не запускал. После `apply`, изменившего выбор, — `ws switch`.
+бы не запускал. После `apply`, изменившего выбор, — `ws apply`.
 `ws flatpak apply` добавляет remotes, ставит приложения и применяет
 overrides; overrides управляемого приложения сначала сбрасываются, так что
 значение, убранное из каталога или файла машины, исчезает.
@@ -70,7 +70,7 @@ no = ["com.valvesoftware.Steam"]                 # отказались
 снимает галочку, `a` переключает все, Enter ставит отмеченные, Esc/q
 отменяет только вопрос: предложенные остаются ask (спросит в следующий
 раз), остальное `apply` делает. Ответ пишется в `yes` / `no` этой машины,
-`ws switch` ставит `.desktop` новых `yes`, `ws sync` публикует файл. Уже
+`ws apply` ставит `.desktop` новых `yes`, `ws sync` публикует файл. Уже
 установленное в состоянии ask попадает в `yes` молча.
 `ws flatpak apply --select` спрашивает и о `no` (они без галочки). Без
 терминала не предложенные не ставятся. `check`: `yes`, но не установлено —
@@ -78,7 +78,7 @@ FAIL; установлено, но `no` или ask — WARN; `no`/ask без у�
 
 Remotes: `flathub`, `flatpark` (Claude Desktop), `chatgpt`. Новый remote —
 строка `NAME = "URL"` в `[remotes]` каталога (`ws flatpak remote-add NAME
-URL` печатает её), затем `ws switch && ws flatpak apply`; приложение из него
+URL` печатает её), затем `ws apply flatpak`; приложение из него
 — `ws flatpak install --remote NAME APP`. Только user remotes: system
 remotes `ws flatpak check` считает ошибкой, remote не из каталога —
 предупреждением. Браузер — Firefox (`org.mozilla.firefox`): snap в системе
@@ -119,11 +119,11 @@ ws flatpak manage APP [REMOTE]        # уже установленное — в
 ws flatpak unmanage APP               # убрать из каталога и выбора всех машин
 ws flatpak remove APP                 # удаляет; no этой машины
 ws flatpak apply [--select]           # ставит yes, спрашивает об ask
-ws switch                            # собирает каталог и выбор
+ws apply                            # собирает каталог и выбор
 ws sync                              # публикует: коммит, pull --rebase, push
 ```
 
-`ws switch` добавляет изменённые `catalog.toml` и выбор машин
+`ws apply` добавляет изменённые `catalog.toml` и выбор машин
 `nix/hosts/*/*.toml` в сборку и ничего не коммитит: в конце он называет
 неопубликованные файлы данных. Коммит и push делает только `ws sync`
 (`helpws plan-v2`, 2.7).
@@ -143,7 +143,7 @@ ws flatpak env APP KEY VALUE          # или KEY=VALUE; новое значе�
 ws flatpak talk APP BUS
 ws flatpak env --host APP KEY VALUE   # только эта машина
 ws flatpak unfilesystem|unhost|unenv|untalk [--all] APP ...
-ws switch                            # собирает (публикует ws sync)
+ws apply                            # собирает (публикует ws sync)
 ws flatpak apply                      # применяет
 ```
 
@@ -167,7 +167,7 @@ skip = ["talk org.kde.StatusNotifierWatcher"]   # значение катало�
 - `un…` убирает значение на этой машине: своё — из её файла, общее —
   через `skip` там же. С `--all` общее удаляется из каталога (и `skip`
   других машин для него).
-- Две действующие на машине записи одного ключа `ws switch` отвергает.
+- Две действующие на машине записи одного ключа `ws apply` отвергает.
 
 ```console
 ws flatpak permissions APP
@@ -204,6 +204,6 @@ ws check
 `check`: remotes (системных нет), системная установка пуста, нет глобального
 `filesystem=host`, приложения каталога в состоянии yes установлены из своих
 remotes, overrides применены, свои `.desktop` приложений с `yes` на месте
-(ярлык приложения без `yes` — WARN, нужен `ws switch`), каталог собран;
+(ярлык приложения без `yes` — WARN, нужен `ws apply`), каталог собран;
 приложение или remote вне объявленных и выбор машины для приложения вне
 каталога — предупреждение.

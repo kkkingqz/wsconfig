@@ -1,113 +1,113 @@
-"""ws apply, update and check walk their step tables the same way
-(helpws plan-v2, 2.5): names, selection, header, summary."""
+"""ws apply, update and check walk their step tables (helpws plan-v2, 2.5
+and stage 6): the order of apply, the names, the summary."""
 import json
-import os
-from pathlib import Path
-import shutil
-import subprocess
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
+from ws_fixture import Workspace
 
 APPLY = {"ws-gnome": 0, "ws-tiling-apply": 69, "ws-keyboard-apply": 3,
          "wsflatpak": 0, "wsbox": 0, "wswidgets": 0}
 CHECK = ["ws-check-repo", "ws-check-home", "ws-keyboard", "ws-gnome", "wsflatpak", "wsbox", "wswin",
          "ws-suspend", "wsgame", "ws-workstation-verify"]
+RESULT = json.dumps({"status": "warn", "passes": 1, "warnings": 1, "failures": 0,
+                     "messages": [{"level": "warn", "text": "w"}]})
 
 
 class StepsTests(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        self.repo = Path(tmp.name) / "repo"
-        (self.repo / "bin").mkdir(parents=True)
-        (self.repo / "libexec").mkdir()
-        shutil.copytree(ROOT / "lib", self.repo / "lib", ignore=shutil.ignore_patterns("__pycache__"))
-        shutil.copy(ROOT / "bin/ws", self.repo / "bin/ws")
-        shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
-        # The catalogs ws apply asks about first: nothing to ask.
-        (self.repo / "flatpak").mkdir()
-        (self.repo / "flatpak/catalog.toml").write_text("[remotes]\n")
+        self.w = Workspace(tmp.name)
         for name, rc in APPLY.items():
-            self.stub(name, f'echo "{name} $*"\n[ "$1" = check ] && exit 0\nexit {rc}\n')
-        result = json.dumps({"status": "warn", "passes": 1, "warnings": 1, "failures": 0,
-                             "messages": [{"level": "warn", "text": "w"}]})
+            self.w.stub(name, f'echo "{name} $* applying=${{WS_APPLYING:-}} offered=${{WS_OFFERED:-}}"\n'
+                              f'[ "$1" = check ] && echo \'{RESULT}\' && exit 0\nexit {rc}\n')
         for name in CHECK:
             if name not in APPLY:
-                self.stub(name, f"echo '{result}'\n")
-        for name in ("wsflatpak", "wsbox"):
-            self.stub(name, f'case "$1" in check) echo \'{result}\' ;; *) echo "{name} $*" ;; esac\n')
-        git = ["git", "-C", str(self.repo), "-c", "user.name=t", "-c", "user.email=t@t"]
-        subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
-        subprocess.run([*git, "add", "."], check=True)
-        subprocess.run([*git, "commit", "-qm", "init"], check=True)
+                self.w.stub(name, f"echo '{RESULT}'\n")
 
-    def stub(self, name, body):
-        p = self.repo / "libexec" / name
-        p.write_text("#!/bin/sh\n" + body)
-        p.chmod(0o755)
+    def ws(self, *args, **env):
+        return self.w.ws(*args, **env)
 
-    def ws(self, *args):
-        env = {k: v for k, v in os.environ.items() if not k.startswith("WS")}
-        env.update(WS_HOST="test", HOME=str(self.repo.parent))
-        p = subprocess.run([str(self.repo / "bin/ws"), *args], text=True, capture_output=True, env=env,
-                           stdin=subprocess.DEVNULL)
-        return p.returncode, p.stdout, p.stderr
+    def headers(self, out):
+        return [l for l in out.splitlines() if l.startswith("===")]
 
-    def test_apply_all(self):
+    def test_apply_all_in_order(self):
         rc, out, _ = self.ws("apply")
         self.assertEqual(rc, 1)
-        self.assertEqual(out, """
-=== choices: ws_catalog offer --all flatpak boxes widgets
+        self.assertEqual(self.headers(out), [
+            "=== choices: ws_catalog offer --all flatpak boxes widgets",
+            "=== build: home-manager generation, system tree",
+            "=== home: home-manager switch",
+            "=== extensions: ws-gnome extensions", "=== tiling: ws-tiling-apply",
+            "=== keyboard: ws-keyboard-apply", "=== flatpak: wsflatpak apply",
+            "=== distrobox: wsbox apply", "=== widgets: wswidgets apply", "=== ws apply"])
+        summary = out[out.index("=== ws apply"):].splitlines()
+        self.assertEqual(summary[1:12], [
+            "  OK        choices", "  OK        build", "  OK        apt (nothing to do)",
+            "  OK        system (nothing to do)", "  OK        home", "  OK        extensions",
+            "  PREFLIGHT tiling", "  FAIL      keyboard (exit 3)", "  OK        flatpak",
+            "  OK        distrobox", "  OK        widgets"])
+        self.assertIn("    log out and in, then: ws apply tiling", summary)
+        # The module steps run inside ws apply and ask nothing.
+        self.assertIn("wsflatpak apply applying=1 offered=1", out)
 
-=== extensions: ws-gnome extensions
-ws-gnome extensions
-
-=== tiling: ws-tiling-apply
-ws-tiling-apply 
-
-=== keyboard: ws-keyboard-apply
-ws-keyboard-apply 
-
-=== flatpak: wsflatpak apply
-wsflatpak apply
-
-=== distrobox: wsbox apply
-wsbox apply
-
-=== widgets: wswidgets apply
-wswidgets apply
-
-=== ws apply
-  OK        choices
-  OK        extensions
-  PREFLIGHT tiling (log out and in, then: ws apply tiling)
-  FAIL      keyboard (exit 3)
-  OK        flatpak
-  OK        distrobox
-  OK        widgets
-""")
-
-    def test_apply_selected_in_table_order(self):
+    def test_named_steps_run_the_nix_stages_and_only_them(self):
         rc, out, _ = self.ws("apply", "widgets", "extensions")
-        self.assertEqual(rc, 0)
-        self.assertEqual([l for l in out.splitlines() if l.startswith("===")],
-                         ["=== choices: ws_catalog offer --all widgets",
-                          "=== extensions: ws-gnome extensions", "=== widgets: wswidgets apply",
-                          "=== ws apply"])
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(self.headers(out), [
+            "=== choices: ws_catalog offer --all widgets",
+            "=== build: home-manager generation, system tree", "=== home: home-manager switch",
+            "=== extensions: ws-gnome extensions", "=== widgets: wswidgets apply", "=== ws apply"])
+        self.assertNotIn("apt", out[out.index("=== ws apply"):])
 
-    def test_steps_ask_nothing_after_the_choices(self):
-        self.stub("wsflatpak", 'echo "offered=${WS_OFFERED:-}"\n')
-        rc, out, _ = self.ws("apply", "flatpak")
-        self.assertIn("offered=1", out)
-        rc, out, _ = self.ws("apply", "keyboard")
+    def test_home_alone(self):
+        rc, out, _ = self.ws("apply", "home")
+        self.assertEqual(rc, 0, out)
         self.assertNotIn("choices", out)
+        self.assertEqual(self.headers(out)[-2:], ["=== home: home-manager switch", "=== ws apply"])
+
+    def test_pending_system_not_named_is_left(self):
+        (self.w.state / "system-todo").write_text("file: /etc/x\nfile: /etc/y\n")
+        rc, out, _ = self.ws("apply", "home")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("    ws apply system: 2 to do", out)
+        self.assertFalse(any(c.startswith("sudo") for c in self.w.take_calls()))
+        rc, out, _ = self.ws("apply", "system")
+        self.assertIn("  OK        system", out)
+        self.assertIn("to do: file: /etc/x", out)
+
+    def test_failed_build_applies_nothing(self):
+        (self.w.state / "system-todo").write_text("file: /etc/x\n")
+        rc, out, _ = self.ws("apply", BUILD_STATUS="1")
+        self.assertEqual(rc, 2)
+        self.assertIn("  FAIL      build", out)
+        self.assertIn("  nothing applied", out)
+        calls = self.w.take_calls()
+        self.assertFalse(any("#home-manager" in c or c.startswith(("sudo", "ws-system apply")) for c in calls))
+
+    def test_failed_home_skips_the_modules(self):
+        rc, out, _ = self.ws("apply", "flatpak", SWITCH_STATUS="1")
+        self.assertEqual(rc, 1)
+        self.assertIn("  FAIL      home", out)
+        self.assertIn("  SKIP      flatpak (home failed)", out)
+
+    def test_records_host_json(self):
+        self.ws("apply", "home")
+        record = json.loads((self.w.root / ".state/wsconfig/host.json").read_text())
+        self.assertEqual(record, {"host": "test", "config": str(self.w.repo)})
 
     def test_unknown_step(self):
-        for kind in ("apply", "update"):
-            rc, out, err = self.ws(kind, "nosuch")
-            self.assertEqual((rc, out, err), (1, "", f"ws: unknown {kind} step: nosuch\n"))
+        rc, out, err = self.ws("apply", "nosuch")
+        self.assertEqual((rc, out), (1, ""))
+        self.assertIn("ws: unknown apply step: nosuch (steps: home apt system extensions", err)
+        rc, out, err = self.ws("update", "nosuch")
+        self.assertEqual((rc, out, err), (1, "", "ws: unknown update step: nosuch\n"))
+
+    def test_switch_is_gone(self):
+        rc, _, err = self.ws("switch")
+        self.assertEqual(rc, 1)
+        self.assertIn("ws switch is gone: ws apply", err)
 
     def test_check_summary(self):
         rc, out, _ = self.ws("check")
@@ -120,7 +120,50 @@ wswidgets apply
 
     def test_steps_lists(self):
         self.assertEqual(self.ws("steps", "apply")[1].split(),
-                         ["extensions", "tiling", "keyboard", "flatpak", "distrobox", "widgets"])
+                         ["home", "apt", "system", "extensions", "tiling", "keyboard", "flatpak",
+                          "distrobox", "widgets"])
+
+
+class IdempotenceTests(unittest.TestCase):
+    """A second ws apply with nothing changed installs nothing and asks no
+    sudo (helpws plan-v2, stage 6)."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        modules = {name: f'echo "{name} $*" >> "$CALLS"\n' for name in
+                   ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsbox", "wswidgets")}
+        self.w = Workspace(tmp.name, modules=modules)
+        (self.w.repo / "nix/hosts/test/apt.txt").write_text("pkg-a\npurge:old-b\n")
+        (self.w.state / "installed").write_text("old-b\n")
+        (self.w.state / "system-todo").write_text("file: /etc/x\n")
+        self.w.git("add", ".")
+        self.w.git("commit", "-qm", "lists")
+
+    def test_second_run_changes_nothing(self):
+        rc, out, err = self.w.ws("apply")
+        self.assertEqual(rc, 0, out + err)
+        first = self.w.take_calls()
+        self.assertTrue(any(c.startswith("sudo apt-get") and " install " in c and "pkg-a" in c for c in first), first)
+        self.assertTrue(any(c.startswith("sudo apt-get") and " purge " in c and "old-b" in c for c in first), first)
+        self.assertIn("ws-system apply", first)
+        # The stub keeps old-b listed as installed: purge it for real.
+        (self.w.state / "installed").write_text("pkg-a\n")
+
+        rc, out, err = self.w.ws("apply")
+        self.assertEqual(rc, 0, out + err)
+        second = self.w.take_calls()
+        self.assertFalse([c for c in second if c.startswith("sudo")], second)
+        self.assertFalse([c for c in second if "install" in c and c.startswith("apt-get")], second)
+        self.assertIn("  OK        apt (nothing to do)", out)
+        self.assertIn("  OK        system (nothing to do)", out)
+
+    def test_purge_that_takes_more_stops(self):
+        (self.w.state / "purge-extra").write_text("Purg needs-old-b [1]\n")
+        rc, out, err = self.w.ws("apply", "apt")
+        self.assertEqual(rc, 1, out + err)
+        self.assertIn("would also remove: needs-old-b", out + err)
+        self.assertFalse([c for c in self.w.take_calls() if " purge -y" in c])
 
 
 if __name__ == "__main__":

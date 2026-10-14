@@ -115,7 +115,7 @@ qcow2, а шаблон пакета `ovmf` — raw, и переводить ег
 /etc/qemu/firmware/30-...-qcow2-vars.json        описание прошивки: код пакета
                                                  raw, шаблон qcow2; приоритет
                                                  выше пакетных (system/virt.nix,
-                                                 ws system apply)
+                                                 ws apply system)
 ```
 
 Новая VM с `--boot uefi` (virt-manager — тоже) получает NVRAM

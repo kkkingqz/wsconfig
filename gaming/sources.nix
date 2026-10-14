@@ -11,7 +11,7 @@
 #            Ubuntu container of the host release; the others are packed
 #            as they are (deb: installed as published)
 #
-# New version: url, sha256, version here, `ws switch`, `wsgame build`,
+# New version: url, sha256, version here, `ws apply`, `wsgame build`,
 # `wsgame install`. mangoapp comes from Ubuntu (gaming/apt.txt).
 { lib, ... }:
 let

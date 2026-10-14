@@ -15,7 +15,7 @@
 #   title, categories, wmClass (default: the exe file name)
 #
 # Add a program: wswin install [--box BOX] [--prefix NAME] SETUP.exe, then
-# an entry here, ws switch.
+# an entry here, ws apply.
 #
 # A double click on an .exe in Files runs it in the standard prefix of
 # defaultBox (ws-win-exe.desktop: wswin exec FILE); switch makes it the

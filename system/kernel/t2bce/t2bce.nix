@@ -3,7 +3,7 @@
 # its in-tree t2bce. `ws-suspend t2bce-build` fetches that patch, applies
 # nostate-fix.patch and builds the modules for the kernel.
 #
-# New kernel: add its release and commit here, `ws switch`, then
+# New kernel: add its release and commit here, `ws apply`, then
 # `ws-suspend t2bce-build KERNEL` (helpws suspend).
 #
 # Built into ~/.local/share/wsconfig/t2bce/sources.json (KERNEL: COMMIT;

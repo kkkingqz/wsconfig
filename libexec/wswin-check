@@ -22,7 +22,7 @@ esac
 data="${WSWIN_DATA:-$HOME/.local/share/wsconfig}"
 boxes_json="$data/distrobox/boxes.json"
 apps_json="$data/windows/apps.json"
-# Both files are built by ws switch (distrobox/distrobox.nix, windows/apps.nix).
+# Both files are built by ws apply (distrobox/distrobox.nix, windows/apps.nix).
 # The Windows boxes: those with a profile (distrobox/distrobox.nix).
 win_boxes="$(for b in $(manifest_get "$boxes_json"); do
     [[ -z "$(manifest_get "$boxes_json" "$b" profile)" ]] || echo "$b"
@@ -98,7 +98,7 @@ elif have xdg-mime; then
     if [[ "$exe_default" == ws-win-exe.desktop ]]; then
         pass ".exe opens with ws-win-exe.desktop (wine-wayland, standard prefix)"
     else
-        warn ".exe opens with ${exe_default:-nothing}, not ws-win-exe.desktop (ws switch)"
+        warn ".exe opens with ${exe_default:-nothing}, not ws-win-exe.desktop (ws apply)"
     fi
 fi
 

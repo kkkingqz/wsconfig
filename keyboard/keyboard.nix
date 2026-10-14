@@ -12,7 +12,7 @@
 #   tiling     [{key, binding}], appended by ws-tiling-apply to the Tiling
 #              Assistant defaults; checked by ws-keyboard check
 #
-# Change: edit here, `ws switch`, `ws apply keyboard` (or `ws apply tiling`).
+# Change: edit here, `ws apply`, `ws apply keyboard` (or `ws apply tiling`).
 # The original GNOME values of a newly added key are not in the existing
 # backup (~/.local/state/wsconfig/keyboard/gsettings-backup.tsv).
 { lib, facts, core, ... }:

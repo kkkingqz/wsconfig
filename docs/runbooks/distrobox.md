@@ -18,7 +18,7 @@ distrobox/arch/wsbox-host-ntsync/   пакет-заглушка NTSYNC-MODULE д
 libexec/wsbox                    владелец: apply, check, update, recreate
 ```
 
-`ws switch` собирает в `~/.local/share/wsconfig/distrobox/`:
+`ws apply` собирает в `~/.local/share/wsconfig/distrobox/`:
 
 ```text
 containers.ini   манифест distrobox assemble
@@ -29,7 +29,7 @@ boxes.json       контейнеры по порядку: image, home, hooks, e
 ```
 
 Hooks контейнеры запускают через `sh` из `~/.local/share/wsconfig/hooks/`:
-это копии `distrobox/arch` и `distrobox/wine` ядра, `ws switch` обновляет
+это копии `distrobox/arch` и `distrobox/wine` ядра, `ws apply` обновляет
 их целиком. Путь hook запоминается при создании контейнера, поэтому он
 стабилен, а не путь в store (тот меняется с каждой версией ядра и исчезает
 после сборки мусора). Контейнеры, созданные раньше, запускают hooks из
@@ -38,7 +38,7 @@ checkout (`~/wsconfig/distrobox/…`) до `ws box recreate NAME`. Hook ниче
 `install-hook` получает аргументом.
 
 Host-пакеты (`podman`, `distrobox`, `uidmap`, …) — в `nix/hosts/apt.txt`,
-модуль `ntsync` — `system/files/modules-load.d/ntsync.conf` (`ws system apply`).
+модуль `ntsync` — `system/files/modules-load.d/ntsync.conf` (`ws apply system`).
 
 ## Контейнеры
 
@@ -106,12 +106,12 @@ Enter, Esc/q), ответ пишется в `boxes.toml`. Esc/q отменяет
 В Fish + Ghostty `ws box enter NAME`, `distrobox enter NAME` и
 `distrobox-enter -n NAME` меняют обычный цвет текста до выхода из контейнера.
 Цвета контейнеров и fallback задаются в `terminal/distrobox-colors.nix`
-и применяются через `ws switch`. Подробнее: `helpws terminal`,
+и применяются через `ws apply`. Подробнее: `helpws terminal`,
 раздел «Цвета Distrobox-сессий».
 
 ## Изменить контейнер
 
-1. Правка `distrobox/distrobox.nix`, `ws switch`.
+1. Правка `distrobox/distrobox.nix`, `ws apply`.
 2. Новый контейнер — `ws box apply NAME`; другой образ, пакеты или hooks —
    `ws box recreate NAME`.
 3. `ws box check`.

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# The apt step of ws apply: the apt lists of this host (lib/apt.bash,
+# apt_install), as bootstrap.sh installs them. No upgrade (ws update apt).
+#   ws-apt pending   what apply would do, one line each, without sudo;
+#                    nothing printed: nothing to do
+#   ws-apt apply     do it (sudo only then)
+# A container host has its packages in the image (helpws plan-wsgnomebox):
+# nothing to do here.
+
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws apply apt"
+# shellcheck source=../lib/apt.bash
+. "$WS_CORE/lib/apt.bash"
+
+host="$(python3 "$WS_CORE/lib/ws_facts.py" host)" || exit 1
+apt_host "$host"
+
+if [[ "$container" == true ]]; then
+    [[ "${1:-}" == pending ]] || echo "container host: the apt packages are in the image"
+    exit 0
+fi
+
+case "${1:-}" in
+    pending)
+        # The actions apt_install would run, on fd 3; its own lines go away.
+        actions="$(
+            # shellcheck disable=SC2329 # called by apt_install
+            run() { printf '%s\n' "$*" >&3; }
+            apt_install 3>&1 >/dev/null
+        )"
+        [[ -z "$actions" ]] || printf '%s\n' "$actions"
+        ;;
+    apply)
+        # shellcheck disable=SC2329 # called by apt_install
+        run() { "$@"; }
+        apt_install
+        ;;
+    *) die "usage: ws-apt pending|apply" ;;
+esac

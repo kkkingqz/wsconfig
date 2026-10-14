@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Windows programs in the Windows boxes of distrobox/distrobox.nix
 # (profile wine: wine/winetricks; profile proton: umu-run). Programs with a
-# launcher are listed in windows/apps.nix. ws switch builds both files:
+# launcher are listed in windows/apps.nix. ws apply builds both files:
 #
 #   ~/.local/share/wsconfig/distrobox/boxes.json  boxes: home profile driver dpi
 #                                                    init_overrides gpu
@@ -64,8 +64,8 @@ app_value() {
 }
 
 ensure_config() {
-    [[ -r "$boxes_json" ]] || die "not found: $boxes_json (ws switch)"
-    [[ -r "$apps_json" ]] || die "not found: $apps_json (ws switch)"
+    [[ -r "$boxes_json" ]] || die "not found: $boxes_json (ws apply)"
+    [[ -r "$apps_json" ]] || die "not found: $apps_json (ws apply)"
 }
 
 # A value of a box in boxes.json (distrobox/distrobox.nix), ${HOME} expanded.

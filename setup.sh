@@ -13,9 +13,9 @@ set -euo pipefail
 # Distrobox boxes, widgets and overrides without a choice of this host
 # (checklists, lib/ws_catalog.py offer --all --setup), package licenses, the
 # go; the host and its choices are published after a question (ws sync) → ws btrfs make → reboot → ws btrfs
-# make → bootstrap.sh → reboot → ws system apply, ws apply → reboot → ws
-# apply, ws check (FAIL does not stop: listed at the end) → Timeshift and
-# its first snapshot, the backup key → ws switch, ws checkpoint create setup,
+# make → bootstrap.sh → reboot → ws apply → reboot → ws apply, ws check
+# (FAIL does not stop: listed at the end) → Timeshift and its first
+# snapshot, the backup key → ws apply home, ws checkpoint create setup,
 # what is not published yet: after the question (ws sync).
 #
 # Each run starts where the last one stopped: the state of the system and
@@ -301,7 +301,7 @@ step_choices() {
     printf '%s\n' "${seed[@]}" | sudo debconf-set-selections
     say "Дальше без вопросов"
     echo "Раскладка Btrfs (старый корень удаляется после проверки загрузки), bootstrap.sh,"
-    echo "ws system apply, ws apply, ws check, Timeshift, ключ backup. Между ними — перезагрузки:"
+    echo "ws apply (дважды), ws check, Timeshift, ключ backup. Между ними — перезагрузки:"
     echo "после каждой войти, setup.sh продолжит сам. Нужен пароль sudo после каждого входа."
     ask "Начать?" || die "nothing started; run setup.sh again"
     mark_step choices
@@ -349,15 +349,11 @@ step_bootstrap() {
 }
 
 step_layers() {
-    if ! done_step system; then
-        say "ws system apply"
-        ws system apply
-        mark_step system
-    fi
     if ! done_step apply1; then
         say "ws apply (первый проход)"
-        # New GNOME extensions activate only in a new session: steps with a
-        # failed preflight run again after the reboot.
+        # apt, the system files and the user layer at once. New GNOME
+        # extensions activate only in a new session: steps with a failed
+        # preflight run again after the reboot.
         ws apply || echo "ws apply: the rest after the reboot"
         mark_step apply1
         reboot_now "системные файлы и расширения GNOME"
@@ -439,7 +435,7 @@ step_finish() {
     local -a data_files=(flatpak/catalog.toml flake.lock
         'nix/hosts/*/flatpak.toml' 'nix/hosts/*/boxes.toml' 'nix/hosts/*/widgets.toml')
     say "Готово"
-    ws switch
+    ws apply home
     # A checkpoint needs a live system that matches its tree (ws system check).
     if ! git -C "$repo" rev-parse -q --verify refs/tags/checkpoint/setup >/dev/null; then
         ws checkpoint create setup || checkpoint=false

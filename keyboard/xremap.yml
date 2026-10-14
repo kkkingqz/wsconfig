@@ -19,7 +19,7 @@
 # can never silently stop working.
 #
 # xremap reads the store build of this file (keyboard/xremap.nix), where
-# @repo@ becomes the checkout path; edits take effect on `ws switch`.
+# @repo@ becomes the checkout path; edits take effect on `ws apply`.
 #
 # VM consoles (virt-manager, remote-viewer, virt-viewer) get the keys as
 # they are: a guest runs this profile itself (helpws virt). Translated here,

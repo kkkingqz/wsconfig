@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Set keys of Remmina's remmina.pref (a GKeyFile) for ws switch:
+"""Set keys of Remmina's remmina.pref (a GKeyFile) for ws apply:
 
     remmina-pref.py FILE GROUP.KEY=VALUE...
 

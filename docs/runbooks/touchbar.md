@@ -34,7 +34,7 @@ Touch Bar закреплён в USB configuration 1. Режим дисплея (
 /etc/systemd/system/ws-touchbar-fn.service   system service для bridge
 ```
 
-Все файлы лежат в `system/` repository и ставятся `ws system apply`.
+Все файлы лежат в `system/` repository и ставятся `ws apply system`.
 
 ## hid-appletb-kbd
 
@@ -49,7 +49,7 @@ options hid_appletb_kbd mode=1 fntoggle=1 autodim=1 dim_timeout=30 idle_timeout=
   он (см. «Автозатемнение»).
 
 Модуль грузится из initramfs, поэтому после изменения `tb.conf` нужен
-`update-initramfs`. `ws system apply` делает это сам, если
+`update-initramfs`. `ws apply system` делает это сам, если
 modprobe-файлы изменились.
 
 ## Layer behavior

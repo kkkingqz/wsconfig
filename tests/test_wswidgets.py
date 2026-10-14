@@ -1,7 +1,7 @@
 """wswidgets against the host choices nix/hosts/HOST/widgets.toml and a
 fixed catalog: list,
 enabled, enable, disable, apply without a terminal and update with nix and
-ws switch replaced by stubs, in a throwaway Git checkout."""
+ws apply replaced by stubs, in a throwaway Git checkout."""
 import json
 import os
 from pathlib import Path
@@ -58,15 +58,15 @@ class WswidgetsTests(unittest.TestCase):
         stubs.mkdir()
         (stubs / "nix").write_text(NIX_STUB)
         (stubs / "nix").chmod(0o755)
-        (stubs / "switch").write_text('#!/bin/sh\necho switch >> "$WSW_TEST_LOG"\nexit "${SWITCH_RC:-0}"\n')
-        (stubs / "switch").chmod(0o755)
+        (stubs / "apply").write_text('#!/bin/sh\necho apply >> "$WSW_TEST_LOG"\nexit "${APPLY_RC:-0}"\n')
+        (stubs / "apply").chmod(0o755)
         (self.repo / "flake.lock").write_text(lock("a" * 40))
         git = ["git", "-C", str(self.repo)]
         subprocess.run([*git, "init", "-q"], check=True)
         subprocess.run([*git, "add", "flake.lock"], check=True)
         subprocess.run([*git, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init"], check=True)
         self.env = dict(os.environ, PATH=f"{stubs}:{os.environ['PATH']}", WSCONFIG=str(self.repo),
-                        WSWIDGETS_CATALOG=str(self.catalog), WSWIDGETS_SWITCH=str(stubs / "switch"),
+                        WSWIDGETS_CATALOG=str(self.catalog), WSWIDGETS_APPLY=str(stubs / "apply"),
                         WSWIDGETS_FACT="yes", WS_HOST="test", WSW_TEST_LOG=str(self.log),
                         GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
                         GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
@@ -92,14 +92,14 @@ class WswidgetsTests(unittest.TestCase):
         self.other.write_text('yes = ["example"]\n')
         self.assertEqual(self.run_w("enabled").stdout.split(), ["compact", "clock"])
 
-    def test_enable_marks_yes_and_switches(self):
+    def test_enable_marks_yes_and_applies(self):
         self.list.write_text('# mine\nno = ["example"]\n')
         result = self.run_w("enable", "example", "clock")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.list.read_text(), '# mine\nno = []\nyes = ["example", "clock"]\n')
-        self.assertEqual(self.calls(), ["switch"])
+        self.assertEqual(self.calls(), ["apply"])
 
-    def test_enable_no_switch_and_unknown_id(self):
+    def test_enable_no_apply_and_unknown_id(self):
         self.assertEqual(self.run_w("enable", "-n", "compact").returncode, 0)
         self.assertEqual(self.calls(), [])
         result = self.run_w("enable", "nope", "example")
@@ -145,13 +145,13 @@ class WswidgetsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("no widgets to offer on test", result.stdout)
 
-    def test_update_moves_lock_and_switches_without_committing(self):
+    def test_update_moves_lock_and_applies_without_committing(self):
         self.list.write_text('yes = ["example"]\n')
         result = self.run_w("update", NEW_REV="b" * 40)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("aaaaaaa -> bbbbbbb", result.stdout)
         self.assertIn("compare/" + "a" * 40 + "..." + "b" * 40, result.stdout)
-        self.assertEqual(self.calls()[-1], "switch")
+        self.assertEqual(self.calls()[-1], "apply")
         head = subprocess.run(["git", "-C", str(self.repo), "log", "-1", "--format=%s"],
                               text=True, capture_output=True).stdout.strip()
         self.assertEqual(head, "init")
@@ -167,13 +167,28 @@ class WswidgetsTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("has no compact", result.stderr)
         self.assertEqual((self.repo / "flake.lock").read_text(), before)
-        self.assertNotIn("switch", self.calls())
+        self.assertNotIn("apply", self.calls())
 
-    def test_update_restores_lock_when_switch_fails(self):
+    def test_update_restores_lock_when_nothing_was_applied(self):
+        # Exit 2 of ws apply: the build failed, nothing applied.
         before = (self.repo / "flake.lock").read_text()
-        result = self.run_w("update", NEW_REV="b" * 40, SWITCH_RC="1")
+        result = self.run_w("update", NEW_REV="b" * 40, APPLY_RC="2")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual((self.repo / "flake.lock").read_text(), before)
+        self.assertIn("restored", result.stderr)
+
+    def test_update_keeps_lock_when_applying_had_begun(self):
+        before = (self.repo / "flake.lock").read_text()
+        result = self.run_w("update", NEW_REV="b" * 40, APPLY_RC="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotEqual((self.repo / "flake.lock").read_text(), before)
+        self.assertIn("stays at bbbbbbb", result.stderr)
+
+    def test_inside_ws_apply_nothing_more_is_applied(self):
+        self.list.write_text('no = ["example"]\n')
+        result = self.run_w("enable", "example", WS_APPLYING="1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls(), [])
 
     def test_update_when_newest(self):
         result = self.run_w("update", NEW_REV="a" * 40)

@@ -1,5 +1,5 @@
 # Host system file tree (phase 4 of helpws history-nix): every system file
-# of the host, byte for byte, installed by `ws system apply`. Nix only builds it; `ws system diff|check` compares it with
+# of the host, byte for byte, installed by `ws apply system`. Nix only builds it; `ws system diff|check` compares it with
 # the live system.
 #
 #   $out/files/<absolute path>   files for /

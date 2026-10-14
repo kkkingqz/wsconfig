@@ -23,7 +23,7 @@ wswidgets: <https://github.com/kkkingqz/wswidgets>, полное описани�
 widgets = true   # false — без виджетов
 ```
 
-С `widgets = true` `ws switch` подключает модуль Home Manager из flake input
+С `widgets = true` `ws apply` подключает модуль Home Manager из flake input
 `wswidgets` (`widgets/widgets.nix`): Quickshell и Mesa в своём closure,
 `workstation-widgets.service`, QML, manifest/runtime JSON, файлы расширения
 `workstation-widgets@local` и команду `ws-widgets`.
@@ -52,8 +52,8 @@ no = ["clock"]                 # отказались
 
 ```console
 ws widgets list                 # виджеты закреплённой версии и их состояние здесь
-ws widgets enable clock         # в yes этого хоста (в конец панели), затем ws switch
-ws widgets disable compact      # в no этого хоста, затем ws switch
+ws widgets enable clock         # в yes этого хоста (в конец панели), затем ws apply
+ws widgets disable compact      # в no этого хоста, затем ws apply
 ws widgets apply                # спросить о виджетах в состоянии ask (чеклист)
 ws widgets apply --select       # и об отклонённых (no)
 ws widgets update               # новая версия с GitHub (см. ниже)
@@ -63,8 +63,8 @@ ws widgets status               # ws-widgets status: запущенный runtim
 ws widgets check [--json]       # = ws check widgets
 ```
 
-`-n` (`--no-switch`) у enable, disable и update только правит файл или
-`flake.lock`; применит следующий `ws switch`. Новый виджет каталога —
+`-n` (`--no-apply`) у enable, disable и update только правит файл или
+`flake.lock`; применит следующий `ws apply`. Новый виджет каталога —
 ask: его предлагает `ws widgets apply`, в том числе
 из `ws apply` (шаг `widgets`).
 
@@ -72,15 +72,15 @@ ask: его предлагает `ws widgets apply`, в том числе
 
 wsconfig закреплён на коммите wswidgets в `flake.lock`, как nixpkgs.
 `ws widgets update`: `nix flake update wswidgets`, ссылка на сравнение
-коммитов на GitHub, новые и удалённые виджеты, `ws switch`; `flake.lock`
+коммитов на GitHub, новые и удалённые виджеты, `ws apply`; `flake.lock`
 публикует `ws sync`. Если в новой версии нет виджета из `yes` какого-либо хоста
 (`nix/hosts/*/widgets.toml`), update отказывается и не трогает `flake.lock`: сначала
-`ws widgets disable`. Неудачный `ws switch` возвращает прежний `flake.lock`.
+`ws widgets disable`. Неудачный `ws apply` возвращает прежний `flake.lock`.
 `ws update nix` тоже обновляет wswidgets вместе с остальными inputs.
 
 Проверить незакоммиченные изменения из checkout проекта, не трогая
-`flake.lock`: `ws switch --override-input wswidgets path:$HOME/Projects/wswidgets`;
-следующий обычный `ws switch` возвращает закреплённую версию.
+`flake.lock`: `ws apply --override-input wswidgets path:$HOME/Projects/wswidgets`;
+следующий обычный `ws apply` возвращает закреплённую версию.
 
 ## Проверка
 
@@ -91,5 +91,5 @@ wsconfig закреплён на коммите wswidgets в `flake.lock`, ка�
 ## Отключение
 
 Виджет: `ws widgets disable ID`. Весь слой: `widgets = false` в `host.toml` и
-`ws switch` — Home Manager убирает файлы слоя и сервис, расширение исчезает
+`ws apply` — Home Manager убирает файлы слоя и сервис, расширение исчезает
 из `enabled-extensions`; выбор в `widgets.toml` остаётся.

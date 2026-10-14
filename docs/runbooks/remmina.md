@@ -25,7 +25,7 @@ remmina/remmina-pref.py ставит эти ключи, остальное не 
 nix/hosts/machine-apt.txt  purge: пакетов remmina из apt
 ```
 
-`ws switch` ставит `remmina` в `~/.nix-profile/bin`, ярлыки
+`ws apply` ставит `remmina` в `~/.nix-profile/bin`, ярлыки
 `org.remmina.Remmina.desktop` и `org.remmina.Remmina-file.desktop` в
 `~/.local/share/applications` (Exec — путь в `/nix/store`: `~/.nix-profile/share`
 не в `XDG_DATA_DIRS`) и иконки в `~/.local/share/icons`. ID ярлыков те же, что
@@ -48,7 +48,7 @@ nix/hosts/machine-apt.txt  purge: пакетов remmina из apt
   и вставка файлов с сервера ничего не находила. Один контекст на
   подключение, как в xfreerdp.
 
-Новая Remmina в nixpkgs останавливает `ws switch` (assert в `package.nix`):
+Новая Remmina в nixpkgs останавливает `ws apply` (assert в `package.nix`):
 проверить, влиты ли !2776 и !2777 и применяются ли diff, затем поднять версию
 в assert.
 
@@ -56,10 +56,10 @@ nix/hosts/machine-apt.txt  purge: пакетов remmina из apt
 
 Быстрое подключение (строка поиска в главном окне) берёт значения из
 профиля по умолчанию — группы `[remmina]` в `~/.config/remmina/remmina.pref`.
-`ws switch` ставит там:
+`ws apply` ставит там:
 
 ```text
-[remmina]      quality=9          Best (без ws switch — Poor)
+[remmina]      quality=9          Best (без ws apply — Poor)
                colordepth=99      кодек выбирает сервер: H.264 (AVC420)
                network=autodetect сервер меряет канал
 [remmina_pref] rdp_quality_9=180  Best: всё, плюс сглаживание шрифтов и
@@ -67,7 +67,7 @@ nix/hosts/machine-apt.txt  purge: пакетов remmina из apt
 ```
 
 Остальные ключи файла — Remmina; изменённые в настройках эти четыре
-`ws switch` вернёт. Сохранённые профили — со своими значениями.
+`ws apply` вернёт. Сохранённые профили — со своими значениями.
 
 Замер 2026-10-13 (перетаскивание окон на 192.168.113.113 — gnomebox-desktop
 на tower, gnome-remote-desktop 50, 15 с): Remmina из apt — RemoteFX

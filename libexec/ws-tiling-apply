@@ -13,7 +13,7 @@ SCHEMA = "org.gnome.shell.extensions.tiling-assistant"
 
 # Private chords emitted by xremap, appended to the Tiling Assistant defaults
 # (never replacing them). Declared in keyboard/keyboard.nix, built by
-# ws switch into keyboard.json: tiling, [{key, binding}].
+# ws apply into keyboard.json: tiling, [{key, binding}].
 BINDINGS_FILE = Path(
     os.environ.get(
         "WS_KEYBOARD_MANIFEST",
@@ -25,7 +25,7 @@ BINDINGS_FILE = Path(
 def load_bindings():
     if not BINDINGS_FILE.is_file():
         raise SystemExit(
-            f"ws-tiling-apply: missing {BINDINGS_FILE} (run ws switch)"
+            f"ws-tiling-apply: missing {BINDINGS_FILE} (run ws apply)"
         )
 
     bindings = {}

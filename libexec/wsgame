@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ws game: the packages of the Game Mode session (helpws gaming, helpws
 plan-legion-go 3.4). Sources and versions are gaming/sources.nix, built by
-ws switch into ~/.local/share/wsconfig/gaming/sources.json; downloads and
+ws apply into ~/.local/share/wsconfig/gaming/sources.json; downloads and
 .debs live next to it. Nothing is installed from outside dpkg.
 
   fetch            download the sources, check their sha256
@@ -69,7 +69,7 @@ def load_sources():
     try:
         return json.loads(SOURCES.read_text())
     except FileNotFoundError:
-        die(f"missing {SOURCES} (gaming/sources.nix; ws switch)")
+        die(f"missing {SOURCES} (gaming/sources.nix; ws apply)")
     except ValueError as e:
         die(f"{SOURCES}: {e}")
 

@@ -2,7 +2,7 @@
 set -eu
 
 # Man pages from docs/**/*.md, one per `title:` (lowdown -s -t man).
-# nix/pkgs/man.nix runs this in the Nix build with lowdown from nixpkgs; `ws switch`
+# nix/pkgs/man.nix runs this in the Nix build with lowdown from nixpkgs; `ws apply`
 # installs the result. A run by hand writes the untracked man/ for preview.
 
 repo="${WSCONFIG:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"

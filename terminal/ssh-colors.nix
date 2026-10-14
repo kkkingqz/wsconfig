@@ -1,5 +1,5 @@
 # SSH session foreground colors. Home Manager generates the Fish configuration;
-# change these values here, then run `ws switch`.
+# change these values here, then run `ws apply`.
 { ... }:
 let
   colors = {

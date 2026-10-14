@@ -15,14 +15,14 @@ Game Mode — отдельная сессия gamescope + Steam, как в Steam
 ## Слои
 
 ```text
-gaming/sources.nix     источники: url, sha256, версия пакета (ws switch →
+gaming/sources.nix     источники: url, sha256, версия пакета (ws apply →
                        ~/.local/share/wsconfig/gaming/sources.json, на
                        каждом хосте: собирать можно где угодно)
 gaming/build.sh        сборка в контейнере Ubuntu релиза host (podman)
 gaming/apt.txt         из Ubuntu, ставит bootstrap.sh: gamescope, mangoapp
 steam/apt.txt          Steam из apt (nativeSteam = true)
 system/gaming.nix      автологин SDDM, os-session-select, Return to Game
-                       Mode, HandlePowerKey=ignore (ws system apply)
+                       Mode, HandlePowerKey=ignore (ws apply system)
 libexec/wsgame         владелец: fetch, build, install, check, mode
 ```
 

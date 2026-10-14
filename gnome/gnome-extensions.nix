@@ -1,5 +1,5 @@
 # The one list of GNOME Shell extensions of the workstation. Everything else
-# reads it: enabled-extensions (dconf, written by ws switch), the links of
+# reads it: enabled-extensions (dconf, written by ws apply), the links of
 # pinned EGO extensions, and ~/.local/share/wsconfig/gnome/extensions.json
 # (order: every UUID in order; by_source: SOURCE: [UUID]; pins: UUID:
 # VERSION; helpws plan-v2, 2.6) for ws gnome extensions,
@@ -14,14 +14,14 @@
 #           Shell for updates the same way). With
 #           pin = { version = N; hash = "sha256-..."; } (N: the number in the
 #           EGO download URL): built by nix/pkgs/gnome-extensions.nix and linked
-#           file by file by ws switch; not updated
+#           file by file by ws apply; not updated
 #   local   gnome/extensions/<uuid> in this repository, copied (schemas
 #           compiled) by ws gnome extensions (ws apply extensions)
 #   nix     files delivered by a Home Manager module of a flake input (the
-#           wswidgets adapter, widgets/widgets.nix) on ws switch; only
+#           wswidgets adapter, widgets/widgets.nix) on ws apply; only
 #           enabled here
 #
-# enabled-extensions is written on every ws switch: an extension enabled or
+# enabled-extensions is written on every ws apply: an extension enabled or
 # disabled by hand (Extension Manager, gnome-extensions) is reset by the next
 # switch; add or remove it here instead. New extensions load after
 # logout/login on Wayland.
