@@ -6,10 +6,7 @@
 # when the file has it (the modules read facts.NAME).
 { lib }:
 let
-  string = { name = "a string"; ok = builtins.isString; };
-  strings = { name = "a list of strings"; ok = v: builtins.isList v && lib.all builtins.isString v; };
-  bool = { name = "true or false"; ok = builtins.isBool; };
-  number = { name = "a number"; ok = v: builtins.isInt v || builtins.isFloat v; };
+  inherit (import ./schema.nix { inherit lib; }) string strings bool number port table;
 
   # Section -> key -> type; required keys are listed in `required`.
   schema = {
@@ -33,7 +30,7 @@ let
     container = {
       server = string;
       image = string;
-      port = { name = "a port number"; ok = v: builtins.isInt v && v > 0 && v < 65536; };
+      inherit port;
       mounts = strings;
       devices = strings;
     };
@@ -52,13 +49,8 @@ let
       unknownSections = map (s: "unknown section [${s}]")
         (lib.filter (s: !(schema ? ${s})) sections);
       inSection = s:
-        let d = data.${s}; in
-        if !builtins.isAttrs d then [ "${s} must be a section [${s}]" ]
-        else
-          map (k: "unknown key ${k} in [${s}]") (lib.filter (k: !(schema.${s} ? ${k})) (lib.attrNames d))
-          ++ lib.concatMap (k: lib.optional (schema.${s} ? ${k} && !schema.${s}.${k}.ok d.${k})
-               "${s}.${k} must be ${schema.${s}.${k}.name}") (lib.attrNames d)
-          ++ map (k: "no ${k} in [${s}]") (lib.filter (k: !(d ? ${k})) required.${s});
+        if !builtins.isAttrs data.${s} then [ "${s} must be a section [${s}]" ]
+        else (table { keys = schema.${s}; required = required.${s}; }).check s data.${s};
       missing = map (s: "no section [${s}]")
         (lib.filter (s: !(data ? ${s})) [ "host" "platform" "layers" ]);
       flat = lib.foldl' (a: s: a // (if builtins.isAttrs (data.${s} or null) then data.${s} else { })) { }
@@ -73,7 +65,7 @@ let
           "boot = \"container\" needs a section [container]"
         ++ lib.optional (!container && data ? container)
           "[container] only with boot = \"container\""
-        ++ lib.optional (flat ? displayScale && number.ok flat.displayScale
+        ++ lib.optional (flat ? displayScale && number.check "" flat.displayScale == [ ]
                          && (flat.displayScale < 1 || flat.displayScale > 4))
           "platform.displayScale must be between 1 and 4";
     in

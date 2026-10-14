@@ -65,6 +65,8 @@
           pkgs.writeText "scale" "lib/scale.nix: sizes by the display scale";
         host = assert import ./lib/test-host.nix { inherit lib; };
           pkgs.writeText "host" "lib/host.nix checks host.toml";
+        config = assert import ./lib/test-config.nix { inherit lib; };
+          pkgs.writeText "config" "lib/config.nix merges and checks module TOML";
         catalog = assert import ./lib/test-catalog.nix { inherit lib; };
           pkgs.writeText "catalog" "lib/catalog.nix reads the host choices";
       };
