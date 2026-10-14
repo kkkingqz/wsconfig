@@ -8,7 +8,7 @@ volume: User Commands
 
 VM работают на host: KVM, QEMU и libvirt связаны с ядром, устройствами и
 сетью, в контейнер их не унести. Управление — `virt-manager`, подключение —
-`qemu:///system`. Как слой строился и что проверено: `helpws history-virt`.
+`qemu:///system`. Как слой строился и что проверено: `ws help history-virt`.
 
 ## Что где
 
@@ -49,7 +49,7 @@ copy-on-write у образов нет контрольных сумм Btrfs и 
 за qcow2 без фрагментации.
 
 Переустановка `@vms` не сохраняет: диски — backup `@vms`
-(`helpws plan-final`), описания, NVRAM и TPM — ещё и `ws collect`
+(`ws help plan-final`), описания, NVRAM и TPM — ещё и `ws collect`
 (`virt/`), вернуть — `virsh -c qemu:///system define FILE`, NVRAM и
 `swtpm/` на прежние пути. Кэш DHCP (`/var/lib/libvirt/dnsmasq`) остаётся на
 `@`: он пересоздаётся.
@@ -183,7 +183,7 @@ systemctl --user start xremap
 ```
 
 Клавиатура гостя — PC (`AT Translated Set 2 keyboard`): работают
-PC-варианты профиля (`helpws keyboard`), например UA — Alt+CapsLock; Fn Apple
+PC-варианты профиля (`ws help keyboard`), например UA — Alt+CapsLock; Fn Apple
 до гостя не доходит.
 
 ## Windows (заложено, не сделано)
@@ -197,7 +197,7 @@ qcow2, как у любой (раздел «Snapshots»). Сама VM в пла�
 ## Проброс GPU
 
 Не делается: в «Ubuntu» AMD снята с шины, после выключения она не
-возвращается в D0 (`helpws suspend`), а Intel — единственный экран host.
+возвращается в D0 (`ws help suspend`), а Intel — единственный экран host.
 
 ## Команды
 

@@ -11,7 +11,7 @@ watch="${XREMAP_WATCH:-}"
 [[ -n "$config" && -n "$desktop" && -n "$watch" ]] || { echo "ws-xremap: XREMAP_CONFIG/DESKTOP/WATCH unset; start it as xremap.service (ws keyboard start)" >&2; exit 64; }
 [[ -r "$config" ]] || { echo "ws-xremap: missing config: $config" >&2; exit 66; }
 
-# Game Mode (gamescope-session-plus, helpws plan-legion-go) starts
+# Game Mode (gamescope-session-plus, ws help plan-legion-go) starts
 # graphical-session.target too, and xremap is part of the GNOME layer: off
 # there, without a failure that would restart it. The session script, not
 # gamescope: Steam may run a game in a nested gamescope inside GNOME.

@@ -1,4 +1,4 @@
-# The keyboard of the workstation (helpws keyboard). The shortcuts come
+# The keyboard of the workstation (ws help keyboard). The shortcuts come
 # from a preset of the core (keyboard/presets/; macos: the macOS-style
 # profile that keyboard/xremap.yml and ws-input-source rely on). Here the
 # choice: the preset, the layouts, and overrides of keys of the preset. A

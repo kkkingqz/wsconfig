@@ -1,5 +1,5 @@
 # MacBookPro16,1 with T2: Touch Bar native mode, T2 network and firmware,
-# the suspend layer (helpws suspend), dGPU power-off at boot.
+# the suspend layer (ws help suspend), dGPU power-off at boot.
 { file, ... }:
 {
   files = [
@@ -48,7 +48,7 @@
     # The AMD's CPU port parked like macOS does, at boot and after resume.
     (file "/usr/local/sbin/ws-dgpu-park" "system/files/usr/local/sbin/ws-dgpu-park" "0755")
     (file "/usr/lib/systemd/system-sleep/70-ws-dgpu-park" "system/files/usr/lib/systemd/system-sleep/70-ws-dgpu-park" "0755")
-    # t2gmux (helpws plan-dgpu) is built and installed but never loaded by
+    # t2gmux (ws help plan-dgpu) is built and installed but never loaded by
     # alias: apple-gmux drives the gmux.
     (file "/etc/modprobe.d/t2gmux.conf" "system/files/modprobe/t2gmux.conf" "0644")
 

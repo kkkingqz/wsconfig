@@ -1,4 +1,4 @@
-# Sources of the Game Mode packages (helpws gaming, helpws plan-legion-go
+# Sources of the Game Mode packages (ws help gaming, ws help plan-legion-go
 # 3.4): what wsgame fetches, checks by sha256, builds and installs. Built
 # into ~/.local/share/wsconfig/gaming/sources.json on every host: the
 # packages can be built on any machine with podman (wsgame build), they are
@@ -53,7 +53,7 @@ let
     # Not 0.82.0 (2026-10-10) yet: on 83E1 it takes accel_3d for the
     # controller IMU and its udev rule hides the accelerometer from
     # iio-sensor-proxy, so GNOME loses auto-rotation. Upgrade after stage 6
-    # of helpws plan-legion-go, checking rotation, gyro and buttons.
+    # of ws help plan-legion-go, checking rotation, gyro and buttons.
     inputplumber = {
       url = "https://github.com/ShadowBlip/InputPlumber/releases/download/v0.81.0/inputplumber_0.81.0-1_amd64.deb";
       sha256 = "6433ceb6aca8c3dfbaae94e914cc9fa4936c1ed299d0954510c699f510247c57";

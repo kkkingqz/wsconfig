@@ -16,7 +16,7 @@ cmdline      intel_iommu=on iommu=pt pm_async=off
              + «Ubuntu»: ws.dgpu=off modprobe.blacklist=amdgpu
                          pcie_aspm=force pcie_aspm.policy=powersave
 t2bce        0.07-nostatefix1 (локальная сборка, updates/t2bce)
-Touch Bar    родной режим (см. helpws touchbar)
+Touch Bar    родной режим (см. ws help touchbar)
 AMD dGPU     ws.dgpu=off: выключена, убрана с шины PCI, порт CPU запаркован
 hibernate    /swap/swapfile 32G, resume=UUID=… resume_offset=… (host.toml)
 крышка, Suspend          suspend-then-hibernate: 24 ч S3, затем hibernate
@@ -146,7 +146,7 @@ D3cold to D0`), `PSP create ring failed`. У автора
 ### Парковка порта CPU (ws-dgpu-park)
 
 `apple-gmux` только снимает питание. Порт CPU `00:01.0` (ACPI `PEG0`)
-после этого ищет устройство и держит пакет CPU в PC2/PC3 (helpws plan-t2,
+после этого ищет устройство и держит пакет CPU в PC2/PC3 (ws help plan-t2,
 раздел 1: −0,9 W на CPU и PC7 ~80 % после парковки). macOS перед снятием
 питания вызывает ACPI `GFX0.PWRD(1)` → `PUPD(0)` (SSDT `PEG0GFX0`): линк в
 Gen1, LTR выкл., запрос L2 (`Q0L2`, 0x248 бит 7), затем PHY порта выкл.
@@ -163,7 +163,7 @@ Gen1, LTR выкл., запрос L2 (`Q0L2`, 0x248 бит 7), затем PHY п
 - Ошибка парковки не фатальна: карта выключена, пакет просто остаётся в PC3.
 - t2gmux (KaiT2en, `PWRD` из драйвера) на 16,1 пока не подходит: включение
   выключает машину, а после его `OFF` карту нельзя убрать с шины
-  (helpws plan-dgpu).
+  (ws help plan-dgpu).
 
 Если карта уже выключена, скрипт отказывается работать. Запуск только до GDM:
 vga_switcheroo при `OFF` открытых клиентов не проверяет.
@@ -182,11 +182,11 @@ pcie_aspm.policy=powersave` (`refindDefaultParams` в `host.toml`); «Ubuntu
 поддерживается (FADT), и оставляет его выключенным на всём Thunderbolt;
 с `force` ядро берёт ASPM себе: L1 на Thunderbolt (~1,15 W), Clock PM и L0s
 на остальных линках (ещё ~0,6 W); L1.1/L1.2 политика `powersave` выключает,
-`powersupersave` не экономнее (helpws plan-t2, раздел 1).
+`powersupersave` не экономнее (ws help plan-t2, раздел 1).
 
 Убирали его 2026-09-25 из осторожности: все отказы T2 случились с forced
 ASPM, но вместе с Touch Bar в режиме дисплея; с родным Touch Bar и forced
-ASPM было 16 циклов S3 без сбоев (helpws history-suspend), 2026-10-01 — ещё
+ASPM было 16 циклов S3 без сбоев (ws help history-suspend), 2026-10-01 — ещё
 циклы с t2bce 0.07-nostatefix1. `ws suspend check` предупреждает, если в
 пункте «Ubuntu» параметров нет; `ws system check` — если вернётся
 `/etc/default/grub.d/90-pcie-aspm.cfg` (forced ASPM для GRUB/recovery не
@@ -249,7 +249,7 @@ t2bce_core: remote rejected stateful suspend payload
 получают ответа (`Possible desync`, `command queue timeout`,
 `SQ/CQ unregister failed`). После resume `CQ registration failed`, и IRQ-поток
 `bce_dma` падает с NULL dereference в `t2bce_dma_reserve_submission`.
-Система намертво зависает (три таких случая: `helpws history-suspend`).
+Система намертво зависает (три таких случая: `ws help history-suspend`).
 
 Upstream:
 
@@ -439,7 +439,7 @@ ws psr install NEW_KERNEL
 sudo apt-mark hold linux-t2
 ```
 
-`ws psr` — i915 с PSR на панели Apple (helpws plan-t2, раздел 1) из того же
+`ws psr` — i915 с PSR на панели Apple (ws help plan-t2, раздел 1) из того же
 коммита `linux-t2-patches`. Если `apple-psr.patch` не накладывается на новое
 ядро, работает штатный i915 без PSR (экран ~+1 W), остальное не страдает.
 
@@ -512,7 +512,7 @@ Suspend в меню (S4), кнопка питания (S4)             OK
 
 После resume оба xHCI Thunderbolt пишут `xHC error in resume, USBSTS 0x401,
 Reinit` и работают дальше; так же было и с включённой AMD.
-`71-tb-xhci-awake.rules` держит их вне runtime suspend (см. `helpws
+`71-tb-xhci-awake.rules` держит их вне runtime suspend (см. `ws help
 workstation`, T2 HARDWARE); на системный S3 это не влияет.
 
 ## Source of truth
@@ -557,7 +557,7 @@ hibernate без снятия стека T2; заморозку user.slice syste
 T2Linux-Suspend-Fix / t2-suspend.service / t2-resume.service
 s2idle
 pcie_aspm=force вместе с Touch Bar в режиме дисплея; pcie_ports=compat, i915.enable_guc=3
-t2gmux на 16,1 (пока): ON выключает машину, после его OFF карту нельзя убрать с шины (helpws plan-dgpu)
+t2gmux на 16,1 (пока): ON выключает машину, после его OFF карту нельзя убрать с шины (ws help plan-dgpu)
 Touch Bar display mode (appletbdrm, tiny-dfr) вместе с suspend
 S3 с AMD, выключенной через vga_switcheroo, но оставленной на шине PCI
 ON для AMD после OFF (карта до перезагрузки не оживает)

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Container hosts (boot = "container" in host.toml, helpws plan-wsgnomebox):
+# Container hosts (boot = "container" in host.toml, ws help plan-wsgnomebox):
 # the image is built on the server from a commit of this checkout, the
 # container runs there with the spec of host.toml [container]. Run from any
 # machine with SSH to the server; nothing is copied to it but the build

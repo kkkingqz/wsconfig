@@ -26,7 +26,7 @@ filesystem_check() {
 snapshot_root_check() {
     filesystem_check "$1"
     [[ "$(findmnt -nro TARGET -T "$1")" == "$1" ]] \
-        || die "not mounted: $1 must be its own top-level subvolume such as @wsbackup (helpws backup)"
+        || die "not mounted: $1 must be its own top-level subvolume such as @wsbackup (ws help backup)"
     [[ ",$(findmnt -nro OPTIONS -T "$1")," =~ ,subvol=/?(@[A-Za-z0-9_-]+), ]] \
         || die "not a top-level subvolume mount: $1"
     [[ "${BASH_REMATCH[1]}" != @home ]] || die "copy root must not be @home: $1"

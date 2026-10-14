@@ -1,4 +1,4 @@
-# Distrobox containers: the catalog (helpws distrobox). distrobox.nix builds
+# Distrobox containers: the catalog (ws help distrobox). distrobox.nix builds
 # containers.ini for distrobox assemble and boxes.json for ws box and
 # ws windows from it. Which host has which: nix/hosts/HOST/boxes.toml
 # (yes, no; ws box create/apply/remove). A container in neither has its
@@ -42,7 +42,7 @@
 #   exports            ALIAS = "desktop file inside the container"
 #   settings           init, nvidia, pull, root, start_now, entry (true or
 #                      false; defaults: pull = true, the rest false)
-#   windows            a Windows box (ws windows, helpws history-windows):
+#   windows            a Windows box (ws windows, ws help history-windows):
 #                        profile         wine: wine/winetricks; proton: umu-run
 #                        driver          Wine graphics driver of every new
 #                                        prefix (wayland, x11)
@@ -58,7 +58,7 @@
 [[boxes]]
 name = "arch"
 # Arch is rolling: pacman -Syu inside (ws box update). Recreate only when
-# needed; AUR packages are installed again by hand (helpws rebuild).
+# needed; AUR packages are installed again by hand (ws help rebuild).
 image = "docker.io/library/archlinux:latest"
 # base-devel: makepkg for the hook and for AUR (paru).
 packages = ["base-devel", "git"]

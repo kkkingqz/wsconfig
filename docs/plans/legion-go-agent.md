@@ -60,8 +60,8 @@ volume: User Commands
   Его меняет и сессия на mbp16: перед работой `git pull`, после коммита —
   push. Пометки `flatpak/apps.txt`, `distrobox/…`, `hosts.txt` у двух машин
   в одних файлах: `git pull` перед `ws switch`.
-- `ws` — точка входа (`ws --help`); темы документации — `helpws` (страницы
-  из `docs/`, `helpws plan-legion-go` — план). Состояние машины, которого
+- `ws` — точка входа (`ws --help`); темы документации — `ws help` (страницы
+  из `docs/`, `ws help plan-legion-go` — план). Состояние машины, которого
   нет в репозитории, — `~/.local/state/workstation/`.
 - initramfs в Ubuntu 26.04 — dracut, не initramfs-tools.
 - Загрузка — GRUB (`boot = "grub"`), меню на портретной панели повёрнуто;
@@ -89,7 +89,7 @@ volume: User Commands
 
 # 4. План
 
-Источник — `docs/plans/legion-go.md` (`helpws plan-legion-go`). Этапы 0–3
+Источник — `docs/plans/legion-go.md` (`ws help plan-legion-go`). Этапы 0–3
 делает пользователь до тебя (BIOS, установка Ubuntu, `setup.sh`); этап 4
 setup.sh проходит сам. Твоя работа — проверки этапа 4 и этапы 5–9:
 
@@ -110,9 +110,9 @@ setup.sh проходит сам. Твоя работа — проверки э�
   (`systemctl --user status xremap workstation-widgets`).
 - **7. Рабочий стол** на портативном.
 - **8. Recovery и backup.** Приёмник на tower для нескольких машин в
-  репозитории есть (`helpws backup`), но на tower ещё не поставлен — это
+  репозитории есть (`ws help backup`), но на tower ещё не поставлен — это
   изменение сервера, только с подтверждением пользователя. `ws-restore`
-  умеет только rEFInd; для legiongo — ручной путь (`helpws recovery`,
+  умеет только rEFInd; для legiongo — ручной путь (`ws help recovery`,
   «Хосты с GRUB»).
 - **9. Опционально** — каждое с замером до и после.
 
@@ -146,8 +146,8 @@ setup.sh проходит сам. Твоя работа — проверки э�
     `nix eval --raw .#checks.x86_64-linux.home-mbp16.outPath` и
     `….system-mbp16.outPath` (так же wsvm).
 - Новая страница в `docs/` — с шапкой (`title:`, `section:`, `date:`,
-  `source:`, `volume:`), темой в `bin/helpws` и строкой в
-  `terminal/fish/completions/helpws.fish`: это проверяет
+  `source:`, `volume:`), темой в `libexec/helpws` и строкой в
+  `terminal/fish/completions/ws.fish`: это проверяет
   `tests/test_helpws.py`.
 - После push — CI GitHub Actions (`gh run list`, `gh run watch`) должен
   быть зелёным.

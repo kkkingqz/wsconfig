@@ -34,8 +34,8 @@ appearance profile его не задаёт и не меняет.
 
 ## Приложения
 
-Тема, масштаб и порталы приложений — у их слоёв: Flatpak (`helpws flatpak`),
-Distrobox (`helpws distrobox`), Wine (`helpws windows`; Wine только в
+Тема, масштаб и порталы приложений — у их слоёв: Flatpak (`ws help flatpak`),
+Distrobox (`ws help distrobox`), Wine (`ws help windows`; Wine только в
 контейнерах, на host не ставится).
 
 # Управляемый appearance profile

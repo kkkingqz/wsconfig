@@ -17,15 +17,15 @@ kernelParams = [
   "quiet", "splash", "intel_iommu=on", "iommu=pt", "pm_async=off",
   # Hibernation: /swap/swapfile in @swap on the root filesystem; the
   # offset is its first page (ws-suspend swap-setup prints both;
-  # helpws suspend, Hibernate). A new swapfile means a new offset.
+  # ws help suspend, Hibernate). A new swapfile means a new offset.
   "resume=UUID=0cfd2add-849f-47b9-865d-2ac821ca529c", "resume_offset=31286754",
 ]
 # Only the default rEFInd entry "Ubuntu": ws-dgpu-off.service powers the
 # AMD dGPU off and parks its CPU port, and the kernel owns ASPM with the
-# powersave policy (L1 on Thunderbolt, Clock PM; helpws suspend, ASPM).
+# powersave policy (L1 on Thunderbolt, Clock PM; ws help suspend, ASPM).
 # amdgpu is not loaded at all there: ws-dgpu-off removes the card from
 # the bus and gmux cuts its power without it (amdgpu took ~9 s only to be
-# switched off, and GDM waits for ws-dgpu-off; helpws workstation, GRAPHICS).
+# switched off, and GDM waits for ws-dgpu-off; ws help workstation, GRAPHICS).
 # "Ubuntu (AMD)" (refind.conf) and GRUB (recovery) boot without them.
 refindDefaultParams = [
   "ws.dgpu=off", "modprobe.blacklist=amdgpu",
@@ -40,15 +40,15 @@ refindEspPartuuid = "b3575417-21a5-43db-9c6e-dc2dd5510c76"
 displayScale = 1.5
 
 [layers]
-# Virtual machines (helpws virt): true sets up the VM layer — packages of
+# Virtual machines (ws help virt): true sets up the VM layer — packages of
 # virt/apt.txt, @vms with libvirt (bootstrap.sh), OVMF descriptor, ~/VMs,
 # ws check virt.
 vm = true
-# Widget layer (helpws widgets): wswidgets — Quickshell runtime, QML and
+# Widget layer (ws help widgets): wswidgets — Quickshell runtime, QML and
 # the GNOME panel adapter (widgets/widgets.nix) with the widgets of
 # nix/hosts/HOST/widgets.toml, ws check widgets.
 widgets = true
-# Native Steam (helpws plan-legion-go): the apt Steam (steam/apt.txt, i386)
+# Native Steam (ws help plan-legion-go): the apt Steam (steam/apt.txt, i386)
 # with its data on @steam in ~/.local/share/Steam (bootstrap.sh, ws check
 # steam); false — Steam is the Flathub flatpak here.
 nativeSteam = false

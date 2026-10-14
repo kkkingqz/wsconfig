@@ -68,7 +68,7 @@ workstation-xremap
 
 xremap работает только в сессии GNOME: в Game Mode (gamescope-session-plus
 тоже поднимает `graphical-session.target`) `ws-xremap` выходит с кодом 0, без
-перезапусков (`helpws plan-legion-go`). Признак Game Mode — не только
+перезапусков (`ws help plan-legion-go`). Признак Game Mode — не только
 `XDG_CURRENT_DESKTOP`, но и запущенный `gamescope-session-plus`: окружение
 менеджера пользователя может остаться от GNOME; gamescope самой игры внутри
 GNOME xremap не выключает.
@@ -220,7 +220,7 @@ libexec/ws-caps-led
 
 вызывается GNOME extension через `~/.local/share/wsconfig/libexec/`
 (ссылка home-manager на `libexec/` checkout). Это не пользовательская команда, в
-PATH её нет: там только `ws` и `helpws` (`nix/home/links.nix`).
+PATH её нет: там только `ws` и `ws help` (`nix/home/links.nix`).
 
 ## GDM login и GNOME lock screen
 
@@ -521,12 +521,12 @@ mode 2 (media/brightness), при отпускании возвращается 
 Подробности Touch Bar:
 
 ```console
-helpws touchbar
+ws help touchbar
 ```
 
 ## Через RDP: wsgnomebox
 
-Контейнер `wsgnomebox` (`helpws plan-wsgnomebox`) получает клавиши по RDP:
+Контейнер `wsgnomebox` (`ws help plan-wsgnomebox`) получает клавиши по RDP:
 gnome-remote-desktop отдаёт их mutter без `/dev/input`, xremap их не видит
 и там не ставится (`boot = "container"`).
 

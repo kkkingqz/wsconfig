@@ -15,7 +15,7 @@
 # machines virt/apt.txt (vm = "yes"), native Steam steam/apt.txt
 # (nativeSteam = "yes"), Game Mode session gaming/apt.txt (gameMode = "yes").
 
-# Nix: delivers the user layer (helpws history-nix)
+# Nix: delivers the user layer (ws help history-nix)
 nix-bin
 nix-setup-systemd
 

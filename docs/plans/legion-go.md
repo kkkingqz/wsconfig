@@ -16,7 +16,7 @@ home-manager поверх неё. Устройство загружается в
 Состояние: план. На устройстве ничего не делалось. В репозитории готово:
 хост `legiongo` (4.1), `source:`/`arch:` и факты (4.2), пометки и
 `.desktop` по пометкам (4.5), раскладка Btrfs `ws btrfs make` и первичная
-настройка `setup.sh` (`helpws setup`). Не начаты: системные части (4.3) и
+настройка `setup.sh` (`ws help setup`). Не начаты: системные части (4.3) и
 игровой слой (4.4).
 
 # 1. Устройство
@@ -280,7 +280,7 @@ system/gaming.nix               сделано 2026-10-10, при gameMode = "ye
 
 ## 4.4 Игровой слой `gaming/`, владелец `wsgame`
 
-Сделано 2026-10-10 (`helpws gaming`). Источники и версии — в
+Сделано 2026-10-10 (`ws help gaming`). Источники и версии — в
 `gaming/sources.nix` (url, sha256, версия пакета), собирает и ставит
 владелец («Nix доставляет, владельцы остаются»):
 
@@ -354,7 +354,7 @@ wsgame mode game|desktop   steamosctl (терминал, ssh)
 
 ## 4.6 Диск
 
-Btrfs по `helpws rebuild`: `@`, `@home`, `@cache`, `@tmp`, `@log` делает
+Btrfs по `ws help rebuild`: `@`, `@home`, `@cache`, `@tmp`, `@log` делает
 `ws btrfs make` (из `setup.sh`), `@nix`, `@steam` и `@wsbackup` —
 `bootstrap.sh`, `@swap` — этап 5 (3.3). `@steam` — клиент, библиотека,
 compatdata и shadercache вне Timeshift и backup. Сохранения, которых нет в Steam Cloud, живут только на
@@ -363,7 +363,7 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
 # 5. Этапы
 
 На устройстве этапы с 4-го ведёт Claude по
-`docs/plans/legion-go-agent.md` (`helpws plan-legion-go-agent`).
+`docs/plans/legion-go-agent.md` (`ws help plan-legion-go-agent`).
 
 Каждый этап заканчивается `ws checkpoint create NAME`. Перед изменением
 ядра, загрузки и питания делается снимок Timeshift.
@@ -378,7 +378,7 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
    - USB-C хаб, клавиатура, флешка с Ubuntu 26.04.
 1. **Репозиторий на mbp16.** Хост `legiongo` (4.1), `bootstrap.sh` (4.2),
    обе системные части (4.3), каркас `gaming/`, `wsgame` и контейнер
-   `gaming-build` (4.4), xremap и прочее из 4.5, `helpws gaming`. Хост,
+   `gaming-build` (4.4), xremap и прочее из 4.5, `ws help gaming`. Хост,
    `source:`/`arch:`, факты `nativeSteam`/`gameMode`, пометки и `.desktop`
    по пометкам уже сделаны (2026-10-10). На mbp16 ничего не меняется: те же пути store для
    home, system и man, `ws check` без FAIL, CI зелёный.
@@ -388,7 +388,7 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
    пользователь `king`. Разметка вручную: ESP FAT32 около 1 ГБ
    (`/boot/efi`) и Btrfs на остальное (`/`), без swap-раздела и отдельного
    `/boot`. Затем
-   `setup.sh` (`helpws setup`): хост `legiongo` по имени, списки с
+   `setup.sh` (`ws help setup`): хост `legiongo` по имени, списки с
    галочками для того, что не помечено `legiongo`, дальше сам — раскладка
    Btrfs, этап 4, Timeshift. Инвентарь — после setup.sh, `ws collect`
    (раздел `hardware/`: DMI и BIOS, `lspci -nnk`, `lsusb`, `libinput`,
@@ -444,11 +444,11 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
 8. **Recovery и backup.** Timeshift настроил `setup.sh` (снимок «setup»);
    здесь — откат и пункты GRUB (XanMod и generic). Backup на Unraid:
    приёмник умеет несколько машин (`hosts/legiongo/` на flash, пользователь
-   `wsbackup-legiongo`; `helpws backup`), на tower его надо обновить — с
+   `wsbackup-legiongo`; `ws help backup`), на tower его надо обновить — с
    подтверждением; ключ `~/.ssh/wsbackup_ed25519` сделал `setup.sh`, alias и
    `config.json` — вручную; `@steam` в backup не входит. `ws-restore` с
    Live USB умеет только rEFInd: дату с Unraid на legiongo — вручную
-   (`helpws recovery`, «Хосты с GRUB»).
+   (`ws help recovery`, «Хосты с GRUB»).
 9. **Опционально, каждое — с замером до и после.** Вентилятор сверх
    прошивки (3.7), режим `custom` TDP, swappiness и page-cluster, Decky
    Loader, scx_lavd, hibernate (`resume=`/`resume_offset` из swap-setup в

@@ -34,7 +34,7 @@ widgets = true   # false — без виджетов
 ## Какие виджеты на каком хосте
 
 Каталог — виджеты `catalog.nix` закреплённой версии wswidgets. Выбор
-хоста — `nix/hosts/HOST/widgets.toml` (`lib/ws_catalog.py`, `helpws
+хоста — `nix/hosts/HOST/widgets.toml` (`lib/ws_catalog.py`, `ws help
 plan-v2`, этап 3):
 
 ```toml

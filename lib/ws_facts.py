@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Host and facts of nix/hosts/HOST/host.toml, read without Nix (helpws
+"""Host and facts of nix/hosts/HOST/host.toml, read without Nix (ws help
 plan-v2, 2.2 and 4): the only reader. bootstrap.sh and setup.sh need the
 facts before Nix exists, the checks read them often. Only Nix checks the
 values (lib/host.nix); this reads what is there.

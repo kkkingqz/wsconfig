@@ -1,5 +1,5 @@
 """distrobox/arch/wsbox-host-ntsync/install-hook: run by sh from a copy
-(helpws plan-v2, stage 5); the build user is its argument, not the owner of
+(ws help plan-v2, stage 5); the build user is its argument, not the owner of
 its files."""
 import os
 from pathlib import Path

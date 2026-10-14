@@ -1,4 +1,4 @@
-"""ws sync: the only commit and push of the data files (helpws plan-v2, 2.7)."""
+"""ws sync: the only commit and push of the data files (ws help plan-v2, 2.7)."""
 import os
 from pathlib import Path
 import shutil

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Battery audit (helpws plan-t2, 1): power per device of a T2 Mac.
+"""Battery audit (ws help plan-t2, 1): power per device of a T2 Mac.
 
 The SMC measures power per supply rail; PSTR is the whole system, PPBR the
 battery. RAPL counters split the CPU package. Devices that have no rail of

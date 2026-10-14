@@ -13,7 +13,7 @@ Remmina (RDP, VNC, SPICE) — из Nix, а не из apt: у FreeRDP Ubuntu не
 декодирует ffmpeg, на процессоре (VA-API у FreeRDP 3 экспериментальный и
 выключен). Только на реальных
 машинах (`boot` не `container`): контейнерный хост сам RDP-сервер
-(`helpws plan-wsgnomebox`).
+(`ws help plan-wsgnomebox`).
 
 ## Источник
 
@@ -30,7 +30,7 @@ nix/hosts/machine-apt.txt  purge: пакетов remmina из apt
 `~/.local/share/applications` (Exec — путь в `/nix/store`: `~/.nix-profile/share`
 не в `XDG_DATA_DIRS`) и иконки в `~/.local/share/icons`. ID ярлыков те же, что
 у пакета apt: `rdp://`, файлы `.remmina` и разрешение GNOME на перехват
-клавиатуры (`helpws keyboard`) остаются за Remmina. `bootstrap.sh` удаляет
+клавиатуры (`ws help keyboard`) остаются за Remmina. `bootstrap.sh` удаляет
 пакеты apt (`purge:`), `ws check apt` проверяет, что их нет.
 
 ## Патчи

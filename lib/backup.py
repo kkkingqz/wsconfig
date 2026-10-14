@@ -71,7 +71,7 @@ def load_config(path):
 
 
 def vm_layer():
-    """True with vm = true in this host's host.toml (helpws virt): only then
+    """True with vm = true in this host's host.toml (ws help virt): only then
     is there a VM layer and its source @vms."""
     p = subprocess.run([str(REPO / 'bin/ws'), 'fact', 'vm'], text=True, capture_output=True)
     vm = p.stdout.strip()

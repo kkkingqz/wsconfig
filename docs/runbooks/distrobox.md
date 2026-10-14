@@ -7,7 +7,7 @@ volume: User Commands
 # DISTROBOX / PODMAN — MANAGED CONTAINERS
 
 Приложения и toolchains, которым не место на host, живут в контейнерах
-Distrobox под rootless Podman. Как слой появился: `helpws history-distrobox`.
+Distrobox под rootless Podman. Как слой появился: `ws help history-distrobox`.
 
 ## Источник
 
@@ -52,7 +52,7 @@ t2bce-build     ручные сборки ядра/модулей (релиз ho
 touchbar-build  порт Touch Bar, Rust в своём HOME (релиз host)
 ```
 
-Windows-боксы и `ws windows` — `helpws windows`.
+Windows-боксы и `ws windows` — `ws help windows`.
 
 HOME каждого — `~/distrobox/NAME`; он переживает `recreate`. Rootfs —
 расходный. HOME хоста смонтирован в контейнер по тому же пути
@@ -82,7 +82,7 @@ ws box export NAME APP | unexport NAME APP
 
 `distrobox/catalog.toml` — каталог: все контейнеры, которые можно создать. Какие
 есть на машине — её `nix/hosts/HOST/boxes.toml` (`lib/ws_catalog.py`,
-`helpws plan-v2`, этап 3):
+`ws help plan-v2`, этап 3):
 
 ```toml
 yes = ["arch", "wine-wayland"]   # созданы здесь
@@ -107,7 +107,7 @@ Enter, Esc/q), ответ пишется в `boxes.toml`. Esc/q отменяет
 В Fish + Ghostty `ws box enter NAME`, `distrobox enter NAME` и
 `distrobox-enter -n NAME` меняют обычный цвет текста до выхода из контейнера.
 Цвета контейнеров и fallback задаются в `terminal/distrobox-colors.nix`
-и применяются через `ws apply`. Подробнее: `helpws terminal`,
+и применяются через `ws apply`. Подробнее: `ws help terminal`,
 раздел «Цвета Distrobox-сессий».
 
 ## Изменить контейнер
@@ -119,7 +119,7 @@ Enter, Esc/q), ответ пишется в `boxes.toml`. Esc/q отменяет
 3. `ws box check`.
 
 Пакеты, поставленные руками внутри (AUR в `arch`), после `recreate` ставятся
-снова: `helpws rebuild`, раздел 6.3.
+снова: `ws help rebuild`, раздел 6.3.
 
 ## NTSync
 

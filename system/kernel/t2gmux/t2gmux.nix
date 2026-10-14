@@ -1,13 +1,13 @@
-# t2gmux, the gmux driver of KaiT2en (helpws plan-dgpu): powers the AMD dGPU
+# t2gmux, the gmux driver of KaiT2en (ws help plan-dgpu): powers the AMD dGPU
 # of MacBookPro16,1 off and on the way macOS does (ACPI PWRD), replacing
 # apple-gmux. `ws-gmux build` fetches modules/t2gmux at this commit and builds
 # it for a kernel in podman.
 #
 # Newer commit: change it here, `ws apply`, `ws-gmux build`, `ws-gmux
-# install`, test (helpws plan-dgpu).
+# install`, test (ws help plan-dgpu).
 #
 # Built into ~/.local/share/wsconfig/t2gmux/source.json (repo, commit;
-# helpws plan-v2, 2.6), read by ws-gmux.
+# ws help plan-v2, 2.6), read by ws-gmux.
 { ... }:
 let
   repo = "kaiT2en/KaiT2en-Fedora";

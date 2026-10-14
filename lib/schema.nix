@@ -1,4 +1,4 @@
-# Types and checks of the TOML files of the configuration (helpws plan-v2,
+# Types and checks of the TOML files of the configuration (ws help plan-v2,
 # 7.0): host.toml (lib/host.nix) and the files of the modules
 # (lib/config.nix). A type is { name; check = PATH: VALUE: [ MESSAGE ]; }:
 # the messages of everything wrong, [ ] when it is fine. PATH names the
@@ -61,5 +61,5 @@ rec {
   # problem.
   checked = where: t: data:
     let p = problems t data; in
-    if p != [ ] then throw "${where}: ${lib.concatStringsSep "; " p} (helpws rebuild)" else data;
+    if p != [ ] then throw "${where}: ${lib.concatStringsSep "; " p} (ws help rebuild)" else data;
 }

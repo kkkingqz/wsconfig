@@ -1,4 +1,4 @@
-# A container host (helpws plan-wsgnomebox): systemd is PID 1 of a Docker
+# A container host (ws help plan-wsgnomebox): systemd is PID 1 of a Docker
 # container, the server owns the kernel, the boot and the devices.
 # container/Dockerfile installs this tree into the image
 # (container/system-install), so a recreated container starts with it; the

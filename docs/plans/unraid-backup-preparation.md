@@ -6,7 +6,7 @@ volume: User Commands
 
 # Подготовка Unraid для backup workstation
 
-Механизм реализован и перенесён в `main`; инструкция запуска — `helpws backup`.
+Механизм реализован и перенесён в `main`; инструкция запуска — `ws help backup`.
 Ниже — подготовка к первому реальному использованию. Команды установки на сервере
 пока не выполнялись.
 
@@ -63,7 +63,7 @@ Btrfs read-only snapshot → `btrfs send` → SSH → `btrfs receive`.
 5. Выделить SSH-ключ только для backup. Стандартные share users не имеют SSH;
    подключение идёт под системным пользователем `wsbackup` с ForceCommand,
    приём — через sudo, разрешающий одну команду (`backup/unraid/boot.sh`,
-   `helpws backup`). Без PTY и forwarding. Helper допускает только заранее определённый host, scopes
+   `ws help backup`). Без PTY и forwarding. Helper допускает только заранее определённый host, scopes
    и snapshot IDs. Он не исполняет произвольную строку SSH_ORIGINAL_COMMAND.
 6. Проверить Bash, btrfs-progs, flock и findmnt. Для начальной совместимости
    используется Btrfs stream protocol 1; новые stream options включаются
@@ -112,7 +112,7 @@ Snapshot VM делается только при выключенных VM.
 После очистки старой локальной копии `restore-test` не может сравнить
 содержимое этого backup с исходником. Для проверки SHA-256 выбирать сохранённый
 parent и явно указанные файлы. Аварийное восстановление старых копий с NAS
-выполняется автономным `ws-restore` из Live USB (`helpws recovery`), без
+выполняется автономным `ws-restore` из Live USB (`ws help recovery`), без
 локального backup journal. До очистки batch публикует metadata/backfill;
 при ошибке публикации cleanup не происходит. Реальную приёмку выполнить
 по `tests/recovery/live-checklist.md`; recovery не запускается на live root.

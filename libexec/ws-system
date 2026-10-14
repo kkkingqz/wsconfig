@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# The system layer (phase 4 of helpws history-nix): the tree Nix builds for
+# The system layer (phase 4 of ws help history-nix): the tree Nix builds for
 # this host (system/, nix build .#system-HOST) against the live system.
 #   ws system diff|check [--json]|manifest|tree   read-only
 #   ws-system pending   what apply would change, one line each, without
@@ -72,14 +72,14 @@ system_check_extra() {
     # /etc/default/grub belongs to the grub package (ucf); workstation
     # settings live only in grub.d drop-ins. A container has no GRUB.
     if [[ "$(cmd_fact boot)" == container ]]; then
-        info "container: no GRUB (helpws plan-wsgnomebox)"
+        info "container: no GRUB (ws help plan-wsgnomebox)"
     elif cmp -s /usr/share/grub/default/grub /etc/default/grub; then
         pass "/etc/default/grub is the package template"
     else
         warn "/etc/default/grub differs from /usr/share/grub/default/grub; settings belong in grub.d (ws apply system resets it)"
     fi
     [[ -e /etc/default/grub.d/90-pcie-aspm.cfg ]] \
-        && warn "/etc/default/grub.d/90-pcie-aspm.cfg forces ASPM on GRUB/recovery kernels (helpws suspend)"
+        && warn "/etc/default/grub.d/90-pcie-aspm.cfg forces ASPM on GRUB/recovery kernels (ws help suspend)"
     # Recovery must not stop in emergency mode when a non-system disk is absent.
     mounts="$(awk '$0 !~ /^[[:space:]]*#/ && NF >= 4 && $2 ~ /^\/mnt\// && $4 !~ /(^|,)nofail(,|$)/ { print $2 }' /etc/fstab 2>/dev/null)"
     if [[ -z "$mounts" ]]; then
@@ -259,7 +259,7 @@ system_record() {
         "$tree" "$([[ "$rc" == 0 ]] && echo ok || echo problems)" >> "$dir/history"
 }
 
-# One owner of the system files (phase 4 of helpws history-nix), for the
+# One owner of the system files (phase 4 of ws help history-nix), for the
 # whole tree.
 # Only files that differ are backed up and replaced; the ESP is not touched,
 # nothing reboots.
@@ -448,7 +448,7 @@ PY
 
     if [[ "$touchbar" == true ]]; then
         if tiny_dfr_installed; then
-            echo "WARN    tiny-dfr is installed; it switches the Touch Bar to display mode (helpws touchbar)"
+            echo "WARN    tiny-dfr is installed; it switches the Touch Bar to display mode (ws help touchbar)"
         fi
         for dev in /sys/bus/usb/devices/*; do
             [[ "$(cat "$dev/idVendor" 2>/dev/null):$(cat "$dev/idProduct" 2>/dev/null)" == "05ac:8302" ]] || continue
@@ -466,7 +466,7 @@ PY
     echo
     echo "$changed file(s) changed."
     [[ "$refind" == true ]] && note "reboot: refind_linux.conf changed, the kernel command line applies on the next boot"
-    [[ "$refind" == true ]] && note "by hand: refind.conf on the ESP is not installed by apply; copy system/files/esp/refind.conf (helpws workstation, GRAPHICS)"
+    [[ "$refind" == true ]] && note "by hand: refind.conf on the ESP is not installed by apply; copy system/files/esp/refind.conf (ws help workstation, GRAPHICS)"
     [[ "$d3cold" == true ]] && note "reboot: the d3cold rule takes effect on the next boot"
     [[ "$modprobe" == true ]] && note "reboot: the initramfs has new modprobe.d options"
     return "$rc"

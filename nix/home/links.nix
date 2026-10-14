@@ -1,7 +1,7 @@
 # Links from $HOME into the checkout (~/<facts.wsconfig>), one file each.
 # ws is no link into the checkout: ~/.local/bin/ws is bin/ws of the core in
-# the store (nix/pkgs/ws.nix), and so is helpws, the help of the docs. The
-# internal tools are not in PATH (helpws plan-v2, stage 5): ws runs them,
+# the store (nix/pkgs/ws.nix), the one command in PATH (ws help plan-v2,
+# stages 5 and 5.6). The internal tools are not in PATH: ws runs them,
 # Nix callers use their store paths, and ~/.local/share/wsconfig/libexec
 # points at libexec/ of the core for callers that need a fixed path (the
 # input-source extension runs ws-caps-led).
@@ -37,7 +37,7 @@ in
 {
   xdg.dataFile = {
     "wsconfig/libexec".source = "${core}/libexec";
-    # MICRO_CONFIG_HOME of helpws; micro writes its buffers/ there.
+    # MICRO_CONFIG_HOME of ws help (libexec/helpws); micro writes its buffers/ there.
     "wsconfig/micro-help/settings.json".source = link "terminal/micro-help/settings.json";
     "wsconfig/micro-help/bindings.json".source = link "terminal/micro-help/bindings.json";
   };
@@ -53,7 +53,6 @@ in
       filter = lib.hasSuffix ".ghostty";
     })
     (coreDir { from = "bin"; to = ".local/bin"; })
-    { ".local/bin/helpws".source = "${core}/libexec/helpws"; }
     {
       ".config/nix/nix.conf".source = link "nix/nix.conf";
       ".config/xdg-terminals.list".source = link "terminal/xdg-terminals/xdg-terminals.list";

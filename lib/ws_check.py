@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Result contract of the owner checks, the Python side of lib/check.bash
-(helpws plan-v2, 2.4). ws check runs every owner with --json and reads only
+(ws help plan-v2, 2.4). ws check runs every owner with --json and reads only
 the object printed by finish():
 
     {"status": "pass|warn|fail", "passes": N, "warnings": N, "failures": N,

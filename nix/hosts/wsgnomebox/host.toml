@@ -1,5 +1,5 @@
 # GNOME desktop in a Docker container on tower (Unraid), RDP login
-# (helpws plan-wsgnomebox). No hardware, kernel or boot loader of its own:
+# (ws help plan-wsgnomebox). No hardware, kernel or boot loader of its own:
 # the image is built from this checkout (container/), the system tree goes
 # into the image, /nix and the home are directories of tower.
 
@@ -25,7 +25,7 @@ timezone = "Europe/Kyiv"
 vm = false
 nativeSteam = false
 gameMode = false
-# Quickshell widgets on the GNOME panel (helpws widgets).
+# Quickshell widgets on the GNOME panel (ws help widgets).
 widgets = true
 
 # The container on the server (ws container build|run|status); ~ in a

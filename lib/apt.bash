@@ -1,22 +1,22 @@
 # shellcheck shell=bash disable=SC2154 # repo, host, host_list, container, vm, native_steam, game_mode: the caller's
-# apt step of bootstrap.sh (helpws rebuild): PPAs, source: repositories,
+# apt step of bootstrap.sh (ws help rebuild): PPAs, source: repositories,
 # arch:, the packages of the apt lists (rec: with their recommends), manual
 # marks, purge:. Also run as root by the image build of a container host
-# (container/apt-install, helpws plan-wsgnomebox).
+# (container/apt-install, ws help plan-wsgnomebox).
 #
 # Needs: those variables, run (prints instead with --dry-run) and die.
 # purge: is checked by a simulation first (apt_purge_check).
 # ws check apt and ws-baseline read the same lists (apt_host sets the
-# variables from the facts; helpws plan-v2, 2.3).
+# variables from the facts; ws help plan-v2, 2.3).
 
 # The apt lists of the host, by its facts: the only place that chooses them.
 apt_lists() {
     printf '%s\n' "$repo/nix/hosts/apt.txt" "$host_list"
-    # Real machines only, not a container host (helpws plan-wsgnomebox).
+    # Real machines only, not a container host (ws help plan-wsgnomebox).
     [[ "$container" == true ]] || echo "$repo/nix/hosts/machine-apt.txt"
-    # VM packages only on hosts with vm = true (helpws virt).
+    # VM packages only on hosts with vm = true (ws help virt).
     [[ "$vm" == no ]] || echo "${WS_CORE:-$repo}/virt/apt.txt"
-    # Native Steam and the Game Mode session (helpws plan-legion-go).
+    # Native Steam and the Game Mode session (ws help plan-legion-go).
     [[ "$native_steam" == no ]] || echo "${WS_CORE:-$repo}/steam/apt.txt"
     [[ "$game_mode" == no ]] || echo "${WS_CORE:-$repo}/gaming/apt.txt"
 }
@@ -157,7 +157,7 @@ apt_install() {
 
 # purge: removes only what the list names. apt would take the packages that
 # depend on them too: the simulation (no root needed) shows it, and then
-# nothing is removed; the person decides (helpws plan-v2, stage 6).
+# nothing is removed; the person decides (ws help plan-v2, stage 6).
 apt_purge_check() {
     local sim extra
     sim="$(apt-get -s -o Debug::NoLocking=1 purge "$@" 2>&1)" \

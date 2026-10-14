@@ -1,4 +1,4 @@
-# Completions for wsgame (helpws gaming).
+# Completions for wsgame (ws help gaming).
 complete -c wsgame -f
 complete -c wsgame -n __fish_use_subcommand -a fetch -d 'Download the sources, check sha256'
 complete -c wsgame -n __fish_use_subcommand -a build -d 'Build the .debs in a podman container'

@@ -11,7 +11,7 @@ let
   gnome = import ./config.nix { inherit lib wsHost; };
 
   profile = lib.recursiveUpdate (gnome.settings or { }) (lib.optionalAttrs (facts.hardware == "t2-mbp16") {
-    # The power key hibernates (helpws suspend, Hibernate); logind does the
+    # The power key hibernates (ws help suspend, Hibernate); logind does the
     # same outside a session (system/files/logind.conf.d/ws-sleep-keys.conf).
     "org/gnome/settings-daemon/plugins/power" = {
       power-button-action = "hibernate";

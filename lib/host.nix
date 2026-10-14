@@ -1,4 +1,4 @@
-# The facts of a host for Nix (helpws plan-v2, stage 4):
+# The facts of a host for Nix (ws help plan-v2, stage 4):
 # nix/hosts/HOST/host.toml with the sections [host], [platform], [layers]
 # and, on a container host, [container]. Only Nix checks the values;
 # lib/ws_facts.py reads the file without checking it.
@@ -79,7 +79,7 @@ rec {
   # The facts of DATA (a parsed host.toml); WHERE names it in the error.
   factsIn = where: data:
     let p = problems data; in
-    if p != [ ] then throw "${where}: ${lib.concatStringsSep "; " p} (helpws rebuild)"
+    if p != [ ] then throw "${where}: ${lib.concatStringsSep "; " p} (ws help rebuild)"
     else data.host // data.platform // data.layers // lib.optionalAttrs (data ? container) {
       inherit (data) container;
     };

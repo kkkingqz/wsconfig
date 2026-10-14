@@ -7,7 +7,7 @@ volume: User Commands
 # FLATPAK — DESKTOP APPLICATIONS
 
 GUI-приложения — Flatpak (user installation), host остаётся чистым. Как слой
-строился: `helpws history-flatpak`.
+строился: `ws help history-flatpak`.
 
 ## Источник
 
@@ -44,7 +44,7 @@ talk = ["org.kde.StatusNotifierWatcher"]
 ```
 
 Какие приложения на какой машине — её `nix/hosts/HOST/flatpak.toml`
-(`lib/ws_catalog.py`, `helpws plan-v2`, этап 3); имя машины — `ws host`:
+(`lib/ws_catalog.py`, `ws help plan-v2`, этап 3); имя машины — `ws host`:
 
 ```toml
 yes = ["org.gimp.GIMP", "com.mikrotik.WinBox"]   # стоят здесь
@@ -82,7 +82,7 @@ URL` печатает её), затем `ws apply flatpak`; приложение
 — `ws flatpak install --remote NAME APP`. Только user remotes: system
 remotes `ws flatpak check` считает ошибкой, remote не из каталога —
 предупреждением. Браузер — Firefox (`org.mozilla.firefox`): snap в системе
-нет (`purge:snapd`, `helpws rebuild`, раздел 6.0).
+нет (`purge:snapd`, `ws help rebuild`, раздел 6.0).
 
 ## Установить и убрать
 
@@ -126,7 +126,7 @@ ws sync                              # публикует: коммит, pull --
 `ws apply` добавляет изменённые `catalog.toml` и выбор машин
 `nix/hosts/*/*.toml` в сборку и ничего не коммитит: в конце он называет
 неопубликованные файлы данных. Коммит и push делает только `ws sync`
-(`helpws plan-v2`, 2.7).
+(`ws help plan-v2`, 2.7).
 
 ## Разрешения и окружение
 
@@ -175,7 +175,7 @@ ws flatpak reset-permissions APP
 ```
 
 Свои `.desktop`: Claude Desktop (Wayland, масштаб 1.5, URL handler), Steam
-через `ws-gpu run` (`helpws windows`, GPU).
+через `ws-gpu run` (`ws help windows`, GPU).
 
 ## Прочее
 

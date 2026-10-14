@@ -38,7 +38,7 @@ section "1. xremap"
 
 if [[ "$("$WS_CORE/bin/ws" fact boot 2>/dev/null)" == container ]]; then
     # Keys over RDP, without /dev/input: GNOME shortcuts do what xremap does
-    # (keyboard/keyboard.nix, helpws plan-wsgnomebox).
+    # (keyboard/keyboard.nix, ws help plan-wsgnomebox).
     info "container: no xremap, keys over RDP (GNOME shortcuts below)"
     systemctl --user cat xremap.service >/dev/null 2>&1 \
         && fail "xremap.service installed in a container (ws apply)" \

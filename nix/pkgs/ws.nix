@@ -1,4 +1,4 @@
-# The core of wsconfig in the store (helpws plan-v2, stage 5): bin/ws,
+# The core of wsconfig in the store (ws help plan-v2, stage 5): bin/ws,
 # libexec/, lib/, the modules with their hooks, extensions and patches, docs.
 # Not in it: the data of the configuration (nix/hosts, the catalogs,
 # flake.lock; the data patterns of bin/ws) and tests. A tool that would

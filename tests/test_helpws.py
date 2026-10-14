@@ -1,12 +1,14 @@
-"""libexec/helpws: every page has a topic, every `helpws TOPIC` in the
-repository opens one, the fish completion knows the same topics."""
+"""libexec/helpws (ws help): every page has a topic, every `ws help TOPIC`
+in the repository opens one (and `helpws TOPIC` of docs/history, written
+before helpws plan-v2, 5.6), the fish completion of ws knows the same
+topics."""
 from pathlib import Path
 import re
 import subprocess
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-COMPLETION = ROOT / "terminal/fish/completions/helpws.fish"
+COMPLETION = ROOT / "terminal/fish/completions/ws.fish"
 
 
 def case_labels():
@@ -47,8 +49,11 @@ class HelpwsTests(unittest.TestCase):
 
     def test_references_in_the_repository_resolve(self):
         labels = case_labels()
-        # "helpws wo<Tab>", "helpws history-…": examples, not topics.
-        ref = re.compile(r"\bhelpws ([a-z][a-z0-9-]*[a-z0-9])(?![a-z0-9<…*-])")
+        # "ws help wo<Tab>", "ws help history-…": examples, not topics.
+        # Wrapped at the end of a line (also of a comment) too; a command on
+        # the next line is no topic.
+        ref = re.compile(r"\b(?:helpws|ws\s+help)(?:[ \t]+|[ \t]*\n[ \t]*(?:#[ \t]*)?)"
+                         r"(?!ws\b)([a-z][a-z0-9-]*[a-z0-9])(?![a-z0-9<…*-])")
         unknown = set()
         for path in tracked_files():
             if path.suffix in {".wav", ".png", ".lock"} or not path.is_file():
@@ -59,15 +64,22 @@ class HelpwsTests(unittest.TestCase):
                 continue
             for m in ref.finditer(text):
                 if m[1] not in labels:
-                    unknown.add(f"{path.relative_to(ROOT)}: helpws {m[1]}")
+                    unknown.add(f"{path.relative_to(ROOT)}: {m[0]}")
         self.assertEqual(sorted(unknown), [])
+
+    def test_no_topic_is_the_list(self):
+        p = subprocess.run([str(ROOT / "bin/ws"), "help"], capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertTrue(p.stdout.startswith("Usage: ws help [TOPIC]"), p.stdout[:80])
+        p = subprocess.run([str(ROOT / "bin/ws"), "help", "nosuch"], capture_output=True, text=True)
+        self.assertEqual((p.returncode, p.stderr), (2, "Unknown topic: nosuch\nRun: ws help\n"))
 
     def test_fish_completion_has_the_same_topics(self):
         text = COMPLETION.read_text()
-        listed = set(re.search(r"^set -l helpws_topics (.*)$", text, re.M)[1].split())
+        listed = set(re.search(r"^set -l ws_help_topics (.*)$", text, re.M)[1].split())
         labels = {n for n in case_labels() if not n.startswith("-")}
         self.assertEqual(sorted(labels ^ listed), [])
-        offered = set(re.findall(r"^__helpws_topic (\S+) ", text, re.M))
+        offered = set(re.findall(r"^__ws_help_topic (\S+) ", text, re.M))
         self.assertEqual(sorted(offered - labels), [])
         # Every page is offered under one of its names.
         pages = {t for n, t in case_labels().items() if n in offered and t}

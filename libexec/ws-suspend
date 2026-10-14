@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Suspend / T2 power layer: deep-only sleep, Broadcom Wi-Fi guards and the
-# patched t2bce modules (no-state fallback fix). See helpws suspend.
+# patched t2bce modules (no-state fallback fix). See ws help suspend.
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
@@ -68,7 +68,7 @@ cmd_status() {
     "$WS_CORE/bin/ws" system check 2>/dev/null | grep -E '^ *(WARN|FAIL) ' || echo "no problems"
 }
 
-# Since phase 4 of helpws history-nix one owner installs all system
+# Since phase 4 of ws help history-nix one owner installs all system
 # files, including the suspend layer: `ws apply system` (system).
 cmd_apply() {
     exec "$WS_CORE/bin/ws" apply system
@@ -157,7 +157,7 @@ cmd_t2bce_rollback() {
     echo "Rolled back to the in-tree t2bce for $kver. Reboot to apply."
 }
 
-# Hibernation needs swap (helpws suspend, Hibernate): a swapfile in its own
+# Hibernation needs swap (ws help suspend, Hibernate): a swapfile in its own
 # subvolume @swap (no snapshots of it, no CoW, no compression), mounted at
 # /swap like the other subvolumes in /etc/fstab. Idempotent; prints the
 # kernel parameters for host.toml kernelParams.
@@ -196,7 +196,7 @@ cmd_swap_setup() {
     offset="$(sudo btrfs inspect-internal map-swapfile -r /swap/swapfile)"
     echo
     echo "host.toml kernelParams: \"resume=UUID=$uuid\", \"resume_offset=$offset\""
-    echo "then: ws apply system; sudo update-initramfs -u; reboot (helpws suspend, Hibernate)"
+    echo "then: ws apply system; sudo update-initramfs -u; reboot (ws help suspend, Hibernate)"
 }
 
 cmd="${1:-status}"

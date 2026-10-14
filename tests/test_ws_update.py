@@ -1,5 +1,5 @@
 """ws update: nix through ws apply, flake.lock back only when nothing was
-applied (helpws plan-v2, stage 6); extensions."""
+applied (ws help plan-v2, stage 6); extensions."""
 import tempfile
 import unittest
 
@@ -42,7 +42,7 @@ class UpdateTests(unittest.TestCase):
         rc, out, err = self.update()
         self.assertEqual(rc, 0, out + err)
         self.assertIn("OK    nix", out)
-        # Nothing is committed: ws sync publishes (helpws plan-v2, 2.7).
+        # Nothing is committed: ws sync publishes (ws help plan-v2, 2.7).
         self.assertEqual(self.w.git("rev-parse", "HEAD"), self.initial)
         self.assertIn("not published: flatpak/catalog.toml (ws sync)", out)
 

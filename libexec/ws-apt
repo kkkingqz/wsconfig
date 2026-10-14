@@ -6,7 +6,7 @@ set -euo pipefail
 #   ws-apt pending   what apply would do, one line each, without sudo;
 #                    nothing printed: nothing to do
 #   ws-apt apply     do it (sudo only then)
-# A container host has its packages in the image (helpws plan-wsgnomebox):
+# A container host has its packages in the image (ws help plan-wsgnomebox):
 # nothing to do here.
 
 # shellcheck source=../lib/common.bash

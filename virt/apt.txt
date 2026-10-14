@@ -1,4 +1,4 @@
-# apt packages of the VM layer (helpws virt), for hosts with vm = true in
+# apt packages of the VM layer (ws help virt), for hosts with vm = true in
 # nix/hosts/<name>/host.toml; same format as nix/hosts/apt.txt. Installed by
 # bootstrap.sh, compared by `ws check apt`.
 

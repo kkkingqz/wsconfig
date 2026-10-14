@@ -29,7 +29,7 @@ CFG = Path(
     )
 )
 # remotes, apps (REMOTE APP in order) and the overrides of this host
-# (flatpak/flatpak.nix; helpws plan-v2, 2.6).
+# (flatpak/flatpak.nix; ws help plan-v2, 2.6).
 MANIFEST = CFG / "flatpak.json"
 DESKTOP_OVERRIDES = CFG / "desktop"
 USER_APPLICATIONS = Path.home() / ".local/share/applications"
@@ -1457,7 +1457,7 @@ nix/hosts/HOST/flatpak.toml; filesystem/host/env/talk и un… — overrides т�
 ws apply flatpak собирает и применяет их.
 
 Справка по команде: ws flatpak help install или ws flatpak install --help.
-Подробное руководство: helpws flatpak / man ws-flatpak.
+Подробное руководство: ws help flatpak / man ws-flatpak.
 """,
     )
     sp = p.add_subparsers(dest="cmd", required=True, title="Команды", metavar="COMMAND")

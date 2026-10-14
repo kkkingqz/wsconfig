@@ -17,9 +17,9 @@ volume: User Commands
 - rEFInd + T2 kernel `7.2.7-1-t2-resolute`;
 - Btrfs root с `@`, `@home`, `@cache`, `@tmp`, `@log`; snapshots — Timeshift;
 - Wi-Fi, Bluetooth, T2 audio, microphone, camera;
-- Intel UHD 630 как primary GPU; AMD dGPU выключена при загрузке (rEFInd «Ubuntu», `helpws workstation`), offload в «Ubuntu (AMD)»;
+- Intel UHD 630 как primary GPU; AMD dGPU выключена при загрузке (rEFInd «Ubuntu», `ws help workstation`), offload в «Ubuntu (AMD)»;
 - рабочий `deep/S3` suspend/resume;
-- suspend layer: deep-only, Broadcom guard, patched `t2bce` (`helpws suspend`); ASPM у ядра в пункте «Ubuntu» (`powersave`), порт выключенной AMD запаркован (`ws-dgpu-park`);
+- suspend layer: deep-only, Broadcom guard, patched `t2bce` (`ws help suspend`); ASPM у ядра в пункте «Ubuntu» (`powersave`), порт выключенной AMD запаркован (`ws-dgpu-park`);
 - Touch Bar в родном режиме (`hid-appletb-kbd` + `ws-touchbar-fn`):
   - F1…F12 по умолчанию;
   - media/brightness при удержании Fn;
@@ -29,7 +29,7 @@ volume: User Commands
   - CapsLock EN/RU и Fn+CapsLock -> UA;
   - GDM/login EN и GNOME lock screen EN;
   - Tiling Assistant, Tile Editing Mode, Always on Top и Smart Popup;
-- Nix + home-manager поверх Ubuntu (`helpws history-nix`, тег `nix-v1`):
+- Nix + home-manager поверх Ubuntu (`ws help history-nix`, тег `nix-v1`):
   `bootstrap.sh` → `ws switch` → `ws system apply` → `ws apply`, проверка —
   `ws check`; задачи после миграции — там же, «После миграции»;
 - development/toolchains не должны расползаться по host;
@@ -37,23 +37,23 @@ volume: User Commands
 
 ## Что осталось
 
-1. `helpws plan-t2`
+1. `ws help plan-t2`
    Hibernate и suspend-then-hibernate сделаны 2026-10-02 (крышка/Suspend →
-   24 ч S3, затем hibernate; `helpws suspend`). Touch ID отложен до релиза
+   24 ч S3, затем hibernate; `ws help suspend`). Touch ID отложен до релиза
    t2touch с проверенным S3 и установкой вне Omarchy (2026-10-02).
    Battery audit и fan policy закрыты 2026-10-01 (forced ASPM, AMD без
    amdgpu с запаркованным портом, PSR, быстрый resume; вентиляторы штатно).
 
-2. `helpws plan-final`
+2. `ws help plan-final`
    Сделано 2026-10-02: инвентарь (`ws collect`), граница установки (apt,
    `purge:snapd`), snapshots и откат — Timeshift с входом из GRUB
    (проверено), чистка машины. Backup-механизм Timeshift @/@home с сохранением
    последнего ro-parent каждого scope и отдельный `send vms` подготовлены
-   (`helpws backup`), цель — Unraid/Btrfs; осталось задать SSH-конфигурацию,
+   (`ws help backup`), цель — Unraid/Btrfs; осталось задать SSH-конфигурацию,
    выполнить первый реальный перенос и restore test. Финальный smoke-test
    также остаётся.
 
-3. `helpws plan-legion-go`
+3. `ws help plan-legion-go`
    Legion Go 1 третьим хостом `legiongo` (план 2026-10-10): Ubuntu и
    wsconfig как на mbp16, ядро XanMod, загрузка в GNOME, Game Mode из
    компонентов Bazzite (InputPlumber, steamos-manager, gamescope-session,
@@ -61,7 +61,7 @@ volume: User Commands
    пометками Flatpak и Distrobox и фактом `vm = "no"`. Хост в репозитории
    заведён; на устройстве ничего не начато.
 
-4. `helpws plan-v2`
+4. `ws help plan-v2`
    wsconfig v2 (план 2026-10-14): сначала чистка legacy и общие механизмы
    в этом репозитории (корни, факты, apt-списки, проверки, каталоги и
    выбор хоста в файлах хоста, `ws sync` вместо автокоммитов), затем код
@@ -72,17 +72,17 @@ volume: User Commands
    `~/.local/state/wsconfig`), 3 (каталоги, выбор хоста в
    `nix/hosts/HOST/*.toml`, `ws_catalog`) и 4 (факты хоста в
    `host.toml`) выполнены 2026-10-14. Этап 5 (ядро из Nix store, в PATH
-   `ws` и `helpws`) 6 (один `ws apply`) и 7 (данные модулей в TOML,
+   `ws` и `ws help`) 6 (один `ws apply`) и 7 (данные модулей в TOML,
    кроме backup — он на этапе 8) выполнены.
 
 Отложено:
 
-- `helpws plan-hyprland` — предложение Hyprland + Caelestia рядом с GNOME,
+- `ws help plan-hyprland` — предложение Hyprland + Caelestia рядом с GNOME,
   адаптировано к текущему host/wsconfig 2026-10-02; установка не начата.
   Отдельный desktop lock/profile, session lifecycle и portals, собственный
   keyboard backend, проверяемая delta к upstream startup; GNOME baseline
   сохраняется. Начинать с compatibility/GPU gate и baseline capture.
-- `helpws plan-dgpu` — AMD через t2gmux (KaiT2en), отложен 2026-10-01
+- `ws help plan-dgpu` — AMD через t2gmux (KaiT2en), отложен 2026-10-01
   (решение пользователя): у 16,1 включение карты выключает машину. Сейчас
   `apple-gmux` + `ws-dgpu-park` (PC7 с выключенной картой); вернуться, когда
   KaiT2en починит включение;
@@ -94,7 +94,7 @@ volume: User Commands
 
 ## Завершённые слои
 
-Как строились — `docs/history/` (`helpws history-…`), как работают —
+Как строились — `docs/history/` (`ws help history-…`), как работают —
 `docs/runbooks/`:
 
 ```text

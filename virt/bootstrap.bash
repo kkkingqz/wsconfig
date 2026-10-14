@@ -1,5 +1,5 @@
 # shellcheck shell=bash disable=SC2154 # dry_run, repo, host: bootstrap.sh's
-# Step 3 of bootstrap.sh on hosts with vm = "yes" (helpws virt): VM state on
+# Step 3 of bootstrap.sh on hosts with vm = "yes" (ws help virt): VM state on
 # @vms, libvirt pool and network. Sourced by bootstrap.sh: uses its run, die,
 # subvolume_mount, dry_run, repo, host.
 

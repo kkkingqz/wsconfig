@@ -1,4 +1,4 @@
-# Flatpak: the remotes and every app a host may have (helpws flatpak), in
+# Flatpak: the remotes and every app a host may have (ws help flatpak), in
 # order. Which host has which app, and its own overrides:
 # nix/hosts/HOST/flatpak.toml. An app without a choice of the host has its
 # default: ask (offered by ws flatpak apply; the default), no or yes.

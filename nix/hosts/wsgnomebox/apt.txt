@@ -1,5 +1,5 @@
 # apt packages of wsgnomebox (GNOME in a container on tower) on top of
-# nix/hosts/apt.txt (helpws plan-wsgnomebox). The image installs them
+# nix/hosts/apt.txt (ws help plan-wsgnomebox). The image installs them
 # (container/Dockerfile), bootstrap.sh then finds them present. rec: lines
 # are described in nix/hosts/apt.txt.
 

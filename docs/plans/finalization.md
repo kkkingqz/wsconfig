@@ -12,7 +12,7 @@ volume: User Commands
 
 # 1. System inventory
 
-Инвентарь — `ws collect` (`helpws rebuild`, раздел 0): эталон `ws baseline
+Инвентарь — `ws collect` (`ws help rebuild`, раздел 0): эталон `ws baseline
 capture --with-sudo` (проверки, GNOME и расширения, Flatpak, Distrobox,
 ссылки, системные файлы, пакеты apt и Nix), загрузка (cmdline, fstab,
 `refind_linux.conf`, Btrfs), apt (`apt-mark showmanual`, `dpkg -l`,
@@ -44,7 +44,7 @@ generic-ядра и старое T2 `7.2.6`, `linux-tools`, логи, остат
 существующие снимки Timeshift на Unraid с Btrfs. `@` передаётся как `system`,
 `@home` — как `home`, если он есть в снимке. Новые снимки Timeshift команда
 не создаёт. SSH-адрес и рабочая конфигурация ещё не заданы; реальная передача
-и восстановление с NAS пока не проверены. Инструкция — `helpws backup` и
+и восстановление с NAS пока не проверены. Инструкция — `ws help backup` и
 `docs/plans/unraid-backup-preparation.md`.
 
 После успеха всего batch остаётся последняя управляемая локальная readonly
@@ -76,7 +76,7 @@ T2-specific config files
 
 # 2a. Backup VM — @vms (обязательно)
 
-Всё состояние VM — на subvolume `@vms` (`/var/lib/vms`, `helpws virt`):
+Всё состояние VM — на subvolume `@vms` (`/var/lib/vms`, `ws help virt`):
 диски, NVRAM, TPM, описания. Root snapshots его не содержат, `ws collect`
 дисков не содержит. Без отдельного backup потеря диска или переустановка —
 это потеря VM.
@@ -116,7 +116,7 @@ Snapshot делать перед:
 Не создавать snapshot перед каждым обычным Flatpak update.
 
 Инструмент — Timeshift (`@` и `@home`; решение пользователя 2026-10-02),
-`helpws rebuild`, раздел 12. Перед перечисленным — ручной снапшот с
+`ws help rebuild`, раздел 12. Перед перечисленным — ручной снапшот с
 комментарием (GUI или `sudo timeshift --create --comments "…"`);
 расписание пользователь настраивает в GUI. Пары до/после для apt не
 нужны (решение пользователя).
@@ -142,7 +142,7 @@ Timeshift batch, следующий инкрементальный batch, сох
 локального parent и восстановление `system`/`home` в отдельные каталоги с
 проверкой файлов. Для снимков с уже удалённой локальной копией `restore-test`
 не может сравнить содержимое с исходником; проверять таким способом нужно
-сохранённый parent. Процедура аварийного восстановления — `helpws backup`.
+сохранённый parent. Процедура аварийного восстановления — `ws help backup`.
 
 **Итог (2026-10-02): проверено.** Загрузка в снапшот из GRUB («Timeshift
 snapshots»): корень — снапшот, `ws check` без FAIL. Откат: снапшот →

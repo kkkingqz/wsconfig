@@ -171,7 +171,7 @@ pcie_aspm.policy=powersave` — да; проверки сна (циклы `ws-ba
 pcie_aspm.policy=powersave`, `ws-dgpu-off` + `ws-dgpu-park` (парковка порта
 AMD как в macOS, после resume — хук). Экран погашен, на батарее: 8,36 W
 (PC3) → **5,1 W, пакет PC7 ~80 %**; после S3 — 5,2–5,6 W, PC7 72–76 %.
-t2gmux отложен (helpws plan-dgpu). Расход во сне и экран при работе — ниже;
+t2gmux отложен (ws help plan-dgpu). Расход во сне и экран при работе — ниже;
 раздел закрыт.
 
 `ws-battery idle 30` (2026-10-01, на батарее, экран 28 %, Wi-Fi и BT вкл.):
@@ -351,7 +351,7 @@ Touch ID является удобным дополнительным метод
 
 # 4. Hibernate — только если нужен
 
-**Итог (2026-10-02): сделано** (`helpws suspend`, Hibernate). Цель —
+**Итог (2026-10-02): сделано** (`ws help suspend`, Hibernate). Цель —
 suspend-then-hibernate для долгого сна. Swapfile 32G в `@swap`
 (`ws-suspend swap-setup`), resume в cmdline. Upstream hibernate с `t2bce`
 сломан (#213): стек T2 снимается до образа и поднимается после
@@ -421,7 +421,7 @@ systemctl suspend-then-hibernate
 
 ## Что специально не делаем
 
-- не пытаемся добиться runtime PM AMD dGPU (его нет); AMD выключается только при загрузке, пунктом rEFInd «Ubuntu» (`helpws workstation`, GRAPHICS);
+- не пытаемся добиться runtime PM AMD dGPU (его нет); AMD выключается только при загрузке, пунктом rEFInd «Ubuntu» (`ws help workstation`, GRAPHICS);
 - не меняем работающий `deep/S3`;
 - не трогаем runtime PM Touch Bar;
 - не запускаем `powertop --auto-tune`;

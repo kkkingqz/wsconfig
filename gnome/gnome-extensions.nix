@@ -4,7 +4,7 @@
 # the host, the checks, and what everything else reads: enabled-extensions
 # (dconf, written by ws apply), the links of pinned EGO extensions, and
 # ~/.local/share/wsconfig/gnome/extensions.json (order: every UUID in
-# order; by_source: SOURCE: [UUID]; pins: UUID: VERSION; helpws plan-v2,
+# order; by_source: SOURCE: [UUID]; pins: UUID: VERSION; ws help plan-v2,
 # 2.6) for ws gnome extensions, ws-gnome check, test and status, ws check
 # repo and ws update extensions.
 #
@@ -15,15 +15,15 @@
 let
   gnome = import ./config.nix { inherit lib wsHost; };
 
-  # Hibernation is set up where facts.kernelParams has resume= (helpws
+  # Hibernation is set up where facts.kernelParams has resume= (ws help
   # suspend, Hibernate). systemd finds a swap file without it, so
   # CanHibernate alone would offer an untested hibernate elsewhere.
   hibernate = lib.any (lib.hasPrefix "resume=") facts.kernelParams;
 
   extensions = (gnome.extensions or [ ])
-  # Hibernate in the power menu where logind allows it (helpws suspend).
+  # Hibernate in the power menu where logind allows it (ws help suspend).
   ++ lib.optional hibernate { uuid = "workstation-hibernate@local"; source = "local"; }
-  # The panel adapter of the widget layer (helpws widgets): its files come
+  # The panel adapter of the widget layer (ws help widgets): its files come
   # from the wswidgets module (source "nix"), here it is only enabled.
   ++ lib.optional facts.widgets
     { uuid = config.programs.wswidgets.extensionUuid; source = "nix"; };

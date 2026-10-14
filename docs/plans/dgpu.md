@@ -17,7 +17,7 @@ KaiT2en (вариант «Б»), а не дописывать свой шаг в
 
 ## Почему
 
-Разбор — `helpws plan-t2`, раздел 1. Коротко:
+Разбор — `ws help plan-t2`, раздел 1. Коротко:
 
 - `ws-dgpu-off` сейчас: switcheroo OFF (`apple-gmux` пишет в порт gmux
   `0x50` 1, затем 0) и удаление карты с шины PCI. Порт CPU `00:01.0`
@@ -27,7 +27,7 @@ KaiT2en (вариант «Б»), а не дописывать свой шаг в
   L2, выключение PHY порта. Вручную повторено (`~/.cache/amd-park-test.sh`):
   с выключенной AMD пакет PC7 82 %, CPU −0,9 W.
 - `apple-gmux` не умеет включать карту обратно (switcheroo ON → «PSP create
-  ring failed», helpws suspend), поэтому карта убирается с шины и S3 с ней
+  ring failed», ws help suspend), поэтому карта убирается с шины и S3 с ней
   невозможен (MODE1 reset `amdgpu` в suspend_noirq).
 - t2gmux (github.com/kaiT2en/KaiT2en-Fedora, `modules/t2gmux`, GPL-2.0, автор
   t2bce) для MacBookPro16,1/16,4 выключает через `PWRD(1)`, включает через
@@ -60,7 +60,7 @@ KaiT2en (вариант «Б»), а не дописывать свой шаг в
 5. **Переход.** t2gmux по умолчанию (`apple-gmux` в blacklist),
    `ws-dgpu-off` — только switcheroo OFF, хук сна ON/OFF, решение о пункте
    «Ubuntu (AMD)», проверки (`ws-workstation-verify`, `ws-suspend check`),
-   документация (`helpws suspend`, `helpws workstation`).
+   документация (`ws help suspend`, `ws help workstation`).
 6. **Обновление ядра.** Пересборка t2gmux вместе с t2bce; `ws check`
    сообщает, если модуль не собран под текущее ядро.
 
@@ -100,7 +100,7 @@ KaiT2en (вариант «Б»), а не дописывать свой шаг в
 
 **Итог (2026-10-01): t2gmux отложен.** Решение пользователя — вариант А:
 `apple-gmux` остаётся, `ws-dgpu-off` выключает и убирает карту как раньше,
-затем `ws-dgpu-park` паркует порт как macOS (helpws suspend, «Парковка порта
+затем `ws-dgpu-park` паркует порт как macOS (ws help suspend, «Парковка порта
 CPU»), после resume — хук `70-ws-dgpu-park`. t2gmux остаётся собранным и в
 blacklist (`ws-gmux`); вернуться — когда KaiT2en починит включение на 16,1:
 тогда карта может оставаться на шине и включаться без перезагрузки.

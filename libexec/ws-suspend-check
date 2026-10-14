@@ -27,7 +27,7 @@ if [[ -z "$hardware" ]]; then
     check_finish
     exit
 elif [[ "$hardware" != t2-mbp16 ]]; then
-    info "hardware $hardware: no suspend layer (T2 only, helpws suspend)"
+    info "hardware $hardware: no suspend layer (T2 only, ws help suspend)"
     check_finish
     exit
 fi
@@ -39,7 +39,7 @@ grep -Fq '[deep]' /sys/power/mem_sleep 2>/dev/null \
     || fail "mem_sleep default is not deep: $(cat /sys/power/mem_sleep 2>/dev/null)"
 
 # The default entry "Ubuntu" (ws.dgpu=off) forces ASPM with the powersave
-# policy (helpws suspend, ASPM); "Ubuntu (AMD)" and GRUB recovery do not.
+# policy (ws help suspend, ASPM); "Ubuntu (AMD)" and GRUB recovery do not.
 aspm="$(grep -Eo 'pcie_aspm[^ ]*' /proc/cmdline | tr '\n' ' ')"
 if grep -qw 'ws.dgpu=off' /proc/cmdline; then
     [[ "$aspm" == *pcie_aspm=force* && "$aspm" == *pcie_aspm.policy=powersave* ]] \
@@ -64,7 +64,7 @@ t2bce_param="$(cat /sys/module/t2bce_core/parameters/stateful_sleep 2>/dev/null 
     || fail "t2bce_core.stateful_sleep=$t2bce_param (forced no-state test mode left on)"
 
 # Without it the firmware's Thunderbolt _PS0 polls the host bridge and every
-# resume takes ~20 s longer (helpws suspend, Thunderbolt).
+# resume takes ~20 s longer (ws help suspend, Thunderbolt).
 if systemctl is-active --quiet ws-tb-acpi-seed.service 2>/dev/null; then
     pass "Thunderbolt ACPI regions seeded before the first suspend (ws-tb-acpi-seed)"
 else
@@ -74,7 +74,7 @@ fi
 section "2. Hibernation"
 
 # Configured when the kernel command line has resume= (host.toml
-# kernelParams, ws-suspend swap-setup; helpws suspend, Hibernate).
+# kernelParams, ws-suspend swap-setup; ws help suspend, Hibernate).
 resume_arg="$(grep -o 'resume=[^ ]*' /proc/cmdline | grep -v '^resume_' | head -1)"
 offset_arg="$(grep -o 'resume_offset=[0-9]*' /proc/cmdline | head -1)"
 if [[ -z "$resume_arg" ]]; then

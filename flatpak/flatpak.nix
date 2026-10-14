@@ -7,7 +7,7 @@
 #
 #   flatpak.json      remotes (NAME: URL), apps (REMOTE APP of the catalog,
 #                     in order, every host), overrides (APP: filesystems,
-#                     environment, session_bus) of this host (helpws
+#                     environment, session_bus) of this host (ws help
 #                     plan-v2, 2.6)
 #   desktop/APP.desktop
 #

@@ -1,4 +1,4 @@
-# Widget layer (helpws widgets), on hosts with widgets = "yes": the
+# Widget layer (ws help widgets), on hosts with widgets = "yes": the
 # Quickshell runtime, QML, GNOME adapter files and ws-widgets come from the
 # wswidgets flake input (pinned by flake.lock; ws widgets update); this
 # repository chooses the widgets per host (nix/hosts/HOST/widgets.toml,

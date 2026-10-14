@@ -1,4 +1,4 @@
-"""ws_catalog offer --all --setup: the choices of setup.sh (helpws setup)
+"""ws_catalog offer --all --setup: the choices of setup.sh (ws help setup)
 and the start of ws apply (apply_offer)."""
 import io
 import json

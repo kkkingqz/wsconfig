@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 set -eu
 
+# ws help [TOPIC]: a page of docs/ in Micro; without TOPIC the list.
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws help"
 # Micro config dir: settings.json and bindings.json are home-manager links
 # into terminal/micro-help; micro writes buffers/ (history) next to them.
 micro_cfg="$HOME/.local/share/wsconfig/micro-help"
-topic="${1:-terminal}"
+topic="${1:-help}"
 
 # A topic names a page by its `title:`, not by a path: docs/ can be
 # rearranged without touching this list.
 open_title() {
     doc="$(grep -rlx --include='*.md' "title: $1" "$WS_CORE/docs" | head -n 1)"
-    [ -n "$doc" ] || { echo "helpws: no document with title $1" >&2; exit 1; }
+    [ -n "$doc" ] || die "no document with title $1"
     MICRO_CONFIG_HOME="$micro_cfg" exec micro -readonly true "$doc"
 }
 
@@ -57,14 +59,14 @@ case "$topic" in
     history-virt|plan-virt) open_title ws-history-virt ;;
     man)
         page="${2:-ws-terminal}"
-        tmp="$(mktemp "${TMPDIR:-/tmp}/helpws.XXXXXX")"
+        tmp="$(mktemp "${TMPDIR:-/tmp}/ws-help.XXXXXX")"
         trap 'rm -f "$tmp"' EXIT HUP INT TERM
         PAGER=cat MANPAGER=cat man "$page" | col -bx > "$tmp"
         MICRO_CONFIG_HOME="$micro_cfg" micro -readonly true "$tmp"
         ;;
     -h|--help|help)
         cat <<'USAGE'
-Usage: helpws [topic]
+Usage: ws help [TOPIC]
 
 Architecture (docs/architecture):
   readme           README: entry point
@@ -81,13 +83,13 @@ Runbooks (docs/runbooks):
   terminal         Ghostty + Fish handbook
   suspend          Suspend / T2 power layer
   touchbar         Touch Bar
-  flatpak          Flatpak applications (wsflatpak)
-  distrobox        Managed Distrobox / Podman containers (wsbox)
-  windows          Windows programs, Wine, Proton, Steam (wswin)
+  flatpak          Flatpak applications (ws flatpak)
+  distrobox        Managed Distrobox / Podman containers (ws box)
+  windows          Windows programs, Wine, Proton, Steam (ws windows)
   remmina          Remmina RDP client from Nix: H.264, files
   virt             Virtual machines: KVM, libvirt, virt-manager
-  gaming           Game Mode: gamescope + Steam session (wsgame)
-  backup           Backup to Unraid: Timeshift snapshots, Btrfs send (wsbackup)
+  gaming           Game Mode: gamescope + Steam session (ws game)
+  backup           Backup to Unraid: Timeshift snapshots, Btrfs send (ws backup)
   recovery         Restore a date from Unraid with ws-restore (Live USB)
   widgets          Shared widget runtime (Quickshell, GNOME panel)
 
@@ -114,7 +116,7 @@ USAGE
         ;;
     *)
         echo "Unknown topic: $topic" >&2
-        echo "Run: helpws --help" >&2
+        echo "Run: ws help" >&2
         exit 2
         ;;
 esac

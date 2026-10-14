@@ -522,7 +522,7 @@ cmd_menu() {
                 for p in "$home/.wine" "$home"/prefixes/*; do
                     for f in "$(menu_dir "$p")"/*.desktop; do
                         [[ -f "$f" ]] || continue
-                        # Entries of before helpws plan-v2, stage 5 ran the
+                        # Entries of before ws help plan-v2, stage 5 ran the
                         # old name wswin, which is no longer in PATH.
                         if grep -q '^Exec=wswin ' "$f"; then
                             sed -i 's/^Exec=wswin /Exec=ws windows /' "$f"

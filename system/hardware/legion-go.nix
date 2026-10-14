@@ -1,4 +1,4 @@
-# Lenovo Legion Go (gen 1, 83E1; helpws plan-legion-go, 3.5 and 3.6): the
+# Lenovo Legion Go (gen 1, 83E1; ws help plan-legion-go, 3.5 and 3.6): the
 # settings Bazzite gives it, on Ubuntu. The power key's long press (scancode
 # 0x67 -> F16) is in the hwdb of systemd 259 already. Still open, by the
 # inventory on the device (stage 5): RGB of the sticks (3.7), the ICC

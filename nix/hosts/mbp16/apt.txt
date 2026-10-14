@@ -1,7 +1,7 @@
 # apt packages of mbp16 (MacBookPro16,1, T2) on top of nix/hosts/apt.txt.
 # The T2 repository must already be configured (rebuild.md, section 4).
 
-# T2 kernel (held: patched t2bce modules exist per kernel, helpws suspend)
+# T2 kernel (held: patched t2bce modules exist per kernel, ws help suspend)
 linux-t2
 apple-t2-audio-config
 apple-firmware-script

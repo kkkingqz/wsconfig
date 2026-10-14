@@ -82,7 +82,7 @@ section "2. GNOME <-> keyboard"
 # Source extension for ws-input-source, Tiling Assistant for the private
 # tiling chords.
 if [[ "$boot" == container ]]; then
-    # Keys over RDP, no xremap (keyboard/keyboard.nix, helpws plan-wsgnomebox).
+    # Keys over RDP, no xremap (keyboard/keyboard.nix, ws help plan-wsgnomebox).
     info "container: no xremap, its GNOME bridge is not needed"
 elif have busctl && busctl --user call \
     org.gnome.Shell \
@@ -121,13 +121,13 @@ if [[ "$t2" == true ]]; then
     if [[ "$t2bce_ver" == *nostatefix* ]]; then
         pass "patched t2bce loaded: t2bce_core $t2bce_ver"
     else
-        warn "t2bce_core '${t2bce_ver:-not loaded}' is not the patched build; run ws suspend t2bce-build && ws suspend t2bce-install (helpws suspend)"
+        warn "t2bce_core '${t2bce_ver:-not loaded}' is not the patched build; run ws suspend t2bce-build && ws suspend t2bce-install (ws help suspend)"
     fi
 
     if apt-mark showhold 2>/dev/null | grep -qx 'linux-t2'; then
         pass "linux-t2 held (patched t2bce modules exist only for $(uname -r))"
     else
-        warn "linux-t2 is not held: a kernel update would boot the in-tree t2bce (helpws suspend)"
+        warn "linux-t2 is not held: a kernel update would boot the in-tree t2bce (ws help suspend)"
     fi
 
     t2bce_sources="$HOME/.local/share/wsconfig/t2bce/sources.json"
@@ -142,7 +142,7 @@ if [[ "$t2" == true ]]; then
     if [[ -e /sys/module/i915/parameters/t2_apple_psr ]]; then
         pass "i915 with Apple panel PSR loaded"
     else
-        warn "stock i915 (no PSR on the Apple panel); run ws-psr build && ws-psr install (helpws plan-t2)"
+        warn "stock i915 (no PSR on the Apple panel); run ws-psr build && ws-psr install (ws help plan-t2)"
     fi
 else
     info "no T2 (hardware ${hardware:-unknown}): nothing to check"
@@ -152,7 +152,7 @@ section "4. Boot <-> dGPU policy"
 
 # rEFInd "Ubuntu" boots with ws.dgpu=off: ws-dgpu-off.service powers the AMD
 # dGPU off and removes it from the PCI bus. "Ubuntu (AMD)" boots /boot/ws
-# without it (helpws workstation, helpws suspend).
+# without it (ws help workstation, ws help suspend).
 if [[ "$t2" != true ]]; then
     info "no dGPU policy (hardware ${hardware:-unknown})"
 elif grep -Eq '(^| )ws\.dgpu=off( |$)' /proc/cmdline; then
@@ -199,7 +199,7 @@ section "5. Distrobox <-> host NTSync"
 # package, this the device end to end.
 if [[ "$boot" == container ]]; then
     # The server's kernel decides, its /dev/ntsync is not passed in
-    # (helpws plan-wsgnomebox; Unraid 6.18 has no ntsync).
+    # (ws help plan-wsgnomebox; Unraid 6.18 has no ntsync).
     if [[ -c /dev/ntsync ]]; then
         pass "/dev/ntsync character device present (from the server)"
     else

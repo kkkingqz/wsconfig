@@ -1,10 +1,10 @@
-# Roots and helpers shared by the bash tools (helpws plan-v2, 2.1). A tool
+# Roots and helpers shared by the bash tools (ws help plan-v2, 2.1). A tool
 # sources it right after `set`, by its own path; the only place that
 # resolves a tool's location:
 #
 #   . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 #
-# Roots (helpws architecture-v2, 3):
+# Roots (ws help architecture-v2, 3):
 #   WS_CORE    code: bin/ws, libexec/, lib/, gnome/extensions, hooks; where this file is
 #   WS_CONFIG  data: nix/hosts, the lists and catalogs, host choices
 #   WS_STATE   this machine only
@@ -69,7 +69,7 @@ $untracked"
 }
 
 # A command of a module changed what this host should have: ws apply
-# MODULE... builds and applies it (helpws plan-v2, stage 6). Nothing inside
+# MODULE... builds and applies it (ws help plan-v2, stage 6). Nothing inside
 # ws apply (WS_APPLYING): it applies everything itself. WS_APPLY_CMD
 # replaces the command (tests).
 apply_module() {
@@ -81,7 +81,7 @@ apply_module() {
 
 nix_bin() {
     command -v nix 2>/dev/null \
-        || die "nix not found (apt: nix-bin nix-setup-systemd; helpws history-nix, phase 0)"
+        || die "nix not found (apt: nix-bin nix-setup-systemd; ws help history-nix, phase 0)"
 }
 
 # A value of a JSON manifest from Nix: manifest_get FILE KEY... prints a

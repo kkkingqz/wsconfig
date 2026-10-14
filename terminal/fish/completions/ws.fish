@@ -91,6 +91,56 @@ complete -c ws -n '__ws_after collect' -F
 complete -c ws -n '__ws_after backup; and __ws_after recovery-export' -F
 complete -c ws -n '__ws_after backup; and __ws_after recovery-export' -l force -d 'Replace existing recovery export'
 
-complete -c ws -n __ws_needs_command -a help -d 'Documentation (helpws)'
-complete -c ws -n '__ws_after help' -a '(complete -C "helpws "(commandline -ct))'
+complete -c ws -n __ws_needs_command -a help -d 'Documentation: ws help TOPIC'
+
+# ws help TOPIC: the topics of libexec/helpws (tests/test_helpws.py keeps
+# the list equal to its case).
+set -l ws_help_topics readme layers architecture architecture-v2 arch-v2 checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall setup install new distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton remmina rdp virt vm vms libvirt kvm gaming game gamemode wsgame backup wsbackup recovery restore ws-restore widgets widget wswidgets roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-final plan-unraid unraid plan-legion-go legion-go legiongo plan-legion-go-agent legion-go-agent plan-wsgnomebox wsgnomebox plan-hyprland hyprland plan-v2 v2 history-gnome plan-gnome history-flatpak plan-flatpak history-distrobox plan-dev history-windows plan-windows history-nix plan-nix history-suspend history-touchbar history-virt plan-virt man help
+
+function __ws_help_topic -a name desc
+    complete -c ws -n "__ws_after help; and not __fish_seen_subcommand_from $ws_help_topics" -a $name -d $desc
+end
+
+__ws_help_topic readme 'README: entry point'
+__ws_help_topic layers 'Layers, owners, rules'
+__ws_help_topic architecture-v2 'wsconfig v2: core, configuration repository, shared mechanisms'
+__ws_help_topic checks 'ws check: owners, --json format'
+__ws_help_topic workstation 'Current workstation in detail'
+__ws_help_topic setup 'New PC on wsconfig: setup.sh'
+__ws_help_topic rebuild 'Reinstall to the current state'
+__ws_help_topic keyboard 'macOS-style keyboard layer'
+__ws_help_topic gnome 'GNOME desktop'
+__ws_help_topic terminal 'Ghostty + Fish handbook'
+__ws_help_topic suspend 'Suspend / T2 power layer'
+__ws_help_topic touchbar 'Touch Bar'
+__ws_help_topic flatpak 'Flatpak applications'
+__ws_help_topic distrobox 'Managed Distrobox / Podman'
+__ws_help_topic windows 'Wine / Proton / Steam'
+__ws_help_topic remmina 'Remmina RDP client from Nix: H.264, files'
+__ws_help_topic virt 'Virtual machines: KVM, libvirt, virt-manager'
+__ws_help_topic gaming 'Game Mode: gamescope + Steam session'
+__ws_help_topic backup 'Backup to Unraid: Timeshift, Btrfs send'
+__ws_help_topic recovery 'Restore a date from Unraid (ws-restore, Live USB)'
+__ws_help_topic widgets 'Shared widget runtime'
+__ws_help_topic roadmap 'What is left'
+__ws_help_topic plan-t2 'T2 optional / power / auth'
+__ws_help_topic plan-dgpu 'AMD dGPU through t2gmux'
+__ws_help_topic plan-final 'Backup / inventory / finalization'
+__ws_help_topic plan-unraid 'Unraid receiver: survey, preparation'
+__ws_help_topic plan-legion-go 'Legion Go: host, Game Mode from Bazzite parts'
+__ws_help_topic plan-legion-go-agent 'Legion Go: instructions for Claude on the device'
+__ws_help_topic plan-wsgnomebox 'wsgnomebox: wsconfig host in a container on tower'
+__ws_help_topic plan-hyprland 'Hyprland + Caelestia next to GNOME'
+__ws_help_topic plan-v2 'wsconfig v2: cleanup, shared mechanisms, two repositories'
+__ws_help_topic history-gnome 'How the GNOME layer was built'
+__ws_help_topic history-flatpak 'How the Flatpak layer was built'
+__ws_help_topic history-distrobox 'How the Distrobox layer was built'
+__ws_help_topic history-windows 'How the Windows layer was built'
+__ws_help_topic history-nix 'Nix + home-manager migration'
+__ws_help_topic history-suspend 'Suspend / Touch Bar failures and fixes'
+__ws_help_topic history-virt 'How the VM layer was built'
+__ws_help_topic man 'Open generated man page in Micro'
+
+functions -e __ws_help_topic
+complete -c ws -n '__ws_at help man' -a '(path basename ~/.local/share/man/man1/ws-*.1 | string replace -r "\.1\$" "")'
 complete -c ws -n __ws_needs_command -a 'battery gmux psr gpu' -d 'Hardware diagnostics'

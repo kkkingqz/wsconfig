@@ -1,4 +1,4 @@
-# Screen brightness after a session starts (t2-mbp16, helpws workstation,
+# Screen brightness after a session starts (t2-mbp16, ws help workstation,
 # GRAPHICS). systemd-backlight restores the saved level into gmux at boot,
 # and gmux_backlight keeps reporting it, but the panel comes up at another
 # level once the display manager turns it on (2026-10-13: sysfs, gmux and

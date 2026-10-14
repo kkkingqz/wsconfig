@@ -6,7 +6,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 // Hibernate in the power menu of Quick Settings, right under Suspend
-// (helpws suspend, Hibernate). Shown only while logind's CanHibernate says
+// (ws help suspend, Hibernate). Shown only while logind's CanHibernate says
 // yes or challenge: hosts without a resume device never see it.
 const RETRY_MS = 500;
 

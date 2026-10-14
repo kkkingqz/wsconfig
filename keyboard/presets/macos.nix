@@ -1,4 +1,4 @@
-# The macOS-style keyboard preset of the core (helpws keyboard): the GNOME
+# The macOS-style keyboard preset of the core (ws help keyboard): the GNOME
 # shortcuts and the private Tiling Assistant chords that keyboard/xremap.yml
 # and ws-input-source rely on; they change together. keyboard.nix takes the
 # layouts and the overrides of keyboard/config.toml over it.

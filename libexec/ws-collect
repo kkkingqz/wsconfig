@@ -4,9 +4,9 @@ set -euo pipefail
 # Machine state that a rebuild needs and the repository does not hold:
 # the functional baseline, boot and disk layout, apt sources and package
 # choices, the Apple Wi-Fi/Bluetooth firmware taken from macOS, machine-local
-# state, and the hardware inventory of a new machine (helpws plan-legion-go,
+# state, and the hardware inventory of a new machine (ws help plan-legion-go,
 # stage 3). Read-only on the system; writes one archive. Asks sudo (baseline
-# --with-sudo, Btrfs subvolumes, input devices). helpws rebuild, section 0.
+# --with-sudo, Btrfs subvolumes, input devices). ws help rebuild, section 0.
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
@@ -37,7 +37,7 @@ laptop before reinstalling.
               checkpoints)
   virt/       libvirt definitions (virsh dumpxml of VMs, networks, pools),
               UEFI variables (nvram/) and TPM state (swtpm/); the disk
-              images are not copied (backup of @vms: helpws plan-final)
+              images are not copied (backup of @vms: ws help plan-final)
 USAGE
 }
 

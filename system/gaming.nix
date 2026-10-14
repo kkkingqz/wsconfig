@@ -1,4 +1,4 @@
-# Hosts with gameMode = "yes" (helpws plan-legion-go, 3.4, 4.3): the system
+# Hosts with gameMode = "yes" (ws help plan-legion-go, 3.4, 4.3): the system
 # files of the Game Mode session switch. They are inert until `wsgame
 # install` (stage 6) brings sddm, steamos-manager and gamescope-session:
 # setup.sh runs ws apply system at stage 4 already. Installing sddm makes it

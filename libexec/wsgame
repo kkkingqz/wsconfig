@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ws game: the packages of the Game Mode session (helpws gaming, helpws
+"""ws game: the packages of the Game Mode session (ws help gaming, ws help
 plan-legion-go 3.4). Sources and versions are gaming/sources.nix, built by
 ws apply into ~/.local/share/wsconfig/gaming/sources.json; downloads and
 .debs live next to it. Nothing is installed from outside dpkg.
@@ -240,7 +240,7 @@ def cmd_check(json_mode=False):
     versions = {n: installed_version(n) for n in PACKAGES}
     if not any(versions.values()):
         c.msg("info", "Game Mode packages not installed yet: ws game build, ws game install "
-                      "(helpws plan-legion-go, stage 6)")
+                      "(ws help plan-legion-go, stage 6)")
         return c.finish()
 
     for name, got in versions.items():

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Image of a container host (helpws plan-wsgnomebox), built from one commit
+# Image of a container host (ws help plan-wsgnomebox), built from one commit
 # of the checkout: ws container build sends `git archive` of it as the
 # context. Everything a recreated container needs is here; /nix, the home,
 # the RDP state and /config are directories of the server.

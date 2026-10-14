@@ -1,4 +1,4 @@
-"""Roots and helpers shared by the Python tools (helpws plan-v2, 2.1); the
+"""Roots and helpers shared by the Python tools (ws help plan-v2, 2.1); the
 counterpart of lib/common.bash. A tool in libexec/ imports it after putting
 lib/ on sys.path by its own location:
 
@@ -8,7 +8,7 @@ lib/ on sys.path by its own location:
 CORE is where the running code is, CONFIG the data (nix/hosts, the lists
 and catalogs), STATE this machine only. WSCONFIG (tests, another checkout)
 sets CONFIG; WS_CONFIG and WS_STATE from ws are kept. Otherwise CONFIG is
-(helpws plan-v2, stage 5):
+(ws help plan-v2, stage 5):
 - CORE itself when it is a checkout: until stage 8 code and data are one
   repository, and ~/wsconfig/bin/ws works on its own checkout;
 - for the core in the store (marked by PACKAGE_MARK), the config of
@@ -68,7 +68,7 @@ CONFIG = config_root()
 
 def apply_module(*modules):
     """A command of a module changed what this host should have: ws apply
-    MODULE... builds and applies it (helpws plan-v2, stage 6); nothing
+    MODULE... builds and applies it (ws help plan-v2, stage 6); nothing
     inside ws apply (WS_APPLYING). WS_APPLY_CMD replaces the command
     (tests). Exits with its status when it fails."""
     import shlex
@@ -89,7 +89,7 @@ def die(prog, message):
     raise SystemExit(f"{prog}: {message}")
 
 
-# Manifests that Nix writes for the tools are JSON (builtins.toJSON; helpws
+# Manifests that Nix writes for the tools are JSON (builtins.toJSON; ws help
 # plan-v2, 2.6). An entry of a list is found by its "name".
 def get(data, *keys):
     """The value at KEYS, or None."""

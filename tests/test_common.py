@@ -1,4 +1,4 @@
-"""lib/common.bash and lib/ws_common.py: roots and helpers (helpws plan-v2, 2.1)."""
+"""lib/common.bash and lib/ws_common.py: roots and helpers (ws help plan-v2, 2.1)."""
 import os
 from pathlib import Path
 import re

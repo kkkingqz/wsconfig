@@ -70,6 +70,18 @@ if [[ -n "$core_installed" \
 else
     fail "~/.local/share/wsconfig/libexec is not libexec/ of the installed core; ws apply"
 fi
+# ws is the one command of the core in PATH (helpws plan-v2, 5.6): a link
+# of an old name (helpws, wsbox, …) into a core is left over.
+stale=()
+for f in "$HOME"/.local/bin/*; do
+    [[ -L "$f" && "${f##*/}" != ws ]] || continue
+    [[ "$(readlink -f "$f" 2>/dev/null)" == /nix/store/*-wsconfig-core/* ]] && stale+=("${f##*/}")
+done
+if ((${#stale[@]})); then
+    warn "~/.local/bin links into the core besides ws: ${stale[*]} (old names; rm them, ws ... instead)"
+else
+    pass "~/.local/bin: ws is the only command of the core"
+fi
 # host.json: the configuration and host of the ws in PATH.
 record="$(python3 "$WS_CORE/lib/ws_common.py" get "$WS_STATE/host.json" config 2>/dev/null || true)"
 if [[ "$record" == "$repo" ]]; then
@@ -84,7 +96,7 @@ if [[ -d /nix/var/nix ]]; then
     nix_source="$(findmnt -rno SOURCE /nix 2>/dev/null || true)"
     if [[ "$("$WS_CORE/bin/ws" fact boot 2>/dev/null)" == container ]]; then
         # A container host: /nix is a directory of the server, outside the
-        # image (helpws plan-wsgnomebox).
+        # image (ws help plan-wsgnomebox).
         mountpoint -q /nix \
             && pass "/nix is a mount of the server (container)" \
             || fail "/nix is not a mount: a new container would lose it (ws container run)"
@@ -129,7 +141,7 @@ if [[ -d /nix/var/nix ]]; then
             && warn "/usr/bin/$tool exists too; Nix provides $tool (sudo apt remove the package)"
     done
 else
-    warn "Nix not installed yet (phase 0 of helpws history-nix)"
+    warn "Nix not installed yet (phase 0 of ws help history-nix)"
 fi
 
 section "3. Man pages"

@@ -1,4 +1,4 @@
-"""lib/check.bash and lib/ws_check.py: one result contract (helpws plan-v2, 2.4)."""
+"""lib/check.bash and lib/ws_check.py: one result contract (ws help plan-v2, 2.4)."""
 import contextlib
 import io
 import json

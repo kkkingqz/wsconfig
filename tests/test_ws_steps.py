@@ -1,4 +1,4 @@
-"""ws apply, update and check walk their step tables (helpws plan-v2, 2.5
+"""ws apply, update and check walk their step tables (ws help plan-v2, 2.5
 and stage 6): the order of apply, the names, the summary."""
 import json
 import tempfile
@@ -126,7 +126,7 @@ class StepsTests(unittest.TestCase):
 
 class IdempotenceTests(unittest.TestCase):
     """A second ws apply with nothing changed installs nothing and asks no
-    sudo (helpws plan-v2, stage 6)."""
+    sudo (ws help plan-v2, stage 6)."""
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()

@@ -1,4 +1,4 @@
-"""lib/ws_catalog.py: the host choices of the catalogs (helpws plan-v2, 3.1).
+"""lib/ws_catalog.py: the host choices of the catalogs (ws help plan-v2, 3.1).
 lib/catalog.nix reads the same fixture (lib/test-catalog.nix)."""
 import os
 from pathlib import Path

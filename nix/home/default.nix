@@ -18,22 +18,22 @@
     ../../distrobox/distrobox.nix
     ../../windows/apps.nix
     # Sources of the Game Mode packages: built anywhere, installed only with
-    # gameMode = "yes" (wsgame, helpws gaming).
+    # gameMode = "yes" (wsgame, ws help gaming).
     ../../gaming/sources.nix
   ]
   # xremap reads /dev/input; a container host gets its keys over RDP
-  # (keyboard/keyboard.nix, helpws plan-wsgnomebox).
+  # (keyboard/keyboard.nix, ws help plan-wsgnomebox).
   ++ lib.optionals (facts.boot != "container") [ ../../keyboard/xremap.nix ]
   # The RDP client of a real machine; a container host is the RDP server
-  # (helpws remmina, helpws plan-wsgnomebox).
+  # (ws help remmina, ws help plan-wsgnomebox).
   ++ lib.optionals (facts.boot != "container") [ ../../remmina/remmina.nix ]
-  # Quickshell widgets from wswidgets (helpws widgets) on hosts with them.
+  # Quickshell widgets from wswidgets (ws help widgets) on hosts with them.
   ++ lib.optionals facts.widgets [ ../../widgets/widgets.nix ]
-  # ~/VMs (helpws virt) on hosts with VMs.
+  # ~/VMs (ws help virt) on hosts with VMs.
   ++ lib.optionals facts.vm [ ../../virt/virt.nix ]
-  # Pinned sources of the patched t2bce modules (helpws suspend) and of
-  # t2gmux (helpws plan-dgpu); the brightness that the panel ignores at boot
-  # and logout, written again in the session (helpws workstation, GRAPHICS).
+  # Pinned sources of the patched t2bce modules (ws help suspend) and of
+  # t2gmux (ws help plan-dgpu); the brightness that the panel ignores at boot
+  # and logout, written again in the session (ws help workstation, GRAPHICS).
   ++ lib.optionals (facts.hardware == "t2-mbp16") [
     ../../system/kernel/t2bce/t2bce.nix
     ../../system/kernel/t2gmux/t2gmux.nix

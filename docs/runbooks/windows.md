@@ -6,7 +6,7 @@ volume: User Commands
 
 # WINDOWS PROGRAMS — WINE / PROTON / STEAM
 
-Как слой строился и почему так: `helpws history-windows`.
+Как слой строился и почему так: `ws help history-windows`.
 
 ## Контейнеры
 
@@ -130,7 +130,7 @@ ws windows portable --prefix tools ~/Downloads/tool.zip
 `windows/apps.toml` (`exe` — путь внутри prefix), `ws apply`: launcher
 `ws-win-NAME.desktop` (`ws windows run NAME`), как у WinBox. Launcher ставится
 только на машине, где box программы в `yes` её
-`nix/hosts/HOST/boxes.toml` (или без выбора с `default = "yes"`; `helpws
+`nix/hosts/HOST/boxes.toml` (или без выбора с `default = "yes"`; `ws help
 distrobox`); `ws-win-exe.desktop` и обработчик `.exe` — там, где есть
 `wine-wayland`. `ws windows check` программы других
 box не проверяет (INFO).

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Catalogs and the choice of each host (helpws plan-v2, stage 3).
+"""Catalogs and the choice of each host (ws help plan-v2, stage 3).
 
 A module's catalog is all it can install: the Flatpak apps, the containers
 of distrobox/catalog.toml, the widgets of the pinned wswidgets. Each position has a
@@ -274,7 +274,7 @@ def checklist(term, title, items):
 
 
 def setup(config, host, term):
-    """The choices of setup.sh (helpws setup), as checklists, so ws apply
+    """The choices of setup.sh (ws help setup), as checklists, so ws apply
     asks nothing afterwards: the apps of flatpak/catalog.toml and the
     containers of distrobox/catalog.toml without a choice of this host, with
     widgets = true the widgets some host has in yes (ws widgets apply
@@ -300,7 +300,7 @@ def setup(config, host, term):
     lists = [(apps, f"Flatpak-приложения на {host}",
               [(a, catalog.default(a)) for a in catalog.ids()], remote),
              (boxes, f"Контейнеры Distrobox на {host}", box_catalog(config), lambda n: "")]
-    # The widget layer only where host.toml has it (helpws widgets).
+    # The widget layer only where host.toml has it (ws help widgets).
     if ws_facts.fact(host, "widgets", config) == "yes":
         lists.append((widgets, f"Виджеты (ws widgets) на {host}",
                       [(n, "ask") for n, _ in widget_catalog(config)], lambda n: ""))

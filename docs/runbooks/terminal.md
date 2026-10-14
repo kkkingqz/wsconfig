@@ -9,7 +9,7 @@ volume: User Commands
 **Ghostty + Fish — рабочий справочник**
 
 > Этот документ — краткая практическая справка по текущей терминальной среде.
-> Для полного состояния workstation используй `helpws workstation`.
+> Для полного состояния workstation используй `ws help workstation`.
 
 ---
 
@@ -18,10 +18,10 @@ volume: User Commands
 ### Основные команды
 
 ```console
-helpws                 # этот справочник
-helpws workstation     # вся workstation подробно
-helpws man ws-terminal
-helpws man ws-workstation
+ws help terminal        # этот справочник (ws help — список тем)
+ws help workstation     # вся workstation подробно
+ws help man ws-terminal
+ws help man ws-workstation
 ```
 
 ### Главные сочетания
@@ -34,7 +34,7 @@ Command/Win+T           macOS-style new tab
 Ctrl+R                  fuzzy history Fish
 Option+C                directory browser
 Ctrl+Shift+F            поиск в scrollback
-Esc                     выход из helpws / Micro
+Esc                     выход из ws help / Micro
 ```
 
 ---
@@ -128,7 +128,7 @@ Command/Win+= / - / 0   font larger / smaller / reset
 позволяет обойти штатный GNOME `Super+Left/Right` tiling до того, как
 сочетание попадёт в Mutter.
 
-Полный workstation keyboard profile: `helpws keyboard`.
+Полный workstation keyboard profile: `ws help keyboard`.
 
 ### Clipboard security
 
@@ -269,10 +269,10 @@ git <Tab>
 systemctl <Tab>
 ssh <Tab>
 cd ~/Do<Tab>
-helpws wo<Tab>
+ws help wo<Tab>
 ```
 
-`helpws wo<Tab>` должен дополниться до `helpws workstation`.
+`ws help wo<Tab>` должен дополниться до `ws help workstation`.
 
 ## Редактирование command line
 
@@ -418,20 +418,20 @@ Prompt показывает:
 
 # HELPWS
 
-`helpws` открывает Markdown в **Micro read-only**.
+`ws help` открывает Markdown в **Micro read-only**.
 
 ```console
-helpws
-helpws terminal
-helpws ghostty
-helpws fish
-helpws keys
-helpws workstation
-helpws man ws-terminal
-helpws man ws-workstation
+ws help
+ws help terminal
+ws help ghostty
+ws help fish
+ws help keys
+ws help workstation
+ws help man ws-terminal
+ws help man ws-workstation
 ```
 
-### Навигация в helpws
+### Навигация в ws help
 
 ```text
 стрелки / PgUp / PgDn   навигация
@@ -442,7 +442,7 @@ Esc                     выход
 Ctrl+Q                  альтернативный выход
 ```
 
-Micro для `helpws` использует отдельную конфигурацию и не меняет настройки обычного Micro.
+Micro для `ws help` использует отдельную конфигурацию и не меняет настройки обычного Micro.
 
 ---
 
@@ -481,8 +481,8 @@ data             ~/.local/share/<tool>/...
 ```
 
 Терминальная часть: `terminal/` (fish, ghostty, micro-help, xdg-terminals),
-`libexec/` (`helpws`, `ws-doc-build`), `docs/`. Весь репозиторий —
-`helpws readme`.
+`libexec/` (`ws help`, `ws-doc-build`), `docs/`. Весь репозиторий —
+`ws help readme`.
 
 Каталог checkout — настройка хоста: `wsconfig` в
 `nix/hosts/<host>/host.toml` (относительно `$HOME`), по нему home-manager
@@ -503,7 +503,7 @@ git -C ~/wsconfig status
 # ДОКУМЕНТАЦИЯ
 
 Markdown в `docs/` — источник истины (`architecture/`, `runbooks/`,
-`plans/`, `history/`); `helpws` находит страницу по `title:`.
+`plans/`, `history/`); `ws help` находит страницу по `title:`.
 
 Man pages собирает Nix из `docs/` (`nix/pkgs/man.nix`: `ws-doc-build` с
 lowdown из nixpkgs) и ставит `ws apply` в `~/.local/share/man/man1`; в git их
@@ -516,8 +516,8 @@ ws apply
 Просмотр:
 
 ```console
-helpws
-helpws workstation
+ws help
+ws help workstation
 man ws-terminal
 man ws-workstation
 ```
@@ -541,12 +541,12 @@ man ws-workstation
 ~/.config/fish/config.fish
 ~/.config/fish/conf.d/        00-nix, eza, fzf-options, git-prompt, user-bin
 ~/.config/fish/functions/     prompt, title, fzf_cd_browser
-~/.config/fish/completions/   ws, helpws, wsbox, wsflatpak, wswin, ws-gnome
+~/.config/fish/completions/   ws (с темами ws help), wsbox, wsflatpak, wswin, ws-gnome
 ```
 
 Все файлы из `terminal/fish/` (и `terminal/ghostty/*.ghostty`)
 подключены ссылками home-manager в checkout (`nix/home/links.nix`); `ws` и
-`helpws` в `~/.local/bin` — ссылки на ядро в store (`nix/pkgs/ws.nix`);
+`ws help` в `~/.local/bin` — ссылки на ядро в store (`nix/pkgs/ws.nix`);
 новый файл подключается следующим `ws apply`. Man pages — из сборки Nix
 (`nix/home/man.nix`). fzf, zoxide, eza, micro — из Nix
 (`nix/home/cli.nix`). fzf ≥ 0.70 занимает Shift+Tab; `config.fish` возвращает туда
@@ -556,5 +556,5 @@ man ws-workstation
 
 ```text
 ~/wsconfig/terminal/micro-help/           settings.json, bindings.json
-~/.local/share/wsconfig/micro-help/    MICRO_CONFIG_HOME helpws: ссылки на них + buffers/
+~/.local/share/wsconfig/micro-help/    MICRO_CONFIG_HOME ws help: ссылки на них + buffers/
 ```

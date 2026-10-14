@@ -66,10 +66,10 @@ HOME Distrobox/Wine и caches. Нативный btrfs send не исключае
 Вложенные subvolumes и отдельные mounts не копируются рекурсивно;
 при их обнаружении snapshot отказывает до явного решения о дополнительном scope.
 Одно решение уже принято: top-level `@steam` хоста с `nativeSteam = true`
-(`~/.local/share/Steam`, `helpws plan-legion-go`) в backup не входит, и этот
+(`~/.local/share/Steam`, `ws help plan-legion-go`) в backup не входит, и этот
 mount внутри `/home` snapshot пропускает.
 
-Scope `vms` есть только на хосте с `vm = true` в `host.toml` (`helpws virt`):
+Scope `vms` есть только на хосте с `vm = true` в `host.toml` (`ws help virt`):
 иначе `plan|send vms` отказывают, а `plan|send all` — это только HOME.
 
 `send vms` снимает @vms целиком: диски, XML, NVRAM, TPM из `/var/lib/vms`. VM должны быть
@@ -227,7 +227,7 @@ restrict,command="sudo -n /usr/local/libexec/wsbackup/unraid/wsbackup-receiver /
 `ROOT` может быть общим: у каждой машины свой подкаталог `ROOT/HOST_ID` и
 свой flock (`ROOT/.receiver-HOST_ID.lock`): машины не ждут друг друга, а
 второй запуск той же машины получает «receiver busy». `ws-restore` (Live
-USB) умеет только rEFInd (mbp16); для GRUB-хостов — `helpws recovery`,
+USB) умеет только rEFInd (mbp16); для GRUB-хостов — `ws help recovery`,
 «Хосты с GRUB». На workstation — alias с `User
 wsbackup-HOST` и `config.json` с `"remote_host_id": "HOST"`; остальные
 значения те же, что у mbp16. `boot.sh` с одной машиной пишет sshd и sudo
@@ -341,7 +341,7 @@ vm_boot_verified остаётся false; автоматического запу
 Restore-test требует локальную successful snapshot record и сохранённый local
 snapshot. Восстановление старой даты, доступной только на NAS, выполняется
 автономным `ws-restore` из Live USB: export, SSH preparation, выбор SYSTEM/HOME,
-status/resume/rollback — `helpws recovery`. Checkout и локальный backup journal
+status/resume/rollback — `ws help recovery`. Checkout и локальный backup journal
 для этого не нужны. Реальная приёмка NAS/boot ещё предстоит.
 
 ## Проверка кода

@@ -1,6 +1,6 @@
 """A throwaway core and configuration for tests of bin/ws: bin/ws, lib/ and
 libexec/ copied or stubbed, nix and sudo stubbed in PATH, every call
-recorded in CALLS (helpws plan-v2, stage 6)."""
+recorded in CALLS (ws help plan-v2, stage 6)."""
 import os
 from pathlib import Path
 import shutil

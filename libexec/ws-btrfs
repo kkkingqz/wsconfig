@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Btrfs layout of a fresh Ubuntu from the installed system itself, before
-# bootstrap.sh (helpws rebuild, section 3). The installer puts / on the top
+# bootstrap.sh (ws help rebuild, section 3). The installer puts / on the top
 # level of Btrfs (subvolid=5) and makes no subvolumes; ws btrfs make moves
 # the system onto @, @home, @cache, @tmp and @log in two runs with a reboot
 # through GRUB between them (mbp16 as well: rEFInd comes later):
@@ -38,7 +38,7 @@ Usage: ws btrfs make [--dry-run] [--yes]
 
 make  the Btrfs layout of a fresh install (@, @home, @cache, @tmp, @log)
       from the installed system, before bootstrap.sh: run it, reboot
-      through GRUB, run it again (helpws rebuild, section 3);
+      through GRUB, run it again (ws help rebuild, section 3);
       --dry-run only shows the steps, --yes answers its two questions
       (start the layout, remove the old root) with yes (setup.sh)
 USAGE
@@ -81,7 +81,7 @@ confirm() {
 for c in sudo python3 findmnt; do
     command -v "$c" >/dev/null 2>&1 || die "$c not found"
 done
-[[ "$(findmnt -no FSTYPE /)" == btrfs ]] || die "/ is not Btrfs (helpws rebuild, section 2)"
+[[ "$(findmnt -no FSTYPE /)" == btrfs ]] || die "/ is not Btrfs (ws help rebuild, section 2)"
 root_dev="$(findmnt -no SOURCE / | sed 's/\[.*$//')"
 uuid="$(findmnt -no UUID /)"
 [[ -n "$uuid" ]] || die "cannot determine the UUID of /"
@@ -291,7 +291,7 @@ step2() {
 
     id="$(sudo btrfs subvolume show / | awk '/Subvolume ID:/ { print $3 }')"
     def="$(sudo btrfs subvolume get-default / | awk '{ print $2 }')"
-    # rEFInd loads the kernel and initrd from the default subvolume (helpws
+    # rEFInd loads the kernel and initrd from the default subvolume (ws help
     # rebuild, section 5); GRUB reads its paths from the top level.
     if [[ "$boot" == refind* ]]; then
         if [[ "$def" == "$id" ]]; then
@@ -356,7 +356,7 @@ step2() {
     sudo rmdir "$top" 2>/dev/null || true
 
     echo
-    echo "Btrfs layout done; next: ~/wsconfig/bootstrap.sh (helpws rebuild, section 6.0)"
+    echo "Btrfs layout done; next: ~/wsconfig/bootstrap.sh (ws help rebuild, section 6.0)"
 }
 
 case "$(findmnt -no OPTIONS / | tr ',' '\n' | sed -n 's/^subvol=//p')" in

@@ -1,5 +1,5 @@
-# The TOML of a module, merged and checked (helpws plan-v2, 7.0;
-# helpws architecture-v2, 10): the defaults of the core, then the common
+# The TOML of a module, merged and checked (ws help plan-v2, 7.0;
+# ws help architecture-v2, 10): the defaults of the core, then the common
 # file of the configuration, then the file of the host when it has one.
 #
 #   read { file = ../gnome/config.toml; host = ../nix/hosts/mbp16/gnome.toml;
@@ -68,5 +68,5 @@ rec {
       all = missing ++ fileProblems file common ++ fileProblems host own
         ++ step1.problems ++ step2.problems ++ resultProblems;
     in
-    if all != [ ] then throw "${lib.concatStringsSep "; " all} (helpws rebuild)" else result;
+    if all != [ ] then throw "${lib.concatStringsSep "; " all} (ws help rebuild)" else result;
 }

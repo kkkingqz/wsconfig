@@ -1,4 +1,4 @@
-# The choice of a host for Nix (lib/ws_catalog.py writes it; helpws
+# The choice of a host for Nix (lib/ws_catalog.py writes it; ws help
 # plan-v2, stage 3): nix/hosts/HOST/MODULE.toml with yes = [...] and
 # no = [...]. A name in neither has the default of its catalog position
 # (ask, no or yes). The tools validate the files; this only reads.

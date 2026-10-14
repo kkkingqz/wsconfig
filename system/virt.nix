@@ -1,4 +1,4 @@
-# Hosts with vm = "yes" (helpws virt): UEFI for VMs with variables in qcow2,
+# Hosts with vm = "yes" (ws help virt): UEFI for VMs with variables in qcow2,
 # so libvirt can take internal snapshots of UEFI guests (bootstrap.sh makes
 # the qcow2 template on @vms).
 { file, ... }:

@@ -8,12 +8,12 @@ volume: User Commands
 
 Ubuntu остаётся базовой системой; Nix и home-manager доставляют
 конфигурацию поверх неё. Подробности каждого слоя — в runbooks
-(`helpws <topic>`), где что лежит — `helpws workstation`.
+(`ws help <topic>`), где что лежит — `ws help workstation`.
 
 ## Порядок
 
 ```text
-setup.sh           новый ПК с GRUB: всё ниже по порядку, вопросы в начале (helpws setup)
+setup.sh           новый ПК с GRUB: всё ниже по порядку, вопросы в начале (ws help setup)
 ws btrfs make      раскладка Btrfs свежей установки: @, @home, @cache, @tmp, @log
 bootstrap.sh       @nix, apt-списки, @vms и libvirt, @steam, группы, fish,
                    первый ws apply home
@@ -74,7 +74,7 @@ checkout         весь репозиторий                      git       
 
 Связи между слоями (GNOME ↔ клавиатура, ядро ↔ t2bce, загрузка ↔ dGPU,
 Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат проверок —
-`helpws checks`.
+`ws help checks`.
 
 ## Правила
 
@@ -128,6 +128,6 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
 ```text
 ws baseline capture|diff    функциональный снимок: проверки, GNOME, Flatpak, ...
 ws checkpoint create|diff   коммит ↔ поколение home-manager, системное дерево, ядро
-ws collect                  архив машины для rebuild (helpws rebuild, раздел 0)
-Timeshift                   snapshots @ и @home, вход из GRUB (helpws rebuild, раздел 12)
+ws collect                  архив машины для rebuild (ws help rebuild, раздел 0)
+Timeshift                   snapshots @ и @home, вход из GRUB (ws help rebuild, раздел 12)
 ```

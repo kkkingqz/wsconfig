@@ -8,13 +8,13 @@ volume: User Commands
 
 `setup.sh` ведёт свежую Ubuntu 26.04 до проверенной рабочей станции: все
 вопросы — в начале, дальше от пользователя только перезагрузки и вход.
-Только хосты с GRUB (`boot = "grub"`); mbp16 с rEFInd — `helpws rebuild` (ниже,
+Только хосты с GRUB (`boot = "grub"`); mbp16 с rEFInd — `ws help rebuild` (ниже,
 «Не сделано»).
 
 ## Запуск
 
 Установка Ubuntu: ESP и корень Btrfs без отдельного `/boot`
-(`helpws rebuild`, разделы 2–3). Затем в терминале:
+(`ws help rebuild`, разделы 2–3). Затем в терминале:
 
 ```console
 wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash
@@ -52,7 +52,7 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | ba
 ## Что делает дальше
 
 ```text
-ws btrfs make --yes      раскладка Btrfs, шаг 1 (helpws rebuild, раздел 3)
+ws btrfs make --yes      раскладка Btrfs, шаг 1 (ws help rebuild, раздел 3)
 reboot
 ws btrfs make --yes      шаг 2: проверка, старый корень удаляется
 bootstrap.sh             @nix, apt, @vms, @steam, @wsbackup, группы, fish, ws apply home
@@ -86,20 +86,20 @@ create setup` при расхождении системы с деревом н�
 ## Не сделано
 
 - **Backup на Unraid для нового хоста.** Приёмник умеет несколько машин
-  (`hosts/HOST/` на flash, пользователь `wsbackup-HOST`; `helpws backup`,
+  (`hosts/HOST/` на flash, пользователь `wsbackup-HOST`; `ws help backup`,
   «Несколько workstation»), но на tower новый `boot.sh` ещё не стоит —
   это работа на сервере с подтверждением. setup.sh готовит только сторону
   ПК (`@wsbackup`, ключ); `config.json` и alias SSH не пишет: адреса
   приёмника не хранятся в репозитории.
 - **Восстановление с Unraid на GRUB.** `ws-restore` (Live USB) умеет только
-  rEFInd; новый хост — Timeshift на месте или вручную с NAS (`helpws
+  rEFInd; новый хост — Timeshift на месте или вручную с NAS (`ws help
   recovery`, «Хосты с GRUB»).
 - **mbp16 (rEFInd).** setup.sh отказывает (`boot = "refind-grub-recovery"`);
-  переустановка — по `helpws rebuild`. Вернуться позже:
+  переустановка — по `ws help rebuild`. Вернуться позже:
   - значения диска в `host.toml` после переустановки: `rootUuid`,
     `refindEspPartuuid`, `resume=UUID` и `resume_offset` в `kernelParams`;
   - репозиторий T2 и `linux-t2`, удаление generic-ядра, firmware Wi‑Fi и
-    Bluetooth из macOS или архива (`helpws rebuild`, раздел 4);
+    Bluetooth из macOS или архива (`ws help rebuild`, раздел 4);
   - `refind.conf` на отдельный ESP вручную (раздел 5);
   - восстановление из архива `ws collect` (состояние, baseline).
 - Сценарий целиком не прогонялся: проверены тесты списков и раскладки, синтаксис

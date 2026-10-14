@@ -1,7 +1,7 @@
 #!/bin/bash
 # VERSION_<source> come from /src/versions.env (gaming/sources.nix).
 # shellcheck disable=SC2154
-# Builds the Game Mode packages (wsgame build; helpws gaming) in a clean
+# Builds the Game Mode packages (wsgame build; ws help gaming) in a clean
 # Ubuntu container of the host release. /src: the sources wsgame fetched
 # (sha256 checked) and versions.env; /out: the .debs; /cargo: the crate
 # cache between builds. Runs as root of a rootless podman container: the
@@ -67,7 +67,7 @@ deb() {
         echo "Section: games"
         echo "Priority: optional"
         echo "Description: $description"
-        echo " Built by wsconfig (gaming/build.sh, helpws gaming)."
+        echo " Built by wsconfig (gaming/build.sh, ws help gaming)."
     } > "$stage/DEBIAN/control"
     dpkg-deb --root-owner-group --build "$stage" "/out/${name}_${version}_${arch}.deb" >/dev/null
     echo "built: ${name}_${version}_${arch}.deb"

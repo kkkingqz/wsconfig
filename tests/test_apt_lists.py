@@ -1,4 +1,4 @@
-"""lib/apt.bash: the apt lists of a host by its facts (helpws plan-v2, 2.3)."""
+"""lib/apt.bash: the apt lists of a host by its facts (ws help plan-v2, 2.3)."""
 import os
 from pathlib import Path
 import shutil

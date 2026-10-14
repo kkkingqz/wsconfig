@@ -1,6 +1,6 @@
 # Every machine: uinput access for xremap, ntsync for Proton in distrobox,
 # Timeshift snapshots in GRUB. VM files: system/virt.nix (vm = "yes").
-# A container (boot = "container", helpws plan-wsgnomebox) has no udev,
+# A container (boot = "container", ws help plan-wsgnomebox) has no udev,
 # kernel modules, GRUB or Timeshift of its own: only the snapd pin.
 # watch: system files the workstation depends on but does not install;
 # ws-baseline records them with the installed ones.

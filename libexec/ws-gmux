@@ -3,7 +3,7 @@ set -euo pipefail
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 
-# t2gmux, the gmux driver of KaiT2en, in place of apple-gmux (helpws
+# t2gmux, the gmux driver of KaiT2en, in place of apple-gmux (ws help
 # plan-dgpu): the AMD dGPU of MacBookPro16,1 goes off through ACPI PWRD like
 # on macOS (CPU package PC7 with the card off) and can come back on.
 
@@ -119,7 +119,7 @@ cmd_install() {
     printf 't2gmux %s\n' "$(modinfo -k "$kver" -F filename t2gmux)"
     sudo update-initramfs -u -k "$kver"
     echo
-    echo "Installed. Which driver binds the gmux is chosen by blacklist (helpws plan-dgpu)."
+    echo "Installed. Which driver binds the gmux is chosen by blacklist (ws help plan-dgpu)."
 }
 
 cmd_rollback() {

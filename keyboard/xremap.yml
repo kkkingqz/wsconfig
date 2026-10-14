@@ -22,7 +22,7 @@
 # @repo@ becomes the checkout path; edits take effect on `ws apply`.
 #
 # VM consoles (virt-manager, remote-viewer, virt-viewer) get the keys as
-# they are: a guest runs this profile itself (helpws virt). Translated here,
+# they are: a guest runs this profile itself (ws help virt). Translated here,
 # Command+C would reach the guest as Ctrl+C (interrupt in its terminal).
 # Every keymap without an application filter excludes them (&vm_consoles),
 # except CapsLock: passed through, it would turn on the host CapsLock lock,
@@ -30,7 +30,7 @@
 # sent as a private chord instead (Shift+Ctrl+Alt+Space, UA: +U), which the
 # xremap of the guest turns back into the CapsLock selector.
 #
-# Remmina is one of them: its RDP sessions go to wsgnomebox (helpws
+# Remmina is one of them: its RDP sessions go to wsgnomebox (ws help
 # plan-wsgnomebox), where keys reach GNOME without /dev/input and no xremap
 # runs. GNOME shortcuts there take the keys as typed and the private CapsLock
 # chords (keyboard/keyboard.nix, boot = "container").

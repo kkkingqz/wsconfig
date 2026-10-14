@@ -1,5 +1,5 @@
-# Test VM of phase 6 (helpws history-nix): clean Ubuntu 26.04 on the
-# generic kernel in libvirt on mbp16 (helpws virt), GRUB only.
+# Test VM of phase 6 (ws help history-nix): clean Ubuntu 26.04 on the
+# generic kernel in libvirt on mbp16 (ws help virt), GRUB only.
 
 [host]
 # `ws host` finds the host by it (the installer's default).
@@ -15,9 +15,9 @@ kernelParams = ["quiet", "splash"]
 displayScale = 1
 
 [layers]
-# No VMs inside the test VM (helpws virt).
+# No VMs inside the test VM (ws help virt).
 vm = false
-# Quickshell widgets on the GNOME panel (helpws widgets).
+# Quickshell widgets on the GNOME panel (ws help widgets).
 widgets = true
 # Neither native Steam nor the Game Mode session in the test VM.
 nativeSteam = false

@@ -87,7 +87,7 @@ while IFS= read -r app; do
     if [[ -f "$app_dir/$app_exe" ]]; then
         pass "app $app: installed ($app_exe)"
     else
-        warn "app $app: not installed, the launcher has nothing to run: $app_dir/$app_exe (helpws windows; helpws rebuild)"
+        warn "app $app: not installed, the launcher has nothing to run: $app_dir/$app_exe (ws help windows; ws help rebuild)"
     fi
 done < <(manifest_get "$apps_json" apps)
 
@@ -113,7 +113,7 @@ if [[ -n "$dangling_menu" ]]; then
 else
     pass "ws windows menu links resolve"
 fi
-# wswin is no longer in PATH (helpws plan-v2, stage 5).
+# wswin is no longer in PATH (ws help plan-v2, stage 5).
 [[ -z "$old_menu" ]] \
     || warn "ws windows menu entries run the old name wswin:$old_menu (ws windows menu sync)"
 

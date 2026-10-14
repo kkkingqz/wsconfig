@@ -72,7 +72,7 @@ let
     MimeType=${lib.concatMapStrings (t: "${t};") exeTypes}
   '';
 
-  # What wswin reads (helpws plan-v2, 2.6).
+  # What wswin reads (ws help plan-v2, 2.6).
   appsJson = builtins.toJSON {
     default_box = defaultBox;
     lc_ctype = ansiLocale;

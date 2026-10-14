@@ -1,4 +1,4 @@
-# GNOME of the workstation (helpws gnome). ws apply writes these keys with
+# GNOME of the workstation (ws help gnome). ws apply writes these keys with
 # dconf on every run: a manual change of them is reverted by the next
 # apply, and a key removed here is reset to its default. A host adds or
 # replaces keys in nix/hosts/HOST/gnome.toml. ws sync publishes the file.
@@ -97,7 +97,7 @@ source = "ego"
 uuid = "xremap@k0kubun.com"
 source = "ego"
 
-# D-Bus window control for ws-window (helpws keyboard).
+# D-Bus window control for ws-window (ws help keyboard).
 [[extensions]]
 uuid = "window-control@carlo9890.github.io"
 source = "ego"

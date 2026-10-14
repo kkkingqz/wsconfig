@@ -117,7 +117,7 @@ xremap игнорирует `Dynamic Function Row Virtual Input Device`. В ро
 В режиме дисплея (configuration 2: `tiny-dfr` или Mutter рисуют на Touch Bar
 через `appletbdrm`) случились все сбои S3 на этой машине: отказы T2 и
 зависания без логов; в родном режиме — ни одного. Разбор и таблица циклов —
-`helpws history-suspend`.
+`ws help history-suspend`.
 
 ## Безопасность runtime PM
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Entry point of the Nix layer (helpws history-nix). Runs as the
+# Entry point of the Nix layer (ws help history-nix). Runs as the
 # desktop user and calls sudo itself where needed: `sudo ws` would not find
 # Nix, secure_path does not contain the Nix profile.
 
@@ -26,7 +26,7 @@ Usage:
   ws host [--for-marks]
   ws fact [--host HOST] NAME
   ws news
-  ws help [TOPIC]          the docs (helpws)
+  ws help [TOPIC]          the docs; without TOPIC the list of topics
   ws battery|gmux|psr|gpu ...   diagnostics of the hardware
   ws MODULE [ARG...]       flatpak box windows widgets game keyboard gnome
                            suspend backup: the owner of that layer
@@ -130,23 +130,23 @@ collect   archive of the machine state a rebuild needs and the repository
 btrfs     make: the Btrfs layout of a fresh install (@, @home, @cache, @tmp,
           @log) from the installed system, before bootstrap.sh: run it,
           reboot through GRUB, run it again; see ws-btrfs --help and
-          helpws rebuild, section 3
+          ws help rebuild, section 3
 backup    Timeshift snapshots to Unraid, then retain final local ro parents;
           plan/status work before SSH is configured; list shows the local
           copies (asks sudo);
           recovery-export OUTPUT writes autonomous Live USB ws-restore;
-          see ws backup --help and helpws backup / helpws recovery
+          see ws backup --help and ws help backup / ws help recovery
 checkpoint  which commit matched which working state (home-manager
           generation, system tree, kernel, baseline), see ws checkpoint --help
 container  image and container of a container host (boot = "container",
-          helpws plan-wsgnomebox) on its server, see ws-container --help
+          ws help plan-wsgnomebox) on its server, see ws-container --help
 host      print the flake host name used for this machine: WS_HOST, else
           the nix/hosts/<host> whose host.toml has hostname = "$(hostname)";
           --for-marks: fail unless the name can stand in a list mark
 fact      print a fact of this host, or of --host HOST (hardware, boot,
           user, vm, ...) from nix/hosts/<host>/host.toml, without Nix
           (lib/ws_facts.py); true and false print as yes and no
-MODULE    the owners of the layers, one command for each (helpws plan-v2,
+MODULE    the owners of the layers, one command for each (ws help plan-v2,
           2.8); ARG... as the owner takes them, see ws MODULE --help:
             flatpak   Flatpak apps, remotes, overrides (ws flatpak)
             box       Distrobox containers (ws box)
@@ -162,7 +162,7 @@ USAGE
 
 [[ $EUID -ne 0 ]] || die "run as the desktop user, not root"
 
-# Host and string facts: lib/ws_facts.py, the one reader (helpws plan-v2,
+# Host and string facts: lib/ws_facts.py, the one reader (ws help plan-v2,
 # 2.2). host: WS_HOST, else the host whose host.toml has this hostname.
 facts_py() { python3 "$WS_CORE/lib/ws_facts.py" "$@"; }
 host() { facts_py host "$@" || exit 1; }
@@ -184,7 +184,7 @@ current_generation() {
 }
 
 # Data files: what ws, the tools and the user write, published only by ws
-# sync (helpws plan-v2, 2.7 and 7): the Flatpak catalog (ws flatpak install/
+# sync (ws help plan-v2, 2.7 and 7): the Flatpak catalog (ws flatpak install/
 # manage/unmanage, filesystem/env/talk and un…), the host choices
 # (lib/ws_catalog.py: ws flatpak, ws box, ws widgets), flake.lock and the
 # module files the user edits (distrobox/catalog.toml, windows/apps.toml,
@@ -297,7 +297,7 @@ cmd_sync() {
     fi
     branch="$(git -C "$repo" symbolic-ref -q --short HEAD)" \
         || die "HEAD is detached: check out a branch first"
-    # Until code and data are separate repositories (helpws plan-v2, stage
+    # Until code and data are separate repositories (ws help plan-v2, stage
     # 8) code changes and commits are the developer's: sync touches neither.
     mapfile -t code < <(git -C "$repo" status --porcelain --untracked-files=no \
         | cut -c4- | sed 's/.* -> //' | while IFS= read -r f; do is_data_file "$f" || echo "$f"; done)
@@ -401,7 +401,7 @@ cmd_diff() {
 }
 
 # Layer owners in apply order: name, command.
-# The modules: ws MODULE ARG... runs the owner of that layer (helpws
+# The modules: ws MODULE ARG... runs the owner of that layer (ws help
 # plan-v2, 2.8). The fish completion reads this table (ws modules).
 modules=(
     "flatpak wsflatpak"
@@ -424,7 +424,7 @@ module_owner() {
 }
 
 # Step tables (apply_steps, update_steps, check_steps): "NAME COMMAND" per
-# entry. Shared by apply, update and check is only the walk (helpws plan-v2,
+# entry. Shared by apply, update and check is only the walk (ws help plan-v2,
 # 2.5): names, the selection, the step header and the summary. What a result
 # means each command decides itself: apply OK/PREFLIGHT (69)/FAIL, update
 # OK/FAIL, check the result object of lib/check.bash.
@@ -489,7 +489,7 @@ marks_state() {
     done < <(data_files) | cksum
 }
 
-# ws apply [NAME...] (helpws architecture-v2, 8): one order for everything.
+# ws apply [NAME...] (ws help architecture-v2, 8): one order for everything.
 #   1. host and roots: data files added to Git, no untracked flake files
 #   2. the new positions of the catalogs, one checklist (of the modules
 #      named; without a terminal they stay ask)
@@ -649,13 +649,13 @@ update_apt() {
     sudo apt update || return
     sudo apt full-upgrade || return
     if apt-mark showhold | grep -qx linux-t2; then
-        echo "linux-t2 held: a new kernel needs new t2bce modules (helpws suspend)"
+        echo "linux-t2 held: a new kernel needs new t2bce modules (ws help suspend)"
     fi
 }
 
 # flake.lock goes back when nothing was applied (the build failed, exit 2
 # of cmd_apply); once applying began it stays new: part of the system is of
-# the new version (helpws architecture-v2, 12.3).
+# the new version (ws help architecture-v2, 12.3).
 update_nix() {
     local nix backup rc=0
     nix="$(nix_bin)" || return
@@ -904,7 +904,7 @@ case "${1:-}" in
     apply) shift; cmd_apply "$@" ;;
     sync) shift; cmd_sync "$@" ;;
     check) shift; cmd_check "$@" ;;
-    # Gone in helpws plan-v2, stage 6: one apply.
+    # Gone in ws help plan-v2, stage 6: one apply.
     switch) die "ws switch is gone: ws apply (or ws apply home for the home-manager generation only)" ;;
     diff) shift; cmd_diff "$@" ;;
     news) shift; cmd_news "$@" ;;
@@ -915,7 +915,7 @@ case "${1:-}" in
     collect) shift; exec "$WS_CORE/libexec/ws-collect" "$@" ;;
     container) shift; exec "$WS_CORE/libexec/ws-container" "$@" ;;
     btrfs) shift; exec "$WS_CORE/libexec/ws-btrfs" "$@" ;;
-    # Diagnostics of the hardware, run by hand (helpws workstation, plan-dgpu).
+    # Diagnostics of the hardware, run by hand (ws help workstation, plan-dgpu).
     battery) shift; exec "$WS_CORE/libexec/ws-battery" "$@" ;;
     gmux) shift; exec "$WS_CORE/libexec/ws-gmux" "$@" ;;
     psr) shift; exec "$WS_CORE/libexec/ws-psr" "$@" ;;

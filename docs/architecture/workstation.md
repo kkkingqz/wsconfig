@@ -9,7 +9,7 @@ volume: User Commands
 **Платформа:** MacBook Pro 16" 2019 (`MacBookPro16,1`, Intel/T2)
 
 > Текущее рабочее состояние workstation подробно. Слои и правила —
-> `helpws layers`, проверки — `helpws checks`, терминал — `helpws terminal`.
+> `ws help layers`, проверки — `ws help checks`, терминал — `ws help terminal`.
 
 ---
 
@@ -20,7 +20,7 @@ volume: User Commands
 - **Wayland**
 - **GDM3**
 - **rEFInd** как основное boot menu
-- T2 kernel: `7.2.7-1-t2-resolute` (+ локально исправленный `t2bce`, см. `helpws suspend`)
+- T2 kernel: `7.2.7-1-t2-resolute` (+ локально исправленный `t2bce`, см. `ws help suspend`)
 - Generic-ядро Ubuntu удалено (2026-10-02); запасной путь — GRUB и снапшоты Timeshift
 - Secure Boot отключён для T2 Linux
 
@@ -41,7 +41,7 @@ Root работает на **Btrfs**.
 @nix          /nix: Nix store, отдельно от @ (откат @ не трогает /nix)
 @vms          /var/lib/vms: состояние VM (диски, UEFI, TPM, XML), вне snapshots @
 @steam        ~/.local/share/Steam: Steam из apt (nativeSteam = true), вне snapshots @home
-@wsbackup     /var/lib/workstation-backup: локальные копии backup (helpws backup)
+@wsbackup     /var/lib/workstation-backup: локальные копии backup (ws help backup)
 @swap         /swap: swapfile 32G для hibernate (swapfile нельзя в томе со snapshots)
 timeshift-btrfs  snapshots Timeshift (@, @home); создаёт Timeshift
 ```
@@ -54,7 +54,7 @@ rootflags=subvol=@
 
 rEFInd берёт ядро из default subvolume (`@`, по ID). Snapshots и откат —
 Timeshift (`@`, `@home`), загрузка в snapshot — GRUB, после restore хук
-переставляет default на новый `@` (`helpws rebuild`, раздел 12).
+переставляет default на новый `@` (`ws help rebuild`, раздел 12).
 
 ---
 
@@ -134,9 +134,9 @@ Settings и остаётся inventory-only.
 Интеграция приложений — у их слоёв:
 
 ```text
-Flatpak theme / scale / portals  -> helpws flatpak
-Distrobox GUI / Wayland / Qt     -> helpws distrobox
-Wine                             -> helpws windows, только внутри Distrobox
+Flatpak theme / scale / portals  -> ws help flatpak
+Distrobox GUI / Wayland / Qt     -> ws help distrobox
+Wine                             -> ws help windows, только внутри Distrobox
 ```
 
 Wine на host не устанавливается.
@@ -144,7 +144,7 @@ Wine на host не устанавливается.
 Подробности:
 
 ```console
-helpws gnome
+ws help gnome
 ```
 
 ---
@@ -265,7 +265,7 @@ xremap) — в `~/.local/state/wsconfig/`, не в checkout.
 Полный справочник:
 
 ```console
-helpws keyboard
+ws help keyboard
 ```
 
 Полная проверка:
@@ -303,7 +303,7 @@ USB-контроллеры Thunderbolt (`09:00.0`, `7f:00.0`, `8086:15ec`) де�
 `ws-tb-acpi-seed.service` при загрузке читает регионы ACPI Thunderbolt,
 чтобы ACPICA запомнила их настоящие адреса PCI: иначе `_PS0` прошивки при
 каждом resume опрашивает хост-мост и выход из сна занимает ~23 с вместо
-~3 с (helpws suspend, Thunderbolt).
+~3 с (ws help suspend, Thunderbolt).
 
 ---
 
@@ -374,7 +374,7 @@ Recovery        GRUB, AMD включена
   (`01:00.0`–`03:00.1`) с шины, пока карта включена, снимает питание портом
   gmux `0x50` (как `apple-gmux` при vga_switcheroo OFF) и паркует порт CPU:
   пользовательская часть загрузки 20,5 → 9,6 с, PC7 ~78 %. Без `amdgpu` на
-  шине S3 тоже не ломается. Подробности — `helpws suspend`.
+  шине S3 тоже не ломается. Подробности — `ws help suspend`.
 - `default_selection +`: rEFInd предлагает пункт прошлой загрузки.
 - «Ubuntu (AMD)» — ручной пункт в `system/files/esp/refind.conf` (шаблон).
   Он грузит
@@ -386,7 +386,7 @@ Recovery        GRUB, AMD включена
   (`kernelParams`, `rootUuid`): `refind_linux.conf`, GRUB (`grub.d`) и
   `@AMD_OPTIONS@` в `refind.conf` собираются из них; «Ubuntu» добавляет
   `refindDefaultParams` (`ws.dgpu=off`). Править только `host.toml`.
-- «Ubuntu» с `ws.dgpu=off` проверен, включая S3 (`helpws suspend`);
+- «Ubuntu» с `ws.dgpu=off` проверен, включая S3 (`ws help suspend`);
   «Ubuntu (AMD)» загружается, Proton и Steam в нём работают на AMD; S3 в
   нём не проверялся.
 - `refind.conf` лежит на отдельном ESP (`nvme0n1p3`), `ws apply system` его не
@@ -435,14 +435,14 @@ ws-t2-detach               стек T2 снят на время hibernate (у t2
 
 ASPM в пункте «Ubuntu» у ядра (`pcie_aspm=force pcie_aspm.policy=powersave`,
 с 2026-10-01): прошивка оставляет Thunderbolt без ASPM. Отказы T2 2026-09-22…25
-были с forced ASPM, но и с Touch Bar в режиме дисплея (`helpws suspend`,
+были с forced ASPM, но и с Touch Bar в режиме дисплея (`ws help suspend`,
 ASPM). Порт CPU выключенной AMD паркуется как в macOS (`ws-dgpu-park`).
 
 Управление и подробности:
 
 ```console
 ws suspend status
-helpws suspend
+ws help suspend
 ```
 
 Дополнительный агрессивный power tuning сейчас не используется.
@@ -475,12 +475,12 @@ Fn для своего Apple `apple_fn` mode. `ws-touchbar-fn` слушает Fn
 
 `tiny-dfr` (режим дисплея Touch Bar, `appletbdrm`) не используется: все
 сбои suspend на этой машине случились в режиме дисплея
-(`helpws history-suspend`).
+(`ws help history-suspend`).
 
 Подробности:
 
 ```console
-helpws touchbar
+ws help touchbar
 ```
 
 ---
@@ -514,7 +514,7 @@ distrobox/distrobox.nix                hooks по имени, значения �
 system/files/modules-load.d/ntsync.conf         ставит ws apply system
 distrobox/arch/wsbox-host-ntsync/  PKGBUILD NTSYNC-MODULE для Arch-контейнеров
 distrobox/arch/*-hook, wine/       хуки установки Windows-контейнеров
-windows/apps.toml                  Windows-программы с launcher (helpws windows)
+windows/apps.toml                  Windows-программы с launcher (ws help windows)
 windows/apps.nix                   их launcher, apps.json, проверки
 libexec/wsbox, libexec/wswin, libexec/ws-gpu
 ```
@@ -532,7 +532,7 @@ Managed containers:
 arch     Arch rolling (archlinux:latest) / AUR applications
 wine-wayland  Arch, Wine с Wayland-драйвером: Windows-программы по умолчанию; WinBox 3.x
 wine     Ubuntu релиза хоста, WineHQ stable, XWayland
-proton   Arch, umu-launcher + Proton: игры, AMD при наличии (helpws windows)
+proton   Arch, umu-launcher + Proton: игры, AMD при наличии (ws help windows)
 t2bce-build     Ubuntu релиза хоста, сборка ядра/модулей вручную (kernel headers с хоста)
 touchbar-build  Ubuntu релиза хоста, порт Touch Bar (~/touchbar): dev-пакеты DRM/Wayland,
                 Rust (rustup) в HOME контейнера: ~/.rustup, ~/.cargo
@@ -546,7 +546,7 @@ touchbar-build  Ubuntu релиза хоста, порт Touch Bar (~/touchbar):
 Образы — теги, не digest. Пакеты внутри обновляет `ws box update [NAME...]`
 (`distrobox upgrade`: apt в Ubuntu, pacman в Arch; AUR — вручную `paru`);
 новый образ берётся только при `ws box recreate NAME`: rootfs пересоздаётся,
-HOME остаётся, пакеты из AUR в `arch` ставятся заново (`helpws rebuild`,
+HOME остаётся, пакеты из AUR в `arch` ставятся заново (`ws help rebuild`,
 раздел 6.3). Build-контейнеры берут релиз Ubuntu хоста (`@HOST_VERSION_ID@`
 в `distrobox/catalog.toml`, `ws box` подставляет `VERSION_ID` из `/etc/os-release`):
 то, что в них собирается, должно совпадать с хостом. После обновления
@@ -567,7 +567,7 @@ ws box check
 ws box apply [NAME]
 ```
 
-Windows-программы, prefixes, `ws windows`, Steam: `helpws windows`. WinBox —
+Windows-программы, prefixes, `ws windows`, Steam: `ws help windows`. WinBox —
 prefix `winbox` в `wine-wayland` (переживает destructive rebuild):
 
 ```text
@@ -578,7 +578,7 @@ LogPixels = 0x90 = 144 DPI = 150%
 Подробности:
 
 ```console
-helpws distrobox
+ws help distrobox
 ```
 
 ---
@@ -660,7 +660,6 @@ ppa:fish-shell/release-4
 ~/.config/fish/functions/fish_prompt.fish
 ~/.config/fish/functions/fish_right_prompt.fish
 ~/.config/fish/functions/fzf_cd_browser.fish
-~/.config/fish/completions/helpws.fish
 ```
 
 ## fzf
@@ -706,31 +705,31 @@ lt
 
 # HELP SYSTEM
 
-## helpws
+## ws help
 
 Пользовательский terminal help viewer:
 
 ```console
-helpws
-helpws terminal
-helpws ghostty
-helpws fish
-helpws keys
-helpws workstation
-helpws man ws-terminal
-helpws man ws-workstation
+ws help
+ws help terminal
+ws help ghostty
+ws help fish
+ws help keys
+ws help workstation
+ws help man ws-terminal
+ws help man ws-workstation
 ```
 
 Fish completion работает для topics, например:
 
 ```console
-helpws wo<Tab>
+ws help wo<Tab>
 ```
 
 дополняется до:
 
 ```text
-helpws workstation
+ws help workstation
 ```
 
 Viewer — **Micro в read-only режиме** с отдельной конфигурацией.
@@ -760,7 +759,7 @@ Micro help-viewer использует true-color scheme и Markdown syntax high
                                 recovery и виджетов; без title:, не man-страницы
 ```
 
-`helpws` находит документ по `title:`, не по пути.
+`ws help` находит документ по `title:`, не по пути.
 
 ## Man generation
 
@@ -791,14 +790,14 @@ man ws-workstation
 ```
 
 Исходники хранятся в Git repository (`~/wsconfig/bin/ws`,
-`~/wsconfig/libexec/`); в `~/.local/bin` — только `ws` и `helpws` из ядра в
+`~/wsconfig/libexec/`); в `~/.local/bin` — только `ws` и `ws help` из ядра в
 store.
 
 Правило:
 
 ```text
 executable source   ~/wsconfig/bin/ws, ~/wsconfig/libexec/<tool>
-runtime link        ~/.local/bin/ws, helpws → ядро в store (nix/pkgs/ws.nix)
+runtime link        ~/.local/bin/ws → ядро в store (nix/pkgs/ws.nix)
 config source       ~/wsconfig/<область>/...
 generated           ~/.local/share/wsconfig/...
 ```
@@ -844,8 +843,8 @@ wsconfig/
 ├── system/               default.nix, common.nix, boot/, hardware/ (Nix),
 │   ├── files/            файлы для / (udev, modprobe, systemd, usr, esp, …)
 │   ├── kernel/t2bce/     nostate-fix.patch, t2bce.nix (ядро -> коммит linux-t2-patches)
-│   ├── kernel/t2gmux/    t2gmux.nix (коммит KaiT2en; helpws plan-dgpu, отложен)
-│   └── kernel/i915-psr/  apple-psr.patch (PSR панели Apple; ws-psr, helpws plan-t2)
+│   ├── kernel/t2gmux/    t2gmux.nix (коммит KaiT2en; ws help plan-dgpu, отложен)
+│   └── kernel/i915-psr/  apple-psr.patch (PSR панели Apple; ws-psr, ws help plan-t2)
 ├── gnome/                config.toml, gnome.nix, gnome-extensions.nix, extensions/<uuid>/
 ├── keyboard/             config.toml, presets/macos.nix, keyboard.nix, xremap.nix, xremap.yml
 ├── terminal/             fish/, ghostty/, micro-help/, xdg-terminals/
@@ -853,7 +852,7 @@ wsconfig/
 ├── distrobox/            catalog.toml, distrobox.nix, arch/ (wsbox-host-ntsync, хуки), wine/
 ├── windows/              apps.toml (Windows-программы с launcher), apps.nix
 ├── steam/                apt.txt, bootstrap.bash (Steam из apt, @steam; nativeSteam)
-├── gaming/               sources.nix, build.sh, apt.txt (Game Mode; wsgame, helpws gaming)
+├── gaming/               sources.nix, build.sh, apt.txt (Game Mode; wsgame, ws help gaming)
 ├── bin/
 │   └── ws                switch, diff, apply, update, check, system, baseline
 ├── libexec/              внутренние исполнители; ws вызывает их по пути
@@ -869,7 +868,7 @@ wsconfig/
 │   ├── ws-suspend, ws-suspend-check
 │   ├── ws-baseline, ws-checkpoint, ws-collect
 │   ├── ws-btrfs          ws btrfs make: раскладка Btrfs свежей установки
-│   ├── wsgame            пакеты Game Mode: build, install, check (helpws gaming)
+│   ├── wsgame            пакеты Game Mode: build, install, check (ws help gaming)
 │   ├── ws-gnome
 │   ├── ws-gnome-check
 │   ├── ws-gnome-status
@@ -896,7 +895,7 @@ wsconfig/
 └── docs/                architecture/, runbooks/, plans/, history/, superpowers/
 ```
 
-Nix доставляет, владельцы слоёв не меняются (`helpws layers`):
+Nix доставляет, владельцы слоёв не меняются (`ws help layers`):
 home-manager ставит `ws` и инструменты из store (`~/.local/bin`), ссылки на
 checkout (fish, Ghostty), man pages
 и CLI (fzf, zoxide, eza, micro, nvd, xremap), unit `xremap.service` с
@@ -937,7 +936,7 @@ git diff --cached
 `git pull --rebase` и `git push`, если у ветки есть upstream (без remote
 коммит остаётся локальным). `ws sync` отказывается при операции Git,
 отсоединённом HEAD, изменениях кода и неопубликованных коммитах кода — их
-коммитит и пушит разработчик (`helpws plan-v2`, 2.7). `ws apply`
+коммитит и пушит разработчик (`ws help plan-v2`, 2.7). `ws apply`
 и `ws update nix` в конце называют неопубликованное.
 
 ---

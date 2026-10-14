@@ -2,7 +2,7 @@
 set -u
 set -o pipefail
 
-# Virtual machines (helpws virt): KVM, libvirt qemu:///system, the VM state on
+# Virtual machines (ws help virt): KVM, libvirt qemu:///system, the VM state on
 # @vms that bootstrap.sh sets up (disks, UEFI variables, TPM, XML), the NAT
 # network, UEFI and TPM for guests.
 # Read-only. ws check virt; ws check runs it with --json (lib/check.bash).
@@ -152,7 +152,7 @@ while IFS= read -r vm; do
     info "VM $vm: $("${virsh[@]}" domstate "$vm" 2>/dev/null)"
     nvram="$("${virsh[@]}" dumpxml --inactive "$vm" 2>/dev/null | grep '<nvram')"
     [[ -z "$nvram" || "$nvram" == *"format='qcow2'"* ]] \
-        || warn "VM $vm: UEFI variables not in qcow2, no snapshots while running (helpws virt)"
+        || warn "VM $vm: UEFI variables not in qcow2, no snapshots while running (ws help virt)"
 done < <("${virsh[@]}" list --all --name 2>/dev/null)
 
 check_finish

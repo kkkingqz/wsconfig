@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# The widget layer of this repository (helpws widgets): which widgets of
+# The widget layer of this repository (ws help widgets): which widgets of
 # wswidgets each workstation has and which wswidgets version is installed.
 # The widgets come from the wswidgets flake input pinned by flake.lock
 # (github:kkkingqz/wswidgets), never from a local checkout: list, enable and
@@ -9,7 +9,7 @@ set -euo pipefail
 # widget: nix/hosts/HOST/widgets.toml, yes = [...] in panel order, no =
 # [...]; a widget in neither is ask (lib/ws_catalog.py). enable/disable/apply
 # edit it and run ws apply widgets; update moves flake.lock to the newest
-# wswidgets and applies. ws sync publishes both (helpws plan-v2, 2.7).
+# wswidgets and applies. ws sync publishes both (ws help plan-v2, 2.7).
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
@@ -60,7 +60,7 @@ layer() {
 require_layer() {
     load_host
     [[ "$(layer)" == yes ]] \
-        || die "widgets is not true in nix/hosts/$ws_host/host.toml: no widget layer here (helpws widgets)"
+        || die "widgets is not true in nix/hosts/$ws_host/host.toml: no widget layer here (ws help widgets)"
 }
 
 # lib.catalog of the wswidgets in flake.lock, as JSON.
@@ -266,7 +266,7 @@ cmd_update() {
     if [[ "$no_apply" == false ]]; then
         # flake.lock goes back only when nothing was applied (exit 2 of ws
         # apply: the build failed); once applying began part of the system is
-        # of the new version (helpws architecture-v2, 12.3).
+        # of the new version (ws help architecture-v2, 12.3).
         rc=0
         # shellcheck disable=SC2086 # apply_cmd is a fixed command line
         $apply_cmd || rc=$?

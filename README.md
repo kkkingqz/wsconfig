@@ -9,7 +9,7 @@ home-manager доставляют конфигурацию поверх неё, 
 ## Установка
 
 Новый ПК с GRUB — одной командой после установки Ubuntu (ESP и корень
-Btrfs): все вопросы в начале, дальше только перезагрузки (`helpws setup`):
+Btrfs): все вопросы в начале, дальше только перезагрузки (`ws help setup`):
 
 ```console
 wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash
@@ -55,14 +55,14 @@ docs/           документация, из неё собираются man-�
 ```
 
 Хосты — `mbp16` (эта машина), `legiongo` (Lenovo Legion Go, Game Mode;
-`helpws plan-legion-go`) и `wsvm` (проверочная VM фазы 6; сама VM удалена
+`ws help plan-legion-go`) и `wsvm` (проверочная VM фазы 6; сама VM удалена
 2026-10-02, описание оставлено), выбираются по `hostname` в `host.toml`
 (`ws host`). Хост — каталог `nix/hosts/<name>/` (`host.toml`, `apt.txt`);
-новый на GRUB делает `setup.sh` из generic-pc (`helpws setup`).
+новый на GRUB делает `setup.sh` из generic-pc (`ws help setup`).
 
 ## Документация
 
-`helpws TOPIC` открывает документ, `man ws-…` — ту же страницу.
+`ws help TOPIC` открывает документ, `man ws-…` — ту же страницу.
 
 ```text
 docs/architecture/   layers (слои и правила), checks, workstation (подробно)
@@ -73,7 +73,7 @@ docs/runbooks/       setup, rebuild, keyboard, gnome, terminal, suspend,
 docs/plans/          roadmap и незавершённые планы
 docs/history/        как строились завершённые слои
 docs/superpowers/    specs/ и plans/: проекты и планы реализации backup и
-                     recovery (без man-страниц и helpws; виджеты — в wswidgets)
+                     recovery (без man-страниц и ws help; виджеты — в wswidgets)
 ```
 
 ## Состояние и восстановление
@@ -88,10 +88,10 @@ ws backup plan                  план Timeshift backup, без SSH и изм�
 ws backup recovery-export PATH  автономный ws-restore для Live USB
 ```
 
-Backup: `helpws backup`. Механизм Btrfs send/receive подготовлен; адрес Unraid,
+Backup: `ws help backup`. Механизм Btrfs send/receive подготовлен; адрес Unraid,
 первый реальный перенос и restore test ещё нужны. Конфигурация — локальная,
 таймера нет. После успешного batch остаётся по одному ro-parent system/home;
 оригиналы Timeshift и копии на NAS не удаляются. VM передаются через `ws backup send vms`.
 
-Восстановление выбранной даты с NAS на существующий SSD: `helpws recovery`.
+Восстановление выбранной даты с NAS на существующий SSD: `ws help recovery`.
 Export не включает ключи и config; реальные NAS/boot acceptance checks пока не выполнены.

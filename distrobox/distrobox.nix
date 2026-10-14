@@ -9,7 +9,7 @@
 #   boxes.json      the containers in order, for wsbox and wswin: name,
 #                   image, home, hooks, exports (ALIAS: desktop file inside
 #                   the container), gpu, default, and for Windows boxes
-#                   profile, driver, dpi, init_overrides (helpws plan-v2, 2.6)
+#                   profile, driver, dpi, init_overrides (ws help plan-v2, 2.6)
 #
 # Which host has which: nix/hosts/HOST/boxes.toml (lib/ws_catalog.py).
 { config, lib, pkgs, facts, core, ... }:
@@ -39,7 +39,7 @@ let
   # HOME is mounted in the container). Run through sh: no shebang or mode
   # is needed, and a hook derives nothing from the owner or mode of its
   # files; what it needs, such as the user of a build, is an argument
-  # (helpws plan-v2, stage 5).
+  # (ws help plan-v2, stage 5).
   hooks = "${config.home.homeDirectory}/.local/share/wsconfig/hooks";
 
   # The hook names of catalog.toml: NAME -> { path under hooks; fixed:

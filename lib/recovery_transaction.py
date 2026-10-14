@@ -24,14 +24,14 @@ def build_plan(selection, target, include_home):
 
 
 def require_refind(root):
-    """ws-restore switches rEFInd hosts only (refind_linux.conf in @; helpws
+    """ws-restore switches rEFInd hosts only (refind_linux.conf in @; ws help
     recovery): a GRUB host (legiongo) has no such file and is refused here,
     before anything changes."""
     if tree_path(root, 'boot/refind_linux.conf').is_file():
         return
     if tree_path(root, 'boot/grub/grub.cfg').is_file():
         raise ValueError('GRUB host (no boot/refind_linux.conf): ws-restore restores only '
-                         'rEFInd hosts; GRUB hosts by hand (helpws recovery)')
+                         'rEFInd hosts; GRUB hosts by hand (ws help recovery)')
     raise ValueError('rEFInd configuration missing (boot/refind_linux.conf)')
 
 

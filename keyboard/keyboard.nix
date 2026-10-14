@@ -5,7 +5,7 @@
 # restore` puts them back; home-manager would write them on every switch.
 #
 # Built for the scripts into ~/.local/share/wsconfig/keyboard/keyboard.json
-# (helpws plan-v2, 2.6):
+# (ws help plan-v2, 2.6):
 #   shortcuts  [{schema, key, value, kind: required|optional}], value as
 #              `gsettings get` prints it; read by ws-keyboard-apply (set,
 #              backup, preflight), ws-keyboard check and ws-keyboard status
@@ -23,7 +23,7 @@ let
   # GVariant text as it is, for values that are not strings or string arrays.
   raw = text: { gvariant = text; };
 
-  # A container host (boot = "container", helpws plan-wsgnomebox): keys come
+  # A container host (boot = "container", ws help plan-wsgnomebox): keys come
   # over RDP from Remmina, which passes them as typed (keyboard/xremap.yml,
   # &vm_consoles); no xremap runs here. GNOME takes what xremap does on a
   # machine: the private CapsLock chords, workspaces, window actions and
@@ -72,7 +72,7 @@ let
     (v: builtins.isString v || builtins.isBool v || (builtins.isList v && lib.all builtins.isString v));
   preset = import presets.${keyboard.preset} { inherit lib rdp; };
 
-  # The layouts workstation-input-source knows (helpws keyboard): EN first,
+  # The layouts workstation-input-source knows (ws help keyboard): EN first,
   # then RU and UA in any order or not at all.
   knownLayouts = [ "us" "ru" "ua" ];
   layouts = keyboard.layouts;

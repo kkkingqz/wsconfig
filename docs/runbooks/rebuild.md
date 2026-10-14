@@ -31,7 +31,7 @@ ws checkpoint create before-reinstall
   устройства fwupd, модули, предупреждения ядра; без серийных номеров;
 - `state/` — `~/.local/state/wsconfig` (backup сочетаний, checkpoints);
 - `virt/` — описания VM, сетей и пулов, NVRAM и TPM (без дисков: backup
-  `@vms` — `helpws plan-final`);
+  `@vms` — `ws help plan-final`);
 - `meta/` — коммит и незакоммиченные изменения.
 
 Отдельно: пользовательские данные, нужные Btrfs snapshots, установочный
@@ -84,12 +84,12 @@ apply` — из них собираются `refind_linux.conf`, `refind.conf` �
 @steam     Steam из apt в ~/.local/share/Steam (nativeSteam = true), создаёт
            bootstrap.sh; вне snapshots и backup @home
 @wsbackup  локальные копии backup в /var/lib/workstation-backup, создаёт
-           bootstrap.sh (helpws backup)
+           bootstrap.sh (ws help backup)
 ```
 
 Root грузится с `rootflags=subvol=@`. Установщик Ubuntu 26.04 при ручной
 разметке Btrfs subvolumes не создаёт вовсе: `/` оказывается в корне
-файловой системы (subvolid=5; проверено в VM, фаза 6 в `helpws
+файловой системы (subvolid=5; проверено в VM, фаза 6 в `ws help
 history-nix`). Раскладку делает `ws btrfs make` из самой установленной
 системы, до `bootstrap.sh`, в два запуска; между ними reboot через GRUB (на
 mbp16 тоже: rEFInd — позже, раздел 5):
@@ -119,7 +119,7 @@ git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
    generic, корень берёт из командной строки ядра).
 2. `/` — `@`: проверяет, что все пять смонтированы из своих subvolumes;
    swapfile установщика, если он был, создаётся заново того же размера в
-   `@swap` (`ws suspend swap-setup`, `helpws suspend`); при
+   `@swap` (`ws suspend swap-setup`, `ws help suspend`); при
    `boot = "refind-…"` в `host.toml` (mbp16) делает `@` default subvolume —
    rEFInd берёт ядро из него, хост только с GRUB оставляет default 5;
    показывает старый корень на верхнем уровне (ровно то, что там было до
@@ -139,7 +139,7 @@ cat /etc/fstab
 # 4. T2 repository, kernel и firmware
 
 ```text
-linux-t2                  held (патч t2bce под версию ядра, helpws suspend)
+linux-t2                  held (патч t2bce под версию ядра, ws help suspend)
 apple-t2-audio-config
 Apple Wi‑Fi/Bluetooth firmware
 ```
@@ -173,14 +173,14 @@ rEFInd — основное меню. Всё, что ему нужно, соби
 
 ```text
 /boot/refind_linux.conf      ставит ws apply system
-EFI/BOOT/refind.conf (ESP)   копируется вручную (helpws workstation, GRAPHICS)
+EFI/BOOT/refind.conf (ESP)   копируется вручную (ws help workstation, GRAPHICS)
 grub.d drop-ins              ставит ws apply system (GRUB — recovery)
 ```
 
 Параметры ядра: `intel_iommu=on iommu=pt pm_async=off`. Пункт «Ubuntu»
 добавляет `ws.dgpu=off modprobe.blacklist=amdgpu pcie_aspm=force
 pcie_aspm.policy=powersave` (AMD без драйвера убрана с шины и выключена, её
-порт запаркован, ASPM у ядра; `helpws suspend`, `helpws workstation`), ручной
+порт запаркован, ASPM у ядра; `ws help suspend`, `ws help workstation`), ручной
 «Ubuntu (AMD)» грузит `/boot/ws` без них, GRUB (recovery) — тоже. Всё из
 `host.toml`. Generic-ядро Ubuntu не ставится: ядро только T2 (`linux-t2`),
 запасной путь — пункты GRUB и снапшоты Timeshift (раздел 12). Метапакеты
@@ -222,8 +222,8 @@ systemctl --user is-active wireplumber
 # 6.0. Bootstrap и слои
 
 На хосте с GRUB разделы 3 и 6.0–12 (без ручных проверок раздела 11) проходит
-`setup.sh` (`helpws setup`). После разделов 2–5 (Ubuntu, Btrfs, T2, rEFInd)
-и штатного GNOME вся конфигурация ставится так (`helpws layers`):
+`setup.sh` (`ws help setup`). После разделов 2–5 (Ubuntu, Btrfs, T2, rEFInd)
+и штатного GNOME вся конфигурация ставится так (`ws help layers`):
 
 ```console
 # ~/wsconfig уже есть с раздела 3
@@ -261,7 +261,7 @@ login shell → первый `ws apply` (заменяемые файлы сох�
 `*.pre-hm`). Хост определяется по `hostname` в `nix/hosts/*/host.toml` (`ws
 host`, переопределяет `WS_HOST=<name>`); для новой машины — каталог
 `nix/hosts/<name>/` с `host.toml` (в том числе `vm`, `nativeSteam` и
-`gameMode` — `true` или `false`; разделы — `helpws layers`) и `apt.txt`. Повторный запуск ничего не меняет.
+`gameMode` — `true` или `false`; разделы — `ws help layers`) и `apt.txt`. Повторный запуск ничего не меняет.
 
 Шаг `ws apply`, чей preflight не прошёл (exit 69), выводится в конце как
 `PREFLIGHT`; отдельный шаг — `ws apply keyboard`.
@@ -274,7 +274,7 @@ ask — «Поставить все? [Y/n]», на `n` — список с га�
 записывается в выбор этой машины, публикует `ws sync`; сами шаги потом не
 спрашивают. Отмена или отсутствие терминала оставляет позиции ask до
 следующего раза. Новая машина получает вопрос обо всём, что по умолчанию
-ask (`helpws flatpak`, `helpws distrobox`).
+ask (`ws help flatpak`, `ws help distrobox`).
 
 `ws system diff` сравнивает системные файлы (`/etc`, `/boot`, `/usr/local`,
 `/usr/lib/systemd/system-sleep`), собранные Nix из `system/`, с
@@ -341,7 +341,7 @@ Flatpak: remotes, приложения и общие overrides — в катал
 `ws sync`); `ws apply` собирает из них
 `~/.local/share/wsconfig/flatpak/` и ставит `.desktop` Claude, шаг `flatpak`
 в `ws apply` (`ws flatpak apply`) добавляет remotes, ставит приложения и
-применяет overrides (`helpws flatpak`).
+применяет overrides (`ws help flatpak`).
 
 Разделы 6.1–10 ниже описывают те же шаги по отдельности.
 
@@ -372,7 +372,7 @@ Display scale после reinstall выбирается штатно через 
 logical scale `1.5`.
 
 Wine не устанавливать на host: Windows-программы живут в контейнерах
-`wine-wayland`, `wine`, `proton` (`helpws windows`).
+`wine-wayland`, `wine`, `proton` (`ws help windows`).
 
 
 # 6.2. Host Qt integration
@@ -418,7 +418,7 @@ hook), Wine/WineHQ/umu — хуки Windows-контейнеров. Steam — fl
 ws box check
 ```
 
-Подробности: `helpws distrobox`, `helpws windows`.
+Подробности: `ws help distrobox`, `ws help windows`.
 
 
 # 6.4. Keyboard / shortcuts
@@ -453,7 +453,7 @@ Intel UHD 630  → primary desktop GPU
 AMD dGPU       → выключена в rEFInd «Ubuntu» (ws.dgpu=off), render/offload в «Ubuntu (AMD)»
 ```
 
-Выключение AMD ставит `ws apply system` (`ws-dgpu-off`, `helpws workstation`,
+Выключение AMD ставит `ws apply system` (`ws-dgpu-off`, `ws help workstation`,
 GRAPHICS). Других AMD power tweaks не воспроизводить.
 
 После восстановления проверить реальное распределение GPU, а не только наличие двух adapters.
@@ -477,12 +477,12 @@ ws psr install
 sudo reboot
 ```
 
-`ws psr` — i915 с PSR на панели Apple (helpws plan-t2, раздел 1), без него
+`ws psr` — i915 с PSR на панели Apple (ws help plan-t2, раздел 1), без него
 экран стоит ~1 W больше.
 
 `t2bce-build` требует `podman` и `linux-headers` текущего ядра. Если для
 установленного ядра нет записи в `system/kernel/t2bce/t2bce.nix`, сначала
-проверить upstream (`helpws suspend`, раздел «Обновление ядра»).
+проверить upstream (`ws help suspend`, раздел «Обновление ядра»).
 
 Проверить:
 
@@ -513,7 +513,7 @@ Touch Bar USB runtime PM специально не оптимизировать.
 
 Родной режим Touch Bar: кнопки рисует T2, режимом управляет
 `hid-appletb-kbd`, Fn за xremap пробрасывает `ws-touchbar-fn`. Отдельный
-пакет не нужен; `tiny-dfr` **не устанавливать** (причины: `helpws touchbar`).
+пакет не нужен; `tiny-dfr` **не устанавливать** (причины: `ws help touchbar`).
 Всё ставит `ws apply system` (раздел 6.0), режим меняется после reboot.
 
 Целевое поведение:
@@ -652,7 +652,7 @@ ws baseline diff before-reinstall after-reinstall
 Timeshift. Снапшоты лежат на верхнем уровне Btrfs в
 `timeshift-btrfs/snapshots/<дата>/{@,@home}`. Другие subvolumes Timeshift не
 умеет: `@nix`, `@vms`, `@steam`, `@log`, `@cache` в снапшоты не входят (VM —
-своими снапшотами libvirt, `helpws virt`, и backup `@vms`, `helpws
+своими снапшотами libvirt, `ws help virt`, и backup `@vms`, `ws help
 plan-final`; игры Steam — заново из Steam).
 
 Из проверенного состояния (после раздела 11) — первый снапшот:
@@ -707,5 +707,5 @@ sudo btrfs subvolume get-default /     # новый ID, path @
 
 До 2026-10-02 recovery делал `system-backup-snapshot`: `/.snapshots/backup-ro`
 и `/.snapshots/recovery`, пункт GRUB «Backup snapshot», копии ядра в
-`/boot/recovery` (`helpws history-nix`). На mbp16 всё это убрано (проверено
-2026-10-14, helpws plan-v2); на новых машинах этого не было.
+`/boot/recovery` (`ws help history-nix`). На mbp16 всё это убрано (проверено
+2026-10-14, ws help plan-v2); на новых машинах этого не было.

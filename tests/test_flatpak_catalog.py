@@ -1,5 +1,5 @@
 """lib/flatpak_catalog.py: the Flatpak catalog and the overrides of a host
-(helpws plan-v2, 3.4). lib/test-catalog.nix checks lib/catalog.nix on the
+(ws help plan-v2, 3.4). lib/test-catalog.nix checks lib/catalog.nix on the
 same fixture."""
 from pathlib import Path
 import shutil

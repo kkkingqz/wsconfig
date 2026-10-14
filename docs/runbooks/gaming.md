@@ -7,7 +7,7 @@ volume: User Commands
 # GAMING — GAME MODE (GAMESCOPE + STEAM)
 
 Game Mode — отдельная сессия gamescope + Steam, как в SteamOS, на хосте с
-`gameMode = true` в `host.toml` (сейчас legiongo; `helpws plan-legion-go`).
+`gameMode = true` в `host.toml` (сейчас legiongo; `ws help plan-legion-go`).
 Компоненты взяты из Bazzite и собраны в `.deb`: всё ставит dpkg, вне
 пакетов ничего не лежит. Переключение GNOME ↔ Game Mode — steamos-manager
 через автологин SDDM, без экрана входа.
@@ -81,7 +81,7 @@ Game Mode → GNOME    Steam → Power → Switch to Desktop → os-session-sele
                      zz-holo-autologin.conf steamos-manager идёт после него
 ```
 
-xremap в Game Mode не работает (`helpws keyboard`); кнопкой питания там
+xremap в Game Mode не работает (`ws help keyboard`); кнопкой питания там
 владеет powerbuttond, в GNOME — gsd-power (`HandlePowerKey=ignore`).
 
 ## Проверка

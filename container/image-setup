@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Image of a container host, as root at image build (container/Dockerfile,
-# helpws plan-wsgnomebox): what the installer and bootstrap.sh do on a real
+# ws help plan-wsgnomebox): what the installer and bootstrap.sh do on a real
 # machine and a container would lose on every recreate.
 #
 # - the apt step of bootstrap.sh (lib/apt.bash) with the lists of the host,

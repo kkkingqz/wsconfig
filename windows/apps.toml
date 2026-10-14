@@ -1,4 +1,4 @@
-# Windows programs with a GNOME launcher (helpws windows). The boxes and
+# Windows programs with a GNOME launcher (ws help windows). The boxes and
 # their profiles are in distrobox/catalog.toml; ws windows installs and runs.
 # windows/apps.nix builds ~/.local/share/wsconfig/windows/apps.json for
 # ws windows and one launcher ~/.local/share/applications/ws-win-NAME.desktop

@@ -11,9 +11,9 @@ case "$root/" in /home/*|/var/lib/vms/*) die 'snapshot root must be outside sour
 
 if [[ "$action" == init ]]; then
     # Only verifies: the subvolume and its fstab mount are created by hand
-    # (helpws backup), so it can never end up nested in @.
+    # (ws help backup), so it can never end up nested in @.
     [[ $# == 0 ]] || die 'init takes no arguments'
-    [[ -e "$root" ]] || die "missing: $root; create top-level @wsbackup and mount it there (helpws backup)"
+    [[ -e "$root" ]] || die "missing: $root; create top-level @wsbackup and mount it there (ws help backup)"
     snapshot_root_check "$root"
     exit 0
 fi
@@ -61,7 +61,7 @@ source_check() {
     nested="$(btrfs subvolume list -o "$src")"
     [[ -z "$nested" ]] || die 'nested subvolumes require an explicit backup decision'
     # Mounted inside HOME and left out of its snapshot by decision: the
-    # top-level @steam of a native Steam host (helpws plan-legion-go).
+    # top-level @steam of a native Steam host (ws help plan-legion-go).
     while read -r target type id opts; do
         [[ "$target" != "$src" ]] || continue
         [[ "$scope" == home && "$type" == btrfs && "$id" == "$fs_uuid" && ",$opts," == *,subvol=/@steam,* ]] \

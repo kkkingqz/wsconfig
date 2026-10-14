@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# First steps on a fresh Ubuntu (helpws rebuild, helpws history-nix):
+# First steps on a fresh Ubuntu (ws help rebuild, ws help history-nix):
 # @nix subvolume at /nix → apt packages (nix/hosts/apt.txt, nix/hosts/<host>/apt.txt,
 # nix/hosts/machine-apt.txt,
 # virt/apt.txt, steam/apt.txt, gaming/apt.txt) → VM state on @vms (images,
@@ -56,11 +56,11 @@ toml="nix/hosts/$host/host.toml"
 expected="$HOME/$("$repo/bin/ws" fact wsconfig)" || die "no wsconfig in [host] of $toml"
 [[ "$repo" == "$expected" ]] \
     || die "checkout must be $expected (wsconfig in $toml), not $repo"
-# VM layer (helpws virt): packages of virt/apt.txt, @vms and libvirt.
+# VM layer (ws help virt): packages of virt/apt.txt, @vms and libvirt.
 # The layers are true or false; ws fact prints them as yes and no.
 vm="$("$repo/bin/ws" fact vm)" || die "no vm in [layers] of $toml (true or false)"
 [[ "$vm" == yes || "$vm" == no ]] || die "vm in $toml must be true or false, not \"$vm\""
-# Native Steam and the Game Mode session (helpws plan-legion-go).
+# Native Steam and the Game Mode session (ws help plan-legion-go).
 native_steam="$("$repo/bin/ws" fact nativeSteam)" \
     || die "no nativeSteam in [layers] of $toml (true or false)"
 [[ "$native_steam" == yes || "$native_steam" == no ]] \
@@ -72,18 +72,18 @@ game_mode="$("$repo/bin/ws" fact gameMode)" \
 [[ "$game_mode" == no || "$native_steam" == yes ]] \
     || die "gameMode = true needs nativeSteam = true in $toml"
 echo "Host: $host (vm = $vm, widgets = $("$repo/bin/ws" fact widgets 2>/dev/null), nativeSteam = $native_steam, gameMode = $game_mode)"
-# A container host (helpws plan-wsgnomebox): the image holds the apt
+# A container host (ws help plan-wsgnomebox): the image holds the apt
 # packages, groups and login shell, /nix is a directory of the server; no
 # Btrfs, subvolumes or local backup copies.
 container=false
 [[ "$("$repo/bin/ws" fact boot)" != container ]] || container=true
 
 if [[ "$container" == true ]]; then
-    mountpoint -q /nix || die "/nix is not a mount: the container needs it from the server (helpws plan-wsgnomebox)"
+    mountpoint -q /nix || die "/nix is not a mount: the container needs it from the server (ws help plan-wsgnomebox)"
 else
     [[ "$(findmnt -no FSTYPE /)" == btrfs ]] || die "/ is not Btrfs (rebuild.md, section 3)"
     findmnt -no OPTIONS / | tr ',' '\n' | grep -qx 'subvol=/@' \
-        || die "/ is not the subvolume @: first ~/wsconfig/bin/ws btrfs make (helpws rebuild, section 3)"
+        || die "/ is not the subvolume @: first ~/wsconfig/bin/ws btrfs make (ws help rebuild, section 3)"
     [[ ! -e /var/lib/ws-btrfs-layout/old-root ]] \
         || echo "The old root is still on the top level of Btrfs: ws btrfs make removes it."
     root_dev="$(findmnt -no SOURCE / | sed 's/\[.*$//')"
@@ -145,7 +145,7 @@ else
 fi
 
 echo
-echo "== 3. VM state on @vms, libvirt (helpws virt)"
+echo "== 3. VM state on @vms, libvirt (ws help virt)"
 if [[ "$vm" == yes ]]; then
     . "$repo/virt/bootstrap.bash"
 else
@@ -153,7 +153,7 @@ else
 fi
 
 echo
-echo "== 4. Steam data on @steam (helpws plan-legion-go)"
+echo "== 4. Steam data on @steam (ws help plan-legion-go)"
 if [[ "$native_steam" == yes ]]; then
     . "$repo/steam/bootstrap.bash"
 else
@@ -161,10 +161,10 @@ else
 fi
 
 echo
-echo "== 5. Local backup copies on @wsbackup (helpws backup)"
+echo "== 5. Local backup copies on @wsbackup (ws help backup)"
 # A top-level subvolume of its own, like @vms: nested in @, the parents of
 # the incremental backup would leave with @ on a Timeshift or Live USB
-# restore. Only the local side; the receiver is helpws backup.
+# restore. Only the local side; the receiver is ws help backup.
 backup_root=/var/lib/workstation-backup
 if [[ "$container" == true ]]; then
     echo "container: its data are directories of the server"

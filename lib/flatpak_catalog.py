@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The Flatpak catalog and the overrides of a host (helpws flatpak; helpws
+"""The Flatpak catalog and the overrides of a host (ws help flatpak; ws help
 plan-v2, 3.4).
 
 flatpak/catalog.toml is every app a host may have, in order:

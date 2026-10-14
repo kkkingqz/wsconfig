@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare the Nix outputs of commit BASE with the working tree.
 
-Stage 0.1 of helpws plan-v2: steps that must not change behaviour prove it
+Stage 0.1 of ws help plan-v2: steps that must not change behaviour prove it
 with a clean comparison. Builds system-HOST and the home-manager
 activationPackage of every host at BASE (in a git worktree) and in the
 working tree (tracked files, uncommitted changes included), then sorts the
@@ -311,7 +311,7 @@ def compare_outputs(base_out, work_out, comparator):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(description="Compare the Nix outputs of BASE with the working tree (helpws plan-v2, 0.1).")
+    p = argparse.ArgumentParser(description="Compare the Nix outputs of BASE with the working tree (ws help plan-v2, 0.1).")
     p.add_argument("base", metavar="BASE", help="commit to compare with")
     p.add_argument("--allow", metavar="FILE", help="patterns of differences this step expects")
     p.add_argument("--diff", action="store_true", help="show content diffs (store hashes masked)")

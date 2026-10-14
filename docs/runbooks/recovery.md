@@ -47,7 +47,7 @@ Host wsbackup-unraid
 ```
 
 Пользователь — тот, у кого forced command приёмника: `wsbackup` для mbp16,
-`wsbackup-HOST` для остальных машин (`helpws backup`, «Несколько
+`wsbackup-HOST` для остальных машин (`ws help backup`, «Несколько
 workstation»). Мастер спрашивает его с ответом по умолчанию `wsbackup` и
 передаёт ssh через `-l`: это значение сильнее `User` из config.
 
@@ -255,7 +255,7 @@ sudo umount /mnt
 ## Если даты NAS не видны
 
 Установить новый receiver вместе с `catalog.bash` и `btrfs-common.bash` по
-`helpws backup`. Probe должен содержать `recovery-catalog-v1`. Каталог —
+`ws help backup`. Probe должен содержать `recovery-catalog-v1`. Каталог —
 root-owned JSON Lines metadata в `ROOT/HOST_ID/.catalog/system|home/ID.json`;
 Python/jq на NAS не требуются. Helper проверяет metadata и реальные readonly
 snapshots, пропавшие copies не предлагает.

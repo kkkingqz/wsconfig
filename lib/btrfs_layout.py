@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Text that ws btrfs make (libexec/ws-btrfs) writes for the Btrfs layout of a
 fresh install: / on @, /home, /var/cache, /tmp and /var/log on their own
-subvolumes (helpws rebuild, section 3).
+subvolumes (ws help rebuild, section 3).
 
     btrfs_layout.py fstab UUID < FSTAB      fstab of @: the root line of the
                                             installer becomes the five layout
@@ -21,7 +21,7 @@ import sys
 LAYOUT = [('/', '@'), ('/home', '@home'), ('/var/cache', '@cache'),
           ('/tmp', '@tmp'), ('/var/log', '@log')]
 OPTIONS = 'noatime,compress=zstd:1'
-HEADER = ('# Btrfs layout of ws btrfs make (helpws rebuild, section 3);',
+HEADER = ('# Btrfs layout of ws btrfs make (ws help rebuild, section 3);',
           '# the fstab of the installer: /etc/fstab.pre-btrfs-layout')
 PREFIX = re.compile(r"^set prefix=\(\$root\)'([^']*)'\s*$")
 OLD, NEW = '/boot/grub', '/@/boot/grub'

@@ -110,7 +110,7 @@ while IFS=$'\t' read -r schema key _ _; do
 done < <(shortcut_lines required)
 
 # A container host gets its keys over RDP, without /dev/input: no xremap,
-# GNOME takes its part (keyboard/keyboard.nix, helpws plan-wsgnomebox).
+# GNOME takes its part (keyboard/keyboard.nix, ws help plan-wsgnomebox).
 rdp=false
 [[ "$("$WS_CORE/bin/ws" fact boot 2>/dev/null)" != container ]] || rdp=true
 

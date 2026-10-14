@@ -2,7 +2,7 @@
 set -u
 set -o pipefail
 
-# Widget layer (helpws widgets): wswidgets delivered by ws apply on hosts
+# Widget layer (ws help widgets): wswidgets delivered by ws apply on hosts
 # with widgets = true in host.toml; the runtime diagnostics are its own
 # (ws-widgets check --tsv), with the widgets yes in nix/hosts/HOST/widgets.toml.
 # Read-only. ws check widgets; ws check runs it with --json (lib/check.bash).

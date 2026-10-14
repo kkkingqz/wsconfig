@@ -1,4 +1,4 @@
-"""lib/ws_facts.py: the one reader of hosts and facts (helpws plan-v2, 2.2 and 4)."""
+"""lib/ws_facts.py: the one reader of hosts and facts (ws help plan-v2, 2.2 and 4)."""
 import json
 import os
 from pathlib import Path

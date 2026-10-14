@@ -7,7 +7,7 @@
       url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Widget layer (widgets/widgets.nix, helpws widgets): runtime, QML and
+    # Widget layer (widgets/widgets.nix, ws help widgets): runtime, QML and
     # GNOME adapter of ~/Projects/wswidgets, pinned here like nixpkgs.
     wswidgets = {
       url = "github:kkkingqz/wswidgets";

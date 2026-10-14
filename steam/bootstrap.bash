@@ -1,4 +1,4 @@
-# Step of bootstrap.sh for hosts with nativeSteam = "yes" (helpws
+# Step of bootstrap.sh for hosts with nativeSteam = "yes" (ws help
 # plan-legion-go), sourced by it (run, subvolume_mount). The apt Steam keeps
 # its client, libraries, compatdata and shader cache in ~/.local/share/Steam:
 # that directory is the subvolume @steam, so Timeshift snapshots and the

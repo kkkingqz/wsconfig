@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # i915 with PSR on the Apple panel (system/kernel/i915-psr/apple-psr.patch,
-# helpws plan-t2, section 1): the stock kernel keeps PSR off on every Apple
+# ws help plan-t2, section 1): the stock kernel keeps PSR off on every Apple
 # eDP panel; with the vendor handshake a static screen costs ~1 W less.
 # Only i915.ko is rebuilt, from the kernel.org release plus the
 # linux-t2-patches commit the T2 kernel was built from (the same pin as

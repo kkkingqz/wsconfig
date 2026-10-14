@@ -1,4 +1,4 @@
-"""tests/compare-outputs on fake store trees (helpws plan-v2, 0.1)."""
+"""tests/compare-outputs on fake store trees (ws help plan-v2, 0.1)."""
 from importlib.machinery import SourceFileLoader
 import importlib.util
 import io

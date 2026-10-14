@@ -1,11 +1,11 @@
-# Remmina from Nix instead of apt (helpws remmina): package.nix, with H.264
+# Remmina from Nix instead of apt (ws help remmina): package.nix, with H.264
 # and files through the RDP clipboard; machine-apt.txt purges the Ubuntu one.
 #
 # ~/.nix-profile/share is not in XDG_DATA_DIRS (targets.genericLinux is
 # off, nix/home/default.nix): the launchers go to ~/.local/share/applications
 # with absolute paths, the icons to ~/.local/share/icons. Same desktop IDs
 # as the apt package: its MIME types (rdp://, .remmina) and the "Grab all
-# keyboard events" permission of GNOME (helpws keyboard) stay.
+# keyboard events" permission of GNOME (ws help keyboard) stay.
 #
 # Copying files from the server mounts FUSE through /usr/bin/fusermount3
 # (fuse3, a dependency of flatpak and fuse-overlayfs).

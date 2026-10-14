@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# First setup of a new PC on wsconfig (helpws setup), from a fresh Ubuntu
+# First setup of a new PC on wsconfig (ws help setup), from a fresh Ubuntu
 # 26.04 to a checked workstation. On the fresh system, in a terminal:
 #
 #   wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash
@@ -21,7 +21,7 @@ set -euo pipefail
 # Each run starts where the last one stopped: the state of the system and
 # the steps done in ~/.local/state/wsconfig/setup. Until the end a GNOME
 # autostart entry runs it again after each login, so after a reboot the
-# user only logs in. GRUB hosts only: rEFInd (mbp16) is helpws rebuild.
+# user only logs in. GRUB hosts only: rEFInd (mbp16) is ws help rebuild.
 
 repo_url=https://github.com/kkkingqz/wsconfig.git
 repo="$HOME/wsconfig"
@@ -105,7 +105,7 @@ push() {
 
 # The new host (a commit of setup.sh) and the marks (data files) leave this
 # machine only after the question; ws sync commits the marks and pushes
-# (helpws plan-v2, 2.7).
+# (ws help plan-v2, 2.7).
 publish() {
     if ! ask "Опубликовать новый хост и выбор (ws sync)?" y; then
         echo "Не опубликовано; позже: git -C $repo push (новый хост), ws sync (выбор)."
@@ -189,13 +189,13 @@ set_hostname() {
 new_host() {
     local name="$1" dir="$repo/nix/hosts/$1" vm=false widgets=true steam=false game=false
     say "Новый хост $name (generic-pc, GRUB)"
-    if ask "Виртуальные машины (libvirt, helpws virt)?" n; then
+    if ask "Виртуальные машины (libvirt, ws help virt)?" n; then
         vm=true
     fi
-    if ! ask "Виджеты Quickshell на панели GNOME (helpws widgets)?" y; then
+    if ! ask "Виджеты Quickshell на панели GNOME (ws help widgets)?" y; then
         widgets=false
     fi
-    if ask "Steam из apt (вместо Flatpak; helpws plan-legion-go)?" n; then
+    if ask "Steam из apt (вместо Flatpak; ws help plan-legion-go)?" n; then
         steam=true
         if ask "Game Mode (сессия Steam как в SteamOS)?" n; then
             game=true
@@ -203,7 +203,7 @@ new_host() {
     fi
     mkdir -p "$dir"
     cat > "$dir/host.toml" <<EOF
-# $name: made by setup.sh from generic-pc on $(date +%F) (helpws setup;
+# $name: made by setup.sh from generic-pc on $(date +%F) (ws help setup;
 # lib/host.nix checks the file).
 
 [host]
@@ -220,12 +220,12 @@ kernelParams = ["quiet", "splash"]
 displayScale = 1
 
 [layers]
-# Virtual machines (helpws virt).
+# Virtual machines (ws help virt).
 vm = $vm
-# Quickshell widgets on the GNOME panel (helpws widgets).
+# Quickshell widgets on the GNOME panel (ws help widgets).
 widgets = $widgets
 # Native Steam (steam/apt.txt, @steam) and the Game Mode session
-# (gaming/apt.txt; helpws plan-legion-go).
+# (gaming/apt.txt; ws help plan-legion-go).
 nativeSteam = $steam
 gameMode = $game
 EOF
@@ -242,7 +242,7 @@ check_facts() {
     [[ "$(fact_in "$facts" wsconfig)" == wsconfig ]] \
         || die "nix/hosts/$1/host.toml: setup.sh knows only wsconfig = \"wsconfig\" (~/wsconfig)"
     [[ "$(fact_in "$facts" boot)" == grub ]] \
-        || die "boot = \"$(fact_in "$facts" boot)\" in nix/hosts/$1/host.toml: setup.sh knows only GRUB hosts; rEFInd: helpws rebuild"
+        || die "boot = \"$(fact_in "$facts" boot)\" in nix/hosts/$1/host.toml: setup.sh knows only GRUB hosts; rEFInd: ws help rebuild"
 }
 
 step_host() {
@@ -314,7 +314,7 @@ install_autostart() {
 [Desktop Entry]
 Type=Application
 Name=wsconfig setup
-Comment=Continues setup.sh after a reboot (helpws setup); removed at its end
+Comment=Continues setup.sh after a reboot (ws help setup); removed at its end
 Exec=xdg-terminal-exec $repo/setup.sh --autostart
 NoDisplay=true
 X-GNOME-Autostart-enabled=true
@@ -335,7 +335,7 @@ step_btrfs() {
                 ws btrfs make --yes
             fi
             ;;
-        *) die "/ is neither the top level of Btrfs nor @ (helpws rebuild, section 3)" ;;
+        *) die "/ is neither the top level of Btrfs nor @ (ws help rebuild, section 3)" ;;
     esac
 }
 
@@ -377,7 +377,7 @@ step_check() {
     mark_step check
 }
 
-# Timeshift: Btrfs @ and @home; the schedule of mbp16 (helpws rebuild,
+# Timeshift: Btrfs @ and @home; the schedule of mbp16 (ws help rebuild,
 # section 12). Written once: afterwards the file belongs to Timeshift.
 step_timeshift() {
     local conf=/etc/timeshift/timeshift.json uuid
@@ -412,7 +412,7 @@ PY
     mark_step timeshift
 }
 
-# Backup (helpws backup): the local side. @wsbackup is bootstrap.sh; the
+# Backup (ws help backup): the local side. @wsbackup is bootstrap.sh; the
 # key goes to the receiver as hosts/HOST/ on the Unraid flash, by hand.
 step_backup() {
     local key="$HOME/.ssh/wsbackup_ed25519"
@@ -424,7 +424,7 @@ step_backup() {
     fi
     echo "Локальные копии: /var/lib/workstation-backup (@wsbackup). Ключ: $key.pub"
     echo "На Unraid: hosts/$host/ с этим ключом (пользователь wsbackup-$host), затем alias и"
-    echo "config.json здесь — helpws backup, «Несколько workstation»."
+    echo "config.json здесь — ws help backup, «Несколько workstation»."
     mark_step backup
 }
 

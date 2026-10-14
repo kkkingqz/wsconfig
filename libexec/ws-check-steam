@@ -2,7 +2,7 @@
 set -u
 set -o pipefail
 
-# Native Steam (helpws plan-legion-go): its data directory on @steam that
+# Native Steam (ws help plan-legion-go): its data directory on @steam that
 # bootstrap.sh sets up, outside the snapshots and the backup of @home. The
 # packages (steam/apt.txt, i386) are ws check apt.
 # Read-only. ws check steam; ws check runs it with --json (lib/check.bash).

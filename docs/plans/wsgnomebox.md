@@ -216,7 +216,7 @@ input-remapper) его не видят. GNOME-сочетания и xkb (`caps:n
 раскладки) применяются как обычно.
 
 Варианты (пользователь выбрал 2, клиент — Remmina; сделано 2026-10-12,
-`helpws keyboard`, «Через RDP: wsgnomebox»):
+`ws help keyboard`, «Через RDP: wsgnomebox»):
 
 1. **Перевод на клиенте.** xremap клиента (mbp16) переводит до
    RDP-клиента, как для любого окна. Работают: Command+C/V/… в GUI,

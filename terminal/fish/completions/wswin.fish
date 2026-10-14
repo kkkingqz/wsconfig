@@ -1,4 +1,4 @@
-# wswin: Windows programs in the Windows boxes (helpws windows).
+# wswin: Windows programs in the Windows boxes (ws help windows).
 
 function __wswin_apps
     # Built by home-manager from windows/apps.nix.
