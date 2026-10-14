@@ -26,7 +26,7 @@ system_tree() {
     local nix
     nix="$(nix_bin)"
     check_untracked
-    "$nix" build --no-link --print-out-paths "$repo#system-$(host)"
+    "$nix" build --no-link --print-out-paths "${nix_args[@]}" "$repo#system-$(host)"
 }
 
 # Result of one entry: ws system check reports it through lib/check.bash

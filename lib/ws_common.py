@@ -9,10 +9,11 @@ CORE is where the running code is, CONFIG the data (hosts, the lists
 and catalogs), STATE this machine only. WSCONFIG (tests, another checkout)
 sets CONFIG; WS_CONFIG and WS_STATE from ws are kept. Otherwise CONFIG is
 (ws help plan-v2, stage 5):
-- CORE itself when it is a checkout: until stage 8 code and data are one
-  repository, and ~/wsconfig/bin/ws works on its own checkout;
-- for the core in the store (marked by PACKAGE_MARK), the config of
-  host.json in STATE, else ~/wsconfig.
+- CORE itself when it is a checkout holding a configuration (SCHEMA_FILE):
+  until stage 8.11 code and data are one repository, and ~/wsconfig/bin/ws
+  works on its own checkout;
+- for the core in the store (marked by PACKAGE_MARK) or a checkout of the
+  core alone, the config of host.json in STATE, else ~/wsconfig.
 """
 import os
 from pathlib import Path
@@ -24,6 +25,8 @@ STATE_NAME = "wsconfig"
 
 # A file at the root of the core in the store (nix/pkgs/ws.nix).
 PACKAGE_MARK = ".wsconfig-package"
+# At the root of a configuration: its schema version (ws help plan-v2, 8.5).
+SCHEMA_FILE = "wsconfig.toml"
 # The record of this machine in STATE: {"host": ID, "config": PATH}
 # (ws_facts.py record writes it).
 HOST_RECORD = "host.json"
@@ -55,7 +58,7 @@ def config_root(core=CORE):
     env = os.environ.get("WSCONFIG") or os.environ.get("WS_CONFIG")
     if env:
         return Path(env)
-    if not (core / PACKAGE_MARK).exists():
+    if not (core / PACKAGE_MARK).exists() and (core / SCHEMA_FILE).exists():
         return core
     recorded = host_record().get("config")
     if isinstance(recorded, str) and recorded:
@@ -65,7 +68,21 @@ def config_root(core=CORE):
 
 CONFIG = config_root()
 
-SCHEMA_FILE = "wsconfig.toml"
+
+def git_add_new(path):
+    """A file a command just created in a Git checkout (a host choice made
+    for the first time): git add it, as ws apply adds nothing of a
+    configuration of its own (ws help plan-v2, 8.6). Outside a checkout or
+    without git nothing happens."""
+    import subprocess
+    path = Path(path)
+    if not any((d / ".git").exists() for d in path.parents):
+        return
+    try:
+        subprocess.run(["git", "-C", str(path.parent), "add", "--", path.name],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    except OSError:
+        pass
 
 
 def schema_problem(config=None):

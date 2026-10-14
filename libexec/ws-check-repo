@@ -48,9 +48,15 @@ branch="$(git -C "$repo" branch --show-current 2>/dev/null || true)"
 [[ "$branch" == "main" ]] && pass "branch: main" || warn "branch: ${branch:-detached}"
 
 origin="$(git -C "$repo" remote get-url origin 2>/dev/null || true)"
-[[ "$origin" == *"kkkingqz/wsconfig"* ]] \
-    && pass "origin: $origin" \
-    || warn "unexpected origin: ${origin:-none}"
+if separate_config; then
+    # A configuration of its own: any repository of the user.
+    [[ -n "$origin" ]] && pass "origin: $origin" \
+        || warn "no origin: ws sync commits locally only (git remote add origin URL)"
+elif [[ "$origin" == *"kkkingqz/wsconfig"* ]]; then
+    pass "origin: $origin"
+else
+    warn "unexpected origin: ${origin:-none}"
+fi
 
 head="$(git -C "$repo" rev-parse HEAD 2>/dev/null || true)"
 info "HEAD: ${head:-unknown}"
@@ -88,6 +94,26 @@ if [[ -z "$status_porcelain" ]]; then
 else
     warn "working tree has staged/modified/untracked files"
     printf '%s\n' "$status_porcelain" | sed 's/^/        /'
+fi
+
+# A configuration of its own (ws help plan-v2, 8.6): its schema and what
+# the flake would not see; the checks of code below are those of the core
+# checkout.
+if separate_config; then
+    section "2. Configuration"
+    if problem="$(python3 "$WS_CORE/lib/ws_common.py" schema 2>&1)"; then
+        pass "wsconfig.toml: a schema this core reads"
+    else
+        fail "$problem"
+    fi
+    mapfile -t untracked < <(git -C "$repo" ls-files --others --exclude-standard)
+    if ((${#untracked[@]})); then
+        fail "not tracked, so not in the build (ws apply refuses): ${untracked[*]}; git add or .gitignore them"
+    else
+        pass "every file is tracked"
+    fi
+    check_finish
+    exit
 fi
 
 section "2. Repository hygiene / junk detection"

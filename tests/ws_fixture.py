@@ -18,11 +18,14 @@ case "$1" in
     flake) exit 0 ;;
     build) exit "${BUILD_STATUS:-0}" ;;
     run)
-        case "$2" in
-            *'#home-manager') exit "${SWITCH_STATUS:-0}" ;;
-            *'#nvd') exit 0 ;;
-            *) exit 99 ;;
-        esac ;;
+        # The flake reference, after the options (--override-input A B).
+        for a; do
+            case "$a" in
+                *'#home-manager') exit "${SWITCH_STATUS:-0}" ;;
+                *'#nvd') exit 0 ;;
+            esac
+        done
+        exit 99 ;;
     *) exit 99 ;;
 esac
 '''

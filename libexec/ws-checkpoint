@@ -63,7 +63,7 @@ hm_profile() {
 
 home_built() {
     local nix="$1"
-    "$nix" build --no-link --print-out-paths \
+    "$nix" build --no-link --print-out-paths "${nix_args[@]}" \
         "$repo#homeConfigurations.\"$(id -un)@$("$WS_CORE/bin/ws" host)\".activationPackage"
 }
 

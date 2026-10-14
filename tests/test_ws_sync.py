@@ -31,6 +31,7 @@ class SyncTests(unittest.TestCase):
         shutil.copytree(ROOT / "lib", self.repo / "lib", ignore=shutil.ignore_patterns("__pycache__"))
         shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
         (self.repo / "flatpak/catalog.toml").write_text(CATALOG)
+        (self.repo / "wsconfig.toml").write_text("schema = 1\n")
         (self.repo / "flake.lock").write_text('{"nodes": {"nixpkgs": {"locked": {"rev": "a"}}, "root": {}}}\n')
         self.git("init", "-q")
         self.git("add", ".")

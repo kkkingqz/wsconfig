@@ -12,9 +12,10 @@
 # or the core in the store (nix/pkgs/ws.nix, ~/.local/bin/ws). WSCONFIG
 # (tests, another checkout) sets WS_CONFIG; WS_CONFIG and WS_STATE are
 # exported and kept by the tools ws runs. Otherwise WS_CONFIG is the
-# checkout itself (code and data are one repository until stage 8), and for
-# the core in the store the config of WS_STATE/host.json, else ~/wsconfig
-# (config_root of lib/ws_common.py). `repo`, what the tools use for the
+# checkout itself when it holds a configuration (wsconfig.toml: code and
+# data in one repository until stage 8.11), and for the core in the store
+# or a checkout of the core alone the config of WS_STATE/host.json, else
+# ~/wsconfig (config_root of lib/ws_common.py). `repo`, what the tools use for the
 # data, is WS_CONFIG.
 #
 # The state directory name is also in lib/ws_common.py, lib/mkconfig.nix
@@ -25,7 +26,7 @@ WS_CORE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WS_STATE="${WS_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/wsconfig}"
 if [[ -n "${WSCONFIG:-${WS_CONFIG:-}}" ]]; then
     WS_CONFIG="${WSCONFIG:-$WS_CONFIG}"
-elif [[ ! -e "$WS_CORE/.wsconfig-package" ]]; then
+elif [[ ! -e "$WS_CORE/.wsconfig-package" && -e "$WS_CORE/wsconfig.toml" ]]; then
     WS_CONFIG="$WS_CORE"
 else
     WS_CONFIG="$(WS_STATE="$WS_STATE" python3 "$WS_CORE/lib/ws_common.py" config)"
@@ -46,6 +47,37 @@ need() {
     command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
 }
 
+# --core PATH of ws apply, diff, update, news and checkpoint (ws help
+# plan-v2, 8.6): the configuration builds with the core checkout PATH
+# instead of the revision its flake.lock pins; flake.lock stays as it is.
+# WS_CORE_PATH carries it to the tools ws runs. nix_args: what every nix
+# call on the configuration adds. A Git checkout is taken as git+file (the
+# tracked files, uncommitted changes included, as a flake sees itself),
+# anything else as path:.
+# shellcheck disable=SC2034 # read by the tools that source this file
+nix_args=()
+use_core() {
+    [[ -d "$1" ]] || die "--core $1: no such directory"
+    WS_CORE_PATH="$(cd "$1" && pwd)"
+    [[ -n "$(python3 "$WS_CORE/lib/ws_common.py" get "$WS_CONFIG/flake.lock" nodes root inputs wsconfig)" ]] \
+        || die "--core: the configuration $WS_CONFIG has no flake input wsconfig (only a configuration repository of its own has one, ws help plan-v2, 8.9)"
+    export WS_CORE_PATH
+    # shellcheck disable=SC2034 # read by the tools that source this file
+    if git -C "$WS_CORE_PATH" rev-parse --show-toplevel >/dev/null 2>&1; then
+        nix_args=(--override-input wsconfig "git+file:$WS_CORE_PATH")
+    else
+        nix_args=(--override-input wsconfig "path:$WS_CORE_PATH")
+    fi
+}
+[[ -z "${WS_CORE_PATH:-}" ]] || use_core "$WS_CORE_PATH"
+
+# A configuration of its own (ws help plan-v2, 8.6): its root has no bin/ws.
+# Every file it tracks is then data; a checkout of core and data together
+# (until 8.11) tells them apart by the data patterns of bin/ws.
+separate_config() {
+    [[ ! -e "$WS_CONFIG/bin/ws" ]]
+}
+
 # Runs a tool of the core by name: ws (bin/) or an internal executor
 # (libexec/), as the step tables of ws name them.
 ws_run() {
@@ -62,8 +94,13 @@ ws_run() {
 # would silently be missing from the build.
 check_untracked() {
     local untracked
-    untracked="$(git -C "$repo" ls-files --others --exclude-standard -- \
-        '*.nix' flake.lock)"
+    if separate_config; then
+        # A configuration of its own: every file is the flake's.
+        untracked="$(git -C "$repo" ls-files --others --exclude-standard)"
+    else
+        untracked="$(git -C "$repo" ls-files --others --exclude-standard -- \
+            '*.nix' flake.lock)"
+    fi
     [[ -z "$untracked" ]] || die "untracked flake files (git add them first):
 $untracked"
 }

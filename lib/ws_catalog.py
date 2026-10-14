@@ -176,6 +176,8 @@ class Choice:
         tmp = self.path.with_name(self.path.name + ".tmp")
         tmp.write_text(text)
         tmp.replace(self.path)
+        if self.text is None:
+            ws_common.git_add_new(self.path)
         self.text = text
         return True
 

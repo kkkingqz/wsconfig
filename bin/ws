@@ -11,10 +11,10 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  ws diff
-  ws apply [home|apt|system|STEP...]
+  ws diff [--core PATH]
+  ws apply [--core PATH] [home|apt|system|STEP...]
   ws sync [--dry-run]
-  ws update [STEP...]
+  ws update [--core PATH] [STEP...]
   ws check [-v] | ws check apt|repo|home|virt|steam|gaming [--json]
   ws system diff|check [--json]|manifest|tree
   ws baseline capture|diff|list ...
@@ -31,13 +31,19 @@ Usage:
   ws MODULE [ARG...]       flatpak box windows widgets game keyboard gnome
                            suspend backup: the owner of that layer
 
+--core PATH  (apply, diff, news, update, checkpoint) build the configuration
+          with the core checkout PATH instead of the revision its flake.lock
+          pins (--override-input wsconfig; flake.lock stays); only for a
+          configuration of its own, which has the input wsconfig
 sync      publish the data files (flatpak/catalog.toml,
-          hosts/*/{flatpak,boxes,widgets}.toml, flake.lock): one commit
+          hosts/*/{flatpak,boxes,widgets}.toml, flake.lock, …): one commit
           with what changed, then git pull --rebase and git push when the
           branch has an upstream (no remote: the commit stays local);
           refuses during a Git operation, on a detached HEAD, with changes
           outside the data files and with unpushed commits of code;
-          --dry-run shows what it would do
+          in a configuration of its own (no bin/ws at its root) every
+          tracked change is data, files Git does not track are only named
+          (git add FILE); --dry-run shows what it would do
 news      home-manager news of this flake (apply does not notify about them)
 diff      build the home generation without activating it and show the
           package difference against the current one (nvd)
@@ -67,7 +73,11 @@ apply     apply the configuration of this host, in one order:
 update    bring everything that is not pinned to the latest version, in order:
             apt         sudo apt update, sudo apt full-upgrade (held
                         packages such as linux-t2 stay)
-            nix         nix flake update (nixpkgs, home-manager, wswidgets), the
+            core        nix flake update wsconfig: the newest core a
+                        configuration of its own pins, built, its schema
+                        checked, applied; flake.lock goes back when nothing
+                        was applied
+            nix         nix flake update nixpkgs home-manager wswidgets, the
                         package difference (nvd), ws apply; flake.lock goes
                         back only when nothing was applied; then ws sync
             flatpak     ws flatpak update
@@ -200,6 +210,7 @@ data_patterns=(flatpak/catalog.toml distrobox/catalog.toml windows/apps.toml gno
 
 is_data_file() {
     local f
+    separate_config && return 0
     for f in "${data_patterns[@]}"; do
         # shellcheck disable=SC2053 # the pattern is a glob
         [[ "$1" == $f ]] && return 0
@@ -211,6 +222,15 @@ is_data_file() {
 # (new ones too) or in HEAD.
 data_files() {
     local p
+    # A configuration of its own: what it tracks (staged new files too) and
+    # what HEAD has.
+    if separate_config; then
+        {
+            git -C "$repo" ls-files --cached
+            git -C "$repo" ls-tree -r --name-only HEAD 2>/dev/null
+        } | awk '!seen[$0]++'
+        return
+    fi
     for p in "${data_patterns[@]}"; do
         {
             git -C "$repo" ls-files --cached --others --exclude-standard -- "$p"
@@ -229,6 +249,13 @@ changed_data_files() {
             echo "$f"
         fi
     done < <(data_files)
+}
+
+# Files of a configuration of its own that Git does not track (and does not
+# ignore): neither ws apply nor ws sync adds them (ws help architecture-v2,
+# 7); they are named instead.
+untracked_files() {
+    git -C "$repo" ls-files --others --exclude-standard
 }
 
 # What changed in a data file against HEAD, for the commit message: a host
@@ -251,10 +278,12 @@ def revs(path):
 old, new = revs(sys.argv[1]), revs(sys.argv[2])
 print(", ".join(k for k in sorted(set(old) | set(new)) if old.get(k) != new.get(k) and k != "root"))
 PY
-    elif [[ "$f" == hosts/*.toml ]]; then
+    elif [[ "$f" == hosts/*/flatpak.toml || "$f" == hosts/*/boxes.toml || "$f" == hosts/*/widgets.toml ]]; then
         python3 "$WS_CORE/lib/ws_catalog.py" summary "$old" "$repo/$f"
-    else
+    elif [[ "$f" == flatpak/catalog.toml ]]; then
         python3 "$WS_CORE/lib/flatpak_catalog.py" summary "$old" "$repo/$f"
+    else
+        echo
     fi
     rm -f "$old"
 }
@@ -268,7 +297,11 @@ unpublished_notice() {
     mapfile -t pending < <({
         changed_data_files
         if git -C "$repo" rev-parse --verify -q '@{u}' >/dev/null 2>&1; then
-            git -C "$repo" log --format= --name-only '@{u}..HEAD' -- "${data_patterns[@]}"
+            if separate_config; then
+                git -C "$repo" log --format= --name-only '@{u}..HEAD'
+            else
+                git -C "$repo" log --format= --name-only '@{u}..HEAD' -- "${data_patterns[@]}"
+            fi
         fi
     } | sort -u | sed '/^$/d')
     ((${#pending[@]})) || return 0
@@ -299,8 +332,9 @@ cmd_sync() {
     fi
     branch="$(git -C "$repo" symbolic-ref -q --short HEAD)" \
         || die "HEAD is detached: check out a branch first"
-    # Until code and data are separate repositories (ws help plan-v2, stage
-    # 8) code changes and commits are the developer's: sync touches neither.
+    # In a checkout of core and data together (until ws help plan-v2, 8.11)
+    # code changes and commits are the developer's: sync touches neither. In
+    # a configuration of its own everything tracked is data.
     mapfile -t code < <(git -C "$repo" status --porcelain --untracked-files=no \
         | cut -c4- | sed 's/.* -> //' | while IFS= read -r f; do is_data_file "$f" || echo "$f"; done)
     ((${#code[@]} == 0)) \
@@ -311,6 +345,12 @@ cmd_sync() {
             | sed '/^$/d' | sort -u | while IFS= read -r f; do is_data_file "$f" || echo "$f"; done)
         ((${#code[@]} == 0)) \
             || die "local commits not on $upstream change code: ${code[*]}; push them yourself first (git push)"
+    fi
+
+    if separate_config; then
+        mapfile -t code < <(untracked_files)
+        ((${#code[@]} == 0)) \
+            || echo "not tracked, not published: ${code[*]} (git -C $repo add FILE, then ws sync)"
     fi
 
     mapfile -t to_commit < <(changed_data_files)
@@ -363,6 +403,17 @@ MSG
 # committed here, ws sync does that), then no untracked flake files.
 stage_data() {
     local f
+    local -a untracked=()
+    # A configuration of its own: nothing is added, a new file is named.
+    if separate_config; then
+        mapfile -t untracked < <(untracked_files)
+        ((${#untracked[@]} == 0)) || {
+            printf '%s: files the flake does not see (not tracked): %s\n  git -C %s add FILE (or .gitignore it), then ws apply\n' \
+                "$ws_prog" "${untracked[*]}" "$repo" >&2
+            return 2
+        }
+        return 0
+    fi
     while IFS= read -r f; do
         [[ ! -e "$repo/$f" ]] || git -C "$repo" add -- "$f" || return
     done < <(data_files)
@@ -374,7 +425,7 @@ stage_data() {
 home_switch() {
     local nix
     nix="$(nix_bin)" || return
-    "$nix" run "$repo#home-manager" -- switch --flake "$(target)" \
+    "$nix" run "${nix_args[@]}" "$repo#home-manager" -- switch --flake "$(target)" "${nix_args[@]}" \
         ${HOME_MANAGER_BACKUP_EXT:+-b "$HOME_MANAGER_BACKUP_EXT"} || return
     # host.json: the ws in PATH, the core in the store, finds this
     # configuration and host through it (lib/ws_common.py).
@@ -385,7 +436,7 @@ cmd_news() {
     local nix
     nix="$(nix_bin)"
     check_untracked
-    "$nix" run "$repo#home-manager" -- news --flake "$(target)" "$@"
+    "$nix" run "${nix_args[@]}" "$repo#home-manager" -- news --flake "$(target)" "${nix_args[@]}" "$@"
 }
 
 # This core reads the configuration: wsconfig.toml has a schema of
@@ -399,14 +450,14 @@ cmd_diff() {
     check_schema || return
     nix="$(nix_bin)" || return
     check_untracked || return
-    new="$("$nix" build --no-link --print-out-paths \
+    new="$("$nix" build --no-link --print-out-paths "${nix_args[@]}" \
         "$repo#homeConfigurations.\"$(id -un)@$(host)\".activationPackage")" || return
     old="$(current_generation)"
     if [[ -z "$old" ]]; then
         echo "no home-manager generation yet; new: $new"
         return
     fi
-    "$nix" run "$repo#nvd" -- diff "$old" "$new"
+    "$nix" run "${nix_args[@]}" "$repo#nvd" -- diff "$old" "$new"
 }
 
 # Layer owners in apply order: name, command.
@@ -561,7 +612,7 @@ cmd_apply() {
 
     # 3. Build what the stages apply; a failure leaves the system as it is.
     step_header "build: home-manager generation, system tree"
-    if ! "$(nix_bin)" build --no-link \
+    if ! "$(nix_bin)" build --no-link "${nix_args[@]}" \
         "$repo#homeConfigurations.\"$(id -un)@$(host)\".activationPackage" \
         "$repo#system-$(host)"; then
         steps_summary "ws apply" "${results[@]}" "FAIL      build" "nothing applied"
@@ -666,13 +717,16 @@ update_apt() {
 # flake.lock goes back when nothing was applied (the build failed, exit 2
 # of cmd_apply); once applying began it stays new: part of the system is of
 # the new version (ws help architecture-v2, 12.3).
-update_nix() {
+# flake update of the inputs NAME..., the package difference (nvd), ws
+# apply; flake.lock goes back when nothing was applied (exit 2: the build or
+# the schema of a new core failed).
+update_inputs() {
     local nix backup rc=0
     nix="$(nix_bin)" || return
     check_untracked || return
     backup="$(mktemp)"
     cp "$repo/flake.lock" "$backup"
-    "$nix" flake update --flake "$repo" || { cp "$backup" "$repo/flake.lock"; rm -f "$backup"; return 1; }
+    "$nix" flake update "$@" --flake "$repo" || { cp "$backup" "$repo/flake.lock"; rm -f "$backup"; return 1; }
     cmd_diff || { cp "$backup" "$repo/flake.lock"; rm -f "$backup"; echo "flake.lock restored" >&2; return 1; }
     ( cmd_apply ) || rc=$?
     if ((rc == 2)); then
@@ -684,6 +738,24 @@ update_nix() {
     fi
     rm -f "$backup"
     return "$rc"
+}
+
+# nixpkgs, home-manager and wswidgets of the configuration; the core stays
+# (ws update core).
+update_nix() {
+    update_inputs nixpkgs home-manager wswidgets
+}
+
+# The core a configuration of its own pins (its input wsconfig, ws help
+# plan-v2, 8.6): the newest revision, built and applied. A checkout of core
+# and data together has no such input.
+update_core() {
+    if [[ -z "$(python3 "$WS_CORE/lib/ws_common.py" get "$repo/flake.lock" nodes root inputs wsconfig)" ]]; then
+        echo "the configuration pins no core (no flake input wsconfig): nothing to update"
+        return 0
+    fi
+    [[ -z "${WS_CORE_PATH:-}" ]] || die "ws update core with --core: the core is $WS_CORE_PATH, nothing is pinned"
+    update_inputs wsconfig
 }
 
 update_extensions() {
@@ -705,6 +777,7 @@ update_extensions() {
 
 update_steps=(
     "apt update_apt"
+    "core update_core"
     "nix update_nix"
     "flatpak ws_run wsflatpak update -y"
     "distrobox ws_run wsbox update"
@@ -904,6 +977,23 @@ cmd_check() {
     steps_summary "ws check" "${results[@]}" "$(printf 'FAIL=%d WARN=%d' "$total_fail" "$total_warn")"
     ((total_fail == 0))
 }
+
+# --core PATH, anywhere after the command name of the commands that build
+# (use_core, lib/common.bash).
+case "${1:-}" in
+    apply|diff|news|update|checkpoint)
+        args=("$1")
+        shift
+        while (($#)); do
+            case "$1" in
+                --core) (($# >= 2)) || die "--core needs a PATH"; use_core "$2"; shift 2 ;;
+                --core=*) use_core "${1#--core=}"; shift ;;
+                *) args+=("$1"); shift ;;
+            esac
+        done
+        set -- "${args[@]}"
+        ;;
+esac
 
 if owner="$(module_owner "${1:-}")"; then
     shift
