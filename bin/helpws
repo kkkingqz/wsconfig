@@ -45,6 +45,7 @@ case "$topic" in
     plan-legion-go-agent|legion-go-agent) open_title ws-plan-legion-go-agent ;;
     plan-wsgnomebox|wsgnomebox) open_title ws-plan-wsgnomebox ;;
     plan-hyprland|hyprland) open_title ws-plan-hyprland ;;
+    plan-v2|v2) open_title ws-plan-v2 ;;
     history-gnome|plan-gnome) open_title ws-history-gnome ;;
     history-flatpak|plan-flatpak) open_title ws-history-flatpak ;;
     history-distrobox|plan-dev) open_title ws-history-distrobox ;;
@@ -97,6 +98,7 @@ Plans (docs/plans):
   plan-legion-go-agent  Legion Go: instructions for Claude on the device
   plan-wsgnomebox  wsgnomebox: wsconfig host in a container on tower
   plan-hyprland    Hyprland + Caelestia next to GNOME (proposal)
+  plan-v2          wsconfig v2: cleanup, shared mechanisms, two repositories
 
 History (docs/history; old plan-* names work too):
   history-gnome    history-flatpak    history-distrobox
