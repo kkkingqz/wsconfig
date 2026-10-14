@@ -26,9 +26,9 @@ CFG = Path(
         Path.home() / ".local/share/workstation/flatpak",
     )
 )
-APPS = CFG / "apps.conf"
-REMOTES = CFG / "remotes.conf"
-OVERRIDES = CFG / "overrides"
+# remotes, apps (REMOTE APP in order) and the overrides of this workstation
+# (flatpak/flatpak.nix; helpws plan-v2, 2.6).
+MANIFEST = CFG / "flatpak.json"
 DESKTOP_OVERRIDES = CFG / "desktop"
 USER_APPLICATIONS = Path.home() / ".local/share/applications"
 # apps.txt lines carry per-workstation marks after REMOTE APP (lib/ws_marks.py):
@@ -77,7 +77,7 @@ def need_flatpak():
 
 
 def ensure_cfg():
-    if not APPS.is_file() or not REMOTES.is_file():
+    if not MANIFEST.is_file():
         raise SystemExit(
             f"wsflatpak: {CFG} is missing; run `ws switch` "
             f"(built from {SOURCE})"
@@ -109,18 +109,20 @@ def parse_managed_line(raw):
     raise SystemExit(f"wsflatpak: invalid managed app line (REMOTE APP): {raw}")
 
 
-def managed_entries():
+def manifest():
     ensure_cfg()
+    data = ws_common.load(MANIFEST)
+    if not isinstance(data, dict):
+        raise SystemExit(f"wsflatpak: {MANIFEST} is not a manifest; run `ws switch`")
+    return data
 
+
+def managed_entries():
     out = []
     seen = {}
 
-    for raw in APPS.read_text().splitlines():
-        entry = parse_managed_line(raw)
-        if entry is None:
-            continue
-
-        remote, app = entry
+    for entry in manifest().get("apps", []):
+        remote, app = entry["remote"], entry["app"]
 
         if app in seen:
             if seen[app] != remote:
@@ -529,43 +531,37 @@ def ensure_user_runtime(app, install_args=()):
     run(["flatpak", "info", "--user", ref], capture=True)
 
 
-def override_file(app):
-    return OVERRIDES / f"{app}.conf"
+def managed_overrides():
+    """APP: {filesystems, environment, session_bus} of this workstation."""
+    return manifest().get("overrides", {})
 
 
-def read_override_config(app):
-    path = override_file(app)
-    cp = configparser.ConfigParser(interpolation=None)
-    cp.optionxform = str
+def managed_override(app):
+    return managed_overrides().get(app)
 
-    if path.exists():
-        cp.read(path)
 
-    return cp
-
+def managed_override_text(app):
+    """The declared override in Flatpak's keyfile form, for people."""
+    o = managed_override(app) or {}
+    sections = []
+    if o.get("filesystems"):
+        sections.append("[Context]\nfilesystems=" + "".join(f"{x};" for x in o["filesystems"]))
+    for title, key in (("Environment", "environment"), ("Session Bus Policy", "session_bus")):
+        if o.get(key):
+            sections.append(f"[{title}]\n" + "\n".join(f"{k}={v}" for k, v in o[key].items()))
+    return "\n\n".join(sections)
 
 
 def read_managed_filesystems(app):
-    cp = read_override_config(app)
-    value = cp.get("Context", "filesystems", fallback="")
-    return [fs_spec(x) for x in value.split(";") if x]
+    return [fs_spec(x) for x in (managed_override(app) or {}).get("filesystems", [])]
 
 
 def read_managed_environment(app):
-    cp = read_override_config(app)
+    return dict((managed_override(app) or {}).get("environment", {}))
 
-    if not cp.has_section("Environment"):
-        return {}
-
-    return dict(cp.items("Environment"))
 
 def read_managed_session_bus(app):
-    cp = read_override_config(app)
-
-    if not cp.has_section("Session Bus Policy"):
-        return {}
-
-    return dict(cp.items("Session Bus Policy"))
+    return dict((managed_override(app) or {}).get("session_bus", {}))
 
 
 
@@ -790,7 +786,7 @@ def cmd_reset_permissions(app):
 
     print(f"Overrides and portal permissions reset: {app}")
 
-    if override_file(app).exists():
+    if managed_override(app) is not None:
         print(
             f"NOTE: {app} has declared overrides in {OVERRIDES_LIST}; "
             "`wsflatpak apply` sets them again"
@@ -816,8 +812,7 @@ def cmd_permissions(app):
     print(runtime_override(app) or "(none)")
 
     print("\n===== MANAGED WORKSTATION OVERRIDE =====")
-    path = override_file(app)
-    print(path.read_text().rstrip() if path.exists() else "(none)")
+    print(managed_override_text(app) if managed_override(app) is not None else "(none)")
 
     print("\n===== EFFECTIVE HOST ACCESS =====")
     declared = p.stdout
@@ -949,7 +944,7 @@ def cmd_status():
     print("\n".join(entries) or "(none)")
 
     print("\n===== MANAGED OVERRIDES =====")
-    files = sorted(x.name for x in OVERRIDES.glob("*.conf"))
+    files = sorted(managed_overrides())
     print("\n".join(files) or "(none)")
 
     print("\n===== GLOBAL USER OVERRIDE =====")
@@ -1087,7 +1082,7 @@ def cmd_check(json_mode=False):
     # removing the last declaration does not hide leftover runtime grants.
     override_apps = sorted(
         {app.removeprefix("app/").split("/", 1)[0] for app in managed_apps()}
-        | {path.stem for path in OVERRIDES.glob("*.conf")}
+        | set(managed_overrides())
     )
 
     for app in override_apps:
@@ -1110,7 +1105,7 @@ def cmd_check(json_mode=False):
     for app in override_apps:
 
         if not installed_user(app):
-            if override_file(app).exists() and marks.state(app, host) == "yes":
+            if managed_override(app) is not None and marks.state(app, host) == "yes":
                 warn(f"managed override for non-installed app: {app}")
             continue
 
@@ -1246,21 +1241,7 @@ def cmd_test():
 
 
 def parse_remotes():
-    ensure_cfg()
-
-    out = []
-    for raw in REMOTES.read_text().splitlines():
-        line = raw.split("#", 1)[0].strip()
-        if not line:
-            continue
-
-        parts = line.split(None, 1)
-        if len(parts) != 2:
-            raise SystemExit(f"wsflatpak: invalid remote line: {raw}")
-
-        out.append(parts)
-
-    return out
+    return [[name, url] for name, url in manifest().get("remotes", {}).items()]
 
 
 def cmd_apply(reselect=False):
@@ -1345,9 +1326,7 @@ def cmd_apply(reselect=False):
                 ensure_user_runtime(ref, ["-y"])
         apply_override(app)
 
-    for path in OVERRIDES.glob("*.conf"):
-        app = path.stem
-
+    for app in sorted(managed_overrides()):
         if installed_user(app):
             apply_override(app)
         elif app in wanted:

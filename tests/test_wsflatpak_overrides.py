@@ -14,24 +14,27 @@ APP = 'org.example.App'
 
 
 class OverrideTests(unittest.TestCase):
+    def declare(self, overrides, app=APP):
+        """The flatpak.json of ws switch with these overrides."""
+        self.manifest.write_text(json.dumps({
+            'remotes': {'flathub': 'https://example.org/repo'},
+            'apps': [{'remote': 'flathub', 'app': app}], 'overrides': overrides}))
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         cfg = self.root / 'cfg'
         cfg.mkdir()
-        self.overrides = cfg / 'overrides'
-        self.overrides.mkdir()
+        self.manifest = cfg / 'flatpak.json'
         (cfg / 'desktop').mkdir()
-        (cfg / 'apps.conf').write_text(f'flathub {APP}\n')
-        (cfg / 'remotes.conf').write_text('flathub https://example.org/repo\n')
+        self.declare({})
         self.apps = self.root / 'apps.txt'
         self.apps.write_text(f'flathub {APP} test=yes all=ask\n')
         self.list = self.root / 'overrides.txt'
         self.list.write_text('')
         self.g = runpy.run_path(str(ROOT / 'bin/wsflatpak'))['cmd_check'].__globals__
-        self.g.update(CFG=cfg, APPS=cfg / 'apps.conf', REMOTES=cfg / 'remotes.conf',
-                      OVERRIDES=self.overrides, DESKTOP_OVERRIDES=cfg / 'desktop',
+        self.g.update(CFG=cfg, MANIFEST=self.manifest, DESKTOP_OVERRIDES=cfg / 'desktop',
                       APPS_LIST=self.apps, OVERRIDES_LIST=self.list,
                       this_host=lambda: 'test')
         self.runtime = ''
@@ -111,7 +114,7 @@ class OverrideTests(unittest.TestCase):
                       [message['text'] for message in result['messages']])
 
     def test_managed_branch_checks_overrides_by_application_id(self):
-        self.g['APPS'].write_text(f'flathub app/{APP}/x86_64/stable\n')
+        self.declare({}, f'app/{APP}/x86_64/stable')
         self.apps.write_text(f'flathub app/{APP}/x86_64/stable\n')
         self.runtime = '[Context]\nfilesystems=home;\n'
         status, result = self.check()
@@ -121,7 +124,8 @@ class OverrideTests(unittest.TestCase):
 
     def test_declared_permissions_match_runtime(self):
         self.runtime = '[Context]\nfilesystems=home:ro;\n[Environment]\nEXAMPLE=value\n[Session Bus Policy]\norg.example.Service=talk\n'
-        (self.overrides / f'{APP}.conf').write_text(self.runtime)
+        self.declare({APP: {'filesystems': ['home:ro'], 'environment': {'EXAMPLE': 'value'},
+                            'session_bus': {'org.example.Service': 'talk'}}})
         status, result = self.check()
         self.assertEqual(status, 0)
         self.assertEqual(result['failures'], 0)

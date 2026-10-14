@@ -1,5 +1,6 @@
 import contextlib
 import io
+import json
 from pathlib import Path
 import runpy
 import subprocess
@@ -114,19 +115,23 @@ class FlatpakState:
 
 
 class UserRuntimeTests(unittest.TestCase):
+    def declare(self, *apps):
+        """The flatpak.json of ws switch with these flathub apps."""
+        self.manifest.write_text(json.dumps({
+            "remotes": {"flathub": "https://example.org/repo"},
+            "apps": [{"remote": "flathub", "app": a} for a in apps], "overrides": {}}))
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
         cfg = root / "cfg"
         cfg.mkdir()
-        (cfg / "overrides").mkdir()
-        (cfg / "apps.conf").write_text("flathub " + APP + "\n")
-        (cfg / "remotes.conf").write_text("flathub https://example.org/repo\n")
+        self.manifest = cfg / "flatpak.json"
+        self.declare(APP)
         (root / "apps.txt").write_text("")
         self.g = runpy.run_path(str(SCRIPT))["cmd_install"].__globals__
-        self.g.update(APPS=cfg / "apps.conf", REMOTES=cfg / "remotes.conf",
-                      OVERRIDES=cfg / "overrides", APPS_LIST=root / "apps.txt",
+        self.g.update(MANIFEST=cfg / "flatpak.json", APPS_LIST=root / "apps.txt",
                       this_host=lambda: "test", cmd_check=lambda: 0)
         self.addCleanup(patch.stopall)
         # No terminal: apply asks nothing (apps not offered stay so).
@@ -223,7 +228,7 @@ class UserRuntimeTests(unittest.TestCase):
 
     def test_cancel_answers_only_the_question(self):
         state = FlatpakState(system_runtime=True)
-        self.g["APPS"].write_text(f"flathub {APP}\nflathub {OTHER}\n")
+        self.declare(APP, OTHER)
         self.marks(f"flathub {APP} test=yes all=ask\nflathub {OTHER} other=yes all=ask")
         with patch.object(self.g["ws_select"], "choose", return_value=None), \
                 contextlib.redirect_stderr(io.StringIO()) as err:
@@ -253,7 +258,7 @@ class UserRuntimeTests(unittest.TestCase):
     def test_install_marks_this_host_on_existing_line(self):
         state = FlatpakState(system_runtime=True)
         self.marks(f"flathub {APP} other=yes all=ask  # note")
-        (self.g["APPS"]).write_text(f"flathub {APP}\n")
+        self.declare(APP)
         self.execute(state)
         self.assertEqual(self.g["APPS_LIST"].read_text(),
                          f"flathub {APP} other=yes test=yes all=ask  # note\n")

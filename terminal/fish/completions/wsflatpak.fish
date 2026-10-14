@@ -39,6 +39,10 @@ function __wsflatpak_at_position
     test (count $args) -eq (math "$argv[1] - 1")
 end
 
+# Reader of the JSON manifests (lib/ws_common.py), next to this file in the
+# checkout it is linked from.
+set -g __wsflatpak_common (path normalize (path dirname (path resolve (status filename)))/../../../lib/ws_common.py)
+
 function __wsflatpak_repo
     if set -q WSCONFIG; and test -n "$WSCONFIG"
         echo "$WSCONFIG"
@@ -104,10 +108,8 @@ function __wsflatpak_managed_remotes
     if set -q WSFLATPAK_CONFIG; and test -n "$WSFLATPAK_CONFIG"
         set cfg "$WSFLATPAK_CONFIG"
     end
-    if test -f "$cfg/remotes.conf"
-        __wsflatpak_config_lines "$cfg/remotes.conf" | while read -l name url
-            test -n "$name"; and not string match -q '#*' -- "$name"; and echo "$name"
-        end
+    if test -f "$cfg/flatpak.json"
+        python3 $__wsflatpak_common get "$cfg/flatpak.json" remotes
     else if command -q flatpak
         flatpak remotes --user --columns=name 2>/dev/null
     end

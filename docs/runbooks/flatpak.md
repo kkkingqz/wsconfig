@@ -19,8 +19,8 @@ flatpak/desktop/*.desktop  полные .desktop, заменяющие штат�
 bin/wsflatpak           владелец: install, apply, check
 ```
 
-`ws switch` собирает `~/.local/share/workstation/flatpak/` (`remotes.conf`,
-`apps.conf`, `overrides/`, `desktop/`) и ставит свои `.desktop` в
+`ws switch` собирает `~/.local/share/workstation/flatpak/` (`flatpak.json`:
+remotes, приложения и overrides этого хоста; `desktop/`) и ставит свои `.desktop` в
 `~/.local/share/applications` — только приложений с пометкой `HOST=yes` для
 этой машины (без пометки — по `all=`): у не поставленного приложения ярлык
 ничего бы не запускал. После `apply`, изменившего пометки, — `ws switch`.

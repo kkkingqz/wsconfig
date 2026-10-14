@@ -2,9 +2,11 @@
 # overrides (overrides.txt) and desktop overrides. wsflatpak stays the owner of apply/check
 # and reads what is built here from ~/.local/share/workstation/flatpak (one link to the store):
 #
-#   remotes.conf      NAME URL
-#   apps.conf         REMOTE APP (apps.txt without the workstation marks)
-#   overrides/APP.conf, desktop/APP.desktop
+#   flatpak.json      remotes (NAME: URL), apps (REMOTE APP of apps.txt,
+#                     in order, without the workstation marks), overrides
+#                     (APP: filesystems, environment, session_bus) of this
+#                     workstation (helpws plan-v2, 2.6)
+#   desktop/APP.desktop
 #
 # Change: apps.txt and overrides.txt through wsflatpak (install, manage,
 # filesystem, env, talk, ...), the rest here; then `ws switch`,
@@ -78,9 +80,7 @@ let
       ) (values "env"));
       bus = lib.genAttrs (values "talk") (_: "talk");
     in
-    lib.optionalAttrs (fs != [ ]) { Context.filesystems = fs; }
-    // lib.optionalAttrs (env != { }) { Environment = env; }
-    // lib.optionalAttrs (bus != { }) { "Session Bus Policy" = bus; }
+    { filesystems = fs; environment = env; session_bus = bus; }
   ) (lib.groupBy (x: x.app) overrideLines);
 
   # Full files, ours: Claude on Wayland at the factor of lib/scale.nix with its
@@ -97,22 +97,15 @@ let
   linkedDesktop = lib.filter (f:
     marks.has appMarks (lib.removeSuffix ".desktop" (baseNameOf f)) wsHost) desktop;
 
-  toIni = lib.generators.toINI {
-    mkKeyValue = lib.generators.mkKeyValueDefault {
-      mkValueString = v:
-        if lib.isList v then lib.concatMapStrings (x: "${x};") v else toString v;
-    } "=";
+  manifest = builtins.toJSON {
+    inherit remotes overrides;
+    apps = map (x: { inherit (x) remote app; }) apps;
   };
 
-  lines = f: set: lib.concatStrings (lib.mapAttrsToList f set);
-
   flatpakConfig = pkgs.runCommandLocal "workstation-flatpak-config" { } (''
-    mkdir -p $out/overrides $out/desktop
-    cp ${pkgs.writeText "remotes.conf" (lines (n: u: "${n} ${u}\n") remotes)} $out/remotes.conf
-    cp ${pkgs.writeText "apps.conf" (lib.concatMapStrings (x: "${x.remote} ${x.app}\n") apps)} $out/apps.conf
-  '' + lines (app: o: ''
-    cp ${pkgs.writeText "${app}.conf" (toIni o)} $out/overrides/${app}.conf
-  '') overrides + lib.concatMapStrings (f: ''
+    mkdir -p $out/desktop
+    cp ${pkgs.writeText "flatpak.json" manifest} $out/flatpak.json
+  '' + lib.concatMapStrings (f: ''
     cp ${fill f} $out/desktop/${baseNameOf f}
   '') desktop);
 in

@@ -28,7 +28,8 @@ class CompletionTests(unittest.TestCase):
             "org.example.Removed filesystem host\n")
         cfg = root / "cfg"
         cfg.mkdir()
-        (cfg / "remotes.conf").write_text("flathub https://example.org\nflatpark https://example.net\n")
+        (cfg / "flatpak.json").write_text(
+            '{"remotes": {"flathub": "https://example.org", "flatpark": "https://example.net"}}')
         stub = root / "flatpak"
         stub.write_text(f"#!{sys.executable}\n" + '''import sys
 args = sys.argv[1:]
