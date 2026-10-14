@@ -63,7 +63,8 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
   из Nix, и не держат своих копий списков. Родные форматы программ остаются
   (`xremap.yml`, ghostty, fish, udev/modprobe, `*.gschema.xml`,
   `containers.ini`); простой текст — `nix/hosts/*apt.txt` (его читает
-  `bootstrap.sh` до Nix) и `flatpak/apps.txt`, `flatpak/overrides.txt` (их правит `ws flatpak`).
+  `bootstrap.sh` до Nix); TOML — каталог `flatpak/catalog.toml` и выбор машин
+  `nix/hosts/*/*.toml` (их правят `ws flatpak`, `ws box`, `ws widgets`).
 - **Владелец выдаёт список.** Системный слой — `ws system manifest`,
   пользовательский — активное поколение home-manager, Distrobox —
   `containers.ini`, расширения — собранный список. Проверки, baseline и

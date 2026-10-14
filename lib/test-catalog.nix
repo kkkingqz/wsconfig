@@ -16,4 +16,15 @@ assert state "missing" "boxes" "arch" "no" == "no";
 # The order of yes is kept: the panel order of the widgets.
 assert (catalog.choice "b" "widgets").yes == [ "compact" "example" ];
 assert catalog.has "a" "boxes" "wine" "ask" && !(catalog.has "a" "boxes" "proton" "yes");
+# Flatpak overrides (tests/test_flatpak_catalog.py: the same result).
+let
+  flatpak = builtins.fromTOML (builtins.readFile ../tests/fixtures/catalog/catalog.toml);
+  app = lib.head flatpak.apps;
+  section = (catalog.choice "a" "flatpak").overrides."org.example.App";
+  values = map (x: "${x.kind} ${x.value}") (catalog.overridesOf app section);
+in
+assert values == [ "filesystem home:ro" "env OTHER=x" "talk org.example.Kept"
+                   "filesystem xdg-download" "env SCALE=1" ];
+assert catalog.overridesOf app { } == catalog.valuesOf app;
+assert catalog.keyOf "filesystem" "xdg-run/x:create" == "xdg-run/x";
 true

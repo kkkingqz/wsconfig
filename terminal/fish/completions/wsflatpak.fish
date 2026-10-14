@@ -39,9 +39,11 @@ function __wsflatpak_at_position
     test (count $args) -eq (math "$argv[1] - 1")
 end
 
-# Reader of the JSON manifests (lib/ws_common.py), next to this file in the
-# checkout it is linked from.
-set -g __wsflatpak_common (path normalize (path dirname (path resolve (status filename)))/../../../lib/ws_common.py)
+# Readers of the JSON manifests (lib/ws_common.py) and of the catalog
+# (lib/flatpak_catalog.py), next to this file in the checkout it is linked
+# from.
+set -g __wsflatpak_lib (path normalize (path dirname (path resolve (status filename)))/../../../lib)
+set -g __wsflatpak_common $__wsflatpak_lib/ws_common.py
 
 function __wsflatpak_repo
     if set -q WSCONFIG; and test -n "$WSCONFIG"
@@ -56,51 +58,28 @@ function __wsflatpak_repo
     end
 end
 
+function __wsflatpak_catalog
+    WSCONFIG=(__wsflatpak_repo) python3 $__wsflatpak_lib/flatpak_catalog.py $argv 2>/dev/null
+end
+
 function __wsflatpak_user_apps
     if command -q flatpak
         flatpak list --user --app --columns=application 2>/dev/null
     end
 end
 
-function __wsflatpak_config_lines
-    string replace -r '#.*$' '' < "$argv[1]"
-end
-
 function __wsflatpak_declared_apps
-    set -l file (__wsflatpak_repo)/flatpak/apps.txt
-    if test -f "$file"
-        __wsflatpak_config_lines "$file" | while read -l remote app
-            string match -q '#*' -- "$remote"; and continue
-            test -n "$app"; and echo (string split ' ' -- "$app")[1]
-        end
-    end
+    __wsflatpak_catalog apps
 end
 
 function __wsflatpak_override_apps
     __wsflatpak_user_apps
-    set -l file (__wsflatpak_repo)/flatpak/overrides.txt
-    if test -f "$file"
-        __wsflatpak_config_lines "$file" | while read -l app kind value
-            contains -- "$kind" filesystem env talk; and echo "$app"
-        end
-    end
+    __wsflatpak_catalog override-apps
 end
 
 function __wsflatpak_override_values
     set -l args (__wsflatpak_positional_args)
-    set -l file (__wsflatpak_repo)/flatpak/overrides.txt
-    if test -f "$file"; and test (count $args) -ge 1
-        __wsflatpak_config_lines "$file" | while read -l app kind value
-            if test "$app" = "$args[1]"; and test "$kind" = "$argv[1]"
-                set value (string split ' ' -- "$value")[1]
-                if test "$kind" = env
-                    string split -m1 -f1 '=' -- "$value"
-                else
-                    echo "$value"
-                end
-            end
-        end
-    end
+    test (count $args) -ge 1; and __wsflatpak_catalog values $args[1] $argv[1]
 end
 
 function __wsflatpak_managed_remotes
@@ -138,8 +117,8 @@ complete -c wsflatpak -f
 complete -c wsflatpak -s h -l help -d 'Показать справку'
 
 complete -c wsflatpak -n __wsflatpak_needs_command -a install -d 'Установить приложения и runtimes в домашний каталог'
-complete -c wsflatpak -n __wsflatpak_needs_command -a manage -d 'Добавить приложение в apps.txt'
-complete -c wsflatpak -n __wsflatpak_needs_command -a unmanage -d 'Убрать приложение из apps.txt'
+complete -c wsflatpak -n __wsflatpak_needs_command -a manage -d 'Добавить приложение в каталог'
+complete -c wsflatpak -n __wsflatpak_needs_command -a unmanage -d 'Убрать приложение из каталога'
 complete -c wsflatpak -n __wsflatpak_needs_command -a remove -d 'Удалить приложение и его данные'
 complete -c wsflatpak -n __wsflatpak_needs_command -a uninstall -d 'Алиас remove'
 complete -c wsflatpak -n __wsflatpak_needs_command -a permissions -d 'Показать права приложения'
@@ -177,7 +156,7 @@ for cmd in unfilesystem unhost unenv untalk
 end
 
 complete -c wsflatpak -n '__wsflatpak_using_command install' -a '(__wsflatpak_install_apps)'
-complete -c wsflatpak -n '__wsflatpak_using_command install; and __wsflatpak_at_position 1' -l unmanaged -d 'Не добавлять в apps.txt'
+complete -c wsflatpak -n '__wsflatpak_using_command install; and __wsflatpak_at_position 1' -l unmanaged -d 'Не добавлять в каталог'
 complete -c wsflatpak -n '__wsflatpak_using_command install; and test (count (__wsflatpak_positional_args)) -eq 0' -l remote -x -a '(__wsflatpak_managed_remotes)' -d 'Remote для установки (по умолчанию flathub)'
 complete -c wsflatpak -n '__wsflatpak_using_command manage; and __wsflatpak_at_position 2' -a '(__wsflatpak_managed_remotes)'
 complete -c wsflatpak -n '__wsflatpak_using_command run; and __wsflatpak_at_position 1' -l direct -d 'Запуск через flatpak run вместо .desktop'
@@ -194,4 +173,8 @@ complete -c wsflatpak -n '__wsflatpak_using_command unfilesystem; and __wsflatpa
 complete -c wsflatpak -n '__wsflatpak_using_command unenv; and __wsflatpak_at_position 2' -a '(__wsflatpak_override_values env)'
 complete -c wsflatpak -n '__wsflatpak_using_command untalk; and __wsflatpak_at_position 2' -a '(__wsflatpak_override_values talk)'
 complete -c wsflatpak -n '__wsflatpak_using_command talk; and __wsflatpak_at_position 2' -a 'org.freedesktop.Flatpak org.kde.StatusNotifierWatcher'
-complete -c wsflatpak -n '__wsflatpak_using_command apply' -l select -d 'Спросить и о помеченных HOST=no'
+complete -c wsflatpak -n '__wsflatpak_using_command apply' -l select -d 'Спросить и о приложениях в no этой машины'
+for cmd in filesystem host env talk
+    complete -c wsflatpak -n "__wsflatpak_using_command $cmd" -l host -d 'Только для этой машины (nix/hosts/HOST/flatpak.toml)'
+    complete -c wsflatpak -n "__wsflatpak_using_command un$cmd" -l all -d 'Убрать общее значение из каталога (у всех машин)'
+end

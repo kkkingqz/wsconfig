@@ -21,11 +21,14 @@ class CompletionTests(unittest.TestCase):
         root = Path(self.temp.name)
         repo = root / "repo/flatpak"
         repo.mkdir(parents=True)
-        (repo / "apps.txt").write_text("flathub org.example.Removed# managed app\n")
-        (repo / "overrides.txt").write_text(
-            f"{APP} filesystem home:ro# read-only home\n{APP} env GDK_SCALE=2\n"
-            f"{APP} talk org.example.Service\n"
-            "org.example.Removed filesystem host\n")
+        (repo / "catalog.toml").write_text(
+            '[remotes]\nflathub = "https://example.org"\n\n'
+            '[[apps]]\n# managed app\nid = "org.example.Removed"\nremote = "flathub"\nfilesystems = ["host"]\n\n'
+            f'[[apps]]\nid = "{APP}"\nremote = "flathub"\nfilesystems = ["home:ro"]\n'
+            'env = { GDK_SCALE = "2" }\n')
+        host = root / "repo/nix/hosts/mbp16"
+        host.mkdir(parents=True)
+        (host / "flatpak.toml").write_text(f'[overrides."{APP}"]\ntalk = ["org.example.Service"]\n')
         cfg = root / "cfg"
         cfg.mkdir()
         (cfg / "flatpak.json").write_text(
@@ -86,6 +89,10 @@ else:
         self.assertIn("home:ro", self.candidates(f"wsflatpak unfilesystem {APP} "))
         self.assertIn("GDK_SCALE", self.candidates(f"wsflatpak unenv {APP} "))
         self.assertIn("org.example.Service", self.candidates(f"wsflatpak untalk {APP} "))
+
+    def test_scope_flags(self):
+        self.assertIn("--host", self.candidates("wsflatpak env --"))
+        self.assertIn("--all", self.candidates("wsflatpak unenv --"))
 
     def test_manage_second_argument_offers_remotes(self):
         self.assertIn("flatpark", self.candidates(f"wsflatpak manage {APP} "))

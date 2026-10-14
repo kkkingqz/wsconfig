@@ -45,8 +45,7 @@
         extraSpecialArgs = {
           inherit man wswidgets;
           facts = factsOf host;
-          # The flake host (ws host): its marks in flatpak/apps.txt
-          # (lib/ws_marks.nix) and its choices nix/hosts/HOST/*.toml
+          # The flake host (ws host): its choices nix/hosts/HOST/*.toml
           # (lib/catalog.nix).
           wsHost = host;
           # The state directory under $HOME (WS_STATE of lib/common.bash).

@@ -1,6 +1,6 @@
 title: ws-flatpak
 section: 1
-date: 2026-10-03
+date: 2026-10-14
 source: Workstation
 volume: User Commands
 
@@ -12,57 +12,77 @@ GUI-приложения — Flatpak (user installation), host остаётся 
 ## Источник
 
 ```text
-flatpak/apps.txt        управляемые приложения: REMOTE APP, по строке
-flatpak/overrides.txt   overrides приложений: APP KIND VALUE, по строке
-flatpak/flatpak.nix     remotes, свои .desktop; читает оба списка
-flatpak/desktop/*.desktop  полные .desktop, заменяющие штатные
-bin/wsflatpak           владелец: install, apply, check
+flatpak/catalog.toml          каталог: remotes и все приложения, по порядку;
+                              у приложения remote, default и общие overrides
+nix/hosts/HOST/flatpak.toml   выбор машины (yes, no) и её свои overrides
+flatpak/flatpak.nix           свои .desktop; собирает каталог и выбор машины
+flatpak/desktop/*.desktop     полные .desktop, заменяющие штатные
+bin/wsflatpak                 владелец: install, apply, check
 ```
 
 `ws switch` собирает `~/.local/share/workstation/flatpak/` (`flatpak.json`:
-remotes, приложения и overrides этого хоста; `desktop/`) и ставит свои `.desktop` в
-`~/.local/share/applications` — только приложений с пометкой `HOST=yes` для
-этой машины (без пометки — по `all=`): у не поставленного приложения ярлык
-ничего бы не запускал. После `apply`, изменившего пометки, — `ws switch`.
-`ws flatpak apply` добавляет remotes, ставит приложения и применяет overrides; overrides управляемого приложения сначала
-сбрасываются, так что строка, убранная из `overrides.txt`, исчезает.
+remotes, приложения каталога и overrides этой машины; `desktop/`) и ставит
+свои `.desktop` в `~/.local/share/applications` — только приложений, которые
+на этой машине в состоянии yes: у не поставленного приложения ярлык ничего
+бы не запускал. После `apply`, изменившего выбор, — `ws switch`.
+`ws flatpak apply` добавляет remotes, ставит приложения и применяет
+overrides; overrides управляемого приложения сначала сбрасываются, так что
+значение, убранное из каталога или файла машины, исчезает.
 
-Какие приложения на какой машине, записано в самом `apps.txt` — пометками
-после `REMOTE APP` (`lib/ws_marks.py`); имя машины — `ws host`:
+Каталог — всё, что вообще можно поставить (`lib/flatpak_catalog.py`):
 
-```text
-flathub org.gimp.GIMP mbp16=yes wsvm=no all=ask
+```toml
+[remotes]
+flathub = "https://dl.flathub.org/repo/flathub.flatpakrepo"
+
+[[apps]]
+# комментарии приложения — внутри его таблицы (уходят вместе с ним)
+id = "com.anydesk.Anydesk"
+remote = "flathub"
+env = { GDK_SCALE = "2" }
+talk = ["org.kde.StatusNotifierWatcher"]
 ```
 
-- `HOST=yes` — стоит на этой машине; `apply` ставит без вопроса.
-- `HOST=no` — на этой машине отказались; `apply` не трогает.
-- `HOST=ask` — не предложено; `apply` спрашивает.
-- `all=…` действует только для машины без своей пометки (`all=yes` —
-  ставить везде, где не сказано иначе). Нет ни своей пометки, ни `all` — ask.
+Какие приложения на какой машине — её `nix/hosts/HOST/flatpak.toml`
+(`lib/ws_catalog.py`, `helpws plan-v2`, этап 3); имя машины — `ws host`:
 
-`ws flatpak install|manage APP` ставит своей машине `yes` (новая строка
-получает `all=ask`), `ws flatpak remove APP` удаляет строку, если других
-машин в ней нет, иначе ставит своей `no`; `unmanage` удаляет строку целиком.
+```toml
+yes = ["org.gimp.GIMP", "com.mikrotik.WinBox"]   # стоят здесь
+no = ["com.valvesoftware.Steam"]                 # отказались
+```
+
+- `yes` — стоит на этой машине; `apply` ставит без вопроса.
+- `no` — на этой машине отказались; `apply` не трогает.
+- Нет ни там, ни там — `default` приложения в каталоге: `ask` (по
+  умолчанию; `apply` спрашивает), `no` (не предлагать) или `yes` (ставить на
+  каждой машине без своего выбора).
+
+Каждая машина пишет только свой файл: общей строки, в которой сталкивались
+бы пометки двух машин, нет. `ws flatpak install|manage APP` ставит приложение
+в `yes` этой машины (новое — ещё и в конец каталога, `default` ask),
+`ws flatpak remove APP` — в `no` (запись каталога остаётся для других
+машин), `unmanage` убирает запись из каталога вместе с её overrides и выбор
+приложения из файлов всех машин. Комментарии и порядок файлов сохраняются
+(tomlkit).
 
 О не предложенных `apply` выводит список и спрашивает «Поставить все?
 [Y/n]». На `n` — список с галочками: ↑/↓ выбирают строку, Space ставит и
 снимает галочку, `a` переключает все, Enter ставит отмеченные, Esc/q
-отменяет только вопрос: предложенные остаются `ask` (спросит в следующий
-раз), остальное `apply` делает. Ответ пишется в `apps.txt` (`HOST=yes` /
-`HOST=no`), `ws switch` ставит `.desktop` новых `yes`, `ws sync` публикует файл. Уже
-установленное без пометки получает `yes` молча.
-`ws flatpak apply --select` спрашивает и о `HOST=no` (они без галочки). Без
+отменяет только вопрос: предложенные остаются ask (спросит в следующий
+раз), остальное `apply` делает. Ответ пишется в `yes` / `no` этой машины,
+`ws switch` ставит `.desktop` новых `yes`, `ws sync` публикует файл. Уже
+установленное в состоянии ask попадает в `yes` молча.
+`ws flatpak apply --select` спрашивает и о `no` (они без галочки). Без
 терминала не предложенные не ставятся. `check`: `yes`, но не установлено —
-FAIL; установлено, но `no` или без пометки — WARN; `no`/`ask` без установки
-— INFO.
+FAIL; установлено, но `no` или ask — WARN; `no`/ask без установки — INFO.
 
-Remotes: `flathub`, `flatpark` (Claude Desktop). Новый remote — строка
-`NAME = "URL.flatpakrepo";` в `remotes` файла `flatpak/flatpak.nix`
-(`ws flatpak remote-add NAME URL` печатает её), затем `ws switch &&
-ws flatpak apply`; приложение из него — `ws flatpak install --remote NAME
-APP`. Только user remotes: system remotes `ws flatpak check` считает ошибкой,
-remote не из `flatpak.nix` — предупреждением. Браузер — Firefox
-(`org.mozilla.firefox`): snap в системе нет (`purge:snapd`, `helpws rebuild`, раздел 6.0).
+Remotes: `flathub`, `flatpark` (Claude Desktop), `chatgpt`. Новый remote —
+строка `NAME = "URL"` в `[remotes]` каталога (`ws flatpak remote-add NAME
+URL` печатает её), затем `ws switch && ws flatpak apply`; приложение из него
+— `ws flatpak install --remote NAME APP`. Только user remotes: system
+remotes `ws flatpak check` считает ошибкой, remote не из каталога —
+предупреждением. Браузер — Firefox (`org.mozilla.firefox`): snap в системе
+нет (`purge:snapd`, `helpws rebuild`, раздел 6.0).
 
 ## Установить и убрать
 
@@ -74,8 +94,8 @@ ws flatpak install --help            # то же через --help
 
 Fish дополняет команды, флаги, пользовательские remotes, App ID и полные refs
 для установки (используется кеш remote). Для `unmanage` предлагаются приложения
-из `apps.txt`, включая уже удалённые; для `unfilesystem`, `unenv` и `untalk` —
-объявленные значения выбранного приложения из `overrides.txt`.
+каталога, включая уже удалённые; для `unfilesystem`, `unenv` и `untalk` —
+объявленные значения выбранного приложения (каталог и файлы машин).
 
 `install` и `apply` устанавливают приложение и его требуемый runtime в
 пользовательскую установку (`~/.local/share/flatpak/` при стандартном
@@ -93,59 +113,61 @@ remotes: сначала remote приложения, затем остальны
 `ws flatpak cleanup` может удалить его, когда он больше не нужен приложениям.
 
 ```console
-ws flatpak install APP                # ставит, в apps.txt: HOST=yes
+ws flatpak install APP                # ставит; yes этой машины (и в каталог)
 ws flatpak install --unmanaged APP    # только ставит
-ws flatpak manage APP [REMOTE]        # уже установленное — HOST=yes
-ws flatpak unmanage APP               # убрать строку из apps.txt
-ws flatpak remove APP                 # удаляет; строку или HOST=no
-ws flatpak apply [--select]           # ставит HOST=yes, спрашивает об ask
-ws switch                            # собирает apps.txt
+ws flatpak manage APP [REMOTE]        # уже установленное — в yes (и в каталог)
+ws flatpak unmanage APP               # убрать из каталога и выбора всех машин
+ws flatpak remove APP                 # удаляет; no этой машины
+ws flatpak apply [--select]           # ставит yes, спрашивает об ask
+ws switch                            # собирает каталог и выбор
 ws sync                              # публикует: коммит, pull --rebase, push
 ```
 
-`ws switch` добавляет изменённые `apps.txt`, `overrides.txt` и выбор
-хостов `nix/hosts/*/*.toml` в сборку и ничего не коммитит: в конце он называет
+`ws switch` добавляет изменённые `catalog.toml` и выбор машин
+`nix/hosts/*/*.toml` в сборку и ничего не коммитит: в конце он называет
 неопубликованные файлы данных. Коммит и push делает только `ws sync`
 (`helpws plan-v2`, 2.7).
 
 ## Разрешения и окружение
 
-Постоянные — строки `flatpak/overrides.txt`: `APP filesystem SPEC`
-(`Context.filesystems`), `APP env KEY=VALUE` (`Environment`), `APP talk BUS`
-(`Session Bus Policy`, только `talk`). Их добавляют и убирают команды, как
-`install` — `apps.txt`; систему они не меняют:
+Постоянные — в каталоге, в записи приложения: `filesystems` (`[Context]
+filesystems`), `env` (`Environment`), `talk` (`Session Bus Policy`, только
+`talk`). Они действуют на каждой машине, где приложение стоит. Свои
+значения машины — в `[overrides."APP"]` её `flatpak.toml`. Их добавляют и
+убирают команды, как `install` — выбор; систему они не меняют:
 
 ```console
 ws flatpak filesystem APP SPEC        # home:ro, xdg-download, /mnt/x:ro, ...
 ws flatpak host APP                   # = filesystem APP host
 ws flatpak env APP KEY VALUE          # или KEY=VALUE; новое значение заменяет
 ws flatpak talk APP BUS
-ws flatpak unfilesystem|unhost|unenv|untalk APP ...
-ws switch                            # собирает overrides.txt (публикует ws sync)
+ws flatpak env --host APP KEY VALUE   # только эта машина
+ws flatpak unfilesystem|unhost|unenv|untalk [--all] APP ...
+ws switch                            # собирает (публикует ws sync)
 ws flatpak apply                      # применяет
 ```
 
-APP — ID, имя или часть имени установленного приложения. Значение — одно
-слово без `#`.
+APP — ID, имя или часть имени установленного приложения, оно должно быть в
+каталоге (`ws flatpak manage APP`). Значение — одно слово без `#`.
 
-У каждой строки свои пометки машин после `APP KIND VALUE`, только `yes` и
-`no`: строка действует там, где `yes`; `all=` — для машины без своей
-пометки; строка без пометок действует везде. `ws switch` собирает overrides
-только из строк этой машины, `apply` и `check` работают с ними.
-
-```text
-com.anydesk.Anydesk env GDK_SCALE=2 mbp16=yes legiongo=no all=yes
-com.anydesk.Anydesk env GDK_SCALE=1 legiongo=yes all=no
+```toml
+# nix/hosts/legiongo/flatpak.toml
+[overrides."com.anydesk.Anydesk"]
+env = { GDK_SCALE = "1" }                       # вместо GDK_SCALE=2 каталога
+skip = ["talk org.kde.StatusNotifierWatcher"]   # значение каталога не здесь
 ```
 
-- `ws flatpak filesystem|host|env|talk` ставит своей машине `yes`; новая
-  строка — `HOST=yes all=yes`.
-- Другое значение того же ключа (имя env, путь filesystem при любом режиме)
-  меняет строку на месте, если других машин в ней нет. Иначе та строка
-  получает `HOST=no`, а новое значение — свою строку `HOST=yes all=no`.
-- `un…` удаляет строку, если других машин в ней нет, иначе ставит `HOST=no`.
-- На одной машине у ключа одно значение: две действующие строки одного ключа
-  `ws switch` отвергает.
+- На машине у ключа одно значение: имя env, путь filesystem при любом
+  режиме, имя шины. Значение машины заменяет значение каталога с тем же
+  ключом; `skip` перечисляет значения каталога (`KIND KEY`), которые на этой
+  машине не применяются.
+- Без `--host` значение пишется в каталог и заменяет там значение того же
+  ключа; своё значение и `skip` этой машины для ключа снимаются, чтобы оно
+  действовало и здесь. С `--host` — в файл машины.
+- `un…` убирает значение на этой машине: своё — из её файла, общее —
+  через `skip` там же. С `--all` общее удаляется из каталога (и `skip`
+  других машин для него).
+- Две действующие на машине записи одного ключа `ws switch` отвергает.
 
 ```console
 ws flatpak permissions APP
@@ -180,7 +202,8 @@ ws check
 ```
 
 `check`: remotes (системных нет), системная установка пуста, нет глобального
-`filesystem=host`, приложения `apps.txt` установлены из своих remotes,
-overrides применены, свои `.desktop` приложений с `yes` на месте (ярлык
-приложения без `yes` — WARN, нужен `ws switch`); приложение или remote вне
-объявленных — предупреждение.
+`filesystem=host`, приложения каталога в состоянии yes установлены из своих
+remotes, overrides применены, свои `.desktop` приложений с `yes` на месте
+(ярлык приложения без `yes` — WARN, нужен `ws switch`), каталог собран;
+приложение или remote вне объявленных и выбор машины для приложения вне
+каталога — предупреждение.

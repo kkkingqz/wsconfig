@@ -21,4 +21,30 @@ rec {
   state = host: module: name: default: stateIn (choice host module) name default;
 
   has = host: module: name: default: state host module name default == "yes";
+
+  # Flatpak overrides as lib/flatpak_catalog.py computes them. The key of a
+  # value: the env name, the filesystem path without its mode, the bus.
+  keyOf = kind: value:
+    if kind == "env" then lib.head (lib.splitString "=" value)
+    else if kind == "filesystem" then
+      let m = builtins.match "(.*):(ro|rw|create)" value; in if m == null then value else lib.head m
+    else value;
+
+  # [ { kind; value; } ] of a catalog entry or a host section; env as NAME=VALUE.
+  valuesOf = e:
+    map (value: { kind = "filesystem"; inherit value; }) (e.filesystems or [ ])
+    ++ lib.mapAttrsToList (k: v: { kind = "env"; value = "${k}=${v}"; }) (e.env or { })
+    ++ map (value: { kind = "talk"; inherit value; }) (e.talk or [ ]);
+
+  itemKey = x: "${x.kind} ${keyOf x.kind x.value}";
+
+  # The values of catalog entry APP on a host with SECTION
+  # ([overrides."APP"] of its flatpak.toml): the catalog ones without the
+  # skipped and those the host replaces, then the host's.
+  overridesOf = app: section:
+    let
+      own = valuesOf section;
+      drop = (section.skip or [ ]) ++ map itemKey own;
+    in
+    lib.filter (x: !(lib.elem (itemKey x) drop)) (valuesOf app) ++ own;
 }

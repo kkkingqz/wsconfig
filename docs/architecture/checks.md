@@ -16,7 +16,7 @@ ws check repo           checkout: git, мусор, синтаксис, испо�
 ws check home           поколение home-manager, Nix и @nix, man, окружение сессии
 ws keyboard check       xremap, сочетания GNOME и Tiling из keyboard.nix, источники ввода
 ws gnome check          профиль gnome.nix, расширения: набор, pin, ACTIVE, копии, schemas
-ws flatpak check         remotes, приложения apps.txt, overrides, .desktop
+ws flatpak check         remotes, приложения каталога, overrides, .desktop
 ws box check             контейнеры, образы, HOME, экспорты, hooks, wsbox-host-ntsync
 ws windows check             Windows-боксы, программы, .exe, ссылки меню
 ws suspend check        deep sleep, t2bce stateful sleep, Touch Bar

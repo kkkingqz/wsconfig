@@ -32,8 +32,8 @@ Usage:
 
 switch    home-manager switch for this user and host (pinned by flake.lock);
           names the data files not published yet (ws sync)
-sync      publish the data files (flatpak/apps.txt, flatpak/overrides.txt,
-          nix/hosts/*/{boxes,widgets}.toml, flake.lock): one commit
+sync      publish the data files (flatpak/catalog.toml,
+          nix/hosts/*/{flatpak,boxes,widgets}.toml, flake.lock): one commit
           with what changed, then git pull --rebase and git push when the
           branch has an upstream (no remote: the commit stays local);
           refuses during a Git operation, on a detached HEAD, with changes
@@ -182,13 +182,13 @@ current_generation() {
 }
 
 # Data files: what ws and the tools write, published only by ws sync
-# (helpws plan-v2, 2.7): the lists that wsflatpak edits (install/manage/
-# unmanage/remove/apply, filesystem/env/talk and un…), the host choices
-# (lib/ws_catalog.py: ws box, ws widgets) and flake.lock. Everything else in
-# the checkout is code, committed by the developer. Patterns as Git pathspecs: * matches / too. switch adds them
+# (helpws plan-v2, 2.7): the Flatpak catalog (ws flatpak install/manage/
+# unmanage, filesystem/env/talk and un…), the host choices (lib/ws_catalog.py:
+# ws flatpak, ws box, ws widgets) and flake.lock. Everything else in the
+# checkout is code, committed by the developer. Patterns as Git pathspecs: * matches / too. switch adds them
 # before the build; sync and ws check repo read them (ws data-files).
-data_patterns=(flatpak/apps.txt flatpak/overrides.txt flake.lock
-    'nix/hosts/*/boxes.toml' 'nix/hosts/*/widgets.toml')
+data_patterns=(flatpak/catalog.toml flake.lock
+    'nix/hosts/*/flatpak.toml' 'nix/hosts/*/boxes.toml' 'nix/hosts/*/widgets.toml')
 
 is_data_file() {
     local f
@@ -223,13 +223,12 @@ changed_data_files() {
     done < <(data_files)
 }
 
-# What changed in a data file against HEAD, for the commit message:
-# +NAME, -NAME, NAME HOST=STATE (lib/ws_marks.py); a host choice NAME=yes,
-# NAME=no, -NAME (lib/ws_catalog.py); flake.lock: the inputs with a new
-# revision.
+# What changed in a data file against HEAD, for the commit message: a host
+# choice NAME=yes, NAME=no, -NAME, overrides APP (lib/ws_catalog.py); the
+# Flatpak catalog +APP, -APP, APP (fields) (lib/flatpak_catalog.py);
+# flake.lock: the inputs with a new revision.
 data_summary() {
     local f="$1" old
-    local -a fixed=()
     old="$(mktemp)"
     git -C "$repo" show "HEAD:$f" > "$old" 2>/dev/null || : > "$old"
     if [[ "$f" == flake.lock ]]; then
@@ -247,8 +246,7 @@ PY
     elif [[ "$f" == nix/hosts/*.toml ]]; then
         python3 "$WS_CORE/lib/ws_catalog.py" summary "$old" "$repo/$f"
     else
-        [[ "$f" != flatpak/overrides.txt ]] || fixed=(3)
-        python3 "$WS_CORE/lib/ws_marks.py" "$repo/$f" summary "$old" "${fixed[@]}"
+        python3 "$WS_CORE/lib/flatpak_catalog.py" summary "$old" "$repo/$f"
     fi
     rm -f "$old"
 }

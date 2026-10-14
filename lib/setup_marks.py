@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
-"""The choices of setup.sh on a workstation (helpws setup): every line of
-flatpak/apps.txt and flatpak/overrides.txt without a yes or no of this
-workstation (an own ask is none), as checklists (lib/ws_select.py), the
-containers of distrobox.nix without a choice of this host
-(nix/hosts/HOST/boxes.toml; default no starts unchecked), and with widgets = "yes" the widgets some host has in
-yes (nix/hosts/*/widgets.toml, lib/ws_catalog.py) in state ask here; the
-full widget catalog needs Nix, which comes later (ws widgets apply offers
-the rest). all=yes and ask start checked, all=no unchecked; overrides are
-offered only for the apps this workstation has. Every line shown gets HOST=yes or HOST=no, so ws apply
-asks nothing afterwards; overrides of apps it does not have stay unmarked.
-Nothing is written until all the lists are answered. On a host with
-nativeSteam = "yes" the Steam flatpak is no without a question: Steam is
-the apt one there (steam/apt.txt).
+"""The choices of setup.sh on a host (helpws setup), as checklists
+(lib/ws_select.py) before the long part, so ws apply asks nothing
+afterwards. Offered: the apps of flatpak/catalog.toml and the containers of
+distrobox.nix without a choice of this host, with widgets = "yes" the
+widgets some host has in yes (the full widget catalog needs Nix, which
+comes later: ws widgets apply offers the rest), and the catalog overrides
+of the apps the host gets. Default ask and yes start checked, no
+unchecked; the answers go into nix/hosts/HOST/*.toml (lib/ws_catalog.py):
+yes or no, an unchecked override a skip of the host. Nothing is written
+until all the lists are answered. On a host with nativeSteam = "yes" the
+Steam flatpak is no without a question: Steam is the apt one there
+(steam/apt.txt).
 
-    setup_marks.py REPO HOST    prints the lists it changed; exit 2 when
+    setup_marks.py REPO HOST    prints the files it changed; exit 2 when
                                 cancelled (nothing written), 3 without a
                                 terminal
 """
@@ -24,8 +23,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from ws_facts import fact  # noqa: E402
-from ws_marks import OVERRIDES, MarkedList, check_host  # noqa: E402
+import flatpak_catalog  # noqa: E402
+from ws_facts import check_host, fact  # noqa: E402
 import ws_catalog  # noqa: E402
 import ws_select  # noqa: E402
 
@@ -33,28 +32,16 @@ CANCELLED, NO_TERMINAL = 2, 3
 STEAM_FLATPAK = "com.valvesoftware.Steam"
 
 
-def name_of(marked, line):
-    """What a line is called in the checklist and found by: APP or box, the
-    whole key of an override."""
-    return " ".join(line.key) if marked.fixed else line.key[-1]
+def unchosen(choice, catalog, label=lambda name: ""):
+    """[(name, label, checked)] of CATALOG [(name, default)] without a
+    choice of the host; checked unless the default is no."""
+    return [(name, label(name), default != "no") for name, default in catalog
+            if name not in choice.yes() + choice.no()]
 
 
-def offer(marked, host, keep=lambda line: True):
-    """[(name, label, checked)] of the lines without a yes or no of HOST
-    (an own ask counts as none: apply would ask about it)."""
-    items = []
-    for line in marked.entries():
-        if line.marks.get(host) in ("yes", "no") or not keep(line):
-            continue
-        label = line.key[0] if len(line.key) > 1 and not marked.fixed else ""
-        items.append((name_of(marked, line), label, marked.line_state(line, host) != "no"))
-    return items
-
-
-def mark(marked, host, items, chosen):
+def answer(choice, items, chosen):
     for name, _, _ in items:
-        key = name.split() if marked.fixed else name
-        marked.set(key, host, "yes" if name in chosen else "no")
+        choice.set(name, "yes" if name in chosen else "no")
 
 
 def box_catalog(repo):
@@ -81,61 +68,49 @@ def ask(term, title, items):
 
 def run(repo, host, term):
     repo = Path(repo)
-    apps = MarkedList(repo / "flatpak/apps.txt", key_fields={2})
-    overrides = MarkedList(repo / "flatpak/overrides.txt", **OVERRIDES)
+    catalog = flatpak_catalog.Catalog(repo)
+    apps = ws_catalog.Choice("flatpak", host, repo)
+    boxes = ws_catalog.Choice("boxes", host, repo)
     widgets = ws_catalog.Choice("widgets", host, repo)
 
-    steam = apps.find(STEAM_FLATPAK)
-    if (fact(host, "nativeSteam", repo) == "yes" and steam is not None
-            and steam.marks.get(host) not in ("yes", "no")):
-        apps.set(STEAM_FLATPAK, host, "no")
-        term.write(f"\n{STEAM_FLATPAK}: {host}=no (nativeSteam = \"yes\": Steam из apt)\n")
+    if (fact(host, "nativeSteam", repo) == "yes" and catalog.app(STEAM_FLATPAK) is not None
+            and STEAM_FLATPAK not in apps.yes() + apps.no()):
+        apps.set(STEAM_FLATPAK, "no")
+        term.write(f"\n{STEAM_FLATPAK}: no на {host} (nativeSteam = \"yes\": Steam из apt)\n")
 
-    lists = [(apps, f"Flatpak-приложения на {host}")]
-    for marked, title in lists:
-        items = offer(marked, host)
+    remote = lambda app: catalog.app(app)["remote"]
+    lists = [(apps, f"Flatpak-приложения на {host}",
+              [(a, catalog.default(a)) for a in catalog.ids()], remote),
+             # Containers of distrobox.nix.
+             (boxes, f"Контейнеры Distrobox на {host}", box_catalog(repo), lambda n: "")]
+    # The widget layer only where facts.nix has it (helpws widgets).
+    if fact(host, "widgets", repo) == "yes":
+        lists.append((widgets, f"Виджеты (ws widgets) на {host}",
+                      [(n, "ask") for n in ws_catalog.used("widgets", repo)], lambda n: ""))
+    for choice, title, items, label in lists:
+        items = unchosen(choice, items, label)
         chosen = ask(term, title, items)
         if chosen is None:
             return None
-        mark(marked, host, items, chosen)
+        answer(choice, items, chosen)
 
-    # Containers of distrobox.nix without a choice of this host; default no
-    # starts unchecked.
-    boxes = ws_catalog.Choice("boxes", host, repo)
-    items = [(name, "", default != "no") for name, default in box_catalog(repo)
-             if name not in boxes.yes() + boxes.no()]
-    chosen = ask(term, f"Контейнеры Distrobox на {host}", items)
-    if chosen is None:
-        return None
-    for name, _, _ in items:
-        boxes.set(name, "yes" if name in chosen else "no")
-
-    # The widget layer only where facts.nix has it (helpws widgets).
-    if fact(host, "widgets", repo) == "yes":
-        items = [(name, "", True) for name in ws_catalog.used("widgets", repo)
-                 if widgets.state(name) == "ask"]
-        chosen = ask(term, f"Виджеты (ws widgets) на {host}", items)
-        if chosen is None:
-            return None
-        for name, _, _ in items:
-            widgets.set(name, "yes" if name in chosen else "no")
-
-    has = {line.key[-1] for line in apps.entries() if apps.line_state(line, host) == "yes"}
-    items = offer(overrides, host, lambda line: line.key[0] in has)
+    # The catalog overrides of the apps this host gets; unchecked: a skip.
+    has = [a for a in catalog.ids() if apps.state(a, catalog.default(a)) == "yes"]
+    items, keys = [], {}
+    for app in has:
+        for kind, value in flatpak_catalog.effective(catalog, apps, app):
+            if (kind, value) in catalog.values(app):
+                name = f"{app} {kind} {value}"
+                items.append((name, "", True))
+                keys[name] = (app, kind, flatpak_catalog.key_of(kind, value))
     chosen = ask(term, f"Overrides Flatpak на {host}", items)
     if chosen is None:
         return None
-    mark(overrides, host, items, chosen)
+    for name, _, _ in items:
+        if name not in chosen:
+            flatpak_catalog.set_skip(apps, *keys[name], True)
 
-    changed = []
-    for marked in (apps, overrides):
-        if any(line.changed for line in marked.lines):
-            marked.save()
-            changed.append(str(marked.path.relative_to(repo)))
-    for choice in (boxes, widgets):
-        if choice.save():
-            changed.append(str(choice.path.relative_to(repo)))
-    return changed
+    return [str(c.path.relative_to(repo)) for c in (apps, boxes, widgets) if c.save()]
 
 
 def main(argv):

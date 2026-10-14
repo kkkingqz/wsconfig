@@ -267,9 +267,9 @@ host`, переопределяет `WS_HOST=<name>`); для новой маш�
 `PREFLIGHT`; отдельный шаг — `ws apply keyboard`.
 
 Шаги `flatpak` и `distrobox` ставят то, что выбрано для этой машины
-(`HOST=yes` в `flatpak/apps.txt`, `yes` в `nix/hosts/HOST/boxes.toml`), и
+(`yes` в `nix/hosts/HOST/flatpak.toml` и `boxes.toml`), и
 спрашивают о не предложенных: «Поставить все? [Y/n]», на `n` — список с
-галочками (Space). Ответ записывается пометкой или выбором этой машины;
+галочками (Space). Ответ записывается в выбор этой машины;
 публикует `ws sync`. Новая машина получает вопрос обо всём, что по
 умолчанию ask (`helpws flatpak`, `helpws distrobox`).
 
@@ -331,9 +331,10 @@ checkpoint/NAME`, `ws switch`, `ws system apply`, `ws apply`, загрузка
 ссылку `applied` на поставленное дерево и строку в `history` (дата, коммит,
 дерево, результат).
 
-Flatpak: remotes объявлены в `flatpak/flatpak.nix`, приложения — в
-`flatpak/apps.txt`, overrides — в `flatpak/overrides.txt` (оба правит
-`ws flatpak`, публикует `ws sync`); `ws switch` собирает из них
+Flatpak: remotes, приложения и общие overrides — в каталоге
+`flatpak/catalog.toml`, выбор и свои overrides машины — в
+`nix/hosts/HOST/flatpak.toml` (оба правит `ws flatpak`, публикует
+`ws sync`); `ws switch` собирает из них
 `~/.local/share/workstation/flatpak/` и ставит `.desktop` Claude, шаг `flatpak`
 в `ws apply` (`ws flatpak apply`) добавляет remotes, ставит приложения и
 применяет overrides (`helpws flatpak`).

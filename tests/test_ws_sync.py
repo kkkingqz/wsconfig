@@ -9,6 +9,8 @@ import unittest
 import fast_tmp  # noqa: F401  (tmpfs)
 
 ROOT = Path(__file__).resolve().parents[1]
+CATALOG = '[remotes]\nflathub = "https://example.org"\n\n[[apps]]\nid = "org.example.A"\nremote = "flathub"\n'
+APP_B = '\n[[apps]]\nid = "org.example.B"\nremote = "flathub"\n'
 IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
             "GIT_COMMITTER_EMAIL": "t@t"}
 
@@ -28,7 +30,7 @@ class SyncTests(unittest.TestCase):
         shutil.copy(ROOT / "bin/ws", self.repo / "bin/ws")
         shutil.copytree(ROOT / "lib", self.repo / "lib", ignore=shutil.ignore_patterns("__pycache__"))
         shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
-        (self.repo / "flatpak/apps.txt").write_text("flathub org.example.A test=yes all=ask\n")
+        (self.repo / "flatpak/catalog.toml").write_text(CATALOG)
         (self.repo / "flake.lock").write_text('{"nodes": {"nixpkgs": {"locked": {"rev": "a"}}, "root": {}}}\n')
         self.git("init", "-q")
         self.git("add", ".")
@@ -50,16 +52,15 @@ class SyncTests(unittest.TestCase):
         return origin
 
     def edit_apps(self):
-        (self.repo / "flatpak/apps.txt").write_text(
-            "flathub org.example.A test=yes all=ask\nflathub org.example.B test=yes all=ask\n")
+        (self.repo / "flatpak/catalog.toml").write_text(CATALOG + APP_B)
 
     def test_no_remote_commits_locally(self):
         self.edit_apps()
         p = self.ws()
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn("no remote: the commit stays local", p.stdout)
-        self.assertEqual(self.git("log", "-1", "--format=%s"), "ws sync: flatpak/apps.txt")
-        self.assertIn("flatpak/apps.txt: +org.example.B", self.git("log", "-1", "--format=%b"))
+        self.assertEqual(self.git("log", "-1", "--format=%s"), "ws sync: flatpak/catalog.toml")
+        self.assertIn("flatpak/catalog.toml: +org.example.B", self.git("log", "-1", "--format=%b"))
         self.assertEqual(self.git("status", "--porcelain"), "")
 
     def test_upstream_pull_rebase_and_push(self):
@@ -77,7 +78,7 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn("pushed to origin/main", p.stdout)
         log = self.git("log", "--format=%s", "origin/main")
-        self.assertEqual(log.splitlines()[:2], ["ws sync: flatpak/apps.txt flake.lock", "other"])
+        self.assertEqual(log.splitlines()[:2], ["ws sync: flatpak/catalog.toml flake.lock", "other"])
         self.assertIn("flake.lock: nixpkgs", self.git("log", "-1", "--format=%b"))
 
     def test_remote_without_upstream_commits_locally(self):
@@ -96,7 +97,7 @@ class SyncTests(unittest.TestCase):
         head = self.git("rev-parse", "HEAD")
         p = self.ws("--dry-run")
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertIn("would commit: ws sync: flatpak/apps.txt", p.stdout)
+        self.assertIn("would commit: ws sync: flatpak/catalog.toml", p.stdout)
         self.assertIn("would run: git pull --rebase, git push", p.stdout)
         self.assertEqual(self.git("rev-parse", "HEAD"), head)
 
@@ -145,7 +146,7 @@ class SyncTests(unittest.TestCase):
         origin = self.with_upstream()
         other = self.root / "other"
         subprocess.run(["git", "clone", "-q", str(origin), str(other)], env=self.env, check=True)
-        (other / "flatpak/apps.txt").write_text("flathub org.example.C other=yes all=ask\n")
+        (other / "flatpak/catalog.toml").write_text(CATALOG + APP_B.replace(".B", ".C"))
         self.git("commit", "-qam", "other", cwd=other)
         self.git("push", "-q", cwd=other)
         self.edit_apps()

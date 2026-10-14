@@ -43,7 +43,7 @@ keyboard/       macOS-клавиатура: xremap, сочетания GNOME и 
 gnome/          профиль GNOME, расширения (свои — gnome/extensions/)
 widgets/        слой виджетов: wswidgets из flake.lock; выбор — nix/hosts/*/widgets.toml
 terminal/       Ghostty, fish, micro, xdg-terminal-exec
-flatpak/        приложения (apps.txt), remotes и overrides (ws flatpak)
+flatpak/        каталог приложений, remotes и overrides (catalog.toml, ws flatpak)
 distrobox/      контейнеры Distrobox и их hooks (ws box)
 windows/        Windows-программы в контейнерах Wine/Proton (ws windows)
 remmina/        RDP-клиент Remmina из Nix: H.264, файлы через буфер

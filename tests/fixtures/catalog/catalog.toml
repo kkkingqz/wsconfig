@@ -1,0 +1,15 @@
+# The Flatpak catalog of the fixture hosts (flatpak/catalog.toml format).
+[remotes]
+flathub = "https://example.org/flathub.flatpakrepo"
+
+[[apps]]
+id = "org.example.App"
+remote = "flathub"
+filesystems = ["home:ro", "xdg-download:ro"]
+env = { SCALE = "2", OTHER = "x" }
+talk = ["org.example.Bus", "org.example.Kept"]
+
+[[apps]]
+id = "org.example.Plain"
+remote = "flathub"
+default = "no"

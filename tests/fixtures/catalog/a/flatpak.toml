@@ -1,0 +1,8 @@
+# a: Flatpak (fixture of lib/test-catalog.nix and tests/test_flatpak_catalog.py).
+yes = ["org.example.App"]
+no = []
+
+[overrides."org.example.App"]
+env = { SCALE = "1" }
+filesystems = ["xdg-download"]
+skip = ["talk org.example.Bus"]

@@ -36,13 +36,14 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | ba
    (`hardware = "generic-pc"`, GRUB, `quiet splash`) с тремя вопросами: VM,
    Steam из apt, Game Mode. Новый хост коммитится; публикуется он вместе с
    выбором после вопроса «Опубликовать (ws sync)?».
-4. Списки с галочками (`lib/setup_marks.py`): приложения Flatpak,
-   контейнеры Distrobox и overrides Flatpak — всё, где нет пометки этого
-   хоста. `all=yes` и `ask` отмечены, `all=no` — нет; overrides — только
-   приложений, которые на хосте будут. Ответ — `HOST=yes|no` на каждой
-   показанной строке, коммит и пуш; `ws apply` потом ничего не спрашивает.
-   Esc — выход без записи. При `nativeSteam = "yes"` Steam из Flatpak не
-   предлагается: `HOST=no` без вопроса (Steam там из apt).
+4. Списки с галочками (`lib/setup_marks.py`): приложения каталога Flatpak,
+   контейнеры Distrobox, при `widgets = "yes"` виджеты и overrides Flatpak —
+   всё, где у этого хоста нет выбора. `default` ask и yes отмечены, no — нет;
+   overrides — общие значения каталога у приложений, которые на хосте будут.
+   Ответ — `yes`/`no` в `nix/hosts/HOST/*.toml` (снятый override — `skip`
+   хоста), затем публикация (`ws sync`); `ws apply` потом ничего не
+   спрашивает. Esc — выход без записи. При `nativeSteam = "yes"` Steam из
+   Flatpak не предлагается: `no` без вопроса (Steam там из apt).
 5. Лицензии пакетов, которые иначе спросил бы apt посреди `bootstrap.sh`:
    Microsoft core fonts (`ubuntu-restricted-extras`) и, при
    `nativeSteam = "yes"`, Steam (debconf).

@@ -831,7 +831,7 @@ Shebang:
 
 ```text
 wsconfig/
-├── setup.sh              новый ПК с GRUB: GitHub, хост, пометки, ws btrfs make, bootstrap.sh, слои, Timeshift
+├── setup.sh              новый ПК с GRUB: GitHub, хост, выбор, ws btrfs make, bootstrap.sh, слои, Timeshift
 ├── bootstrap.sh          новая машина (после ws btrfs make): @nix → apt → @vms/libvirt → @steam → @wsbackup → группы → fish → ws switch
 ├── flake.nix, flake.lock nixpkgs 26.05 + home-manager, обновляет ws update nix
 ├── nix/
@@ -849,7 +849,7 @@ wsconfig/
 ├── gnome/                gnome.nix, gnome-extensions.nix, extensions/<uuid>/
 ├── keyboard/             keyboard.nix, xremap.nix, xremap.yml
 ├── terminal/             fish/, ghostty/, micro-help/, xdg-terminals/
-├── flatpak/              flatpak.nix, apps.txt, overrides.txt, desktop/
+├── flatpak/              flatpak.nix, catalog.toml, desktop/
 ├── distrobox/            distrobox.nix, arch/ (wsbox-host-ntsync, хуки), wine/
 ├── windows/              apps.nix (Windows-программы с launcher)
 ├── steam/                apt.txt, bootstrap.bash (Steam из apt, @steam; nativeSteam)
@@ -885,7 +885,7 @@ wsconfig/
 ├── lib/common.bash      корни WS_CORE, WS_CONFIG, WS_STATE, die, need, nix_bin
 ├── lib/ws_common.py    то же для Python-инструментов
 ├── lib/check.bash       общий формат результата проверок (--json для ws check)
-├── lib/setup_marks.py   списки с галочками setup.sh (пометки хоста)
+├── lib/setup_marks.py   списки с галочками setup.sh (выбор хоста)
 ├── lib/btrfs_layout.py  fstab и stub GRUB для ws btrfs make
 ├── README.md
 └── docs/                architecture/, runbooks/, plans/, history/, superpowers/
@@ -922,9 +922,9 @@ git diff --cached
 Не используется `git add .` для workstation cleanup: source files добавляются
 явно.
 
-Файлы данных — `flatpak/apps.txt`, `flatpak/overrides.txt`,
-выбор хостов `nix/hosts/*/boxes.toml` и `widgets.toml`
-(`lib/ws_catalog.py`), `flake.lock` — правят инструменты (пометки, выбор,
+Файлы данных — каталог `flatpak/catalog.toml`, выбор хостов
+`nix/hosts/*/flatpak.toml`, `boxes.toml` и `widgets.toml`
+(`lib/ws_catalog.py`), `flake.lock` — правят инструменты (выбор, каталог,
 `ws update nix`, `ws widgets update`). Их коммитит и
 публикует только `ws sync`: один коммит с тем, что изменилось, затем
 `git pull --rebase` и `git push`, если у ветки есть upstream (без remote

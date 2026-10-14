@@ -7,18 +7,20 @@ import shutil
 import subprocess
 import sys
 
-# Declarations live in flatpak/flatpak.nix; home-manager builds them into
-# ~/.local/share/workstation/flatpak, which wsflatpak reads. The managed app
-# list is flatpak/apps.txt in the checkout: install, manage and unmanage edit
-# it; the overrides are flatpak/overrides.txt: filesystem, host, env, talk and
-# their un… edit it. `ws switch` builds both, `ws sync` publishes them.
+# Declarations: flatpak/catalog.toml (remotes, apps, their overrides;
+# lib/flatpak_catalog.py) and the choice of each host
+# nix/hosts/HOST/flatpak.toml (yes, no and own overrides; lib/ws_catalog.py)
+# in the configuration; desktop overrides in flatpak/flatpak.nix.
+# home-manager builds them into ~/.local/share/workstation/flatpak, which
+# wsflatpak reads. install, manage and unmanage edit the catalog and the
+# choice; filesystem, host, env, talk and their un… edit the overrides.
+# `ws switch` builds them, `ws sync` publishes them.
 SOURCE = "flatpak/flatpak.nix"
 sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
 import ws_common  # noqa: E402
 
 REPO = ws_common.CONFIG
-APPS_LIST = REPO / "flatpak/apps.txt"
-OVERRIDES_LIST = REPO / "flatpak/overrides.txt"
+CATALOG_NAME = "flatpak/catalog.toml"
 OVERRIDE_KINDS = ("filesystem", "env", "talk")
 CFG = Path(
     os.environ.get(
@@ -26,24 +28,20 @@ CFG = Path(
         Path.home() / ".local/share/workstation/flatpak",
     )
 )
-# remotes, apps (REMOTE APP in order) and the overrides of this workstation
+# remotes, apps (REMOTE APP in order) and the overrides of this host
 # (flatpak/flatpak.nix; helpws plan-v2, 2.6).
 MANIFEST = CFG / "flatpak.json"
 DESKTOP_OVERRIDES = CFG / "desktop"
 USER_APPLICATIONS = Path.home() / ".local/share/applications"
-# apps.txt lines carry per-workstation marks after REMOTE APP (lib/ws_marks.py):
-# HOST=yes (installed there), HOST=no (declined), HOST=ask (not offered);
-# all=STATE for a workstation without its own mark. install/manage mark this
-# workstation yes, remove drops the line or marks it no, apply asks about
-# the apps not offered here yet (lib/ws_select.py) and records the answer.
+# The state of an app on this host (lib/ws_catalog.py): yes (installed),
+# no (declined), else the default of its catalog entry (ask: offered).
+# install/manage put it in yes, remove in no, apply asks about the apps in
+# state ask (lib/ws_select.py) and records the answer.
 SELECT_HINT = "ws flatpak apply --select"
-# overrides.txt lines carry marks after APP KIND VALUE, yes or no only: a
-# line applies where its state is yes, all=yes when unmarked; flatpak.nix
-# builds those of this workstation. filesystem/env/talk mark it yes, un…
-# drop the line or mark it no (overrides_add, overrides_remove).
 
+import flatpak_catalog  # noqa: E402
+import ws_catalog  # noqa: E402
 import ws_check  # noqa: E402
-import ws_marks  # noqa: E402
 import ws_select  # noqa: E402
 
 
@@ -53,15 +51,33 @@ _host = None
 def this_host():
     global _host
     if _host is None:
-        _host = ws_marks.current_host(REPO)
+        try:
+            _host = ws_catalog.current_host(REPO)
+        except ValueError as e:
+            raise SystemExit(f"ws flatpak: {e}")
     return _host
 
 
-def app_marks():
+def catalog():
     try:
-        return ws_marks.MarkedList(APPS_LIST, key_fields={2})
+        return flatpak_catalog.Catalog(REPO)
     except ValueError as e:
         raise SystemExit(f"ws flatpak: {e}")
+
+
+def host_choice(cat=None, host=None):
+    """The choice of HOST (this one) for Flatpak, its overrides checked
+    against the catalog."""
+    try:
+        choice = ws_catalog.Choice("flatpak", host or this_host(), REPO)
+        flatpak_catalog.check_host(choice, cat or catalog())
+    except ValueError as e:
+        raise SystemExit(f"ws flatpak: {e}")
+    return choice
+
+
+def choice_name(choice):
+    return str(choice.path.relative_to(REPO)) if choice.path.is_relative_to(REPO) else str(choice.path)
 
 
 def run(args, check=True, capture=False):
@@ -80,33 +96,16 @@ def ensure_cfg():
     if not MANIFEST.is_file():
         raise SystemExit(
             f"ws flatpak: {CFG} is missing; run `ws switch` "
-            f"(built from {SOURCE})"
+            f"(built from {CATALOG_NAME})"
         )
 
 
 def declare_hint(action, snippet):
     raise SystemExit(
-        f"ws flatpak: Flatpak state is declared in {SOURCE}.\n"
+        f"ws flatpak: Flatpak remotes are declared in {CATALOG_NAME}.\n"
         f"{action}:\n\n    {snippet}\n\n"
         "then: ws switch && ws flatpak apply"
     )
-
-
-def parse_managed_line(raw):
-    """REMOTE APP of a line, without its workstation marks."""
-    try:
-        parts = ws_marks.Line(raw).key
-    except ValueError as e:
-        raise SystemExit(f"ws flatpak: invalid managed app line: {e}")
-
-    if not parts:
-        return None
-
-    # REMOTE APP only: flatpak.nix (ws switch) reads the same lines.
-    if len(parts) == 2:
-        return parts[0], parts[1]
-
-    raise SystemExit(f"ws flatpak: invalid managed app line (REMOTE APP): {raw}")
 
 
 def manifest():
@@ -142,79 +141,51 @@ def managed_apps():
     return [app for remote, app in managed_entries()]
 
 
-def listed_apps():
-    out = {}
-    for raw in APPS_LIST.read_text().splitlines():
-        entry = parse_managed_line(raw)
-        if entry:
-            out[entry[1]] = entry[0]
-    return out
-
-
 def list_add(app, remote):
-    """Mark APP installed on this workstation; a new line gets all=ask."""
+    """APP in yes of this host; a new app goes to the end of the catalog
+    (default ask)."""
     host = this_host()
-    marks = app_marks()
-    known = marks.find(app) is not None
-    if known and marks.state(app, host) == "yes" and host in marks.find(app).marks:
-        print(f"Already in {APPS_LIST}: {app} ({host}=yes)")
+    cat = catalog()
+    choice = host_choice(cat)
+    added = cat.add_app(app, remote)
+    if not added and app in choice.yes():
+        print(f"Already yes on {host}: {app} ({choice_name(choice)})")
         return
-
-    line = marks.set(app, host, "yes", key=[remote, app])
-    marks.save()
+    choice.set(app, "yes")
+    try:
+        cat.save()
+    except ValueError as e:
+        raise SystemExit(f"ws flatpak: {e}")
+    choice.save()
+    added_text = f"Added to {CATALOG_NAME}: {remote} {app}\n" if added else ""
     print(
-        f"{'Marked' if known else 'Added'} in {APPS_LIST}: {line.render()}\n"
+        f"{added_text}yes on {host} in {choice_name(choice)}: {app}\n"
         "then: ws switch (links the desktop entries), ws sync"
     )
 
 
 def list_remove(app):
-    lines = APPS_LIST.read_text().splitlines(keepends=True)
-    keep = [
-        x for x in lines
-        if (parse_managed_line(x) or (None, None))[1] != app
-    ]
-
-    if len(keep) == len(lines):
-        raise SystemExit(f"ws flatpak: {app} is not in {APPS_LIST}")
-
-    APPS_LIST.write_text("".join(keep))
+    """unmanage: APP leaves the catalog, with its overrides, and the choice
+    of every host."""
+    cat = catalog()
+    if not cat.remove_app(app):
+        raise SystemExit(f"ws flatpak: {app} is not in {CATALOG_NAME}")
+    for path in sorted(ws_catalog.hosts_dir(REPO).glob("*/flatpak.toml")):
+        choice = ws_catalog.Choice("flatpak", path.parent.name, REPO)
+        if app in choice.data.get("overrides", {}):
+            del choice.edit()["overrides"][app]
+            flatpak_catalog.tidy_host(choice, app)
+        choice.set(app, "ask")
+        if choice.save():
+            print(f"Dropped from {choice_name(choice)}: {app}")
+    cat.save()
     print(
-        f"Removed from {APPS_LIST}: {app}\n"
+        f"Removed from {CATALOG_NAME}: {app} (with its overrides)\n"
         "then: ws switch, ws sync"
     )
 
-    if app in listed_override_apps():
-        print(f"NOTE: {app} still has overrides in {OVERRIDES_LIST}")
-
     if (DESKTOP_OVERRIDES / f"{app}.desktop").exists():
         print(f"NOTE: {app} still has a desktop file in {SOURCE}")
-
-
-def override_marks():
-    """overrides.txt with its workstation marks (yes/no; all=yes by default)."""
-    try:
-        return ws_marks.MarkedList(OVERRIDES_LIST, **ws_marks.OVERRIDES)
-    except ValueError as e:
-        raise SystemExit(f"ws flatpak: {e}")
-
-
-def parse_override_line(raw):
-    """APP KIND VALUE of a line, without its workstation marks."""
-    try:
-        parts = ws_marks.Line(raw, fixed=3).key
-    except ValueError as e:
-        raise SystemExit(f"ws flatpak: invalid line in {OVERRIDES_LIST}: {e}")
-
-    if not parts:
-        return None
-
-    if len(parts) != 3 or parts[1] not in OVERRIDE_KINDS:
-        raise SystemExit(
-            f"ws flatpak: invalid line in {OVERRIDES_LIST}: {raw.rstrip()}"
-        )
-
-    return tuple(parts)
 
 
 def fs_spec(spec):
@@ -223,112 +194,112 @@ def fs_spec(spec):
 
 
 def override_key(entry):
-    # An env line is keyed by its name: a new value replaces the old one.
+    """(APP, KIND, KEY): an env value by its name, a filesystem by its path
+    (Flatpak keeps one mode per path), a bus by its name."""
     app, kind, value = entry
-    if kind == "env":
-        return app, kind, value.split("=", 1)[0]
-    if kind == "filesystem":
-        # Flatpak keeps one mode per path; changing ro/rw/create replaces it.
-        for mode in (":ro", ":rw", ":create"):
-            if value.endswith(mode):
-                value = value[:-len(mode)]
-                break
-        return app, kind, value
-    return app, kind, value
+    return app, kind, flatpak_catalog.key_of(kind, value)
 
 
-def listed_override_apps():
-    return {
-        e[0] for e in map(parse_override_line,
-                          OVERRIDES_LIST.read_text().splitlines())
-        if e
-    }
+def declared_override_apps():
+    """Apps with overrides in the catalog or in a host file."""
+    cat = catalog()
+    apps = {a for a in cat.ids() if cat.values(a)}
+    for path in ws_catalog.hosts_dir(REPO).glob("*/flatpak.toml"):
+        try:
+            apps |= set(ws_catalog.Choice("flatpak", path.parent.name, REPO).data.get("overrides", {}))
+        except ValueError:
+            pass
+    return apps
 
 
 def override_app(query):
     # un… also works for an app that is no longer installed.
-    if query in listed_override_apps():
+    if query in declared_override_apps():
         return query
 
     return resolve_user_app(query)
 
 
-def overrides_add(entry):
-    """Declare ENTRY on this workstation. A line of the same key (env name,
-    filesystem path) that applies here is replaced: in place when no other
-    workstation is marked on it, else it is marked HOST=no and ENTRY gets a
-    line of its own, HOST=yes all=no; on every workstation one value per key."""
-    host = this_host()
-    marks = override_marks()
-    text = " ".join(entry)
-    key = override_key(entry)
-    exact = marks.find(entry)
-    same = [x for x in marks.entries() if x is not exact and override_key(tuple(x.key)) == key]
-    active = [x for x in same if marks.line_state(x, host) == "yes"]
-
-    if exact is not None and marks.line_state(exact, host) == "yes" and not active:
-        print(f"Already in {OVERRIDES_LIST}: {exact.render()}")
+def overrides_add(entry, own=False):
+    """Declare ENTRY (APP, KIND, VALUE): in the catalog, for every host that
+    has APP, or with OWN for this host only (its flatpak.toml). A value of
+    the same key (env name, filesystem path, bus) is replaced. A catalog
+    value lifts this host's skip and own value of the key, so it applies
+    here too."""
+    app, kind, value = entry
+    key = flatpak_catalog.key_of(kind, value)
+    cat = catalog()
+    if cat.app(app) is None:
+        raise SystemExit(
+            f"ws flatpak: {app} is not in {CATALOG_NAME}; first: ws flatpak manage {app}"
+        )
+    choice = host_choice(cat)
+    try:
+        if own:
+            if (kind, value) in cat.values(app):
+                # The catalog value itself: no own value needed.
+                flatpak_catalog.remove_host_key(choice, app, kind, key)
+                result = "same"
+            else:
+                result = flatpak_catalog.set_host_value(choice, app, kind, value)
+            flatpak_catalog.set_skip(choice, app, kind, key, False)
+            where = choice_name(choice)
+        else:
+            result = cat.set_value(app, kind, value)
+            flatpak_catalog.remove_host_key(choice, app, kind, key)
+            flatpak_catalog.set_skip(choice, app, kind, key, False)
+            where = CATALOG_NAME
+        flatpak_catalog.check_host(choice, cat)
+    except ValueError as e:
+        raise SystemExit(f"ws flatpak: {e}")
+    changed = cat.save() | choice.save()
+    if not changed:
+        print(f"Already declared in {where}: {' '.join(entry)}")
         return
-
-    general = [x for x in active if not marks.others(x, host)]
-    split = [x for x in active if marks.others(x, host)]
-    if exact is not None and general and not marks.others(exact, host):
-        # ENTRY takes the place of the first line of its key.
-        first = min([exact] + general, key=marks.lines.index)
-        if first is not exact:
-            first.key, first.marks, first.changed = list(entry), dict(exact.marks), True
-            marks.lines.remove(exact)
-            general.remove(first)
-            exact = first
-    for x in split:
-        marks.set(tuple(x.key), host, "no")
-
-    if exact is not None:
-        if marks.line_state(exact, host) != "yes":
-            marks.set(entry, host, "yes")
-        line, action = exact, "Marked in"
-        for x in general:
-            marks.lines.remove(x)
-    elif general:
-        line, action = general[0], "Replaced in"
-        line.key, line.changed = list(entry), True
-        for x in general[1:]:
-            marks.lines.remove(x)
-    else:
-        of_app = [x for x in marks.entries() if x.key[0] == entry[0]]
-        after = (same or of_app or [None])[-1]
-        if after is None and marks.lines and marks.lines[-1].raw.strip():
-            marks.lines.append(ws_marks.Line(""))
-        all_state = "no" if same else "yes"
-        line = marks.add(list(entry), {host: "yes", ws_marks.ALL: all_state}, after=after)
-        action = "Added to"
-
-    marks.save()
+    action = {"added": "Added to", "replaced": "Replaced in", "same": "Applies here from"}[result]
     print(
-        f"{action} {OVERRIDES_LIST}: {line.render() or text}\n"
+        f"{action} {where}: {' '.join(entry)}\n"
         "then: ws switch && ws flatpak apply; ws sync"
     )
 
 
-def overrides_remove(key):
-    """Drop the declaration of KEY on this workstation: a line no other
-    workstation is marked on goes, else it is marked HOST=no."""
+def overrides_remove(entry, everywhere=False):
+    """Drop the value of KEY of APP here: this host's own value goes from
+    its flatpak.toml, a catalog value gets a skip there; with EVERYWHERE the
+    catalog value goes from the catalog."""
+    app, kind, key = override_key(entry)
+    cat = catalog()
+    choice = host_choice(cat)
     host = this_host()
-    marks = override_marks()
-    key = override_key(key)
-    active = [x for x in marks.entries()
-              if override_key(tuple(x.key)) == key and marks.line_state(x, host) == "yes"]
-
-    if not active:
+    done = []
+    try:
+        if flatpak_catalog.remove_host_key(choice, app, kind, key):
+            done.append(f"Removed from {choice_name(choice)}")
+        common = any(k == kind and flatpak_catalog.key_of(k, v) == key for k, v in cat.values(app))
+        if common and everywhere:
+            cat.remove_key(app, kind, key)
+            for path in sorted(ws_catalog.hosts_dir(REPO).glob("*/flatpak.toml")):
+                other = ws_catalog.Choice("flatpak", path.parent.name, REPO)
+                if f"{kind} {key}" in flatpak_catalog.host_section(other, app).get("skip", []):
+                    flatpak_catalog.set_skip(other, app, kind, key, False)
+                    other.save()
+            done.append(f"Removed from {CATALOG_NAME}")
+        elif common:
+            skipped = f"{kind} {key}" in flatpak_catalog.host_section(choice, app).get("skip", [])
+            if not skipped:
+                flatpak_catalog.set_skip(choice, app, kind, key, True)
+                done.append(f"Skipped on {host} in {choice_name(choice)} (the catalog keeps it; --all drops it)")
+    except ValueError as e:
+        raise SystemExit(f"ws flatpak: {e}")
+    if not done:
         raise SystemExit(
-            f"ws flatpak: not declared for {host} in {OVERRIDES_LIST}: {' '.join(key)}"
+            f"ws flatpak: not declared for {host} in {CATALOG_NAME} or {choice_name(choice)}: "
+            f"{app} {kind} {key}"
         )
-
-    for x in active:
-        result = marks.remove(tuple(x.key), host)
-        done = "Removed from" if result == "removed" else f"Marked {host}=no in"
-        print(f"{done} {OVERRIDES_LIST}: {' '.join(x.key)}")
-    marks.save()
+    cat.save()
+    choice.save()
+    for line in done:
+        print(f"{line}: {app} {kind} {key}")
     print("then: ws switch && ws flatpak apply; ws sync")
 
 
@@ -359,9 +330,9 @@ def cmd_override(ns):
         value = fs_spec(value)
 
     if remove:
-        overrides_remove((app, kind, value))
+        overrides_remove((app, kind, value), getattr(ns, "everywhere", False))
     else:
-        overrides_add((app, kind, value))
+        overrides_add((app, kind, value), getattr(ns, "own", False))
 
 
 def managed_remote(app):
@@ -745,10 +716,11 @@ def cmd_install(ns):
 def cmd_remove(ns):
     need_flatpak()
     app = resolve_user_app(ns.app)
-    # The workstation and the marks first: a failure here leaves the app
-    # installed rather than gone but still marked yes.
+    # The host and its choice first: a failure here leaves the app
+    # installed rather than gone but still yes.
     host = this_host()
-    app_marks()
+    cat = catalog()
+    choice = host_choice(cat)
 
     cmd = ["flatpak", "uninstall", "--user"]
 
@@ -758,19 +730,13 @@ def cmd_remove(ns):
     cmd.append(app)
     run(cmd)
 
-    # The list: gone when no other workstation is marked, else HOST=no.
-    marks = app_marks()
-    result = marks.remove(app, host)
-    if result is None:
+    # The choice of this host: no. The catalog entry stays (other hosts,
+    # ws flatpak unmanage drops it).
+    if cat.app(app) is None:
         return
-    marks.save()
-    if result == "removed":
-        print(f"\nRemoved from {APPS_LIST}: {app}\nthen: ws switch, ws sync")
-        if app in listed_override_apps():
-            print(f"NOTE: {app} still has overrides in {OVERRIDES_LIST}")
-    else:
-        print(f"\nMarked in {APPS_LIST}: {app} {host}=no (other workstations keep it)\n"
-              "then: ws switch, ws sync")
+    choice.set(app, "no")
+    choice.save()
+    print(f"\nno on {host} in {choice_name(choice)}: {app}\nthen: ws switch, ws sync")
 
 
 
@@ -788,7 +754,7 @@ def cmd_reset_permissions(app):
 
     if managed_override(app) is not None:
         print(
-            f"NOTE: {app} has declared overrides in {OVERRIDES_LIST}; "
+            f"NOTE: {app} has declared overrides ({CATALOG_NAME}, nix/hosts/HOST/flatpak.toml); "
             "`wsflatpak apply` sets them again"
         )
 
@@ -960,10 +926,12 @@ def cmd_check(json_mode=False):
 
     try:
         host = this_host()
-        marks = app_marks()
+        cat = catalog()
+        choice = host_choice(cat)
     except SystemExit as e:
-        fail(f"workstation marks of {APPS_LIST.name}: {e}")
+        fail(f"catalog and host choice: {e}")
         return finish()
+    state_of = lambda app: choice.state(app, cat.default(app))
 
     if not shutil.which("flatpak"):
         fail("flatpak installed")
@@ -1032,11 +1000,11 @@ def cmd_check(json_mode=False):
         if remote not in expected_remotes:
             fail(f"managed app remote is not declared: {app}: {remote}")
 
-        state = marks.state(app, host)
+        state = state_of(app)
 
         if not installed_user(app):
             if state == "yes":
-                fail(f"managed app missing: {app} ({host}=yes; ws flatpak apply)")
+                fail(f"managed app missing: {app} (yes on {host}; ws flatpak apply)")
             elif state == "no":
                 info(f"managed app declined on {host}: {app} ({SELECT_HINT})")
             else:
@@ -1044,9 +1012,9 @@ def cmd_check(json_mode=False):
             continue
 
         if state == "no":
-            warn(f"managed app installed but marked {host}=no: {app} (ws flatpak remove, or install to mark yes)")
+            warn(f"managed app installed but no on {host}: {app} (ws flatpak remove, or install to put it in yes)")
         elif state == "ask":
-            warn(f"managed app installed but not marked for {host}: {app} (ws flatpak apply marks it)")
+            warn(f"managed app installed but not chosen on {host}: {app} (ws flatpak apply puts it in yes)")
         else:
             passed(f"managed app installed: {app}")
 
@@ -1060,13 +1028,15 @@ def cmd_check(json_mode=False):
                 f"expected={remote} actual={origin or '(unknown)'}"
             )
 
-    if APPS_LIST.is_file():
-        listed = sorted(f"{r} {a}" for a, r in listed_apps().items())
-        built = sorted(f"{r} {a}" for r, a in managed_entries())
-        if listed == built:
-            passed(f"{APPS_LIST.name} built")
-        else:
-            warn(f"{APPS_LIST} differs from the build; run ws switch")
+    listed = [f"{e['remote']} {e['id']}" for e in cat.apps()]
+    built = [f"{r} {a}" for r, a in managed_entries()]
+    if listed == built:
+        passed(f"{CATALOG_NAME} built")
+    else:
+        warn(f"{CATALOG_NAME} differs from the build; run ws switch")
+    for app in choice.yes() + choice.no():
+        if cat.app(app) is None:
+            warn(f"{choice_name(choice)} chooses an app not in {CATALOG_NAME}: {app}")
 
     for app in user_apps():
         if not is_managed(app):
@@ -1105,7 +1075,7 @@ def cmd_check(json_mode=False):
     for app in override_apps:
 
         if not installed_user(app):
-            if managed_override(app) is not None and marks.state(app, host) == "yes":
+            if managed_override(app) is not None and state_of(app) == "yes":
                 warn(f"managed override for non-installed app: {app}")
             continue
 
@@ -1158,19 +1128,19 @@ def cmd_check(json_mode=False):
                     f"{app}: {name}={policy}"
                 )
 
-    # Linked by ws switch only where the app is marked yes (flatpak.nix).
+    # Linked by ws switch only where the app is yes (flatpak.nix).
     for source in managed_desktop_entries():
         app = source.name.removesuffix(".desktop")
         linked = desktop_override_ok(source)
-        if marks.state(app, host) == "yes":
+        if state_of(app) == "yes":
             if linked:
                 passed(f"managed desktop override applied: {source.name}")
             else:
                 fail(f"managed desktop override not applied: {source.name} "
-                     f"({host}=yes; run ws switch)")
+                     f"(yes on {host}; run ws switch)")
         elif linked:
-            warn(f"managed desktop override linked but {app} is not marked "
-                 f"{host}=yes: {source.name} (run ws switch)")
+            warn(f"managed desktop override linked but {app} is not yes "
+                 f"on {host}: {source.name} (run ws switch)")
         else:
             info(f"managed desktop override not linked: {app} is not on {host}")
 
@@ -1259,50 +1229,46 @@ def cmd_apply(reselect=False):
             ]
         )
 
-    # What this workstation gets: yes is installed, ask is offered (the
-    # answer is written into apps.txt), no is left alone unless --select.
+    # What this host gets: yes is installed, ask is offered (the answer is
+    # written into its flatpak.toml), no is left alone unless --select.
     host = this_host()
-    marks = app_marks()
+    cat = catalog()
+    choice = host_choice(cat)
+    before = choice.text
+    state_of = lambda app: choice.state(app, cat.default(app))
     entries = managed_entries()
     installed = {app for _, app in entries if installed_user(app)}
-    offer, declined = [], []
+    items = []
     for remote, app in entries:
-        state = marks.state(app, host)
+        state = state_of(app)
         if app in installed:
             if state == "ask":
-                marks.set(app, host, "yes", key=[remote, app])
+                choice.set(app, "yes")
             elif state == "no":
-                print(f"WARNING: {app} is installed but marked {host}=no", file=sys.stderr)
-        elif state == "ask":
-            offer.append((app, remote))
-        elif state == "no" and reselect:
-            offer.append((app, remote))
-            declined.append(app)
+                print(f"WARNING: {app} is installed but no on {host}", file=sys.stderr)
+        elif state == "ask" or (state == "no" and reselect):
+            items.append((app, cat.default(app), remote))
 
-    wanted = {app for _, app in entries if app in installed or marks.state(app, host) == "yes"}
+    wanted = {app for _, app in entries if app in installed or state_of(app) == "yes"}
     try:
-        chosen = ws_select.choose(offer, "приложения Flatpak", unchecked=declined)
+        chosen = ws_catalog.offer(choice, items, reselect, "приложения Flatpak")
     except ws_select.NoTerminal:
         if reselect:
             raise SystemExit(f"{SELECT_HINT}: needs a terminal")
         chosen = []
-        if offer:
-            print(f"Not offered on {host} yet (no terminal to ask): "
-                  f"{', '.join(app for app, _ in offer)}; run ws flatpak apply in a terminal",
-                  file=sys.stderr)
-        offer = []
+        print(f"Not offered on {host} yet (no terminal to ask): "
+              f"{', '.join(app for app, _, _ in items)}; run ws flatpak apply in a terminal",
+              file=sys.stderr)
     if chosen is None:
         # Cancel answers only the question: the offered apps keep their
-        # marks and are asked about next time; the rest is applied.
+        # state and are asked about next time; the rest is applied.
         print("ws flatpak: выбор отменён, предложенные приложения не тронуты "
               "(спросит в следующий раз)", file=sys.stderr)
-        chosen, offer = [], []
-    for app, remote in offer:
-        marks.set(app, host, "yes" if app in chosen else "no", key=[remote, app])
+        chosen = []
     wanted |= set(chosen)
-    if any(line.changed for line in marks.lines):
-        marks.save()
-        print(f"Marks for {host} written to {APPS_LIST}; then: ws switch "
+    choice.save()
+    if choice.text != before:
+        print(f"Choice of {host} written to {choice_name(choice)}; then: ws switch "
               "(links the desktop entries), ws sync")
 
     for remote, app in entries:
@@ -1339,7 +1305,7 @@ def cmd_apply(reselect=False):
     return cmd_check()
 
 DECLARE = {
-    "remote-add": ("Add to remotes", '{0} = "{1}";'),
+    "remote-add": ("Add to [remotes]", '{0} = "{1}"'),
 }
 
 
@@ -1351,21 +1317,21 @@ def cmd_declare(cmd, args):
 
 COMMAND_HELP = {
     "install": "Установить приложения и их runtimes в пользовательскую установку.",
-    "manage": "Добавить установленное приложение в flatpak/apps.txt.",
-    "unmanage": "Убрать приложение из flatpak/apps.txt, оставив его установленным.",
+    "manage": "Добавить установленное приложение в каталог и в yes этой машины.",
+    "unmanage": "Убрать приложение из каталога (у всех машин), оставив его установленным.",
     "remove": "Удалить пользовательское приложение; по умолчанию также удалить данные.",
     "permissions": "Показать права приложения, текущие и объявленные overrides.",
     "reset-permissions": "Сбросить overrides и права порталов приложения.",
     "info": "Показать сведения об установленном пользовательском приложении.",
-    "filesystem": "Объявить доступ приложения к каталогу в overrides.txt.",
-    "unfilesystem": "Убрать объявленный доступ к каталогу из overrides.txt.",
+    "filesystem": "Объявить доступ приложения к каталогу (каталог или --host).",
+    "unfilesystem": "Убрать объявленный доступ к каталогу на этой машине (--all: везде).",
     "host": "Объявить filesystem=host для приложения.",
     "unhost": "Убрать объявленный filesystem=host для приложения.",
     "env": "Объявить или заменить переменную окружения приложения.",
     "unenv": "Убрать объявленную переменную окружения приложения.",
     "talk": "Объявить доступ приложения к имени D-Bus session bus.",
     "untalk": "Убрать объявленный доступ к имени D-Bus session bus.",
-    "remote-add": "Показать декларацию нового remote для flatpak/flatpak.nix.",
+    "remote-add": "Показать декларацию нового remote для flatpak/catalog.toml.",
     "update": "Обновить пользовательские приложения и runtimes.",
     "cleanup": "Удалить неиспользуемые пользовательские runtimes.",
     "list": "Показать пользовательские приложения и runtimes.",
@@ -1379,15 +1345,16 @@ COMMAND_HELP = {
 }
 
 OVERRIDE_HELP = """APP — ID, имя или однозначная часть имени установленного приложения.
-Команды un… также принимают ID приложения из overrides.txt после его удаления.
-Значение должно быть одним словом без пробелов и #.
+Команды un… также принимают ID приложения с объявленными overrides после его
+удаления. Значение должно быть одним словом без пробелов и #.
 
-Изменение записывается в flatpak/overrides.txt для этой машины (ws host):
-строка получает HOST=yes, новая — HOST=yes all=yes (действует везде, где не
-помечено HOST=no). Другое значение того же ключа (имя env, путь filesystem)
-заменяет строку на месте, если других машин в ней нет; иначе та строка
-получает HOST=no, а новое значение — свою строку HOST=yes all=no. un… удаляет
-строку, если других машин в ней нет, иначе ставит HOST=no. Чтобы применить:
+Без --host значение пишется в запись приложения в flatpak/catalog.toml и
+действует на каждой машине, где приложение стоит; с --host — в
+[overrides."APP"] файла nix/hosts/HOST/flatpak.toml этой машины (ws host).
+Значение того же ключа (имя env, путь filesystem, имя шины) заменяется;
+значение машины заменяет значение каталога. un… убирает значение на этой
+машине: своё — из её flatpak.toml, общее — через skip там же; с --all общее
+удаляется из каталога. Чтобы применить:
   ws switch && wsflatpak apply
 При apply текущие overrides управляемого приложения сбрасываются и заменяются
 объявленными. Ручные изменения через Flatseal при этом исчезают.
@@ -1400,7 +1367,8 @@ Runtime устанавливается для пользователя, даже
 
 Флаги --remote и --unmanaged указывайте перед APP.
 После APP можно указать другие приложения, ветку или аргументы flatpak install.
-Новые приложения добавляются в flatpak/apps.txt; затем выполните ws switch.
+Новые приложения добавляются в flatpak/catalog.toml и в yes этой машины
+(nix/hosts/HOST/flatpak.toml); затем выполните ws switch.
 Объявленные overrides нового приложения применяются через wsflatpak apply.
 
 Примеры:
@@ -1411,25 +1379,28 @@ Runtime устанавливается для пользователя, даже
 """,
     "manage": """APP — ID, имя или однозначная часть имени установленного приложения.
 Без REMOTE используется origin приложения, затем flathub как запасной вариант.
-Изменение записывается в flatpak/apps.txt; выполните ws switch.
+Приложение добавляется в flatpak/catalog.toml (если его там нет) и в yes этой
+машины; выполните ws switch.
 
 Пример: wsflatpak manage org.videolan.VLC
 """,
-    "unmanage": """Укажите точный App ID из flatpak/apps.txt. Приложение не удаляется.
-Выполните ws switch, чтобы обновить собранный список управляемых приложений.
+    "unmanage": """Укажите точный App ID из flatpak/catalog.toml. Приложение не удаляется.
+Запись уходит из каталога вместе с overrides, а из файлов всех машин — их
+выбор и overrides приложения. Выполните ws switch, чтобы обновить собранный
+список управляемых приложений.
 
 Пример: wsflatpak unmanage org.videolan.VLC
 """,
     "remove": """По умолчанию используется flatpak uninstall --user --delete-data.
 --keep-data сохраняет данные приложения.
-Строка управляемого приложения в apps.txt удаляется, если других машин в ней
-нет; иначе этой машине ставится HOST=no (остальные машины его сохраняют).
-Затем ws switch; ws sync публикует apps.txt.
+Управляемое приложение попадает в no этой машины (nix/hosts/HOST/flatpak.toml);
+запись в каталоге остаётся для других машин (убрать: unmanage).
+Затем ws switch; ws sync публикует файл.
 """,
     "reset-permissions": """Объявленные overrides остаются в конфигурации и восстанавливаются при apply.
 Для постоянного изменения используйте unfilesystem, unhost, unenv или untalk.
 """,
-    "remote-add": """Команда печатает строку NAME = "URL"; для remotes в flatpak/flatpak.nix.
+    "remote-add": """Команда печатает строку NAME = "URL" для [remotes] в flatpak/catalog.toml.
 После правки файла выполните ws switch && wsflatpak apply.
 
 Пример: wsflatpak remote-add example https://example.org/repo.flatpakrepo
@@ -1444,11 +1415,11 @@ Runtime устанавливается для пользователя, даже
 """,
     "apply": """Добавляет объявленные user remotes, устанавливает отсутствующие приложения
 и обеспечивает user runtime для всех установленных веток управляемых приложений.
-Что ставить на этой машине, решают пометки в apps.txt (HOST — имя из ws host):
-HOST=yes ставится без вопроса, HOST=no пропускается, HOST=ask или нет пометки
-(тогда действует all=…) — apply спрашивает «Поставить все? [Y/n]», на n —
-список, где Space ставит и снимает галочку; ответ пишется в apps.txt
-(HOST=yes / HOST=no). --select спрашивает снова и о HOST=no.
+Что ставить на этой машине, решает её nix/hosts/HOST/flatpak.toml (HOST — имя
+из ws host): yes ставится без вопроса, no пропускается; приложение, которого
+нет ни там, ни там, получает default из каталога. О тех, что в состоянии ask,
+apply спрашивает «Поставить все? [Y/n]», на n — список, где Space ставит и
+снимает галочку; ответ пишется в yes / no. --select спрашивает снова и о no.
 Без терминала не предложенные не ставятся.
 Затем сбрасывает их overrides, применяет объявленные значения и запускает check.
 Перед apply выполните ws switch, чтобы собрать изменения конфигурации.
@@ -1479,9 +1450,9 @@ def build_parser():
 
 Приложения и runtimes — обычно ~/.local/share/flatpak, данные — ~/.var/app/APP_ID.
 Доступ к домашним файлам задаётся отдельно через filesystem/host.
-install/manage/unmanage редактируют flatpak/apps.txt.
-filesystem/host/env/talk и un… редактируют flatpak/overrides.txt.
-ws switch собирает эти списки; apply применяет собранную конфигурацию.
+install/manage/unmanage редактируют flatpak/catalog.toml и выбор машины
+nix/hosts/HOST/flatpak.toml; filesystem/host/env/talk и un… — overrides там же.
+ws switch собирает их; apply применяет собранную конфигурацию.
 
 Справка по команде: wsflatpak help install или wsflatpak install --help.
 Подробное руководство: helpws flatpak / man ws-flatpak.
@@ -1503,17 +1474,17 @@ ws switch собирает эти списки; apply применяет соб�
     q.add_argument("--remote", default="flathub",
                    help="пользовательский remote (по умолчанию flathub)")
     q.add_argument("--unmanaged", action="store_true",
-                   help="не добавлять приложение в flatpak/apps.txt")
+                   help="не добавлять приложение в каталог")
     q.add_argument("app", metavar="APP", help="App ID, запрос Flatpak или полный ref")
     q.add_argument("extra", nargs=argparse.REMAINDER, metavar="ARG",
                    help="другие приложения, ветка или аргументы flatpak install")
 
     q = command("manage")
     q.add_argument("app", metavar="APP", help="установленное приложение")
-    q.add_argument("remote", nargs="?", metavar="REMOTE", help="remote для apps.txt")
+    q.add_argument("remote", nargs="?", metavar="REMOTE", help="remote для каталога")
 
     q = command("unmanage")
-    q.add_argument("app", metavar="APP", help="точный App ID из apps.txt")
+    q.add_argument("app", metavar="APP", help="точный App ID из каталога")
 
     q = command("remove", aliases=["uninstall"])
     q.add_argument("--keep-data", action="store_true", help="сохранить данные приложения")
@@ -1523,22 +1494,34 @@ ws switch собирает эти списки; apply применяет соб�
         q = command(name)
         q.add_argument("app", metavar="APP", help="ID, имя или часть имени приложения")
 
+    def scope(q, cmd):
+        if cmd.startswith("un"):
+            q.add_argument("--all", dest="everywhere", action="store_true",
+                           help="убрать общее значение из каталога (у всех машин)")
+        else:
+            q.add_argument("--host", dest="own", action="store_true",
+                           help="только для этой машины (её flatpak.toml)")
+
     for name, arg, detail in (
         ("filesystem", "SPEC", "каталог и режим: host, home:ro, xdg-download, /path:rw"),
         ("talk", "BUS", "имя D-Bus session bus, например org.freedesktop.Flatpak"),
     ):
         for cmd in (name, "un" + name):
             q = command(cmd)
+            scope(q, cmd)
             q.add_argument("app", metavar="APP", help="приложение")
             q.add_argument("value", metavar=arg, help=detail)
     for cmd in ("host", "unhost"):
         q = command(cmd)
+        scope(q, cmd)
         q.add_argument("app", metavar="APP", help="приложение")
     q = command("env")
+    scope(q, "env")
     q.add_argument("app", metavar="APP", help="приложение")
     q.add_argument("key", metavar="KEY[=VALUE]", help="переменная или KEY=VALUE")
     q.add_argument("value", nargs="?", metavar="VALUE", help="значение переменной")
     q = command("unenv")
+    scope(q, "unenv")
     q.add_argument("app", metavar="APP", help="приложение")
     q.add_argument("key", metavar="KEY", help="имя объявленной переменной")
 
@@ -1564,7 +1547,7 @@ ws switch собирает эти списки; apply применяет соб�
 
     q = command("apply")
     q.add_argument("--select", action="store_true",
-                   help="спросить и о приложениях с пометкой HOST=no")
+                   help="спросить и о приложениях в no этой машины")
 
     q = command("help")
     q.add_argument("command", nargs="?", choices=tuple(sp.choices), metavar="COMMAND",

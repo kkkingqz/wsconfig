@@ -134,9 +134,6 @@ class Choice:
                 self.doc.add(kit.comment("yes — есть здесь, no — отказались; чего нет ни там, ни там, — default каталога."))
             else:
                 self.doc = kit.parse(self.text)
-            for key in ("yes", "no"):
-                if key not in self.doc:
-                    self.doc[key] = kit.array()
         return self.doc
 
     def set(self, name, state):
@@ -148,6 +145,8 @@ class Choice:
             return False
         doc = self.edit()
         for key in ("yes", "no"):
+            if key not in doc:
+                doc[key] = tomlkit().array()
             if name in doc[key]:
                 doc[key].remove(name)
         if state != "ask":
@@ -215,6 +214,10 @@ def summary(old_text, new_text):
     before, after = states(old), states(new)
     out = [f"{n}={s}" for n, s in after.items() if before.get(n) != s]
     out += [f"-{n}" for n in before if n not in after]
+    # Flatpak: [overrides."APP"] of the host.
+    old_over, new_over = old.get("overrides", {}), new.get("overrides", {})
+    out += [f"overrides {a}" for a in sorted(set(old_over) | set(new_over))
+            if old_over.get(a) != new_over.get(a)]
     if not out and old_text != new_text:
         out.append("edited")
     return ", ".join(out)

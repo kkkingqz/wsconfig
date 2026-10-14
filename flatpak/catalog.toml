@@ -1,0 +1,98 @@
+# Flatpak: the remotes and every app a host may have (helpws flatpak), in
+# order. Which host has which app, and its own overrides:
+# nix/hosts/HOST/flatpak.toml. An app without a choice of the host has its
+# default: ask (offered by ws flatpak apply; the default), no or yes.
+# filesystems, env and talk of an app apply on every host that has it.
+# ws flatpak install|manage|unmanage and filesystem|env|talk edit this file
+# (lib/flatpak_catalog.py), ws switch builds it, ws sync publishes it.
+
+[remotes]
+flathub = "https://dl.flathub.org/repo/flathub.flatpakrepo"
+flatpark = "https://dl.flatpark.org/flatpark.flatpakrepo"
+chatgpt = "https://rulin132.github.io/chatgpt-flatpak/chatgpt.flatpakrepo"
+
+[[apps]]
+id = "com.github.tchx84.Flatseal"
+remote = "flathub"
+
+[[apps]]
+id = "org.gimp.GIMP"
+remote = "flathub"
+
+[[apps]]
+id = "com.mikrotik.WinBox"
+remote = "flathub"
+
+[[apps]]
+# HiDPI scale; tray icon.
+id = "com.anydesk.Anydesk"
+remote = "flathub"
+env = { GDK_SCALE = "2" }
+talk = ["org.kde.StatusNotifierWatcher"]
+
+[[apps]]
+id = "us.zoom.Zoom"
+remote = "flathub"
+
+[[apps]]
+id = "com.obsproject.Studio"
+remote = "flathub"
+
+[[apps]]
+id = "org.videolan.VLC"
+remote = "flathub"
+
+[[apps]]
+# Host files; flatpak-spawn --host for Claude Code.
+id = "com.anthropic.ClaudeDesktop"
+remote = "flatpark"
+filesystems = ["host"]
+talk = ["org.freedesktop.Flatpak"]
+
+[[apps]]
+id = "com.mattjakeman.ExtensionManager"
+remote = "flathub"
+
+[[apps]]
+# Launcher: desktop/com.valvesoftware.Steam.desktop (AMD when present).
+# legiongo: native Steam (steam-installer), no flatpak.
+id = "com.valvesoftware.Steam"
+remote = "flathub"
+
+[[apps]]
+id = "com.jgraph.drawio.desktop"
+remote = "flathub"
+
+[[apps]]
+id = "org.qbittorrent.qBittorrent"
+remote = "flathub"
+
+[[apps]]
+id = "com.notesnook.Notesnook"
+remote = "flathub"
+filesystems = ["home:rw"]
+
+[[apps]]
+id = "org.onlyoffice.desktopeditors"
+remote = "flathub"
+
+[[apps]]
+# Browser (snapd is purged, nix/hosts/apt.txt)
+id = "org.mozilla.firefox"
+remote = "flathub"
+
+[[apps]]
+# Tray icon: the launcher puts TMPDIR in $XDG_RUNTIME_DIR/chatgpt, private to
+# the sandbox, and Chromium writes the icon there; shared, GNOME Shell reads it.
+id = "io.github.rulin132.ChatGPT"
+remote = "chatgpt"
+filesystems = ["host", "xdg-run/chatgpt:create"]
+talk = ["org.freedesktop.Flatpak"]
+
+[[apps]]
+id = "org.blender.Blender"
+remote = "flathub"
+
+[[apps]]
+id = "com.github.PintaProject.Pinta"
+remote = "flathub"

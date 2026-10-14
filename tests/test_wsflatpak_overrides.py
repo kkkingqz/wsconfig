@@ -5,6 +5,7 @@ from pathlib import Path
 import runpy
 import subprocess
 import tempfile
+import tomllib
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -20,6 +21,11 @@ class OverrideTests(unittest.TestCase):
             'remotes': {'flathub': 'https://example.org/repo'},
             'apps': [{'remote': 'flathub', 'app': app}], 'overrides': overrides}))
 
+    def catalog_with(self, fields, app=APP, more=''):
+        """catalog.toml with APP and its FIELDS (TOML lines)."""
+        self.catalog.write_text('[remotes]\nflathub = "https://example.org/repo"\n\n'
+                                f'[[apps]]\nid = "{app}"\nremote = "flathub"\n{fields}{more}')
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -29,14 +35,16 @@ class OverrideTests(unittest.TestCase):
         self.manifest = cfg / 'flatpak.json'
         (cfg / 'desktop').mkdir()
         self.declare({})
-        self.apps = self.root / 'apps.txt'
-        self.apps.write_text(f'flathub {APP} test=yes all=ask\n')
-        self.list = self.root / 'overrides.txt'
-        self.list.write_text('')
+        self.config = self.root / 'config'
+        (self.config / 'flatpak').mkdir(parents=True)
+        (self.config / 'nix/hosts/test').mkdir(parents=True)
+        self.catalog = self.config / 'flatpak/catalog.toml'
+        self.catalog_with('')
+        self.host = self.config / 'nix/hosts/test/flatpak.toml'
+        self.host.write_text(f'yes = ["{APP}"]\n')
         self.g = runpy.run_path(str(ROOT / 'bin/wsflatpak'))['cmd_check'].__globals__
         self.g.update(CFG=cfg, MANIFEST=self.manifest, DESKTOP_OVERRIDES=cfg / 'desktop',
-                      APPS_LIST=self.apps, OVERRIDES_LIST=self.list,
-                      this_host=lambda: 'test')
+                      REPO=self.config, this_host=lambda: 'test')
         self.runtime = ''
         self.addCleanup(patch.stopall)
         patch('shutil.which', return_value='/fake/flatpak').start()
@@ -70,7 +78,7 @@ class OverrideTests(unittest.TestCase):
         self.assertEqual(result['failures'], 0)
 
     def test_desktop_overrides_follow_the_marks(self):
-        # APP is marked test=yes; org.example.Other is not on this workstation.
+        # APP is yes on test; org.example.Other is not on this host.
         desktop = self.g['DESKTOP_OVERRIDES']
         applications = self.root / 'applications'
         applications.mkdir()
@@ -81,7 +89,7 @@ class OverrideTests(unittest.TestCase):
                                 for level in ('fail', 'warn', 'info')}
         status, result = self.check()
         self.assertEqual(status, 1)
-        self.assertIn(f'managed desktop override not applied: {APP}.desktop (test=yes; run ws switch)',
+        self.assertIn(f'managed desktop override not applied: {APP}.desktop (yes on test; run ws switch)',
                       texts(result)['fail'])
         self.assertIn('managed desktop override not linked: org.example.Other is not on test',
                       texts(result)['info'])
@@ -89,8 +97,8 @@ class OverrideTests(unittest.TestCase):
             (applications / f'{app}.desktop').symlink_to(desktop / f'{app}.desktop')
         status, result = self.check()
         self.assertEqual(result['failures'], 0)
-        self.assertIn('managed desktop override linked but org.example.Other is not marked '
-                      'test=yes: org.example.Other.desktop (run ws switch)', texts(result)['warn'])
+        self.assertIn('managed desktop override linked but org.example.Other is not yes '
+                      'on test: org.example.Other.desktop (run ws switch)', texts(result)['warn'])
 
     def test_app_without_declaration_rejects_filesystem_override(self):
         self.runtime = '[Context]\nfilesystems=home;\n'
@@ -115,7 +123,7 @@ class OverrideTests(unittest.TestCase):
 
     def test_managed_branch_checks_overrides_by_application_id(self):
         self.declare({}, f'app/{APP}/x86_64/stable')
-        self.apps.write_text(f'flathub app/{APP}/x86_64/stable\n')
+        self.catalog_with('', app=f'app/{APP}/x86_64/stable')
         self.runtime = '[Context]\nfilesystems=home;\n'
         status, result = self.check()
         self.assertEqual(status, 1)
@@ -130,82 +138,105 @@ class OverrideTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(result['failures'], 0)
 
+    def edit(self, catalog, host, *entries, remove=False, **flags):
+        """overrides_add (or overrides_remove) of ENTRIES on host test over
+        the catalog FIELDS of APP and the host file HOST; both afterwards."""
+        self.catalog_with(catalog)
+        self.host.write_text(host)
+        with contextlib.redirect_stdout(io.StringIO()):
+            for entry in entries:
+                self.g['overrides_remove' if remove else 'overrides_add'](entry, **flags)
+        return tomllib.loads(self.catalog.read_text())['apps'][0], tomllib.loads(self.host.read_text())
+
     def test_filesystem_mode_replaces_previous_mode(self):
         for old, new in [('home', 'home:ro'), ('home:ro', 'home:rw'),
                          ('xdg-download:create', 'xdg-download:ro')]:
             with self.subTest(old=old, new=new):
-                self.list.write_text(f'{APP} filesystem {old}\n')
-                with contextlib.redirect_stdout(io.StringIO()):
-                    self.g['overrides_add']((APP, 'filesystem', new))
-                self.assertEqual(self.list.read_text(), f'{APP} filesystem {new}\n')
+                app, _ = self.edit(f'filesystems = ["{old}", "host"]\n', '', (APP, 'filesystem', new))
+                self.assertEqual(app['filesystems'], [new, 'host'])
 
-    def test_replacing_mode_removes_old_duplicates_and_preserves_other_lines(self):
-        self.list.write_text(f'# permissions\n{APP} filesystem home\n{APP} env EXAMPLE=value\n{APP} filesystem home:ro\n')
+    def test_catalog_value_keeps_comments(self):
+        self.catalog_with('# why\nenv = { A = "1" }\n')
+        self.host.write_text('# mine\n')
         with contextlib.redirect_stdout(io.StringIO()):
-            self.g['overrides_add']((APP, 'filesystem', 'home:ro'))
-        self.assertEqual(self.list.read_text(),
-                         f'# permissions\n{APP} filesystem home:ro\n{APP} env EXAMPLE=value\n')
+            self.g['overrides_add']((APP, 'env', 'B=2'))
+        text = self.catalog.read_text()
+        self.assertIn('# why\n', text)
+        self.assertEqual(tomllib.loads(text)['apps'][0]['env'], {'A': '1', 'B': '2'})
+        self.assertEqual(self.host.read_text(), '# mine\n')
 
-    def edit(self, text, *entries, remove=False):
-        """overrides_add (or overrides_remove) of ENTRIES on host test over
-        overrides.txt TEXT; the file afterwards."""
-        self.list.write_text(text)
-        with contextlib.redirect_stdout(io.StringIO()):
-            for entry in entries:
-                self.g['overrides_remove' if remove else 'overrides_add'](entry)
-        return self.list.read_text()
+    def test_new_value_goes_to_the_catalog(self):
+        app, host = self.edit('', '', (APP, 'env', 'SCALE=2'))
+        self.assertEqual(app['env'], {'SCALE': '2'})
+        self.assertNotIn('overrides', host)
 
-    def test_new_override_applies_everywhere(self):
-        self.assertEqual(self.edit('', (APP, 'env', 'SCALE=2')),
-                         f'{APP} env SCALE=2 test=yes all=yes\n')
+    def test_host_value_replaces_the_catalog_value_here(self):
+        app, host = self.edit('env = { SCALE = "2" }\n', '', (APP, 'env', 'SCALE=1'), own=True)
+        self.assertEqual(app['env'], {'SCALE': '2'})
+        self.assertEqual(host['overrides'][APP], {'env': {'SCALE': '1'}})
+        cat = self.g['catalog']()
+        self.assertEqual(self.g['flatpak_catalog'].effective(cat, self.g['host_choice'](cat), APP),
+                         [('env', 'SCALE=1')])
+        # The catalog value again: the own one goes.
+        app, host = self.edit('env = { SCALE = "2" }\n', self.host.read_text(), (APP, 'env', 'SCALE=2'), own=True)
+        self.assertNotIn('overrides', host)
 
-    def test_value_of_this_host_only_splits_a_shared_line(self):
-        # Another workstation is marked on the line: it keeps SCALE=2.
-        self.assertEqual(self.edit(f'{APP} env SCALE=2 other=yes all=yes\n', (APP, 'env', 'SCALE=3')),
-                         f'{APP} env SCALE=2 other=yes test=no all=yes\n'
-                         f'{APP} env SCALE=3 test=yes all=no\n')
-        # Back to SCALE=2 here: the own line goes, the shared one is marked yes.
-        self.assertEqual(self.edit(self.list.read_text(), (APP, 'env', 'SCALE=2')),
-                         f'{APP} env SCALE=2 other=yes test=yes all=yes\n')
-
-    def test_line_of_no_other_host_changes_in_place(self):
-        self.assertEqual(self.edit(f'{APP} env SCALE=2 test=yes all=yes  # hidpi\n', (APP, 'env', 'SCALE=3')),
-                         f'{APP} env SCALE=3 test=yes all=yes  # hidpi\n')
-
-    def test_declined_here_is_marked_back(self):
-        self.assertEqual(self.edit(f'{APP} talk org.example.Bus other=yes test=no all=no\n',
-                                   (APP, 'talk', 'org.example.Bus')),
-                         f'{APP} talk org.example.Bus other=yes test=yes all=no\n')
+    def test_catalog_value_lifts_the_own_one_and_the_skip(self):
+        host = f'[overrides."{APP}"]\nenv = {{ SCALE = "1" }}\nskip = ["talk org.example.Bus"]\n'
+        app, host = self.edit('talk = ["org.example.Bus"]\n', host,
+                              (APP, 'env', 'SCALE=3'), (APP, 'talk', 'org.example.Bus'))
+        self.assertEqual(app['env'], {'SCALE': '3'})
+        self.assertNotIn('overrides', host)
 
     def test_value_that_looks_like_a_mark_is_the_value(self):
-        text = self.edit('', (APP, 'env', 'ENABLE=yes'))
-        self.assertEqual(text, f'{APP} env ENABLE=yes test=yes all=yes\n')
-        self.assertEqual(self.g['parse_override_line'](text), (APP, 'env', 'ENABLE=yes'))
+        app, _ = self.edit('', '', (APP, 'env', 'ENABLE=yes'))
+        self.assertEqual(app['env'], {'ENABLE': 'yes'})
 
-    def test_un_drops_the_line_or_marks_this_host_no(self):
-        self.assertEqual(self.edit(f'{APP} filesystem home:ro test=yes all=yes\n',
-                                   (APP, 'filesystem', 'home'), remove=True), '')
-        self.assertEqual(self.edit(f'{APP} filesystem home:ro other=yes all=yes\n',
-                                   (APP, 'filesystem', 'home'), remove=True),
-                         f'{APP} filesystem home:ro other=yes test=no all=yes\n')
+    def test_un_skips_a_catalog_value_here(self):
+        app, host = self.edit('filesystems = ["home:ro"]\n', '', (APP, 'filesystem', 'home'), remove=True)
+        self.assertEqual(app['filesystems'], ['home:ro'])
+        self.assertEqual(host['overrides'][APP], {'skip': ['filesystem home']})
+
+    def test_un_all_drops_the_catalog_value_and_the_skips(self):
+        other = self.config / 'nix/hosts/other'
+        other.mkdir()
+        (other / 'flatpak.toml').write_text(f'[overrides."{APP}"]\nskip = ["env SCALE"]\n')
+        app, host = self.edit('env = { SCALE = "2" }\n', '', (APP, 'env', 'SCALE'), remove=True, everywhere=True)
+        self.assertNotIn('env', app)
+        self.assertNotIn('overrides', tomllib.loads((other / 'flatpak.toml').read_text()))
+
+    def test_un_drops_the_own_value(self):
+        host = f'[overrides."{APP}"]\ntalk = ["org.example.Own"]\n'
+        app, host = self.edit('', host, (APP, 'talk', 'org.example.Own'), remove=True)
+        self.assertNotIn('overrides', host)
 
     def test_un_of_an_override_not_applying_here_fails(self):
         with self.assertRaises(SystemExit) as error:
-            self.edit(f'{APP} env SCALE=2 test=no all=yes\n', (APP, 'env', 'SCALE'), remove=True)
+            self.edit('', '', (APP, 'env', 'SCALE'), remove=True)
         self.assertIn('not declared for test', str(error.exception))
 
-    def test_ask_is_not_a_state_of_an_override(self):
-        with self.assertRaises(SystemExit):
-            self.edit(f'{APP} env SCALE=2 test=ask\n', (APP, 'env', 'SCALE=3'))
+    def test_override_needs_the_app_in_the_catalog(self):
+        with self.assertRaises(SystemExit) as error:
+            self.edit('', '', ('org.example.Unknown', 'env', 'A=1'))
+        self.assertIn('first: ws flatpak manage', str(error.exception))
+
+    def test_skip_must_name_a_catalog_value(self):
+        with self.assertRaises(SystemExit) as error:
+            self.edit('', f'[overrides."{APP}"]\nskip = ["env NOPE"]\n', (APP, 'env', 'A=1'))
+        self.assertIn("skip 'env NOPE' is no catalog value", str(error.exception))
 
     def test_unfilesystem_removes_declared_path_regardless_of_mode(self):
-        self.list.write_text(f'{APP} filesystem home:ro\n')
+        self.catalog_with('filesystems = ["home:ro"]\n')
+        self.host.write_text(f'[overrides."{APP}"]\nfilesystems = ["xdg-download:ro"]\n')
         with contextlib.redirect_stdout(io.StringIO()):
-            try:
-                self.g['cmd_override'](SimpleNamespace(cmd='unfilesystem', app=APP, value='home'))
-            except SystemExit as error:
-                self.fail(f'declared filesystem could not be removed: {error}')
-        self.assertEqual(self.list.read_text(), '')
+            for value in ('home', 'xdg-download'):
+                try:
+                    self.g['cmd_override'](SimpleNamespace(cmd='unfilesystem', app=APP, value=value,
+                                                           everywhere=True))
+                except SystemExit as error:
+                    self.fail(f'declared filesystem could not be removed: {error}')
+        self.assertNotIn('filesystems', tomllib.loads(self.catalog.read_text())['apps'][0])
+        self.assertNotIn('overrides', tomllib.loads(self.host.read_text()))
 
 
 if __name__ == '__main__':

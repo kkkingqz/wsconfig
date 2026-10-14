@@ -20,15 +20,14 @@ class UpdateTests(unittest.TestCase):
         (self.repo / 'lib').mkdir(exist_ok=True)
         for name in ('common.bash', 'ws_common.py', 'ws_facts.py'):
             shutil.copyfile(ROOT / 'lib' / name, self.repo / 'lib' / name)
-        for name in ('apps.txt', 'overrides.txt'):
-            (self.repo / 'flatpak' / name).write_text('')
+        (self.repo / 'flatpak/catalog.toml').write_text('[remotes]\n')
         self.git('init', '-q')
         self.git('config', 'user.name', 'Test')
         self.git('config', 'user.email', 'test@example.org')
         self.git('add', '.')
         self.git('commit', '-qm', 'initial')
         self.initial = self.git('rev-parse', 'HEAD')
-        (self.repo / 'flatpak/apps.txt').write_text('flathub org.example.App\n')
+        (self.repo / 'flatpak/catalog.toml').write_text('[remotes]\nflathub = "u"\n')
         self.bin = self.root / 'bin'
         self.bin.mkdir()
         nix = self.bin / 'nix'
@@ -92,7 +91,7 @@ esac
         self.assertIn('OK    nix', result.stdout)
         # Nothing is committed: ws sync publishes (helpws plan-v2, 2.7).
         self.assertEqual(self.git('rev-parse', 'HEAD'), self.initial)
-        self.assertIn('not published: flatpak/apps.txt (ws sync)', result.stdout)
+        self.assertIn('not published: flatpak/catalog.toml (ws sync)', result.stdout)
 
     def test_failed_extension_update_is_reported(self):
         result = self.update('extensions', DBUS_STATUS='42')

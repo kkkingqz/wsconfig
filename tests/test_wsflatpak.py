@@ -115,11 +115,24 @@ class FlatpakState:
 
 
 class UserRuntimeTests(unittest.TestCase):
-    def declare(self, *apps):
-        """The flatpak.json of ws switch with these flathub apps."""
+    def declare(self, *apps, default=None):
+        """The flatpak.json of ws switch and catalog.toml with these flathub
+        apps (DEFAULT: the default of each)."""
         self.manifest.write_text(json.dumps({
             "remotes": {"flathub": "https://example.org/repo"},
             "apps": [{"remote": "flathub", "app": a} for a in apps], "overrides": {}}))
+        self.catalog.write_text('[remotes]\nflathub = "https://example.org/repo"\n' + "".join(
+            f'\n[[apps]]\nid = "{a}"\nremote = "flathub"\n'
+            + (f'default = "{default}"\n' if default else "") for a in apps))
+
+    def choose(self, text):
+        """nix/hosts/test/flatpak.toml."""
+        self.host.write_text(text)
+
+    def chosen(self):
+        import tomllib
+        data = tomllib.loads(self.host.read_text()) if self.host.exists() else {}
+        return data.get("yes", []), data.get("no", [])
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -128,10 +141,14 @@ class UserRuntimeTests(unittest.TestCase):
         cfg = root / "cfg"
         cfg.mkdir()
         self.manifest = cfg / "flatpak.json"
+        config = root / "config"
+        (config / "flatpak").mkdir(parents=True)
+        (config / "nix/hosts/test").mkdir(parents=True)
+        self.catalog = config / "flatpak/catalog.toml"
+        self.host = config / "nix/hosts/test/flatpak.toml"
         self.declare(APP)
-        (root / "apps.txt").write_text("")
         self.g = runpy.run_path(str(SCRIPT))["cmd_install"].__globals__
-        self.g.update(MANIFEST=cfg / "flatpak.json", APPS_LIST=root / "apps.txt",
+        self.g.update(MANIFEST=cfg / "flatpak.json", REPO=config,
                       this_host=lambda: "test", cmd_check=lambda: 0)
         self.addCleanup(patch.stopall)
         # No terminal: apply asks nothing (apps not offered stay so).
@@ -175,72 +192,64 @@ class UserRuntimeTests(unittest.TestCase):
         self.execute(state, "apply")
         self.assertTrue(state.user_runtime)
 
-    def marks(self, line):
-        self.g["APPS_LIST"].write_text(line + "\n")
-
-    def test_managed_line_needs_remote_and_app(self):
-        # flatpak.nix reads REMOTE APP only; a lone APP would break ws switch.
-        self.assertEqual(self.g["parse_managed_line"](f"flathub {APP} test=yes"), ("flathub", APP))
-        with self.assertRaises(SystemExit):
-            self.g["parse_managed_line"](APP)
-
-    def test_apply_installs_app_marked_yes_for_this_host(self):
+    def test_apply_installs_app_yes_on_this_host(self):
         state = FlatpakState(system_runtime=True)
-        self.marks(f"flathub {APP} test=yes all=ask")
+        self.choose(f'yes = ["{APP}"]\n')
         self.execute(state, "apply")
         self.assertTrue(state.app)
 
-    def test_apply_follows_all_without_own_mark(self):
+    def test_apply_follows_the_default_without_a_choice(self):
         state = FlatpakState(system_runtime=True)
-        self.marks(f"flathub {APP} other=no all=yes")
+        self.declare(APP, default="yes")
         self.execute(state, "apply")
         self.assertTrue(state.app)
-        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} other=no all=yes\n")
+        # Installed by the default: no choice written.
+        self.assertFalse(self.host.exists())
 
     def test_apply_leaves_declined_app_alone(self):
         state = FlatpakState(system_runtime=True)
-        self.marks(f"flathub {APP} test=no all=yes")
+        self.declare(APP, default="yes")
+        self.choose(f'no = ["{APP}"]\n')
         self.execute(state, "apply")
         self.assertFalse(state.app)
 
     def test_not_offered_app_waits_for_a_terminal(self):
         state = FlatpakState(system_runtime=True)
-        self.marks(f"flathub {APP} other=yes all=ask")
         with contextlib.redirect_stderr(io.StringIO()) as err:
             self.execute(state, "apply")
         self.assertFalse(state.app)
-        self.assertIn("no terminal", err.getvalue())
-        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} other=yes all=ask\n")
+        self.assertIn(f"no terminal to ask): {APP};", err.getvalue())
+        self.assertFalse(self.host.exists())
 
     def test_answer_is_written_for_this_host(self):
         state = FlatpakState(system_runtime=True)
-        self.marks(f"flathub {APP} other=yes all=ask")
+        self.choose("# mine\n")
         with patch.object(self.g["ws_select"], "choose", return_value=[APP]):
             self.execute(state, "apply")
         self.assertTrue(state.app)
-        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} other=yes test=yes all=ask\n")
+        self.assertEqual(self.chosen(), ([APP], []))
+        self.assertTrue(self.host.read_text().startswith("# mine\n"))
         state = FlatpakState(system_runtime=True)
-        self.marks(f"flathub {APP} other=yes all=ask")
+        self.choose("")
         with patch.object(self.g["ws_select"], "choose", return_value=[]):
             self.execute(state, "apply")
         self.assertFalse(state.app)
-        self.assertIn("test=no", self.g["APPS_LIST"].read_text())
+        self.assertEqual(self.chosen(), ([], [APP]))
 
     def test_cancel_answers_only_the_question(self):
         state = FlatpakState(system_runtime=True)
         self.declare(APP, OTHER)
-        self.marks(f"flathub {APP} test=yes all=ask\nflathub {OTHER} other=yes all=ask")
+        self.choose(f'yes = ["{APP}"]\n')
         with patch.object(self.g["ws_select"], "choose", return_value=None), \
                 contextlib.redirect_stderr(io.StringIO()) as err:
             self.assertFalse(self.execute(state, "apply"))
         self.assertIn("выбор отменён", err.getvalue())
         self.assertEqual(state.apps.keys(), {APP_REF})
-        self.assertEqual(self.g["APPS_LIST"].read_text(),
-                         f"flathub {APP} test=yes all=ask\nflathub {OTHER} other=yes all=ask\n")
+        self.assertEqual(self.host.read_text(), f'yes = ["{APP}"]\n')
 
-    def test_remove_resolves_the_workstation_before_uninstalling(self):
+    def test_remove_resolves_the_host_before_uninstalling(self):
         state = FlatpakState(system_runtime=True, app=True)
-        self.marks(f"flathub {APP} test=yes all=ask")
+        self.choose(f'yes = ["{APP}"]\n')
 
         def unknown():
             raise SystemExit("ws host: unknown workstation")
@@ -248,32 +257,48 @@ class UserRuntimeTests(unittest.TestCase):
         with patch("subprocess.run", side_effect=state.run), self.assertRaises(SystemExit):
             self.g["cmd_remove"](SimpleNamespace(app=APP, keep_data=True))
         self.assertTrue(state.app)
-        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} test=yes all=ask\n")
+        self.assertEqual(self.chosen(), ([APP], []))
 
-    def test_installed_app_without_mark_is_marked_yes(self):
+    def test_installed_app_without_choice_goes_to_yes(self):
         state = FlatpakState(system_runtime=True, app=True)
         self.execute(state, "apply")
-        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} test=yes all=ask\n")
+        self.assertEqual(self.chosen(), ([APP], []))
 
-    def test_install_marks_this_host_on_existing_line(self):
+    def test_install_puts_a_catalog_app_in_yes(self):
         state = FlatpakState(system_runtime=True)
-        self.marks(f"flathub {APP} other=yes all=ask  # note")
-        self.declare(APP)
+        self.choose(f'no = ["{APP}"]\n')
         self.execute(state)
-        self.assertEqual(self.g["APPS_LIST"].read_text(),
-                         f"flathub {APP} other=yes test=yes all=ask  # note\n")
+        self.assertEqual(self.chosen(), ([APP], []))
+        self.assertEqual(self.catalog.read_text().count("[[apps]]"), 1)
 
-    def test_remove_drops_line_or_marks_no(self):
+    def test_install_adds_a_new_app_to_the_catalog(self):
+        state = FlatpakState(system_runtime=True)
+        self.declare()
+        self.catalog.write_text(self.catalog.read_text() + "# end\n")
+        self.execute(state)
+        text = self.catalog.read_text()
+        self.assertIn("# end\n", text)
+        self.assertIn(f'\n[[apps]]\nid = "{APP}"\nremote = "flathub"\n', text)
+        self.assertEqual(self.chosen(), ([APP], []))
+
+    def test_remove_puts_it_in_no(self):
         state = FlatpakState(system_runtime=True, app=True)
-        self.marks(f"flathub {APP} test=yes all=ask")
+        self.choose(f'yes = ["{APP}"]\n')
         with patch("subprocess.run", side_effect=state.run):
             self.g["cmd_remove"](SimpleNamespace(app=APP, keep_data=True))
-        self.assertEqual(self.g["APPS_LIST"].read_text(), "")
-        state = FlatpakState(system_runtime=True, app=True)
-        self.marks(f"flathub {APP} other=yes test=yes all=ask")
-        with patch("subprocess.run", side_effect=state.run):
-            self.g["cmd_remove"](SimpleNamespace(app=APP, keep_data=True))
-        self.assertEqual(self.g["APPS_LIST"].read_text(), f"flathub {APP} other=yes test=no all=ask\n")
+        self.assertEqual(self.chosen(), ([], [APP]))
+        self.assertIn(APP, self.catalog.read_text())
+
+    def test_unmanage_drops_the_app_everywhere(self):
+        self.declare(APP, OTHER)
+        self.choose(f'yes = ["{APP}", "{OTHER}"]\n')
+        other = self.host.parent.parent / "other"
+        other.mkdir()
+        (other / "flatpak.toml").write_text(f'no = ["{APP}"]\n')
+        self.g["list_remove"](APP)
+        self.assertNotIn(APP, self.catalog.read_text())
+        self.assertEqual(self.chosen(), ([OTHER], []))
+        self.assertNotIn(APP, (other / "flatpak.toml").read_text())
 
     def test_runtime_install_failure_propagates(self):
         state = FlatpakState(system_runtime=True)
@@ -324,7 +349,7 @@ class UserRuntimeTests(unittest.TestCase):
         state = FlatpakState(system_runtime=True)
         self.execute(state, extra=[OTHER])
         self.assertEqual(state.runtimes, {RUNTIME, OTHER_RUNTIME})
-        self.assertIn(OTHER, self.g["APPS_LIST"].read_text())
+        self.assertIn(OTHER, self.chosen()[0])
 
     def test_batch_reinstall_ensures_existing_apps_runtimes(self):
         state = FlatpakState(system_runtime=True, app=True)

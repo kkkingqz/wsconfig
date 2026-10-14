@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "lib"))
 sys.path.insert(0, str(ROOT / "tests"))
 
 import convert_marks  # noqa: E402
+import flatpak_catalog  # noqa: E402
 import setup_marks  # noqa: E402
 import ws_catalog  # noqa: E402
 import ws_marks  # noqa: E402
@@ -38,6 +39,23 @@ class ConversionTests(unittest.TestCase):
         defaults = dict(setup_marks.box_catalog(ROOT))
         self.assertEqual(sorted(defaults), sorted(line.key[-1] for line in old.entries()))
         self.assert_same(old, "boxes", defaults)
+
+    def test_flatpak(self):
+        old = ws_marks.MarkedList(OLD / "apps.txt", key_fields={2})
+        catalog = flatpak_catalog.Catalog(ROOT)
+        self.assertEqual(catalog.ids(), [line.key[1] for line in old.entries()])
+        self.assertEqual([e["remote"] for e in catalog.apps()], [line.key[0] for line in old.entries()])
+        self.assert_same(old, "flatpak", {a: catalog.default(a) for a in catalog.ids()})
+        # The overrides of every host: the old lines that apply there.
+        overrides = ws_marks.MarkedList(OLD / "overrides.txt", **ws_marks.OVERRIDES)
+        for host in HOSTS:
+            choice = ws_catalog.Choice("flatpak", host, ROOT)
+            flatpak_catalog.check_host(choice, catalog)
+            before = sorted(tuple(line.key) for line in overrides.entries()
+                            if overrides.line_state(line, host) == "yes")
+            after = sorted((app, kind, value) for app in catalog.ids()
+                           for kind, value in flatpak_catalog.effective(catalog, choice, app))
+            self.assertEqual(after, before, host)
 
 
 if __name__ == "__main__":
