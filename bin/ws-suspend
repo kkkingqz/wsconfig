@@ -12,7 +12,7 @@ cache="$HOME/.local/share/workstation/t2bce"
 t2bce_modules=(t2bce_dma t2bce_core t2bce_vhci t2bce_audio t2bce_ave)
 t2bce_patch="$repo/system/kernel/t2bce/nostate-fix.patch"
 # Kernel release -> linux-t2-patches commit, from system/kernel/t2bce/t2bce.nix.
-t2bce_sources="$HOME/.local/share/workstation/t2bce/sources"
+t2bce_sources="$HOME/.local/share/workstation/t2bce/sources.json"
 # The host release: the modules are built with the compiler of the kernel.
 build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")"
 
@@ -36,7 +36,7 @@ USAGE
 t2bce_commit() {
     local kver="$1"
     [[ -r "$t2bce_sources" ]] || die "missing $t2bce_sources (ws switch)"
-    awk -v k="$kver" '!/^#/ && $1 == k { print $2 }' "$t2bce_sources"
+    manifest_get "$t2bce_sources" "$kver"
 }
 
 cmd_status() {

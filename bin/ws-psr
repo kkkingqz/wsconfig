@@ -12,7 +12,7 @@ set -euo pipefail
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 patch_file="$repo/system/kernel/i915-psr/apple-psr.patch"
 # Kernel release -> linux-t2-patches commit, from system/kernel/t2bce/t2bce.nix.
-t2_sources="$HOME/.local/share/workstation/t2bce/sources"
+t2_sources="$HOME/.local/share/workstation/t2bce/sources.json"
 # Build results per kernel: generated, not edited.
 cache="$HOME/.local/share/workstation/i915-psr"
 # The host release: built with the compiler of the kernel, as t2bce.
@@ -35,7 +35,7 @@ USAGE
 t2_commit() {
     local kver="$1"
     [[ -r "$t2_sources" ]] || die "missing $t2_sources (ws switch)"
-    awk -v k="$kver" '!/^#/ && $1 == k { print $2 }' "$t2_sources"
+    manifest_get "$t2_sources" "$kver"
 }
 
 cmd_status() {

@@ -130,8 +130,8 @@ if [[ "$t2" == true ]]; then
         warn "linux-t2 is not held: a kernel update would boot the in-tree t2bce (helpws suspend)"
     fi
 
-    t2bce_sources="$HOME/.local/share/workstation/t2bce/sources"
-    if awk -v k="$(uname -r)" '!/^#/ && $1 == k { found = 1 } END { exit !found }' "$t2bce_sources" 2>/dev/null; then
+    t2bce_sources="$HOME/.local/share/workstation/t2bce/sources.json"
+    if [[ -n "$(manifest_get "$t2bce_sources" "$(uname -r)")" ]]; then
         pass "system/kernel/t2bce/t2bce.nix pins sources for $(uname -r)"
     else
         warn "system/kernel/t2bce/t2bce.nix has no entry for $(uname -r)"

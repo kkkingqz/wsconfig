@@ -263,7 +263,7 @@ deqrocks/t2bce#9                          черновик исправлени�
 ```text
 system/kernel/t2bce/nostate-fix.patch   патч к drivers/staging/t2bce из linux-t2-patches 1001
 system/kernel/t2bce/t2bce.nix           версия ядра -> коммит linux-t2-patches
-                                        (ws switch собирает ~/.local/share/workstation/t2bce/sources)
+                                        (ws switch собирает ~/.local/share/workstation/t2bce/sources.json)
 ```
 
 Патч:

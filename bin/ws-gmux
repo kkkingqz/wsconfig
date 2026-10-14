@@ -8,7 +8,7 @@ set -euo pipefail
 # on macOS (CPU package PC7 with the card off) and can come back on.
 
 # REPO COMMIT, from system/kernel/t2gmux/t2gmux.nix (ws switch).
-source_file="$HOME/.local/share/workstation/t2gmux/source"
+source_file="$HOME/.local/share/workstation/t2gmux/source.json"
 # Build results per kernel: generated, not edited.
 cache="$HOME/.local/share/workstation/t2gmux"
 # The host release: built with the compiler of the kernel, as t2bce.
@@ -34,7 +34,7 @@ USAGE
 
 pinned() { # -> "REPO COMMIT"
     [[ -r "$source_file" ]] || die "missing $source_file (ws switch)"
-    awk '!/^#/ && NF == 2 { print; exit }' "$source_file"
+    printf '%s %s\n' "$(manifest_get "$source_file" repo)" "$(manifest_get "$source_file" commit)"
 }
 
 boot_gpu() { # -> integrated | discrete | unknown
