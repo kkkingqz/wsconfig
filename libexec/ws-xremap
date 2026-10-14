@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# xremap.service (keyboard/xremap.nix) passes the store build of
-# keyboard/xremap.yml (@repo@ substituted), the pinned binary and the
+# xremap.service (keyboard/xremap.nix) passes the store build of the
+# xremap.yml (@core@ substituted), the pinned binary and the
 # --desktop / --watch values.
 config="${XREMAP_CONFIG:-}"
 desktop="${XREMAP_DESKTOP:-}"

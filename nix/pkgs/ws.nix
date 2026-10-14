@@ -1,7 +1,7 @@
 # The core of wsconfig in the store (ws help plan-v2, stage 5): bin/ws,
 # libexec/, lib/, the modules with their hooks, extensions and patches, docs.
-# Not in it: the data of the configuration (nix/hosts, the catalogs,
-# flake.lock; the data patterns of bin/ws) and tests. A tool that would
+# Not in it: the data of the configuration (nix/hosts, the catalogs and
+# TOML, home/, flake.lock; the data patterns of bin/ws) and tests. A tool that would
 # read data from WS_CORE finds nothing instead of a stale copy; data is
 # read from WS_CONFIG.
 # .wsconfig-package marks the tree: lib/common.bash then takes WS_CONFIG from
@@ -11,7 +11,8 @@ let
   root = ../..;
   data = map (p: lib.fileset.maybeMissing (root + p))
     [ "/nix/hosts" "/flatpak/catalog.toml" "/distrobox/catalog.toml" "/windows/apps.toml"
-      "/gnome/config.toml" "/keyboard/config.toml" "/flake.lock" "/tests" ];
+      "/gnome/config.toml" "/keyboard/config.toml" "/keyboard/xremap.yml" "/terminal/config.toml"
+      "/home" "/flake.lock" "/tests" ];
   src = lib.fileset.toSource {
     inherit root;
     fileset = lib.fileset.difference root (lib.fileset.unions data);

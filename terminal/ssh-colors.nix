@@ -1,11 +1,14 @@
-# SSH session foreground colors. Home Manager generates the Fish configuration;
-# change these values here, then run `ws apply`.
-{ ... }:
+# SSH session foreground colors: terminal/config.toml ([ssh]) of the
+# configuration, then `ws apply`. Home Manager generates the Fish
+# configuration.
+{ lib, wsHost, wsConfig, ... }:
 let
-  colors = {
-    tower = "#FFE066";
-    default = "#FFB3B3";
-  };
+  inherit (import ./config.nix { inherit lib wsHost wsConfig; }) ssh;
+  # One fish case per host entry, the names quoted for fish; inserted at
+  # the indentation of `case` in the function below.
+  cases = lib.concatMapStringsSep "\n        " (h:
+    "case ${lib.concatMapStringsSep " " lib.escapeShellArg h.names}\n"
+    + "            set color '${h.color}'") (ssh.hosts or [ ]);
 in
 {
   # Ghostty's packaged launcher enables ssh-env. Its deferred first-prompt
@@ -59,10 +62,9 @@ in
             return $status
         end
 
-        set -l color '${colors.default}'
+        set -l color '${ssh.default}'
         switch "$host"
-            case tower.local 192.168.113.113
-                set color '${colors.tower}'
+            ${cases}
         end
 
         __ws_session_color "$color" --function __ws_ssh_transport $argv

@@ -1,69 +1,85 @@
-# Links from $HOME into the checkout (~/<facts.wsconfig>), one file each.
-# ws is no link into the checkout: ~/.local/bin/ws is bin/ws of the core in
-# the store (nix/pkgs/ws.nix), the one command in PATH (ws help plan-v2,
-# stages 5 and 5.6). The internal tools are not in PATH: ws runs them,
-# Nix callers use their store paths, and ~/.local/share/wsconfig/libexec
-# points at libexec/ of the core for callers that need a fixed path (the
-# input-source extension runs ws-caps-led).
-# home-manager owns the links; the files stay in the checkout and are edited
-# there (mkOutOfStoreSymlink: no copy in the store, no switch after edits).
-# New files in the listed directories are linked on the next `ws apply`.
-{ config, lib, facts, core, wsConfig, ... }:
+# What lands in $HOME as files of a checkout or of the core (ws help
+# plan-v2, 8.3).
+#
+# Personal settings: home/ of the configuration mirrors $HOME. Every file
+# home/P the flake sees (tracked by Git) is a link ~/P into the checkout
+# (~/<facts.wsconfig>/home/P; mkOutOfStoreSymlink: no copy in the store, an
+# edit takes effect without a switch). A new file: git add, then ws apply.
+#
+# Parts of the core: links into the core in the store (nix/pkgs/ws.nix),
+# replaced on ws apply: ~/.local/bin/ws, the fish completions, conf.d/
+# 00-nix.fish and user-bin.fish, ~/.config/nix/nix.conf, the micro config
+# that `ws help` reads and ~/.local/share/wsconfig/libexec (for callers that need a
+# fixed path: the input-source extension runs ws-caps-led). A file of home/
+# at one of these paths, or at a path another module writes (home.file,
+# xdg.configFile, xdg.dataFile: ssh.fish of terminal/ssh-colors.nix, …), is
+# a build error naming it: nothing overwrites anything silently.
+{ config, options, lib, facts, core, wsConfig, ... }:
 let
   repo = "${config.home.homeDirectory}/${facts.wsconfig}";
-  # The links point into the checkout of the configuration; which files
-  # there are, the flake source of the configuration says. The core is
-  # where this file is.
-  src = wsConfig;
   coreSrc = ../..;
-
-  link = path: config.lib.file.mkOutOfStoreSymlink "${repo}/${path}";
 
   # Regular files of a directory under ROOT (the flake sees tracked files only).
   filesIn = root: dir:
     builtins.attrNames (lib.filterAttrs (_: type: type == "regular")
       (builtins.readDir (root + "/${dir}")));
 
-  # The executables of DIR of the core, as links into the store.
-  coreDir = { from, to, filter ? (_: true) }:
+  # The files of DIR of the core as links into the store, at TO/NAME.
+  coreDir = { from, to }:
     lib.listToAttrs (map (name: {
       name = "${to}/${name}";
       value.source = "${core}/${from}/${name}";
-    }) (builtins.filter filter (filesIn coreSrc from)));
+    }) (filesIn coreSrc from));
 
-  linkDir = { from, to, filter ? (_: true) }:
-    lib.listToAttrs (map (name: {
-      name = "${to}/${name}";
-      value.source = link "${from}/${name}";
-    }) (builtins.filter filter (filesIn src from)));
-
-in
-{
-  xdg.dataFile = {
+  coreFiles = coreDir { from = "bin"; to = ".local/bin"; }
+    // coreDir { from = "terminal/fish/completions"; to = ".config/fish/completions"; }
+    // {
+      ".config/fish/conf.d/00-nix.fish".source = "${core}/terminal/fish/conf.d/00-nix.fish";
+      ".config/fish/conf.d/user-bin.fish".source = "${core}/terminal/fish/conf.d/user-bin.fish";
+      ".config/nix/nix.conf".source = "${core}/nix/nix.conf";
+    };
+  # Under $HOME too, through xdg.dataFile.
+  coreData = {
     "wsconfig/libexec".source = "${core}/libexec";
     # MICRO_CONFIG_HOME of ws help (libexec/helpws); micro writes its buffers/ there.
-    "wsconfig/micro-help/settings.json".source = link "terminal/micro-help/settings.json";
-    "wsconfig/micro-help/bindings.json".source = link "terminal/micro-help/bindings.json";
+    "wsconfig/micro-help/settings.json".source = "${core}/terminal/micro-help/settings.json";
+    "wsconfig/micro-help/bindings.json".source = "${core}/terminal/micro-help/bindings.json";
   };
+  dataHome = lib.removePrefix "${config.home.homeDirectory}/" config.xdg.dataHome;
+  coreTargets = lib.attrNames coreFiles ++ map (p: "${dataHome}/${p}") (lib.attrNames coreData);
 
-  home.file = lib.mkMerge [
-    (linkDir { from = "terminal/fish"; to = ".config/fish"; })
-    (linkDir { from = "terminal/fish/conf.d"; to = ".config/fish/conf.d"; })
-    (linkDir { from = "terminal/fish/functions"; to = ".config/fish/functions"; })
-    (linkDir { from = "terminal/fish/completions"; to = ".config/fish/completions"; })
-    (linkDir {
-      from = "terminal/ghostty";
-      to = ".config/ghostty";
-      filter = lib.hasSuffix ".ghostty";
-    })
-    (coreDir { from = "bin"; to = ".local/bin"; })
-    {
-      ".config/nix/nix.conf".source = link "nix/nix.conf";
-      ".config/xdg-terminals.list".source = link "terminal/xdg-terminals/xdg-terminals.list";
-      ".config/ubuntu-xdg-terminals.list".source =
-        link "terminal/xdg-terminals/ubuntu-xdg-terminals.list";
-      ".local/share/applications/ghostty-open-here.desktop".source =
-        link "terminal/xdg-terminals/ghostty-open-here.desktop";
-    }
-  ];
+  homeDir = wsConfig + "/home";
+  # home/P relative paths, every file below home/.
+  personal = lib.optionals (builtins.pathExists homeDir)
+    (map (f: lib.removePrefix "${toString homeDir}/" (toString f))
+      (lib.filesystem.listFilesRecursive homeDir));
+  # A personal path that is or lies inside a path of the core.
+  ofCore = p: lib.any (c: p == c || lib.hasPrefix "${c}/" p) coreTargets;
+  conflicts = lib.filter ofCore personal;
+
+  # The paths under $HOME the other modules define, by where they are.
+  otherDefs = opt: lib.concatMap (d: lib.attrNames d.value)
+    (lib.filter (d: d.file != toString ./links.nix) opt.definitionsWithLocations);
+  configHome = lib.removePrefix "${config.home.homeDirectory}/" config.xdg.configHome;
+  others = otherDefs options.home.file
+    ++ map (p: "${configHome}/${p}") (otherDefs options.xdg.configFile)
+    ++ map (p: "${dataHome}/${p}") (otherDefs options.xdg.dataFile);
+  ofOthers = p: lib.any (o: p == o || lib.hasPrefix "${o}/" p) others;
+in
+{
+  assertions = map (p: {
+    assertion = false;
+    message = "home/${p}: ~/${p} is installed by the core (nix/home/links.nix); remove it from home/";
+  }) conflicts
+  ++ map (p: {
+    assertion = false;
+    message = "home/${p}: ~/${p} is written by a module of the core; remove it from home/ (or change the module's settings)";
+  }) (lib.filter (p: !(ofCore p) && ofOthers p) personal);
+
+  xdg.dataFile = coreData;
+
+  home.file = coreFiles // lib.listToAttrs (map (p: {
+    name = p;
+    value.source = config.lib.file.mkOutOfStoreSymlink "${repo}/home/${p}";
+  }) (lib.filter (p: !(ofCore p)) personal));
 }

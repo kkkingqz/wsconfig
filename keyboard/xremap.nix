@@ -1,15 +1,22 @@
 # xremap: binary (nix/pkgs/xremap.nix), config and user service from Nix.
 #
-# - xremap.yml is built into the store with @core@ replaced by the core in
-#   the store (nix/pkgs/ws.nix): the tools it launches; an edit takes effect
-#   on `ws apply`, which restarts the service because its unit changes.
+# - xremap.yml: keyboard/xremap.yml of the configuration when it has one,
+#   else the preset's keyboard/presets/PRESET-xremap.yml of the core (its
+#   bindings launch tools of the core and emit the chords of the preset's
+#   shortcuts). Built into the store with @core@ replaced by the core in
+#   the store (nix/pkgs/ws.nix); an edit takes effect on `ws apply`, which
+#   restarts the service because its unit changes.
 # - The unit is the former systemd/user/xremap.service. home-manager owns the
 #   unit and its graphical-session.target.wants link; ws-keyboard still decides
 #   whether xremap runs: `ws-keyboard restore` and a failed apply create
 #   ~/.local/state/wsconfig/keyboard/xremap.disabled, apply/start remove it.
 # - ~/.local/bin/xremap stays for `ws-keyboard devices` and the status tools.
-{ lib, pkgs, xremap, facts, wsState, core, ... }:
+{ lib, pkgs, xremap, facts, wsState, core, wsHost, wsConfig, ... }:
 let
+  kb = (import ./config.nix { inherit lib wsHost wsConfig; }).data;
+  own = wsConfig + "/keyboard/xremap.yml";
+  source = if builtins.pathExists own then own else ./presets + "/${kb.preset}-xremap.yml";
+
   # Input devices of the host xremap must not grab (host.toml
   # xremapIgnore): virtual keyboards of other remappers, e.g. InputPlumber
   # on legiongo. ";" between names, which may hold spaces.
@@ -17,7 +24,7 @@ let
 
   xremapYml = pkgs.writeText "xremap.yml"
     (builtins.replaceStrings [ "@core@" ] [ "${core}" ]
-      (builtins.readFile ./xremap.yml));
+      (builtins.readFile source));
 in
 {
   home.file.".local/bin/xremap".source = "${xremap}/bin/xremap";

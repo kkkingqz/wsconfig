@@ -1,5 +1,5 @@
 # The macOS-style keyboard preset of the core (ws help keyboard): the GNOME
-# shortcuts and the private Tiling Assistant chords that keyboard/xremap.yml
+# shortcuts and the private Tiling Assistant chords that keyboard/presets/macos-xremap.yml
 # and ws-input-source rely on; they change together. keyboard.nix takes the
 # layouts and the overrides of keyboard/config.toml over it.
 #   shortcuts  SCHEMA = { KEY = VALUE; }: list = string array, "" = empty
@@ -77,7 +77,7 @@ let
     "org.gnome.desktop.input-sources".xkb-options = [ "grp_led:scroll" "caps:none" ];
   };
 
-  # Private chords emitted by xremap (keyboard/xremap.yml), appended to
+  # Private chords emitted by xremap (keyboard/presets/macos-xremap.yml), appended to
   # the Tiling Assistant defaults, never replacing them.
   #   <Shift><Control><Alt><Super>...  Fn+Ctrl+arrows, Fn+Ctrl+F/C/R, Fn+Option+E/T
   #   <Control><Alt><Super>F13..F19    earlier private chords; nothing emits them

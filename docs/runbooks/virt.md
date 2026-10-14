@@ -157,7 +157,7 @@ USB-устройство в гостя — «Redirect USB device» в консо
 ## Клавиатура
 
 Окна консолей VM (`virt-manager`, `remote-viewer`, `virt-viewer`) xremap на
-host не трогает (`keyboard/xremap.yml`, `&vm_consoles`): клавиши уходят в
+host не трогает (`keyboard/presets/macos-xremap.yml`, `&vm_consoles`): клавиши уходят в
 гостя как есть, macOS-профиль работает в госте, если он там поставлен
 (`bootstrap.sh`, `ws apply`). Иначе Command+C приходил бы в гостя как Ctrl+C
 (в терминале — прерывание). Главное окно virt-manager — тот же класс, в нём

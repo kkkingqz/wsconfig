@@ -106,8 +106,8 @@ Enter, Esc/q), ответ пишется в `boxes.toml`. Esc/q отменяет
 
 В Fish + Ghostty `ws box enter NAME`, `distrobox enter NAME` и
 `distrobox-enter -n NAME` меняют обычный цвет текста до выхода из контейнера.
-Цвета контейнеров и fallback задаются в `terminal/distrobox-colors.nix`
-и применяются через `ws apply`. Подробнее: `ws help terminal`,
+Цвета контейнеров и fallback задаются в `terminal/config.toml`
+(`[distrobox]`) и применяются через `ws apply`. Подробнее: `ws help terminal`,
 раздел «Цвета Distrobox-сессий».
 
 ## Изменить контейнер

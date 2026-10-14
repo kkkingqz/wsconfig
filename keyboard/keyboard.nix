@@ -24,7 +24,7 @@ let
   raw = text: { gvariant = text; };
 
   # A container host (boot = "container", ws help plan-wsgnomebox): keys come
-  # over RDP from Remmina, which passes them as typed (keyboard/xremap.yml,
+  # over RDP from Remmina, which passes them as typed (keyboard/presets/macos-xremap.yml,
   # &vm_consoles); no xremap runs here. GNOME takes what xremap does on a
   # machine: the private CapsLock chords, workspaces, window actions and
   # tiling on the physical keys. Not here: the macOS GUI shortcuts
@@ -53,23 +53,9 @@ let
     { inherit name; binding = lib.elemAt v 0; command = lib.elemAt v 1; })
     rdpCommands;
 
-  keyboard = (import ../lib/config.nix { inherit lib; }).read {
-    file = wsConfig + "/keyboard/config.toml";
-    host = wsConfig + "/nix/hosts/${wsHost}/keyboard.toml";
-    type = schema.table {
-      keys = {
-        preset = schema.oneOf (lib.attrNames presets);
-        layouts = schema.strings;
-        shortcuts = schema.attrsOf (schema.attrsOf shortcutValue);
-        tiling = schema.attrsOf schema.strings;
-      };
-      required = [ "preset" "layouts" ];
-    };
-  };
-  presets = { macos = ./presets/macos.nix; };
-  schema = import ../lib/schema.nix { inherit lib; };
-  shortcutValue = schema.scalar "a list of texts, a text or true/false"
-    (v: builtins.isString v || builtins.isBool v || (builtins.isList v && lib.all builtins.isString v));
+  kb = import ./config.nix { inherit lib wsHost wsConfig; };
+  keyboard = kb.data;
+  inherit (kb) presets;
   preset = import presets.${keyboard.preset} { inherit lib rdp; };
 
   # The layouts workstation-input-source knows (ws help keyboard): EN first,
@@ -150,5 +136,8 @@ in
   xdg.dataFile."wsconfig/keyboard/keyboard.json".text = builtins.toJSON {
     shortcuts = shortcutEntries;
     tiling = tilingEntries;
+    # xremap.nix takes keyboard/presets/PRESET-xremap.yml of the core unless
+    # the configuration has keyboard/xremap.yml (ws keyboard check).
+    inherit (keyboard) preset;
   };
 }

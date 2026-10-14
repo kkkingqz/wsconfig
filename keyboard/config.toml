@@ -1,9 +1,11 @@
 # The keyboard of the workstation (ws help keyboard). The shortcuts come
 # from a preset of the core (keyboard/presets/; macos: the macOS-style
-# profile that keyboard/xremap.yml and ws-input-source rely on). Here the
-# choice: the preset, the layouts, and overrides of keys of the preset. A
-# host adds or replaces in nix/hosts/HOST/keyboard.toml. ws sync publishes
-# the file.
+# profile that its keyboard/presets/macos-xremap.yml and ws-input-source
+# rely on). Here the choice: the preset, the layouts, and overrides of keys
+# of the preset. A host adds or replaces in nix/hosts/HOST/keyboard.toml.
+# An own keyboard/xremap.yml next to this file replaces the preset's
+# xremap.yml as a whole (its bindings must emit the chords of the
+# shortcuts). ws sync publishes the files.
 #
 # Change: edit, then ws apply keyboard (or ws apply tiling). The original
 # GNOME values of a newly overridden key are in the backup only if the

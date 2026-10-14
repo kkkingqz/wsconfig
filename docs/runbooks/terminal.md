@@ -209,7 +209,9 @@ Ctrl+Enter  → Alt+Enter
 `tower.local` и `192.168.113.113` — жёлтый, остальные серверы — бледно-красный.
 После выхода, ошибки подключения или Ctrl+C возвращается цвет темы Ghostty.
 Алиасы из `~/.ssh/config` определяются по итоговому `HostName` (`ssh -G`).
-Цвета задаются в `terminal/ssh-colors.nix`, изменения применяются через `ws apply`.
+Цвета задаются в `terminal/config.toml` конфигурации (`[ssh]`; хост может
+дополнить их в `nix/hosts/HOST/terminal.toml`), изменения применяются через
+`ws apply`; функцию собирает `terminal/ssh-colors.nix` ядра.
 Home Manager генерирует `~/.config/fish/functions/ssh.fish`; Fish загружает его
 при первом вызове `ssh`, в том числе в уже открытом shell.
 Если Ghostty включает `ssh-env` или `ssh-terminfo`, его функция `ssh`
@@ -224,7 +226,7 @@ Home Manager генерирует `~/.config/fish/functions/ssh.fish`; Fish за
 
 `distrobox enter NAME`, `distrobox-enter -n NAME` и `ws box enter NAME`
 меняют обычный цвет текста Ghostty на время сессии. Цвет каждого контейнера
-и fallback для остальных задаются в `terminal/distrobox-colors.nix`;
+и fallback для остальных задаются в `terminal/config.toml` (`[distrobox]`);
 после правки — `ws apply`. Имя определяется из аргументов или
 `DBX_CONTAINER_NAME`; без явного имени применяется fallback.
 
@@ -544,10 +546,14 @@ man ws-workstation
 ~/.config/fish/completions/   ws (с темами ws help), wsbox, wsflatpak, wswin, ws-gnome
 ```
 
-Все файлы из `terminal/fish/` (и `terminal/ghostty/*.ghostty`)
-подключены ссылками home-manager в checkout (`nix/home/links.nix`); `ws` и
-`ws help` в `~/.local/bin` — ссылки на ядро в store (`nix/pkgs/ws.nix`);
-новый файл подключается следующим `ws apply`. Man pages — из сборки Nix
+Личные настройки — каталог `home/` конфигурации, он повторяет `$HOME`:
+`home/.config/fish/…`, `home/.config/ghostty/*.ghostty`, списки
+xdg-terminals. Каждый отслеживаемый файл `home/P` — ссылка home-manager
+`~/P` в checkout (`nix/home/links.nix`), правка действует сразу; новый файл
+— `git add`, затем `ws apply`. Из ядра в store ставятся `~/.local/bin/ws`,
+дополнения fish, `conf.d/00-nix.fish` и `user-bin.fish`,
+`~/.config/nix/nix.conf`; файл `home/` на их месте или на месте файла,
+который пишет модуль ядра (`functions/ssh.fish` и т. п.), — ошибка сборки. Man pages — из сборки Nix
 (`nix/home/man.nix`). fzf, zoxide, eza, micro — из Nix
 (`nix/home/cli.nix`). fzf ≥ 0.70 занимает Shift+Tab; `config.fish` возвращает туда
 `complete-and-search` fish.

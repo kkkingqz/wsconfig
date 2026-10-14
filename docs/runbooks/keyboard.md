@@ -531,7 +531,7 @@ gnome-remote-desktop отдаёт их mutter без `/dev/input`, xremap их �
 и там не ставится (`boot = "container"`).
 
 - **Клиент — Remmina на mbp16.** Её окна в `&vm_consoles`
-  (`keyboard/xremap.yml`): xremap клиента пропускает клавиши как есть,
+  (`keyboard/presets/macos-xremap.yml`): xremap клиента пропускает клавиши как есть,
   CapsLock уходит приватным аккордом (`Shift+Ctrl+Alt+Space`, UA: `+U`).
   В профиле подключения Remmina — «Grab all keyboard events» (или кнопка
   захвата на панели): иначе сочетания с Super забирает GNOME клиента;
@@ -561,9 +561,10 @@ Option+Command+E / T          Tile Editing Mode / Always on Top
 Repository:
 
 ```text
-keyboard/xremap.yml
 keyboard/config.toml           выбор: пресет, раскладки, свои значения ключей пресета
+keyboard/xremap.yml            (конфигурация, необязательно) свой xremap.yml целиком вместо пресетного
 keyboard/presets/macos.nix     пресет ядра: сочетания GNOME и private chords Tiling
+keyboard/presets/macos-xremap.yml  пресет ядра: привязки xremap, запускают инструменты ядра
 keyboard/keyboard.nix          раскладки → источники ввода, вариант RDP, проверки, keyboard.json
 
 libexec/ws-keyboard
@@ -632,7 +633,8 @@ Environment=XREMAP_CONFIG=/nix/store/…-xremap.yml
 ExecStart=/usr/bin/bash /nix/store/…-wsconfig-core/libexec/ws-xremap
 ```
 
-`XREMAP_CONFIG` — сборка `keyboard/xremap.yml` в store: `@core@` в
+`XREMAP_CONFIG` — сборка в store `keyboard/xremap.yml` конфигурации, если
+он есть, иначе `keyboard/presets/PRESET-xremap.yml` ядра: `@core@` в
 путях `launch` (`@core@/libexec/ws-input-source`) заменяется на ядро в
 store. Правка `xremap.yml` применяется через `ws apply`: unit меняется, и
 home-manager перезапускает сервис (`--watch=config` store-файл не видит).

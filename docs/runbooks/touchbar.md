@@ -173,7 +173,7 @@ system/files/udev/90-touchbar-native.rules
 system/files/usr/local/libexec/ws-touchbar-fn
 system/files/systemd/system/ws-touchbar-fn.service
 libexec/ws-xremap
-keyboard/xremap.yml
+keyboard/presets/macos-xremap.yml
 ```
 
 Generated/system runtime state не коммитится в wsconfig.

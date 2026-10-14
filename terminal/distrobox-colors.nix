@@ -1,15 +1,10 @@
-# Distrobox foreground colors. Change these here, then run `ws apply`.
-{ lib, ... }:
+# Distrobox foreground colors: terminal/config.toml ([distrobox]) of the
+# configuration, then `ws apply`.
+{ lib, wsHost, wsConfig, ... }:
 let
-  defaultColor = "#FFB3B3";
-  colors = {
-    arch = "#8BE9FD";
-    wine-wayland = "#C4A7E7";
-    wine = "#FFB86C";
-    proton = "#A6E3A1";
-    t2bce-build = "#89B4FA";
-    touchbar-build = "#F5C2E7";
-  };
+  inherit (import ./config.nix { inherit lib wsHost wsConfig; }) distrobox;
+  defaultColor = distrobox.default;
+  colors = distrobox.boxes or { };
 
   cases = lib.concatStringsSep "\n" (lib.mapAttrsToList (name: color: ''
     case ${name}
