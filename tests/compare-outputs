@@ -1,0 +1,353 @@
+#!/usr/bin/env python3
+"""Compare the Nix outputs of commit BASE with the working tree.
+
+Stage 0.1 of helpws plan-v2: steps that must not change behaviour prove it
+with a clean comparison. Builds system-HOST and the home-manager
+activationPackage of every host at BASE (in a git worktree) and in the
+working tree (tracked files, uncommitted changes included), then sorts the
+differences by kind:
+
+  1  content of managed system files: files/ and esp/ of the system tree
+  2  manifests and parameters: the system manifest, home-manager files
+     (list, content, link targets), activation script, dconf, packages
+  3  /nix/store paths only: equal once /nix/store/<hash>- is masked, and the
+     store paths they reference differ in the same way down to the leaves
+  4  allowed by the step: kinds 1-2 matched by a pattern of --allow FILE
+
+Kinds 1 and 2 outside the allowed ones exit 1. A file that differs only in
+store paths is followed into the paths it references (paired by name): a
+change of a script a unit points at is reported as that unit, kind 1 or 2,
+with the chain after "<-". Targets of out-of-store links (files of the
+checkout itself, ~/wsconfig/bin/...) are compared as strings only: they are
+the code the tests check.
+
+The allow file holds fnmatch patterns, one per line, '#' comments; they
+match the labels this script prints, e.g. home-*/home-files/.local/bin/dotgit
+or system-mbp16/manifest:-unit enabled foo.service. Put its content in the
+commit message of the step.
+"""
+import argparse
+import difflib
+import fnmatch
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+
+SYSTEM = "x86_64-linux"
+KINDS = {
+    1: "content of managed system files",
+    2: "manifests and parameters",
+    3: "/nix/store paths only",
+    4: "allowed by --allow",
+}
+
+
+class Comparator:
+    def __init__(self, store="/nix/store"):
+        self.store = store.rstrip("/")
+        esc = re.escape(self.store)
+        self.ref_re = re.compile(esc.encode() + rb"/([0-9a-z]{32})-([^/\s\"'`:;,()<>=\[\]{}\x00]+)")
+        self.cache = {}
+        self.walked = set()
+        self.findings = []
+
+    def mask(self, data):
+        return self.ref_re.sub(self.store.encode() + rb"/HASH-\2", data)
+
+    def refs(self, data):
+        """Store paths in data, grouped by name, in order of appearance."""
+        out = {}
+        for m in self.ref_re.finditer(data):
+            path = m.group(0).decode(errors="replace")
+            names = out.setdefault(m.group(2).decode(errors="replace"), [])
+            if path not in names:
+                names.append(path)
+        return out
+
+    def in_store(self, target):
+        return target.startswith(self.store + "/")
+
+    def store_root(self, target):
+        rest = target[len(self.store) + 1:]
+        return self.store + "/" + rest.split("/", 1)[0]
+
+    # Each compare returns a list of (label, detail, real); real=False marks
+    # a difference in store paths only.
+    def compare(self, a, b, label):
+        la, lb = os.path.lexists(a), os.path.lexists(b)
+        if not la or not lb:
+            return [(label, "only in BASE" if la else "only in the working tree", True)]
+        sa, sb = os.lstat(a), os.lstat(b)
+        if stat.S_ISLNK(sa.st_mode) and stat.S_ISLNK(sb.st_mode):
+            return self.compare_links(a, b, label)
+        if stat.S_IFMT(sa.st_mode) != stat.S_IFMT(sb.st_mode):
+            return [(label, "type differs", True)]
+        if stat.S_ISDIR(sa.st_mode):
+            out = []
+            for name in sorted(set(os.listdir(a)) | set(os.listdir(b))):
+                out += self.compare(os.path.join(a, name), os.path.join(b, name), f"{label}/{name}")
+            return out
+        out = []
+        if (sa.st_mode & 0o111) != (sb.st_mode & 0o111):
+            out.append((label, "mode %o -> %o" % (stat.S_IMODE(sa.st_mode), stat.S_IMODE(sb.st_mode)), True))
+        with open(a, "rb") as fa, open(b, "rb") as fb:
+            da, db = fa.read(), fb.read()
+        return out + self.compare_data(da, db, label)
+
+    def compare_links(self, a, b, label):
+        ta, tb = os.readlink(a), os.readlink(b)
+        if ta == tb:
+            return []
+        if self.in_store(ta) and self.in_store(tb):
+            if self.mask(ta.encode()) != self.mask(tb.encode()):
+                return [(label, f"link {ta} -> {tb}", True)]
+            return self.compare(ta, tb, label)
+        if self.mask(ta.encode()) == self.mask(tb.encode()):
+            return [(label, "", False)]
+        return [(label, f"link {ta} -> {tb}", True)]
+
+    def compare_data(self, da, db, label):
+        if da == db:
+            return []
+        if self.mask(da) != self.mask(db):
+            return [(label, diff(self.mask(da), self.mask(db)), True)]
+        pairs = [p for p in self.ref_pairs(da, db) if p not in self.walked]
+        if not pairs:
+            return []
+        real = []
+        for root_a, root_b in pairs:
+            name = root_a.split("-", 1)[1]
+            for sub, detail, is_real in self.compare_roots(root_a, root_b):
+                if is_real:
+                    real.append((f"{label} <- {name}{sub}", detail, True))
+        return real or [(label, "", False)]
+
+    def ref_pairs(self, da, db):
+        ra, rb = self.refs(da), self.refs(db)
+        pairs = []
+        for name in sorted(set(ra) & set(rb)):
+            for pa, pb in zip(ra[name], rb[name]):
+                pa, pb = self.store_root(pa), self.store_root(pb)
+                if pa != pb and (pa, pb) not in pairs:
+                    pairs.append((pa, pb))
+        return pairs
+
+    def compare_roots(self, root_a, root_b):
+        """Two store paths, cached; labels relative to the path."""
+        key = (root_a, root_b)
+        if key not in self.cache:
+            self.cache[key] = []  # a cycle compares as equal
+            self.cache[key] = self.compare(root_a, root_b, "")
+        return self.cache[key]
+
+    def record(self, kind, label, results):
+        """Top-level results: real ones keep kind, store-only become kind 3."""
+        real = [(l, d) for l, d, r in results if r]
+        for l, d in real:
+            self.findings.append((kind, l, d))
+        if not real and results:
+            self.findings.append((3, label, ""))
+
+    def structural(self, a, b):
+        """Paths walked entry by entry: a reference to them (the activation
+        script names its own generation) adds nothing."""
+        self.walked.add((a, b))
+
+    def system(self, name, a, b):
+        """A system tree: files/ and esp/ are kind 1, the manifest kind 2."""
+        self.structural(a, b)
+        for part in ("files", "esp"):
+            pa, pb = os.path.join(a, part), os.path.join(b, part)
+            for path in sorted(set(walk(pa)) | set(walk(pb))):
+                label = f"{name}/{part}{path}"
+                self.record(1, label, self.compare(pa + path, pb + path, label))
+        ma, mb = (read_lines(os.path.join(p, "manifest")) for p in (a, b))
+        masked = lambda lines: {self.mask(l.encode()).decode(): l for l in lines}
+        xa, xb = masked(ma), masked(mb)
+        for line in sorted(set(xa) - set(xb)):
+            self.findings.append((2, f"{name}/manifest:-{line.replace(chr(9), ' ')}", ""))
+        for line in sorted(set(xb) - set(xa)):
+            self.findings.append((2, f"{name}/manifest:+{line.replace(chr(9), ' ')}", ""))
+        if ma != mb and set(xa) == set(xb):
+            self.findings.append((3, f"{name}/manifest", ""))
+        known = {"files", "esp", "manifest"}
+        for entry in sorted((set(os.listdir(a)) | set(os.listdir(b))) - known):
+            label = f"{name}/{entry}"
+            self.record(2, label, self.compare(os.path.join(a, entry), os.path.join(b, entry), label))
+
+    def home(self, name, a, b):
+        """A home-manager generation: every entry is kind 2, home-files and
+        home-path file by file."""
+        self.structural(a, b)
+        for entry in sorted(set(os.listdir(a)) | set(os.listdir(b))):
+            pa, pb = os.path.join(a, entry), os.path.join(b, entry)
+            if entry in ("home-files", "home-path") and os.path.isdir(pa) and os.path.isdir(pb):
+                ra, rb = os.path.realpath(pa), os.path.realpath(pb)
+                self.structural(ra, rb)
+                for path in sorted(set(walk(ra)) | set(walk(rb))):
+                    label = f"{name}/{entry}{path}"
+                    self.record(2, label, self.compare(ra + path, rb + path, label))
+            else:
+                label = f"{name}/{entry}"
+                self.record(2, label, self.compare(pa, pb, label))
+
+
+def walk(root):
+    """Paths under root ('/x/y'): files, links and empty dirs; links are not
+    followed."""
+    if not os.path.lexists(root):
+        return []
+    out = []
+    for dirpath, dirs, files in os.walk(root):
+        rel = dirpath[len(root):]
+        for d in list(dirs):
+            if os.path.islink(os.path.join(dirpath, d)):
+                dirs.remove(d)
+                files.append(d)
+        out += [f"{rel}/{f}" for f in files]
+        if not dirs and not files and rel:
+            out.append(rel)
+    return out
+
+
+def read_lines(path):
+    try:
+        with open(path) as f:
+            return f.read().splitlines()
+    except FileNotFoundError:
+        return []
+
+
+def diff(da, db, limit=40):
+    try:
+        ta, tb = da.decode(), db.decode()
+    except UnicodeDecodeError:
+        return "binary content differs"
+    lines = list(difflib.unified_diff(ta.splitlines(), tb.splitlines(), "BASE", "working tree", lineterm="", n=1))
+    if len(lines) > limit:
+        lines = lines[:limit] + [f"... {len(lines) - limit} more lines"]
+    return "\n".join(lines)
+
+
+def read_allow(path):
+    patterns = []
+    with open(path) as f:
+        for line in f:
+            line = line.split("#", 1)[0].strip()
+            if line:
+                patterns.append(line)
+    return patterns
+
+
+def apply_allow(findings, patterns):
+    used = set()
+    out = []
+    for kind, label, detail in findings:
+        if kind in (1, 2):
+            hit = next((p for p in patterns if fnmatch.fnmatchcase(label, p)), None)
+            if hit:
+                used.add(hit)
+                out.append((4, label, f"kind {kind}, {hit}"))
+                continue
+        out.append((kind, label, detail))
+    return out, [p for p in patterns if p not in used]
+
+
+def report(findings, show_diff, out=sys.stdout):
+    for kind in sorted(KINDS):
+        items = [(l, d) for k, l, d in findings if k == kind]
+        print(f"{kind}. {KINDS[kind]}: {len(items) or 'none'}", file=out)
+        for label, detail in items:
+            if kind == 4:
+                print(f"  {label} ({detail})", file=out)
+                continue
+            print(f"  {label}", file=out)
+            if show_diff and detail:
+                for line in detail.splitlines():
+                    print(f"    {line}", file=out)
+
+
+# --- building
+
+def run(cmd, **kw):
+    return subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE, **kw).stdout
+
+
+def outputs(ref):
+    """{name: store path} of system-HOST and home-HOST of a flake."""
+    homes = json.loads(run(["nix", "eval", "--json", f"{ref}#homeConfigurations", "--apply", "builtins.attrNames"]))
+    systems = json.loads(run(["nix", "eval", "--json", f"{ref}#packages.{SYSTEM}", "--apply",
+                              'p: builtins.filter (n: builtins.substring 0 7 n == "system-") (builtins.attrNames p)']))
+    names, installables = [], []
+    for home in homes:
+        names.append("home-" + home.split("@", 1)[1])
+        installables.append(f'{ref}#homeConfigurations."{home}".activationPackage')
+    for system in systems:
+        names.append(system)
+        installables.append(f"{ref}#packages.{SYSTEM}.{system}")
+    built = json.loads(run(["nix", "build", "--no-link", "--json", *installables]))
+    return {n: b["outputs"]["out"] for n, b in zip(names, built)}
+
+
+def compare_outputs(base_out, work_out, comparator):
+    for name in sorted(set(base_out) | set(work_out)):
+        if name not in base_out or name not in work_out:
+            where = "only in BASE" if name in base_out else "only in the working tree"
+            comparator.findings.append((2, name, where))
+            continue
+        a, b = base_out[name], work_out[name]
+        if a == b:
+            continue
+        if name.startswith("system-"):
+            comparator.system(name, a, b)
+        else:
+            comparator.home(name, a, b)
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(description="Compare the Nix outputs of BASE with the working tree (helpws plan-v2, 0.1).")
+    p.add_argument("base", metavar="BASE", help="commit to compare with")
+    p.add_argument("--allow", metavar="FILE", help="patterns of differences this step expects")
+    p.add_argument("--diff", action="store_true", help="show content diffs (store hashes masked)")
+    args = p.parse_args(argv)
+
+    repo = run(["git", "rev-parse", "--show-toplevel"], cwd=Path(__file__).resolve().parent).strip()
+    patterns = read_allow(args.allow) if args.allow else []
+    base = run(["git", "-C", repo, "rev-parse", "--verify", args.base + "^{commit}"]).strip()
+    untracked = run(["git", "-C", repo, "ls-files", "--others", "--exclude-standard"]).split()
+    if untracked:
+        print("warning: untracked files are not part of the flake: " + " ".join(untracked), file=sys.stderr)
+
+    tmp = tempfile.mkdtemp(prefix="ws-compare-")
+    worktree = os.path.join(tmp, "base")
+    try:
+        run(["git", "-C", repo, "worktree", "add", "--quiet", "--detach", worktree, base])
+        print(f"building BASE {base[:12]}", file=sys.stderr)
+        base_out = outputs(f"git+file://{worktree}")
+        print("building the working tree", file=sys.stderr)
+        work_out = outputs(f"git+file://{repo}")
+    except subprocess.CalledProcessError as e:
+        print(f"compare-outputs: {' '.join(e.cmd[:3])} failed", file=sys.stderr)
+        return 2
+    finally:
+        subprocess.run(["git", "-C", repo, "worktree", "remove", "--force", worktree],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    comparator = Comparator()
+    compare_outputs(base_out, work_out, comparator)
+    findings, unused = apply_allow(comparator.findings, patterns)
+    report(findings, args.diff)
+    for pattern in unused:
+        print(f"warning: --allow pattern matched nothing: {pattern}", file=sys.stderr)
+    return 1 if any(k in (1, 2) for k, _, _ in findings) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
