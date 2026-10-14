@@ -218,6 +218,51 @@ cmd_diff() {
 }
 
 # Layer owners in apply order: name, command.
+# Step tables (apply_steps, update_steps, check_steps): "NAME COMMAND" per
+# entry. Shared by apply, update and check is only the walk (helpws plan-v2,
+# 2.5): names, the selection, the step header and the summary. What a result
+# means each command decides itself: apply OK/PREFLIGHT (69)/FAIL, update
+# OK/FAIL, check the result object of lib/check.bash.
+
+# Dies on a NAME that is not in the table: steps_check TABLE KIND NAME...
+steps_check() {
+    local -n steps_table="$1"
+    local kind="$2" name step known
+    shift 2
+    for name in "$@"; do
+        known=false
+        for step in "${steps_table[@]}"; do
+            [[ "${step%% *}" == "$name" ]] && known=true
+        done
+        [[ "$known" == true ]] || die "unknown $kind step: $name"
+    done
+}
+
+# The entries of TABLE to run, in table order: all, or the NAMEs given.
+# Read them with mapfile: the steps keep the terminal as their input.
+steps_selected() {
+    local -n steps_table="$1"
+    local step
+    shift
+    for step in "${steps_table[@]}"; do
+        if (($#)) && [[ " $* " != *" ${step%% *} "* ]]; then
+            continue
+        fi
+        printf '%s\n' "$step"
+    done
+}
+
+step_header() {
+    printf '\n=== %s\n' "$1"
+}
+
+# steps_summary TITLE LINE...
+steps_summary() {
+    printf '\n=== %s\n' "$1"
+    shift
+    printf '  %s\n' "$@"
+}
+
 apply_steps=(
     "extensions ws-keyboard-install-extensions"
     "tiling ws-tiling-apply"
@@ -228,25 +273,16 @@ apply_steps=(
 )
 
 cmd_apply() {
-    local wanted=("$@") step name cmd rc known
-    local -a results=()
+    local step name cmd rc
+    local -a results=() selected=()
     local failed=false
 
-    for name in "${wanted[@]}"; do
-        known=false
-        for step in "${apply_steps[@]}"; do
-            [[ "${step%% *}" == "$name" ]] && known=true
-        done
-        [[ "$known" == true ]] || die "unknown apply step: $name"
-    done
-
-    for step in "${apply_steps[@]}"; do
+    steps_check apply_steps apply "$@"
+    mapfile -t selected < <(steps_selected apply_steps "$@")
+    for step in "${selected[@]}"; do
         name="${step%% *}"
         cmd="${step#* }"
-        if ((${#wanted[@]})) && [[ " ${wanted[*]} " != *" $name "* ]]; then
-            continue
-        fi
-        printf '\n=== %s: %s\n' "$name" "$cmd"
+        step_header "$name: $cmd"
         rc=0
         # shellcheck disable=SC2086 # cmd is a fixed command line
         "$repo/bin/"$cmd || rc=$?
@@ -257,8 +293,7 @@ cmd_apply() {
         esac
     done
 
-    printf '\n=== ws apply\n'
-    printf '  %s\n' "${results[@]}"
+    steps_summary "ws apply" "${results[@]}"
     # wsflatpak/wsbox apply may have written marks: switch links the desktop
     # entries of what this workstation now has and commits the lists.
     if ! git -C "$repo" diff --quiet HEAD -- "${tool_lists[@]}" 2>/dev/null; then
@@ -314,25 +349,16 @@ update_steps=(
 )
 
 cmd_update() {
-    local wanted=("$@") step name cmd rc known
-    local -a results=()
+    local step name cmd rc
+    local -a results=() selected=()
     local failed=false
 
-    for name in "${wanted[@]}"; do
-        known=false
-        for step in "${update_steps[@]}"; do
-            [[ "${step%% *}" == "$name" ]] && known=true
-        done
-        [[ "$known" == true ]] || die "unknown update step: $name"
-    done
-
-    for step in "${update_steps[@]}"; do
+    steps_check update_steps update "$@"
+    mapfile -t selected < <(steps_selected update_steps "$@")
+    for step in "${selected[@]}"; do
         name="${step%% *}"
         cmd="${step#* }"
-        if ((${#wanted[@]})) && [[ " ${wanted[*]} " != *" $name "* ]]; then
-            continue
-        fi
-        printf '\n=== %s\n' "$name"
+        step_header "$name"
         rc=0
         # shellcheck disable=SC2086 # cmd is a fixed command line
         ( $cmd ) || rc=$?
@@ -344,8 +370,7 @@ cmd_update() {
         fi
     done
 
-    printf '\n=== ws update\n'
-    printf '  %s\n' "${results[@]}"
+    steps_summary "ws update" "${results[@]}"
     [[ "$failed" == false ]]
 }
 
@@ -865,7 +890,7 @@ check_result() {
 
 cmd_check() {
     local verbose=false step name cmd rc out err res counts warn fail
-    local -a results=()
+    local -a results=() selected=()
     local total_warn=0 total_fail=0
 
     case "${1:-}" in
@@ -886,13 +911,14 @@ cmd_check() {
     err="$(mktemp)"
     trap 'rm -f "$out" "$err"; trap - RETURN' RETURN
 
-    for step in "${check_steps[@]}"; do
+    mapfile -t selected < <(steps_selected check_steps)
+    for step in "${selected[@]}"; do
         name="${step%% *}"
         cmd="${step#* }"
         rc=0
         # shellcheck disable=SC2086 # cmd is a fixed command line
         "$repo/bin/"$cmd --json > "$out" 2> "$err" || rc=$?
-        printf '\n=== %s: %s (exit %s)\n' "$name" "$cmd" "$rc"
+        step_header "$name: $cmd (exit $rc)"
         if res="$(check_result "$out" "$verbose")"; then
             counts="${res%%$'\n'*}"
             warn="${counts% *}"
@@ -921,9 +947,7 @@ cmd_check() {
         fi
     done
 
-    printf '\n=== ws check\n'
-    printf '  %s\n' "${results[@]}"
-    printf '  FAIL=%d WARN=%d\n' "$total_fail" "$total_warn"
+    steps_summary "ws check" "${results[@]}" "$(printf 'FAIL=%d WARN=%d' "$total_fail" "$total_warn")"
     ((total_fail == 0))
 }
 
