@@ -220,7 +220,7 @@ libexec/ws-caps-led
 
 вызывается GNOME extension через `~/.local/share/workstation/libexec/`
 (ссылка home-manager на `libexec/` checkout). Это не пользовательская команда, в
-`~/.local/bin` её нет (`libexecExcluded` в `nix/home/links.nix`).
+PATH её нет: там только `ws` и `helpws` (`nix/home/links.nix`).
 
 ## GDM login и GNOME lock screen
 
@@ -605,8 +605,9 @@ Machine-local state — вне checkout, в `~/.local/state/wsconfig/keyboard/`:
 
 ## Runtime installation
 
-Command helpers устанавливаются в `~/.local/bin` как symlink на repository
-(ссылки home-manager, `ws switch`).
+Command helpers лежат в `libexec/` ядра в store (`nix/pkgs/ws.nix`, `ws
+switch`); xremap и сочетания GNOME вызывают их по пути в store, в PATH их
+нет.
 
 xremap binary — из Nix: `nix/pkgs/xremap.nix`, upstream
 `xremap-linux-x86_64-gnome.zip` v0.15.13 по hash:
@@ -736,7 +737,7 @@ ws-workstation-verify     # GNOME ↔ клавиатура: мост xremap, Inp
 ws keyboard status
 ws keyboard devices
 ws keyboard gnome-apps
-ws-input-source status
+~/.local/share/workstation/libexec/ws-input-source status
 
 systemctl --user status xremap.service
 journalctl --user -u xremap.service

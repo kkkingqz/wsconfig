@@ -788,17 +788,15 @@ man ws-workstation
 ~/.local/bin
 ```
 
-Исходники собственных wrapper'ов хранятся в Git repository:
-
-```text
-~/wsconfig/bin
-```
+Исходники хранятся в Git repository (`~/wsconfig/bin/ws`,
+`~/wsconfig/libexec/`); в `~/.local/bin` — только `ws` и `helpws` из ядра в
+store.
 
 Правило:
 
 ```text
 executable source   ~/wsconfig/bin/ws, ~/wsconfig/libexec/<tool>
-runtime link        ~/.local/bin/<tool> → ядро в store (nix/pkgs/ws.nix)
+runtime link        ~/.local/bin/ws, helpws → ядро в store (nix/pkgs/ws.nix)
 config source       ~/wsconfig/<область>/...
 generated           ~/.local/share/workstation/...
 ```

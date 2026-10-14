@@ -103,14 +103,19 @@ elif have xdg-mime; then
 fi
 
 dangling_menu=""
+old_menu=""
 for link in "$HOME"/.local/share/applications/wswin-*.desktop; do
     [[ -L "$link" && ! -e "$link" ]] && dangling_menu+=" $(basename "$link")"
+    grep -qs '^Exec=wswin ' "$link" && old_menu+=" $(basename "$link")"
 done
 if [[ -n "$dangling_menu" ]]; then
     warn "ws windows menu links to missing prefixes:$dangling_menu (ws windows menu sync)"
 else
     pass "ws windows menu links resolve"
 fi
+# wswin is no longer in PATH (helpws plan-v2, stage 5).
+[[ -z "$old_menu" ]] \
+    || warn "ws windows menu entries run the old name wswin:$old_menu (ws windows menu sync)"
 
 info "GPU for Proton/Steam: $("$WS_CORE/libexec/ws-gpu" status 2>/dev/null || echo unknown)"
 

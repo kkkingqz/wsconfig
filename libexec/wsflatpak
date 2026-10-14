@@ -755,7 +755,7 @@ def cmd_reset_permissions(app):
     if managed_override(app) is not None:
         print(
             f"NOTE: {app} has declared overrides ({CATALOG_NAME}, nix/hosts/HOST/flatpak.toml); "
-            "`wsflatpak apply` sets them again"
+            "`ws flatpak apply` sets them again"
         )
 
 
@@ -1358,7 +1358,7 @@ OVERRIDE_HELP = """APP — ID, имя или однозначная часть �
 значение машины заменяет значение каталога. un… убирает значение на этой
 машине: своё — из её flatpak.toml, общее — через skip там же; с --all общее
 удаляется из каталога. Чтобы применить:
-  ws switch && wsflatpak apply
+  ws switch && ws flatpak apply
 При apply текущие overrides управляемого приложения сбрасываются и заменяются
 объявленными. Ручные изменения через Flatseal при этом исчезают.
 """
@@ -1372,27 +1372,27 @@ Runtime устанавливается для пользователя, даже
 После APP можно указать другие приложения, ветку или аргументы flatpak install.
 Новые приложения добавляются в flatpak/catalog.toml и в yes этой машины
 (nix/hosts/HOST/flatpak.toml); затем выполните ws switch.
-Объявленные overrides нового приложения применяются через wsflatpak apply.
+Объявленные overrides нового приложения применяются через ws flatpak apply.
 
 Примеры:
-  wsflatpak install org.videolan.VLC
-  wsflatpak install org.gimp.GIMP org.videolan.VLC -y
-  wsflatpak install --remote flatpark com.anthropic.ClaudeDesktop
-  wsflatpak install --unmanaged app/org.mozilla.firefox/x86_64/beta
+  ws flatpak install org.videolan.VLC
+  ws flatpak install org.gimp.GIMP org.videolan.VLC -y
+  ws flatpak install --remote flatpark com.anthropic.ClaudeDesktop
+  ws flatpak install --unmanaged app/org.mozilla.firefox/x86_64/beta
 """,
     "manage": """APP — ID, имя или однозначная часть имени установленного приложения.
 Без REMOTE используется origin приложения, затем flathub как запасной вариант.
 Приложение добавляется в flatpak/catalog.toml (если его там нет) и в yes этой
 машины; выполните ws switch.
 
-Пример: wsflatpak manage org.videolan.VLC
+Пример: ws flatpak manage org.videolan.VLC
 """,
     "unmanage": """Укажите точный App ID из flatpak/catalog.toml. Приложение не удаляется.
 Запись уходит из каталога вместе с overrides, а из файлов всех машин — их
 выбор и overrides приложения. Выполните ws switch, чтобы обновить собранный
 список управляемых приложений.
 
-Пример: wsflatpak unmanage org.videolan.VLC
+Пример: ws flatpak unmanage org.videolan.VLC
 """,
     "remove": """По умолчанию используется flatpak uninstall --user --delete-data.
 --keep-data сохраняет данные приложения.
@@ -1404,17 +1404,17 @@ Runtime устанавливается для пользователя, даже
 Для постоянного изменения используйте unfilesystem, unhost, unenv или untalk.
 """,
     "remote-add": """Команда печатает строку NAME = "URL" для [remotes] в flatpak/catalog.toml.
-После правки файла выполните ws switch && wsflatpak apply.
+После правки файла выполните ws switch && ws flatpak apply.
 
-Пример: wsflatpak remote-add example https://example.org/repo.flatpakrepo
+Пример: ws flatpak remote-add example https://example.org/repo.flatpakrepo
 """,
     "run": """Без аргументов приложения используется gtk-launch, если экспортирован .desktop.
 --direct или аргументы приложения переключают запуск на flatpak run.
 Укажите --direct перед APP; аргументы приложения — после APP.
 
 Примеры:
-  wsflatpak run org.videolan.VLC
-  wsflatpak run --direct org.videolan.VLC /home/user/video.mkv
+  ws flatpak run org.videolan.VLC
+  ws flatpak run --direct org.videolan.VLC /home/user/video.mkv
 """,
     "apply": """Добавляет объявленные user remotes, устанавливает отсутствующие приложения
 и обеспечивает user runtime для всех установленных веток управляемых приложений.
@@ -1435,7 +1435,7 @@ apply спрашивает «Поставить все? [Y/n]», на n — сп
     "cleanup": """Передаёт аргументы в flatpak uninstall --user --unused.
 Runtimes с ручным pin сохраняются.
 
-Пример: wsflatpak cleanup -y
+Пример: ws flatpak cleanup -y
 """,
 }
 
@@ -1446,10 +1446,10 @@ def build_parser():
         description="Пользовательские Flatpak-приложения и их конфигурация в wsconfig.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Установка в домашний каталог:
-  wsflatpak install org.videolan.VLC
-  wsflatpak install --unmanaged org.gimp.GIMP
-  wsflatpak install --remote flatpark com.anthropic.ClaudeDesktop
-  ws switch && wsflatpak apply
+  ws flatpak install org.videolan.VLC
+  ws flatpak install --unmanaged org.gimp.GIMP
+  ws flatpak install --remote flatpark com.anthropic.ClaudeDesktop
+  ws switch && ws flatpak apply
 
 Приложения и runtimes — обычно ~/.local/share/flatpak, данные — ~/.var/app/APP_ID.
 Доступ к домашним файлам задаётся отдельно через filesystem/host.
@@ -1457,7 +1457,7 @@ install/manage/unmanage редактируют flatpak/catalog.toml и выбо�
 nix/hosts/HOST/flatpak.toml; filesystem/host/env/talk и un… — overrides там же.
 ws switch собирает их; apply применяет собранную конфигурацию.
 
-Справка по команде: wsflatpak help install или wsflatpak install --help.
+Справка по команде: ws flatpak help install или ws flatpak install --help.
 Подробное руководство: helpws flatpak / man ws-flatpak.
 """,
     )

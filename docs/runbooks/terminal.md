@@ -545,8 +545,8 @@ man ws-workstation
 ```
 
 Все файлы из `terminal/fish/` (и `terminal/ghostty/*.ghostty`)
-подключены ссылками home-manager в checkout; `ws` и его инструменты в
-`~/.local/bin` — ссылки на ядро в store (`nix/pkgs/ws.nix`) (`nix/home/links.nix`);
+подключены ссылками home-manager в checkout (`nix/home/links.nix`); `ws` и
+`helpws` в `~/.local/bin` — ссылки на ядро в store (`nix/pkgs/ws.nix`);
 новый файл подключается следующим `ws switch`. Man pages — из сборки Nix
 (`nix/home/man.nix`). fzf, zoxide, eza, micro — из Nix
 (`nix/home/cli.nix`). fzf ≥ 0.70 занимает Shift+Tab; `config.fish` возвращает туда

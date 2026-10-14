@@ -26,7 +26,7 @@ create    record the working state of the current commit: needs a clean
           switch) and a live system that matches its system tree (ws system
           check); then tags checkpoint/NAME (local, not pushed), keeps the
           generation and the system tree from garbage collection and runs
-          ws-baseline capture checkpoint-NAME --no-boxes; no sudo
+          ws baseline capture checkpoint-NAME --no-boxes; no sudo
 list      checkpoints: date, commit, home-manager generation, kernel
 show      what NAME recorded and the commands that return to it (printed,
           not run)
@@ -123,7 +123,7 @@ cmd_create() {
 
     echo "== baseline"
     "$WS_CORE/libexec/ws-baseline" capture "checkpoint-$name" --no-boxes \
-        || die "ws-baseline capture failed; the checkpoint is recorded without a complete baseline"
+        || die "ws baseline capture failed; the checkpoint is recorded without a complete baseline"
 
     echo
     echo "checkpoint $name: $(git -C "$repo" rev-parse --short HEAD), ${gen_link%-link}, $(uname -r)"

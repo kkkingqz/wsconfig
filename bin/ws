@@ -27,6 +27,8 @@ Usage:
   ws host [--for-marks]
   ws fact [--host HOST] NAME
   ws news
+  ws help [TOPIC]          the docs (helpws)
+  ws battery|gmux|psr|gpu ...   diagnostics of the hardware
   ws MODULE [ARG...]       flatpak box windows widgets game keyboard gnome
                            suspend backup: the owner of that layer
 
@@ -115,7 +117,7 @@ system    build the host system file tree (system) and compare it
           apply records the tree it installed in
           ~/.local/state/wsconfig/system (applied: link and GC root,
           history: date, commit, tree, result)
-baseline  functional baseline, see ws-baseline --help
+baseline  functional baseline, see ws baseline --help
 collect   archive of the machine state a rebuild needs and the repository
           does not hold (baseline, boot and disks, apt, Apple firmware,
           ~/.local/state/wsconfig), see ws-collect --help; asks sudo
@@ -129,7 +131,7 @@ backup    Timeshift snapshots to Unraid, then retain final local ro parents;
           recovery-export OUTPUT writes autonomous Live USB ws-restore;
           see ws backup --help and helpws backup / helpws recovery
 checkpoint  which commit matched which working state (home-manager
-          generation, system tree, kernel, baseline), see ws-checkpoint --help
+          generation, system tree, kernel, baseline), see ws checkpoint --help
 container  image and container of a container host (boot = "container",
           helpws plan-wsgnomebox) on its server, see ws-container --help
 host      print the flake host name used for this machine: WS_HOST, else
@@ -149,7 +151,6 @@ MODULE    the owners of the layers, one command for each (helpws plan-v2,
             gnome     GNOME profile, extensions (ws gnome)
             suspend   suspend, hibernate, t2bce (ws suspend)
             backup    Timeshift snapshots to Unraid (ws backup)
-          the old names still work: .desktop files and shortcuts call them
 USAGE
 }
 
@@ -1191,6 +1192,11 @@ case "${1:-}" in
     collect) shift; exec "$WS_CORE/libexec/ws-collect" "$@" ;;
     container) shift; exec "$WS_CORE/libexec/ws-container" "$@" ;;
     btrfs) shift; exec "$WS_CORE/libexec/ws-btrfs" "$@" ;;
+    # Diagnostics of the hardware, run by hand (helpws workstation, plan-dgpu).
+    battery) shift; exec "$WS_CORE/libexec/ws-battery" "$@" ;;
+    gmux) shift; exec "$WS_CORE/libexec/ws-gmux" "$@" ;;
+    psr) shift; exec "$WS_CORE/libexec/ws-psr" "$@" ;;
+    gpu) shift; exec "$WS_CORE/libexec/ws-gpu" "$@" ;;
     host) shift; host "$@" ;;
     fact) shift; cmd_fact "$@" ;;
     # The data files and what of them is not published (ws check repo).
@@ -1207,7 +1213,8 @@ case "${1:-}" in
             *) die "usage: ws steps apply|update|check" ;;
         esac
         ;;
-    -h|--help|help) usage ;;
+    help) shift; exec "$WS_CORE/libexec/helpws" "$@" ;;
+    -h|--help) usage ;;
     "") usage; exit 1 ;;
     *) usage >&2; exit 1 ;;
 esac

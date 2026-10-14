@@ -20,7 +20,7 @@ build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")
 
 usage() {
     cat <<'USAGE'
-Usage: ws-psr <command> [KERNEL]
+Usage: ws psr <command> [KERNEL]
 
   status             patched i915 built / installed / loaded
   build [KERNEL]     build i915.ko with apple-psr.patch into ~/.local/share/workstation/i915-psr/KERNEL
@@ -102,7 +102,7 @@ cmd_build() {
     echo
     printf 'i915 %s, %s\n' "$(modinfo -F vermagic "$work/i915.ko" | awk '{print $1}')" \
         "$(modinfo -F parm "$work/i915.ko" | grep -o '^t2_apple_psr' || echo 'NO t2_apple_psr')"
-    echo "Built into $work. Install with: ws-psr install $kver"
+    echo "Built into $work. Install with: ws psr install $kver"
 }
 
 cmd_install() {
@@ -110,7 +110,7 @@ cmd_install() {
     ko="$cache/$kver/i915.ko"
     dest="/lib/modules/$kver/updates/i915-psr"
     [[ -d "/lib/modules/$kver" ]] || die "kernel $kver is not installed"
-    [[ -r "$ko" ]] || die "missing $ko; run: ws-psr build $kver"
+    [[ -r "$ko" ]] || die "missing $ko; run: ws psr build $kver"
     vm="$(modinfo -F vermagic "$ko" | awk '{print $1}')"
     [[ "$vm" == "$kver" ]] || die "vermagic mismatch in i915.ko: $vm"
 

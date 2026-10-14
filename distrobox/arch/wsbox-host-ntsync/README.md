@@ -29,6 +29,6 @@ package is installed). It builds the package as the owner of the checkout
 Recovery order:
 
 1. Load `ntsync` on the host (`ws system apply`: modules-load.d/ntsync.conf).
-2. `wsbox apply arch` or `wsbox recreate arch` (the hook installs this package).
+2. `ws box apply arch` or `ws box recreate arch` (the hook installs this package).
 3. Install Wine / WinBox (paru).
-4. Run `wsbox apply arch` to restore managed application exports.
+4. Run `ws box apply arch` to restore managed application exports.

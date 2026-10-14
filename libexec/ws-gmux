@@ -18,7 +18,7 @@ efi_var=/sys/firmware/efi/efivars/gpu-power-prefs-fa4ce28d-b62f-4c99-9cc3-681568
 
 usage() {
     cat <<'USAGE'
-Usage: ws-gmux <command> [KERNEL]
+Usage: ws gmux <command> [KERNEL]
 
   status                     driver bound to the gmux, built/installed t2gmux, boot GPU
   build [KERNEL]             build t2gmux into ~/.local/share/workstation/t2gmux/KERNEL
@@ -97,7 +97,7 @@ cmd_build() {
     cp -- "$work/src/t2gmux.ko" "$work/t2gmux.ko"
     echo
     printf 't2gmux %s %s\n' "$(modinfo -F version "$work/t2gmux.ko")" "$(modinfo -F vermagic "$work/t2gmux.ko" | awk '{print $1}')"
-    echo "Built into $work. Install with: ws-gmux install $kver"
+    echo "Built into $work. Install with: ws gmux install $kver"
 }
 
 cmd_install() {
@@ -105,7 +105,7 @@ cmd_install() {
     ko="$cache/$kver/t2gmux.ko"
     dest="/lib/modules/$kver/updates/t2gmux"
     [[ -d "/lib/modules/$kver" ]] || die "kernel $kver is not installed"
-    [[ -r "$ko" ]] || die "missing $ko; run: ws-gmux build $kver"
+    [[ -r "$ko" ]] || die "missing $ko; run: ws gmux build $kver"
     vm="$(modinfo -F vermagic "$ko" | awk '{print $1}')"
     [[ "$vm" == "$kver" ]] || die "vermagic mismatch in t2gmux.ko: $vm"
     # apple-gmux and t2gmux both answer pnp:dAPP000B: exactly one of them

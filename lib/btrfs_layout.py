@@ -66,7 +66,7 @@ def fstab(text, uuid):
         elif fields[1] in targets:
             raise ValueError(fields[1] + ' has its own mount: ' + line)
         elif is_swapfile(fields):
-            pass  # swap belongs to @swap (ws-suspend swap-setup)
+            pass  # swap belongs to @swap (ws suspend swap-setup)
         else:
             out.append(line)
     if not root:

@@ -138,7 +138,7 @@ box не проверяет (INFO).
 ## GPU
 
 ```console
-ws-gpu status
+ws gpu status
 ```
 
 `proton` (`gpu = "amd"` в `distrobox.nix`) и Steam работают на AMD, если

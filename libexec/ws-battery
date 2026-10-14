@@ -4,7 +4,7 @@
 The SMC measures power per supply rail; PSTR is the whole system, PPBR the
 battery. RAPL counters split the CPU package. Devices that have no rail of
 their own (the screen backlight, the radios) are measured by switching them
-off for a few seconds: `ws-battery devices`.
+off for a few seconds: `ws battery devices`.
 
 SMC keys are read by index (key_at_index), which needs root: the script
 re-runs itself with sudo.
@@ -31,7 +31,7 @@ STATS = "/sys/power/suspend_stats"
 # Package C-state residency (intel_pmc_core, debugfs: root), microseconds.
 PKG_CSTATES = "/sys/kernel/debug/pmc_core/package_cstate_show"
 
-# Power rails of MacBookPro16,1. Names are what `ws-battery devices` showed
+# Power rails of MacBookPro16,1. Names are what `ws battery devices` showed
 # on them; a key missing on another model is skipped. The screen backlight
 # is on none of them, and together they count ~2 W more than PSTR without
 # it: PSTR minus the rails is the backlight minus ~2 W (2026-10-01: -2.1 W
@@ -50,10 +50,10 @@ RAILS = [
 TOTALS = [("PSTR", "system"), ("PPBR", "battery (SMC)"), ("PHPC", "CPU, regulator input")]
 
 USAGE = """\
-usage: ws-battery now [SECONDS]      power per rail, averaged over SECONDS (10)
-       ws-battery devices [SECONDS]  each device off (or on) for SECONDS (10): its power
-       ws-battery idle MINUTES       average over MINUTES, logged
-       ws-battery sleep              suspend now; after resume: energy spent, wakeups
+usage: ws battery now [SECONDS]      power per rail, averaged over SECONDS (10)
+       ws battery devices [SECONDS]  each device off (or on) for SECONDS (10): its power
+       ws battery idle MINUTES       average over MINUTES, logged
+       ws battery sleep              suspend now; after resume: energy spent, wakeups
 
 Devices: screen, keyboard and Touch Bar backlight, Wi-Fi, Bluetooth.
 Logs: ~/.local/state/wsconfig/battery/ (idle-*.tsv, sleep.tsv)."""

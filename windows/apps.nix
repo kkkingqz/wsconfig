@@ -24,7 +24,7 @@
 # The launchers only on a host that has the box: yes in
 # nix/hosts/HOST/boxes.toml, else the default of the box in distrobox.nix
 # (lib/catalog.nix); apps.json lists every program.
-{ config, lib, wsHost, ... }:
+{ config, lib, wsHost, core, ... }:
 let
   defaultBox = "wine-wayland";
   catalog = import ../lib/catalog.nix { inherit lib; };
@@ -83,7 +83,7 @@ let
     Type=Application
     Name=Wine (${defaultBox})
     Comment=Run a Windows program in the standard prefix of ${defaultBox}
-    Exec=wswin exec --box ${defaultBox} %f
+    Exec=${core}/bin/ws windows exec --box ${defaultBox} %f
     Icon=application-x-ms-dos-executable
     Terminal=false
     NoDisplay=true
@@ -102,7 +102,7 @@ let
     [Desktop Entry]
     Type=Application
     Name=${a.title}
-    Exec=wswin run ${name}
+    Exec=${core}/bin/ws windows run ${name}
     Icon=${iconOf a}
     Terminal=false
     Categories=${a.categories}

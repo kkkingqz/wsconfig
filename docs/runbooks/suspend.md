@@ -434,12 +434,12 @@ sudo apt-mark unhold linux-t2
 sudo apt install linux-t2
 ws suspend t2bce-build NEW_KERNEL
 ws suspend t2bce-install NEW_KERNEL
-ws-psr build NEW_KERNEL
-ws-psr install NEW_KERNEL
+ws psr build NEW_KERNEL
+ws psr install NEW_KERNEL
 sudo apt-mark hold linux-t2
 ```
 
-`ws-psr` — i915 с PSR на панели Apple (helpws plan-t2, раздел 1) из того же
+`ws psr` — i915 с PSR на панели Apple (helpws plan-t2, раздел 1) из того же
 коммита `linux-t2-patches`. Если `apple-psr.patch` не накладывается на новое
 ядро, работает штатный i915 без PSR (экран ~+1 W), остальное не страдает.
 
@@ -521,7 +521,7 @@ workstation`, T2 HARDWARE); на системный S3 это не влияет.
 bin/ws-suspend
 system/kernel/t2bce/nostate-fix.patch
 system/kernel/t2bce/t2bce.nix
-bin/ws-psr
+libexec/ws-psr
 system/kernel/i915-psr/apple-psr.patch
 system/files/sleep.conf.d/80-deep-only.conf
 system/files/udev/70-bcm4364-no-d3cold.rules

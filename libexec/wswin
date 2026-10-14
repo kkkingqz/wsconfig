@@ -297,7 +297,7 @@ make_launcher() {
         printf '[Desktop Entry]\n'
         printf 'Type=Application\n'
         printf 'Name=%s\n' "$name"
-        printf 'Exec=wswin exec --box %s --prefix %s %s\n' "$box" "$pname" "$exec_arg"
+        printf 'Exec=ws windows exec --box %s --prefix %s %s\n' "$box" "$pname" "$exec_arg"
         printf 'Icon=%s\n' "${icon:-application-x-executable}"
         printf 'Terminal=false\n'
         printf 'StartupNotify=true\n'
@@ -522,6 +522,12 @@ cmd_menu() {
                 for p in "$home/.wine" "$home"/prefixes/*; do
                     for f in "$(menu_dir "$p")"/*.desktop; do
                         [[ -f "$f" ]] || continue
+                        # Entries of before helpws plan-v2, stage 5 ran the
+                        # old name wswin, which is no longer in PATH.
+                        if grep -q '^Exec=wswin ' "$f"; then
+                            sed -i 's/^Exec=wswin /Exec=ws windows /' "$f"
+                            printf 'Updated %s: ws windows\n' "$(basename "$f")"
+                        fi
                         ln -sfn -- "$f" "$apps_dir/$(basename "$f")"
                         printf 'Linked %s\n' "$(basename "$f")"
                     done

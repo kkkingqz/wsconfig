@@ -128,29 +128,29 @@ keymap:
         - ids:0x05ac:0
     remap:
       # Fn+CapsLock: select Ukrainian layout
-      CapsLock: { launch: ["@repo@/libexec/ws-input-source", "ua"] }
-      Alt-CapsLock: { launch: ["@repo@/libexec/ws-input-source", "ua"] }
+      CapsLock: { launch: ["@core@/libexec/ws-input-source", "ua"] }
+      Alt-CapsLock: { launch: ["@core@/libexec/ws-input-source", "ua"] }
   - name: CapsLock input-source selector
     exact_match: true
     remap:
       # Logical CapsLock: OFF=EN, ON=RU. Real CapsLock modifier is suppressed.
-      CapsLock: { launch: ["@repo@/libexec/ws-input-source", "caps"] }
+      CapsLock: { launch: ["@core@/libexec/ws-input-source", "caps"] }
 
       # Ukrainian override; does not change remembered EN/RU Caps state.
-      Alt-CapsLock: { launch: ["@repo@/libexec/ws-input-source", "ua"] }
+      Alt-CapsLock: { launch: ["@core@/libexec/ws-input-source", "ua"] }
 
       # CapsLock and Alt/Fn+CapsLock from a VM console of the host, when
       # this machine is the guest (CapsLock into VM consoles).
-      Shift-Ctrl-Alt-Space: { launch: ["@repo@/libexec/ws-input-source", "caps"] }
-      Shift-Ctrl-Alt-U: { launch: ["@repo@/libexec/ws-input-source", "ua"] }
+      Shift-Ctrl-Alt-Space: { launch: ["@core@/libexec/ws-input-source", "caps"] }
+      Shift-Ctrl-Alt-U: { launch: ["@core@/libexec/ws-input-source", "ua"] }
   - name: Input-source cycle
     exact_match: true
     application:
       not: *vm_consoles
     remap:
       # Deterministic input-source cycle
-      Ctrl-Space: { launch: ["@repo@/libexec/ws-input-source", "next"] }
-      Ctrl-Alt-Space: { launch: ["@repo@/libexec/ws-input-source", "prev"] }
+      Ctrl-Space: { launch: ["@core@/libexec/ws-input-source", "next"] }
+      Ctrl-Alt-Space: { launch: ["@core@/libexec/ws-input-source", "prev"] }
   - name: macOS Spaces
     exact_match: true
     application:
@@ -167,13 +167,13 @@ keymap:
     application:
       not: *vm_consoles
     remap:
-      Alt-Super-Esc: { launch: ["ws-window", "task-manager"] }
-      Super-H: { launch: ["ws-window", "hide-current"] }
-      Alt-Super-H: { launch: ["ws-window", "hide-others"] }
-      Alt-Super-W: { launch: ["ws-window", "close-current"] }
-      Alt-Super-M: { launch: ["ws-window", "minimize-current"] }
-      Super-Shift-Q: { launch: ["ws-window", "logout"] }
-      Alt-Super-Shift-Q: { launch: ["ws-window", "logout-now"] }
+      Alt-Super-Esc: { launch: ["@core@/libexec/ws-window", "task-manager"] }
+      Super-H: { launch: ["@core@/libexec/ws-window", "hide-current"] }
+      Alt-Super-H: { launch: ["@core@/libexec/ws-window", "hide-others"] }
+      Alt-Super-W: { launch: ["@core@/libexec/ws-window", "close-current"] }
+      Alt-Super-M: { launch: ["@core@/libexec/ws-window", "minimize-current"] }
+      Super-Shift-Q: { launch: ["@core@/libexec/ws-window", "logout"] }
+      Alt-Super-Shift-Q: { launch: ["@core@/libexec/ws-window", "logout-now"] }
 
   - name: macOS tiling on PC keyboards
     exact_match: true
@@ -273,17 +273,17 @@ keymap:
       Super-Shift-H: Alt-Home
       Super-Shift-C:
         - Ctrl-L
-        - { launch: ["ws-nautilus-current", "computer"] }
+        - { launch: ["@core@/libexec/ws-nautilus-current", "computer"] }
         - { sleep: 300 }
         - Enter
       Super-Shift-O:
         - Ctrl-L
-        - { launch: ["ws-nautilus-current", "documents"] }
+        - { launch: ["@core@/libexec/ws-nautilus-current", "documents"] }
         - { sleep: 300 }
         - Enter
       Super-Shift-D:
         - Ctrl-L
-        - { launch: ["ws-nautilus-current", "desktop"] }
+        - { launch: ["@core@/libexec/ws-nautilus-current", "desktop"] }
         - { sleep: 300 }
         - Enter
       Super-Up: Alt-Up

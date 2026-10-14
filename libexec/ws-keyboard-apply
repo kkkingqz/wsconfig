@@ -176,7 +176,7 @@ fi
 if [[ "$preflight_failed" == true ]]; then
     echo >&2
     echo "No GNOME shortcuts were changed." >&2
-    echo "Run: $WS_CORE/libexec/ws-keyboard-status" >&2
+    echo "Run: ws keyboard status" >&2
     exit 69
 fi
 

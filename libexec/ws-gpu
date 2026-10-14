@@ -15,7 +15,7 @@ set -euo pipefail
 # (GL and, through the device-select layer, Vulkan) takes DRI_PRIME.
 
 usage() {
-    echo "usage: ws-gpu status|env|run COMMAND [ARG...]" >&2
+    echo "usage: ws gpu status|env|run COMMAND [ARG...]" >&2
     exit 2
 }
 

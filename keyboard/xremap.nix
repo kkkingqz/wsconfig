@@ -1,24 +1,22 @@
 # xremap: binary (nix/pkgs/xremap.nix), config and user service from Nix.
 #
-# - xremap.yml is built into the store with @repo@ replaced by the checkout
-#   path of this home; an edit takes effect on `ws switch`, which restarts the
-#   service because its unit changes.
+# - xremap.yml is built into the store with @core@ replaced by the core in
+#   the store (nix/pkgs/ws.nix): the tools it launches; an edit takes effect
+#   on `ws switch`, which restarts the service because its unit changes.
 # - The unit is the former systemd/user/xremap.service. home-manager owns the
 #   unit and its graphical-session.target.wants link; ws-keyboard still decides
 #   whether xremap runs: `ws-keyboard restore` and a failed apply create
 #   ~/.local/state/wsconfig/keyboard/xremap.disabled, apply/start remove it.
 # - ~/.local/bin/xremap stays for `ws-keyboard devices` and the status tools.
-{ config, lib, pkgs, xremap, facts, wsState, ... }:
+{ lib, pkgs, xremap, facts, wsState, core, ... }:
 let
-  home = config.home.homeDirectory;
-  repo = "${home}/${facts.wsconfig}";
   # Input devices of the host xremap must not grab (host.toml
   # xremapIgnore): virtual keyboards of other remappers, e.g. InputPlumber
   # on legiongo. ";" between names, which may hold spaces.
   ignore = facts.xremapIgnore or [ ];
 
   xremapYml = pkgs.writeText "xremap.yml"
-    (builtins.replaceStrings [ "@repo@" ] [ repo ]
+    (builtins.replaceStrings [ "@core@" ] [ "${core}" ]
       (builtins.readFile ./xremap.yml));
 in
 {
@@ -45,7 +43,7 @@ in
       ] ++ lib.optional (ignore != [ ])
         # Quoted: systemd splits Environment= at spaces.
         ("\"XREMAP_IGNORE=" + lib.concatStringsSep ";" ignore + "\"");
-      ExecStart = "/usr/bin/bash ${repo}/libexec/ws-xremap";
+      ExecStart = "/usr/bin/bash ${core}/libexec/ws-xremap";
       Restart = "on-failure";
       RestartSec = 5;
     };

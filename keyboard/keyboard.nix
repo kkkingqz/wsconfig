@@ -15,7 +15,7 @@
 # Change: edit here, `ws switch`, `ws apply keyboard` (or `ws apply tiling`).
 # The original GNOME values of a newly added key are not in the existing
 # backup (~/.local/state/wsconfig/keyboard/gsettings-backup.tsv).
-{ config, lib, facts, ... }:
+{ lib, facts, core, ... }:
 let
   # GVariant text as it is, for values that are not strings or string arrays.
   raw = text: { gvariant = text; };
@@ -28,7 +28,7 @@ let
   # (Command+C in GTK apps), Fn+Ctrl+F/C/R and Fn+Option tiling, Smart
   # Popup on the right modifiers, the Nautilus and terminal remaps.
   rdp = facts.boot == "container";
-  bin = "${config.home.homeDirectory}/${facts.wsconfig}/libexec";
+  bin = "${core}/libexec";
   # NAME = [ BINDING COMMAND ]: GNOME custom shortcuts.
   rdpCommands = {
     ws-caps = [ "<Shift><Control><Alt>space" "${bin}/ws-input-source caps" ];

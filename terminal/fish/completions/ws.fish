@@ -91,3 +91,7 @@ complete -c ws -n '__ws_after collect' -F
 
 complete -c ws -n '__ws_after backup; and __ws_after recovery-export' -F
 complete -c ws -n '__ws_after backup; and __ws_after recovery-export' -l force -d 'Replace existing recovery export'
+
+complete -c ws -n __ws_needs_command -a help -d 'Documentation (helpws)'
+complete -c ws -n '__ws_after help' -a '(complete -C "helpws "(commandline -ct))'
+complete -c ws -n __ws_needs_command -a 'battery gmux psr gpu' -d 'Hardware diagnostics'

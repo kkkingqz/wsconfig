@@ -1,9 +1,10 @@
 # Links from $HOME into the checkout (~/<facts.wsconfig>), one file each.
-# ws and the internal tools are not links into the checkout: they come from
-# the core in the store (nix/pkgs/ws.nix), ~/.local/bin/ws and, under their
-# old names until their callers move (helpws plan-v2, stage 5), the tools of
-# libexec/. ~/.local/share/workstation/libexec points at libexec/ of the core,
-# for callers without PATH (the input-source extension runs ws-caps-led).
+# ws is no link into the checkout: ~/.local/bin/ws is bin/ws of the core in
+# the store (nix/pkgs/ws.nix), and so is helpws, the help of the docs. The
+# internal tools are not in PATH (helpws plan-v2, stage 5): ws runs them,
+# Nix callers use their store paths, and ~/.local/share/workstation/libexec
+# points at libexec/ of the core for callers that need a fixed path (the
+# input-source extension runs ws-caps-led).
 # home-manager owns the links; the files stay in the checkout and are edited
 # there (mkOutOfStoreSymlink: no copy in the store, no switch after edits).
 # New files in the listed directories are linked on the next `ws switch`.
@@ -32,8 +33,6 @@ let
       value.source = link "${from}/${name}";
     }) (builtins.filter filter (filesIn from)));
 
-  # Not in PATH: called by the GNOME extension by absolute path.
-  libexecExcluded = [ "ws-caps-led" ];
 in
 {
   xdg.dataFile = {
@@ -54,11 +53,7 @@ in
       filter = lib.hasSuffix ".ghostty";
     })
     (coreDir { from = "bin"; to = ".local/bin"; })
-    (coreDir {
-      from = "libexec";
-      to = ".local/bin";
-      filter = name: !(builtins.elem name libexecExcluded);
-    })
+    { ".local/bin/helpws".source = "${core}/libexec/helpws"; }
     {
       ".config/nix/nix.conf".source = link "nix/nix.conf";
       ".config/xdg-terminals.list".source = link "terminal/xdg-terminals/xdg-terminals.list";

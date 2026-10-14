@@ -2,7 +2,7 @@
 Name=Steam
 Comment=Application for managing and playing games on Steam
 Comment[ru]=Приложение для игр и управления играми в Steam
-Exec=ws-gpu run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam --file-forwarding com.valvesoftware.Steam -console @@u %U @@
+Exec=@ws-gpu@ run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam --file-forwarding com.valvesoftware.Steam -console @@u %U @@
 Icon=com.valvesoftware.Steam
 Terminal=false
 Type=Application
@@ -15,23 +15,23 @@ X-Flatpak=com.valvesoftware.Steam
 [Desktop Action Store]
 Name=Store
 Name[ru]=Магазин
-Exec=ws-gpu run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam com.valvesoftware.Steam steam://store
+Exec=@ws-gpu@ run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam com.valvesoftware.Steam steam://store
 
 [Desktop Action Library]
 Name=Library
 Name[ru]=Библиотека
-Exec=ws-gpu run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam com.valvesoftware.Steam steam://open/games
+Exec=@ws-gpu@ run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam com.valvesoftware.Steam steam://open/games
 
 [Desktop Action Friends]
 Name=Friends
 Name[ru]=Друзья
-Exec=ws-gpu run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam com.valvesoftware.Steam steam://open/friends
+Exec=@ws-gpu@ run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam com.valvesoftware.Steam steam://open/friends
 
 [Desktop Action Settings]
 Name=Settings
 Name[ru]=Настройки
-Exec=ws-gpu run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam com.valvesoftware.Steam steam://open/settings
+Exec=@ws-gpu@ run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam com.valvesoftware.Steam steam://open/settings
 
 [Desktop Action BigPicture]
 Name=Big Picture
-Exec=ws-gpu run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam com.valvesoftware.Steam steam://open/bigpicture
+Exec=@ws-gpu@ run /usr/bin/flatpak run --branch=stable --arch=x86_64 --command=/app/bin/steam com.valvesoftware.Steam steam://open/bigpicture

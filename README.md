@@ -48,7 +48,8 @@ distrobox/      контейнеры Distrobox и их hooks (ws box)
 windows/        Windows-программы в контейнерах Wine/Proton (ws windows)
 remmina/        RDP-клиент Remmina из Nix: H.264, файлы через буфер
 virt/           виртуальные машины: KVM, libvirt, virt-manager (ссылка ~/VMs)
-bin/            команды; ссылками в ~/.local/bin
+bin/ws          единственная команда; ~/.local/bin/ws — из store (nix/pkgs/ws.nix)
+libexec/        внутренние исполнители; их вызывает ws
 lib/check.bash  общий формат проверок (--json для ws check)
 docs/           документация, из неё собираются man-страницы
 ```

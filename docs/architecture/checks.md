@@ -58,7 +58,7 @@ ws check -v         # все сообщения
 1. `. "$repo/lib/check.bash"`, флаг `--json` → `check_json_mode`.
 2. `pass`/`warn`/`fail`/`info`, в конце `check_finish` (код 1 при FAIL).
 3. Строка в `check_steps` в `bin/ws`, при необходимости — в
-   `ws-baseline capture`.
+   `ws baseline capture`.
 
 Проверяется поведение и совпадение со списком владельца, а не фрагменты
 кода и не текст документации.

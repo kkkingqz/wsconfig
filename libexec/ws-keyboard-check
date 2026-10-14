@@ -46,13 +46,15 @@ if [[ "$("$WS_CORE/bin/ws" fact boot 2>/dev/null)" == container ]]; then
 else
 
     # keyboard/xremap.nix builds the store config from keyboard/xremap.yml
-    # (@repo@ -> checkout path).
+    # (@core@ -> the core in the store that ~/.local/bin/ws is).
     xremap_env="$(systemctl --user show -P Environment xremap.service 2>/dev/null || true)"
     xremap_cfg="$(tr ' ' '\n' <<<"$xremap_env" | sed -n 's/^XREMAP_CONFIG=//p')"
     xremap_env_bin="$(tr ' ' '\n' <<<"$xremap_env" | sed -n 's/^XREMAP_BIN=//p')"
     if [[ "$xremap_cfg" != /nix/store/* || ! -r "$xremap_cfg" ]]; then
         fail "xremap.service has no store XREMAP_CONFIG (${xremap_cfg:-unset}); run ws switch"
-    elif [[ "$(sed "s|@repo@|$repo|g" "$WS_CORE/keyboard/xremap.yml" | sha256sum)" != "$(sha256sum < "$xremap_cfg")" ]]; then
+    elif core_installed="$(readlink -f "$HOME/.local/bin/ws" 2>/dev/null)" \
+        && [[ "$(sed "s|@core@|${core_installed%/bin/ws}|g" "$WS_CORE/keyboard/xremap.yml" | sha256sum)" \
+            != "$(sha256sum < "$xremap_cfg")" ]]; then
         warn "xremap store config differs from keyboard/xremap.yml; run ws switch"
     else
         pass "xremap store config matches keyboard/xremap.yml (${xremap_cfg#/nix/store/})"
