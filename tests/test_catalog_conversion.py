@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "lib"))
 sys.path.insert(0, str(ROOT / "tests"))
 
 import convert_marks  # noqa: E402
+import setup_marks  # noqa: E402
 import ws_catalog  # noqa: E402
 import ws_marks  # noqa: E402
 
@@ -30,6 +31,13 @@ class ConversionTests(unittest.TestCase):
         self.assert_same(old, "widgets", {line.key[-1]: "ask" for line in old.entries()})
         # The panel order is the order of the old lines.
         self.assertEqual(ws_catalog.Choice("widgets", "mbp16", ROOT).yes(), ["example", "compact"])
+
+    def test_boxes(self):
+        old = ws_marks.MarkedList(OLD / "hosts.txt")
+        # The defaults are in distrobox.nix now (setup_marks reads them).
+        defaults = dict(setup_marks.box_catalog(ROOT))
+        self.assertEqual(sorted(defaults), sorted(line.key[-1] for line in old.entries()))
+        self.assert_same(old, "boxes", defaults)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """The choices of setup.sh on a workstation (helpws setup): every line of
-flatpak/apps.txt, distrobox/hosts.txt and flatpak/overrides.txt without a
-yes or no of this workstation (an own ask is none), as checklists
-(lib/ws_select.py), and with widgets = "yes" the widgets some host has in
+flatpak/apps.txt and flatpak/overrides.txt without a yes or no of this
+workstation (an own ask is none), as checklists (lib/ws_select.py), the
+containers of distrobox.nix without a choice of this host
+(nix/hosts/HOST/boxes.toml; default no starts unchecked), and with widgets = "yes" the widgets some host has in
 yes (nix/hosts/*/widgets.toml, lib/ws_catalog.py) in state ask here; the
 full widget catalog needs Nix, which comes later (ws widgets apply offers
 the rest). all=yes and ask start checked, all=no unchecked; overrides are
@@ -18,6 +19,7 @@ the apt one there (steam/apt.txt).
 """
 import os
 from pathlib import Path
+import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -55,6 +57,20 @@ def mark(marked, host, items, chosen):
         marked.set(key, host, "yes" if name in chosen else "no")
 
 
+def box_catalog(repo):
+    """[(name, default)] of distrobox/distrobox.nix, read without Nix (setup
+    runs before bootstrap installs it): the name = "..." lines of the
+    containers and their default = "..." (helpws plan-v2: TOML at stage 7)."""
+    boxes = []
+    for line in (Path(repo) / "distrobox/distrobox.nix").read_text().splitlines():
+        m = re.fullmatch(r'\s*(name|default) = "([^"]+)";', line)
+        if m and m[1] == "name":
+            boxes.append([m[2], "ask"])
+        elif m and boxes:
+            boxes[-1][1] = m[2]
+    return [tuple(b) for b in boxes]
+
+
 def ask(term, title, items):
     if not items:
         return []
@@ -66,7 +82,6 @@ def ask(term, title, items):
 def run(repo, host, term):
     repo = Path(repo)
     apps = MarkedList(repo / "flatpak/apps.txt", key_fields={2})
-    boxes = MarkedList(repo / "distrobox/hosts.txt")
     overrides = MarkedList(repo / "flatpak/overrides.txt", **OVERRIDES)
     widgets = ws_catalog.Choice("widgets", host, repo)
 
@@ -76,13 +91,24 @@ def run(repo, host, term):
         apps.set(STEAM_FLATPAK, host, "no")
         term.write(f"\n{STEAM_FLATPAK}: {host}=no (nativeSteam = \"yes\": Steam из apt)\n")
 
-    lists = [(apps, f"Flatpak-приложения на {host}"), (boxes, f"Контейнеры Distrobox на {host}")]
+    lists = [(apps, f"Flatpak-приложения на {host}")]
     for marked, title in lists:
         items = offer(marked, host)
         chosen = ask(term, title, items)
         if chosen is None:
             return None
         mark(marked, host, items, chosen)
+
+    # Containers of distrobox.nix without a choice of this host; default no
+    # starts unchecked.
+    boxes = ws_catalog.Choice("boxes", host, repo)
+    items = [(name, "", default != "no") for name, default in box_catalog(repo)
+             if name not in boxes.yes() + boxes.no()]
+    chosen = ask(term, f"Контейнеры Distrobox на {host}", items)
+    if chosen is None:
+        return None
+    for name, _, _ in items:
+        boxes.set(name, "yes" if name in chosen else "no")
 
     # The widget layer only where facts.nix has it (helpws widgets).
     if fact(host, "widgets", repo) == "yes":
@@ -102,12 +128,13 @@ def run(repo, host, term):
     mark(overrides, host, items, chosen)
 
     changed = []
-    for marked in (apps, boxes, overrides):
+    for marked in (apps, overrides):
         if any(line.changed for line in marked.lines):
             marked.save()
             changed.append(str(marked.path.relative_to(repo)))
-    if widgets.save():
-        changed.append(str(widgets.path.relative_to(repo)))
+    for choice in (boxes, widgets):
+        if choice.save():
+            changed.append(str(choice.path.relative_to(repo)))
     return changed
 
 

@@ -5,8 +5,14 @@
 #   containers.ini  manifest for `distrobox assemble` (its own format)
 #   boxes.json      the containers in order, for wsbox and wswin: name,
 #                   image, home, hooks, exports (ALIAS: desktop file inside
-#                   the container), gpu, and for Windows boxes profile,
-#                   driver, dpi, init_overrides (helpws plan-v2, 2.6)
+#                   the container), gpu, default, and for Windows boxes
+#                   profile, driver, dpi, init_overrides (helpws plan-v2, 2.6)
+#
+# This file is the catalog of containers. Which host has which:
+# nix/hosts/HOST/boxes.toml (yes, no; lib/ws_catalog.py, ws box create/
+# apply/remove). A container in neither has its default: ask (offered by
+# ws box apply; the default), no (not offered; --select asks) or yes (on
+# every host without its own choice).
 #
 # Change: edit this file, `ws switch`, then `wsbox apply NAME` (new container)
 # or `wsbox recreate NAME` (changed image or packages; rootfs is replaced,
@@ -124,16 +130,18 @@ let
     }
     {
       # Manual kernel/module builds; the t2bce modules themselves are built by
-      # ws-suspend in a one-off container.
+      # ws-suspend in a one-off container. T2 only: not offered elsewhere.
       name = "t2bce-build";
+      default = "no";
       image = hostUbuntu;
       packages = [ "build-essential" "bison" "flex" "kmod" "libelf-dev" "libssl-dev" ];
     }
     {
       # Touch Bar port (/home/<user>/touchbar). Rust: rustup in the
       # container HOME (~/distrobox/touchbar-build/.rustup, .cargo; PATH from
-      # its .profile and fish conf.d), so it survives recreate.
+      # its .profile and fish conf.d), so it survives recreate. T2 only.
       name = "touchbar-build";
+      default = "no";
       image = hostUbuntu;
       packages = [
         "build-essential" "git" "pkg-config" "libdrm-dev" "libegl-dev" "libgles-dev"
@@ -173,6 +181,7 @@ let
       pre_init_hooks = c.preInitHooks or [ ];
       init_hooks = c.initHooks or [ ];
       exports = c.exports or { };
+      default = c.default or "ask";
     }
     // opt "gpu" (c.gpu or null)
     // opt "profile" (w.profile or null)
@@ -190,7 +199,18 @@ let
   names = map (c: c.name) containers;
 in
 {
-  assertions = [{
+  # The default of each container, for windows/apps.nix (its launchers
+  # follow the choice of the box).
+  options.ws.boxDefaults = lib.mkOption {
+    type = lib.types.attrsOf (lib.types.enum [ "ask" "no" "yes" ]);
+    readOnly = true;
+    internal = true;
+    description = "Default (ask, no, yes) of each container of distrobox/distrobox.nix.";
+  };
+
+  config.ws.boxDefaults = lib.listToAttrs (map (c: lib.nameValuePair c.name (c.default or "ask")) containers);
+
+  config.assertions = [{
     assertion = lib.length names == lib.length (lib.unique names);
     message = "distrobox.nix: duplicate container name";
   }] ++ map (c: {
@@ -199,5 +219,5 @@ in
     message = "distrobox.nix: ${c.name}: profile is wine or proton, gpu is amd";
   }) containers;
 
-  xdg.dataFile."workstation/distrobox".source = distroboxConfig;
+  config.xdg.dataFile."workstation/distrobox".source = distroboxConfig;
 }

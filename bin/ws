@@ -33,7 +33,7 @@ Usage:
 switch    home-manager switch for this user and host (pinned by flake.lock);
           names the data files not published yet (ws sync)
 sync      publish the data files (flatpak/apps.txt, flatpak/overrides.txt,
-          distrobox/hosts.txt, nix/hosts/*/widgets.toml, flake.lock): one commit
+          nix/hosts/*/{boxes,widgets}.toml, flake.lock): one commit
           with what changed, then git pull --rebase and git push when the
           branch has an upstream (no remote: the commit stays local);
           refuses during a Git operation, on a detached HEAD, with changes
@@ -182,14 +182,13 @@ current_generation() {
 }
 
 # Data files: what ws and the tools write, published only by ws sync
-# (helpws plan-v2, 2.7): the lists that commands edit (wsflatpak install/
-# manage/unmanage/remove/apply, filesystem/env/talk and un…; wsbox
-# create/apply/remove), the host choices (lib/ws_catalog.py: ws widgets) and
-# flake.lock. Everything else in the checkout is code, committed by the
-# developer. Patterns as Git pathspecs: * matches / too. switch adds them
+# (helpws plan-v2, 2.7): the lists that wsflatpak edits (install/manage/
+# unmanage/remove/apply, filesystem/env/talk and un…), the host choices
+# (lib/ws_catalog.py: ws box, ws widgets) and flake.lock. Everything else in
+# the checkout is code, committed by the developer. Patterns as Git pathspecs: * matches / too. switch adds them
 # before the build; sync and ws check repo read them (ws data-files).
-data_patterns=(flatpak/apps.txt flatpak/overrides.txt distrobox/hosts.txt flake.lock
-    'nix/hosts/*/widgets.toml')
+data_patterns=(flatpak/apps.txt flatpak/overrides.txt flake.lock
+    'nix/hosts/*/boxes.toml' 'nix/hosts/*/widgets.toml')
 
 is_data_file() {
     local f

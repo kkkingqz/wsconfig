@@ -23,8 +23,9 @@ bin/wsbox                        владелец: apply, check, update, recreat
 ```text
 containers.ini   манифест distrobox assemble
 boxes.json       контейнеры по порядку: image, home, hooks, exports
-                 (ALIAS: .desktop внутри контейнера), gpu; у Windows-боксов
-                 profile, driver, dpi, init_overrides (ws box, ws windows)
+                 (ALIAS: .desktop внутри контейнера), gpu, default; у
+                 Windows-боксов profile, driver, dpi, init_overrides
+                 (ws box, ws windows)
 ```
 
 Host-пакеты (`podman`, `distrobox`, `uidmap`, …) — в `nix/hosts/apt.txt`,
@@ -69,19 +70,27 @@ ws box export NAME APP | unexport NAME APP
 `apply` не трогает существующий контейнер. `recreate` и `remove` меняют
 только rootfs; описание в `distrobox.nix` и HOME остаются.
 
-Какие контейнеры на какой машине — `distrobox/hosts.txt`: `NAME HOST=STATE…
-all=STATE`, те же пометки, что в `flatpak/apps.txt` (`helpws flatpak`):
-`yes` — создан, `no` — отказались, `ask` — не предложено; `all=` — для машины
-без своей пометки; контейнер без строки — ask. `ws box create NAME` и
-`ws box apply NAME` ставят своей машине `yes`, `ws box remove NAME` удаляет
-строку, если других машин в ней нет, иначе ставит своей `no` (описание в
-`distrobox.nix` остаётся). `recreate` пометки не трогает. Публикует файл
-`ws sync`.
+`distrobox.nix` — каталог: все контейнеры, которые можно создать. Какие
+есть на машине — её `nix/hosts/HOST/boxes.toml` (`lib/ws_catalog.py`,
+`helpws plan-v2`, этап 3):
 
-`apply` без имени создаёт контейнеры с `yes`, о не предложенных спрашивает
-«Поставить все? [Y/n]», на `n` — список с галочками (Space, `a`, Enter,
-Esc/q), ответ пишется в `hosts.txt`. Esc/q отменяет только вопрос:
-предложенные остаются `ask`, контейнеры с `yes` всё равно создаются.
+```toml
+yes = ["arch", "wine-wayland"]   # созданы здесь
+no = ["proton"]                  # отказались
+```
+
+Контейнер, которого нет ни там, ни там, получает свой `default` из
+`distrobox.nix`: `ask` (по умолчанию) — предложить, `no` — не предлагать
+(`t2bce-build`, `touchbar-build`: только T2), `yes` — создать на каждой
+машине без своего выбора. `ws box create NAME` и `ws box apply NAME` ставят
+контейнер в `yes`, `ws box remove NAME` — в `no` (описание в `distrobox.nix`
+остаётся). `recreate` выбор не трогает. Каждая машина пишет только свой
+файл, комментарии в нём сохраняются; публикует его `ws sync`.
+
+`apply` без имени создаёт контейнеры с `yes`, о тех, что в состоянии ask,
+спрашивает «Поставить все? [Y/n]», на `n` — список с галочками (Space, `a`,
+Enter, Esc/q), ответ пишется в `boxes.toml`. Esc/q отменяет только вопрос:
+предложенные остаются ask, контейнеры с `yes` всё равно создаются.
 `ws box apply --select` спрашивает и о `no`. Без терминала не предложенные не
 создаются.
 

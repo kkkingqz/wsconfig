@@ -103,8 +103,8 @@ ws switch                            # собирает apps.txt
 ws sync                              # публикует: коммит, pull --rebase, push
 ```
 
-`ws switch` добавляет изменённые `apps.txt`, `overrides.txt` и
-`distrobox/hosts.txt` в сборку и ничего не коммитит: в конце он называет
+`ws switch` добавляет изменённые `apps.txt`, `overrides.txt` и выбор
+хостов `nix/hosts/*/*.toml` в сборку и ничего не коммитит: в конце он называет
 неопубликованные файлы данных. Коммит и push делает только `ws sync`
 (`helpws plan-v2`, 2.7).
 

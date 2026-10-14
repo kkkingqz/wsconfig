@@ -21,14 +21,14 @@
 # defaultBox (ws-win-exe.desktop: wswin exec FILE); switch makes it the
 # default application for the .exe types with xdg-mime.
 #
-# The launchers only on a workstation that has the box: BOX HOST=yes in
-# distrobox/hosts.txt (lib/ws_marks.nix); apps.json lists every program.
+# The launchers only on a host that has the box: yes in
+# nix/hosts/HOST/boxes.toml, else the default of the box in distrobox.nix
+# (lib/catalog.nix); apps.json lists every program.
 { config, lib, wsHost, ... }:
 let
   defaultBox = "wine-wayland";
-  marks = import ../lib/ws_marks.nix { inherit lib; };
-  boxMarks = marks.read ../distrobox/hosts.txt;
-  hasBox = box: marks.has boxMarks box wsHost;
+  catalog = import ../lib/catalog.nix { inherit lib; };
+  hasBox = box: catalog.has wsHost "boxes" box (config.ws.boxDefaults.${box} or "ask");
 
   # LC_CTYPE of every Windows program (wswin): the codepage for non-Unicode
   # programs, as "Language for non-Unicode programs" in Windows. With the

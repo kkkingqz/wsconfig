@@ -1,6 +1,7 @@
-"""wswin check follows the box marks of distrobox/hosts.txt: the launchers
-of windows/apps.nix exist only where the box is marked yes, so programs and
-the .exe default of other boxes are not checked."""
+"""wswin check follows the host choice of the boxes (nix/hosts/HOST/
+boxes.toml, else the default of the box): the launchers of windows/apps.nix
+exist only where the box is yes, so programs and the .exe default of other
+boxes are not checked."""
 import json
 import os
 from pathlib import Path
@@ -21,14 +22,19 @@ class WswinCheckTests(unittest.TestCase):
         (root / "distrobox").mkdir()
         (root / "windows").mkdir()
         (root / "distrobox/boxes.json").write_text(
-            '[{"name": "here", "profile": "wine"}, {"name": "elsewhere", "profile": "wine"}]')
+            '[{"name": "here", "profile": "wine"}, {"name": "elsewhere", "profile": "wine"},'
+            ' {"name": "everywhere", "profile": "wine", "default": "yes"}]')
         (root / "windows/apps.json").write_text(json.dumps({"default_box": "elsewhere", "apps": {
             "local": {"box": "here", "prefix": "default", "exe": "drive_c/local.exe"},
-            "remote": {"box": "elsewhere", "prefix": "default", "exe": "drive_c/remote.exe"}}}))
-        self.hosts = root / "hosts.txt"
-        self.hosts.write_text("here test=yes all=ask\nelsewhere other=yes all=ask\n")
+            "remote": {"box": "elsewhere", "prefix": "default", "exe": "drive_c/remote.exe"},
+            "all": {"box": "everywhere", "prefix": "default", "exe": "drive_c/all.exe"}}}))
+        for host in ("test", "other"):
+            (root / "config/nix/hosts" / host).mkdir(parents=True)
+        self.hosts = root / "config/nix/hosts/test/boxes.toml"
+        self.hosts.write_text('yes = ["here"]\n')
+        (root / "config/nix/hosts/other/boxes.toml").write_text('yes = ["elsewhere"]\n')
         self.env = dict(os.environ, HOME=str(root), WSWIN_DATA=str(root),
-                        WSBOX_HOSTS=str(self.hosts), WS_HOST="test")
+                        WSCONFIG=str(root / "config"), WS_HOST="test")
 
     def check(self):
         return subprocess.run([str(ROOT / "bin/wswin-check")], env=self.env,
@@ -40,10 +46,12 @@ class WswinCheckTests(unittest.TestCase):
         self.assertIn("INFO  app remote: box elsewhere is not on test, no launcher", out)
         self.assertNotIn("app remote: not installed", out)
         self.assertIn("INFO  .exe: default box elsewhere is not on test", out)
+        # The default yes of a box counts as yes.
+        self.assertIn("WARN  app all: not installed", out)
 
-    def test_unreadable_marks_fail(self):
-        self.hosts.write_text("here test=maybe\n")
-        self.assertIn("FAIL  workstation marks of", self.check())
+    def test_unreadable_choice_fails(self):
+        self.hosts.write_text('yes = "here"\n')
+        self.assertIn("FAIL  host choice of the boxes", self.check())
 
 
 if __name__ == "__main__":

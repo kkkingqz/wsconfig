@@ -923,7 +923,7 @@ git diff --cached
 явно.
 
 Файлы данных — `flatpak/apps.txt`, `flatpak/overrides.txt`,
-`distrobox/hosts.txt`, выбор хостов `nix/hosts/*/widgets.toml`
+выбор хостов `nix/hosts/*/boxes.toml` и `widgets.toml`
 (`lib/ws_catalog.py`), `flake.lock` — правят инструменты (пометки, выбор,
 `ws update nix`, `ws widgets update`). Их коммитит и
 публикует только `ws sync`: один коммит с тем, что изменилось, затем
