@@ -518,7 +518,7 @@ workstation`, T2 HARDWARE); на системный S3 это не влияет.
 ## Source of truth
 
 ```text
-bin/ws-suspend
+libexec/ws-suspend
 system/kernel/t2bce/nostate-fix.patch
 system/kernel/t2bce/t2bce.nix
 libexec/ws-psr

@@ -23,7 +23,7 @@ virt/bootstrap.bash         шаг 3 bootstrap.sh: @vms и bind-монтиров
 bootstrap.sh                группа libvirt
 system/virt.nix             описание прошивки OVMF (qcow2-переменные)
 virt/virt.nix               ~/VMs -> /var/lib/libvirt/images
-bin/ws-check-virt           ws check virt
+libexec/ws-check-virt           ws check virt
 ```
 
 Всё состояние VM — на subvolume `@vms` (смонтирован в `/var/lib/vms`),

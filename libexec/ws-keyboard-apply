@@ -221,8 +221,8 @@ rollback_apply() {
 
 trap rollback_apply EXIT
 
-# The profile: keyboard/keyboard.nix (why each binding is there is
-# commented there). Optional keys are set only where the schema has them.
+# The profile: keyboard/presets/macos.nix with keyboard/config.toml (why
+# each binding is there is commented in the preset). Optional keys are set only where the schema has them.
 while IFS=$'\t' read -r schema key value kind; do
     if [[ "$kind" == optional ]] && ! schema_has_key "$schema" "$key"; then
         continue

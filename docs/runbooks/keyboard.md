@@ -144,7 +144,7 @@ CapsLock физически не используется как letter-case mod
 
 Сам XKB-lock в сессии выключен опцией `caps:none`
 (`org.gnome.desktop.input-sources xkb-options`, задаётся `ws apply keyboard`
-из `keyboard/keyboard.nix`). xremap читает evdev до XKB, поэтому
+из пресета `keyboard/presets/macos.nix`). xremap читает evdev до XKB, поэтому
 переключение раскладки работает как прежде. Без опции настоящий CapsLock
 включался через сочетания, которые xremap пропускает
 (`Shift/Ctrl/Super+CapsLock`), и любым нажатием, пока xremap перезапускается
@@ -562,19 +562,21 @@ Repository:
 
 ```text
 keyboard/xremap.yml
-keyboard/keyboard.nix          сочетания GNOME и private chords Tiling
+keyboard/config.toml           выбор: пресет, раскладки, свои значения ключей пресета
+keyboard/presets/macos.nix     пресет ядра: сочетания GNOME и private chords Tiling
+keyboard/keyboard.nix          раскладки → источники ввода, вариант RDP, проверки, keyboard.json
 
-bin/ws-keyboard
-bin/ws-keyboard-apply
-bin/ws-keyboard-status
-bin/ws-xremap
-bin/ws-window
-bin/ws-nautilus-current
-bin/ws-input-source
-bin/ws-caps-led
-bin/ws-tiling-apply
-bin/ws-gnome-extensions
-bin/ws-keyboard-check
+libexec/ws-keyboard
+libexec/ws-keyboard-apply
+libexec/ws-keyboard-status
+libexec/ws-xremap
+libexec/ws-window
+libexec/ws-nautilus-current
+libexec/ws-input-source
+libexec/ws-caps-led
+libexec/ws-tiling-apply
+libexec/ws-gnome-extensions
+libexec/ws-keyboard-check
 
 keyboard/xremap.nix
 nix/pkgs/xremap.nix
@@ -627,12 +629,12 @@ xremap service — `systemd.user.services.xremap` home-manager
 ~/.config/systemd/user/xremap.service -> /nix/store/…-xremap.service
 Environment=XREMAP_BIN=/nix/store/…-xremap-gnome-0.15.13/bin/xremap
 Environment=XREMAP_CONFIG=/nix/store/…-xremap.yml
-ExecStart=/usr/bin/bash ~/wsconfig/bin/ws-xremap
+ExecStart=/usr/bin/bash /nix/store/…-wsconfig-core/libexec/ws-xremap
 ```
 
-`XREMAP_CONFIG` — сборка `keyboard/xremap.yml` в store: `@repo@` в
-путях `launch` (`@repo@/bin/ws-input-source`) заменяется на checkout этого
-home. Правка `xremap.yml` применяется через `ws apply`: unit меняется, и
+`XREMAP_CONFIG` — сборка `keyboard/xremap.yml` в store: `@core@` в
+путях `launch` (`@core@/libexec/ws-input-source`) заменяется на ядро в
+store. Правка `xremap.yml` применяется через `ws apply`: unit меняется, и
 home-manager перезапускает сервис (`--watch=config` store-файл не видит).
 Без `XREMAP_CONFIG` `ws-xremap` не запускается.
 
@@ -655,8 +657,11 @@ home-manager перезапускает сервис (`--watch=config` store-ф�
 
 ## Apply
 
-Сочетания GNOME профиля и private chords Tiling Assistant объявлены данными
-в `keyboard/keyboard.nix`. `ws apply` собирает из них
+Сочетания GNOME профиля и private chords Tiling Assistant — пресет ядра
+`keyboard/presets/macos.nix`: они связаны с `xremap.yml` и `ws-input-source`.
+`keyboard/config.toml` (и `nix/hosts/HOST/keyboard.toml`) выбирает пресет и
+раскладки и может переопределить ключи пресета; новый ключ — ошибка сборки.
+`ws apply` собирает из них
 `~/.local/share/wsconfig/keyboard/keyboard.json` (shortcuts и tiling);
 по ним работают `ws-keyboard-apply` (preflight, backup, установка),
 `ws-tiling-apply`, `ws keyboard check` и `ws-keyboard-status`. Это не `dconf.settings`:
@@ -666,9 +671,9 @@ home-manager перезапускает сервис (`--watch=config` store-ф�
 Изменить сочетание:
 
 ```console
-$EDITOR ~/wsconfig/keyboard/keyboard.nix
-ws apply
-ws keyboard apply      # или ws-tiling-apply для Tiling
+$EDITOR ~/wsconfig/keyboard/config.toml   # [shortcuts."SCHEMA"] KEY = [...] или [tiling]
+ws apply keyboard      # или ws apply tiling
+ws sync                # опубликовать файл
 ```
 
 Исходное значение нового ключа в существующий backup не попадает: backup

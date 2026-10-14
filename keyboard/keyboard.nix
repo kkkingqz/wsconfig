@@ -12,10 +12,13 @@
 #   tiling     [{key, binding}], appended by ws-tiling-apply to the Tiling
 #              Assistant defaults; checked by ws-keyboard check
 #
-# Change: edit here, `ws apply`, `ws apply keyboard` (or `ws apply tiling`).
-# The original GNOME values of a newly added key are not in the existing
-# backup (~/.local/state/wsconfig/keyboard/gsettings-backup.tsv).
-{ lib, facts, core, ... }:
+# The shortcuts are the preset of the core (keyboard/presets/macos.nix);
+# keyboard/config.toml (and nix/hosts/HOST/keyboard.toml) chooses the
+# preset and the layouts and may override keys of the preset.
+# Change: keyboard/config.toml, then `ws apply keyboard` (or `ws apply
+# tiling`). The original GNOME values of a key new in the preset are not in
+# the existing backup (~/.local/state/wsconfig/keyboard/gsettings-backup.tsv).
+{ lib, facts, core, wsHost, ... }:
 let
   # GVariant text as it is, for values that are not strings or string arrays.
   raw = text: { gvariant = text; };
@@ -50,98 +53,58 @@ let
     { inherit name; binding = lib.elemAt v 0; command = lib.elemAt v 1; })
     rdpCommands;
 
-  # SCHEMA = { KEY = VALUE; }: list = string array, "" = empty string.
-  shortcuts0 = {
-    "org.gnome.desktop.wm.keybindings" = {
-      # Application / window switching
-      switch-applications = [ "<Super>Tab" ];
-      switch-applications-backward = [ "<Shift><Super>Tab" ];
-      switch-group = [ "<Super>Above_Tab" "<Control>Down" ];
-      switch-group-backward = [ "<Shift><Super>Above_Tab" ];
-
-      # Window actions
-      minimize = [ "<Super>m" ];
-      toggle-fullscreen = [ "<Control><Super>f" ];
-      show-desktop = [ "F11" ];
-
-      # Workspaces. Physical Ctrl+Left/Right are translated by xremap into
-      # these private chords, leaving emitted application Ctrl+Left/Right
-      # unclaimed by GNOME.
-      switch-to-workspace-left = [ "<Control><Alt><Super>Left" ]
-        # Over RDP: physical Ctrl+Left/Right, as xremap makes them.
-        ++ lib.optional rdp "<Control>Left";
-      switch-to-workspace-right = [ "<Control><Alt><Super>Right" ]
-        ++ lib.optional rdp "<Control>Right";
-
-      # Input sources
-      switch-input-source = [ "<Control>space" ];
-      switch-input-source-backward = [ "<Control><Alt>space" ];
+  keyboard = (import ../lib/config.nix { inherit lib; }).read {
+    file = ./config.toml;
+    host = ../nix/hosts + "/${wsHost}/keyboard.toml";
+    type = schema.table {
+      keys = {
+        preset = schema.oneOf (lib.attrNames presets);
+        layouts = schema.strings;
+        shortcuts = schema.attrsOf (schema.attrsOf shortcutValue);
+        tiling = schema.attrsOf schema.strings;
+      };
+      required = [ "preset" "layouts" ];
     };
+  };
+  presets = { macos = ./presets/macos.nix; };
+  schema = import ../lib/schema.nix { inherit lib; };
+  shortcutValue = schema.scalar "a list of texts, a text or true/false"
+    (v: builtins.isString v || builtins.isBool v || (builtins.isList v && lib.all builtins.isString v));
+  preset = import presets.${keyboard.preset} { inherit lib rdp; };
 
-    "org.gnome.shell.keybindings" = {
-      # Overview / Spotlight-style search
-      toggle-overview = [ "<Super>space" "<Control>Up" ];
+  # The layouts workstation-input-source knows (helpws keyboard): EN first,
+  # then RU and UA in any order or not at all.
+  knownLayouts = [ "us" "ru" "ua" ];
+  layouts = keyboard.layouts;
+  layoutProblems =
+    lib.optional (layouts == [ ] || lib.head layouts != "us") "layouts must start with \"us\""
+    ++ lib.optional (lib.unique layouts != layouts) "layouts has a layout twice"
+    ++ map (l: "unknown layout ${l} (layouts: ${lib.concatStringsSep ", " knownLayouts})")
+      (lib.filter (l: !(lib.elem l knownLayouts)) layouts);
 
-      # Free GNOME Shell Super-letter shortcuts that conflict with macOS
-      # application semantics; otherwise GNOME Shell consumes the event
-      # before xremap/Ghostty can see it.
-      toggle-application-view = [ ];
-      toggle-message-tray = [ ];
-      toggle-quick-settings = [ ];
-      focus-active-notification = [ ];
+  # Overrides only of keys the preset sets: the backup and ws keyboard
+  # restore know only those.
+  unknownOverrides = lib.concatLists (lib.mapAttrsToList (sch: keys:
+    map (k: "shortcuts.${sch}.${k}") (lib.filter (k: !((preset.shortcuts.${sch} or { }) ? ${k})) (lib.attrNames keys)))
+    (keyboard.shortcuts or { }))
+    ++ map (k: "tiling.${k}") (lib.filter (k: !(preset.tiling ? ${k})) (lib.attrNames (keyboard.tiling or { })));
+  problems = layoutProblems
+    ++ map (k: "${k} is not a key of the preset ${keyboard.preset}") unknownOverrides;
 
-      # Screenshots
-      screenshot = [ "<Shift><Super>3" ];
-      show-screenshot-ui = [ "<Shift><Super>4" "<Shift><Super>5" ];
-    }
-    # Free Super+number from GNOME Shell / Ubuntu Dock: needed for
-    # macOS-style Shift+Super+3/4/5 screenshots and leaves Command/Win+number
-    # to applications.
-    // lib.genAttrs (map (n: "switch-to-application-${toString n}") (lib.range 1 9))
-      (_: [ ]);
-
-    # Make Super a pure modifier: macOS Command alone does nothing, and no
-    # accidental Overview after Command/Win+Arrow remaps.
-    "org.gnome.mutter".overlay-key = "";
-
-    # Lock screen. Some GNOME builds use a string here; ws-keyboard-apply
-    # then sets the first element.
-    "org.gnome.settings-daemon.plugins.media-keys".screensaver = [ "<Control><Super>q" ];
-
-    # Ubuntu Dock numeric hot keys (Super+number); only where the Dock has it.
-    "org.gnome.shell.extensions.dash-to-dock".hot-keys = false;
-
-    # Exactly EN, RU, UA in this order: workstation-input-source switches
-    # among them (helpws keyboard). The installer leaves only its own layout.
-    "org.gnome.desktop.input-sources".sources =
-      raw "[('xkb', 'us'), ('xkb', 'ru'), ('xkb', 'ua')]";
-    # CapsLock selects the layout (xremap); its XKB lock is off in the
-    # session. xremap passes Shift/Ctrl/Super+CapsLock through, and every
-    # key while it restarts: without caps:none that turned on the real
-    # CapsLock. grp_led:scroll is the value GNOME had here before.
-    "org.gnome.desktop.input-sources".xkb-options = [ "grp_led:scroll" "caps:none" ];
+  overridden = lib.recursiveUpdate preset.shortcuts (keyboard.shortcuts or { });
+  shortcuts0 = overridden // {
+    "org.gnome.desktop.input-sources" = (overridden."org.gnome.desktop.input-sources" or { }) // {
+      # In the order of layouts: workstation-input-source switches among them.
+      # The installer leaves only its own layout.
+      sources = raw ("[" + lib.concatMapStringsSep ", " (l: "('xkb', '${l}')") layouts + "]");
+    };
   };
   # media-keys already has screensaver: merged, not replaced.
   shortcuts = lib.recursiveUpdate shortcuts0 (lib.optionalAttrs rdp rdpShortcuts);
 
   optional = [ "org.gnome.shell.extensions.dash-to-dock/hot-keys" ];
 
-  # Private chords emitted by xremap (keyboard/xremap.yml), appended to
-  # the Tiling Assistant defaults, never replacing them.
-  #   <Shift><Control><Alt><Super>...  Fn+Ctrl+arrows, Fn+Ctrl+F/C/R, Fn+Option+E/T
-  #   <Control><Alt><Super>F13..F19    earlier private chords; nothing emits them
-  #                                    now, kept so existing setups do not change
-  tiling0 = {
-    tile-left-half = [ "<Shift><Control><Alt><Super>Left" "<Control><Alt><Super>F13" ];
-    tile-right-half = [ "<Shift><Control><Alt><Super>Right" "<Control><Alt><Super>F14" ];
-    tile-top-half = [ "<Shift><Control><Alt><Super>Up" "<Control><Alt><Super>F15" ];
-    tile-bottom-half = [ "<Shift><Control><Alt><Super>Down" "<Control><Alt><Super>F16" ];
-    tile-maximize = [ "<Shift><Control><Alt><Super>f" "<Control><Alt><Super>F17" ];
-    center-window = [ "<Shift><Control><Alt><Super>c" "<Control><Alt><Super>F18" ];
-    restore-window = [ "<Shift><Control><Alt><Super>r" "<Control><Alt><Super>F19" ];
-    tile-edit-mode = [ "<Shift><Control><Alt><Super>e" ];
-    toggle-always-on-top = [ "<Shift><Control><Alt><Super>t" ];
-  };
+  tiling0 = preset.tiling // (keyboard.tiling or { });
   tiling = tiling0 // lib.optionalAttrs rdp {
     # Over RDP the keys xremap turns into the chords above: Fn+Ctrl+arrows
     # of the Apple keyboard (Ctrl+Home/End/PageUp/PageDown), Ctrl+Super+
@@ -179,6 +142,11 @@ let
     map (binding: { inherit key binding; }) bindings) tiling);
 in
 {
+  assertions = [{
+    assertion = problems == [ ];
+    message = "keyboard/config.toml: " + lib.concatStringsSep "; " problems;
+  }];
+
   xdg.dataFile."wsconfig/keyboard/keyboard.json".text = builtins.toJSON {
     shortcuts = shortcutEntries;
     tiling = tilingEntries;

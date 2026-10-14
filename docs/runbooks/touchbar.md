@@ -172,7 +172,7 @@ system/files/modprobe/touchbar-native.conf
 system/files/udev/90-touchbar-native.rules
 system/files/usr/local/libexec/ws-touchbar-fn
 system/files/systemd/system/ws-touchbar-fn.service
-bin/ws-xremap
+libexec/ws-xremap
 keyboard/xremap.yml
 ```
 

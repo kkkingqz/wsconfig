@@ -1,0 +1,22 @@
+# The keyboard of the workstation (helpws keyboard). The shortcuts come
+# from a preset of the core (keyboard/presets/; macos: the macOS-style
+# profile that keyboard/xremap.yml and ws-input-source rely on). Here the
+# choice: the preset, the layouts, and overrides of keys of the preset. A
+# host adds or replaces in nix/hosts/HOST/keyboard.toml. ws sync publishes
+# the file.
+#
+# Change: edit, then ws apply keyboard (or ws apply tiling). The original
+# GNOME values of a newly overridden key are in the backup only if the
+# preset had the key when the backup was made
+# (~/.local/state/wsconfig/keyboard/gsettings-backup.tsv).
+#
+#   preset     macos
+#   layouts    the XKB layouts in order; workstation-input-source switches
+#              among them: us first, then ru and ua (any order, or left out)
+#   [shortcuts."SCHEMA"]  KEY = [ "<Binding>" ... ], a text or true/false:
+#              only keys the preset sets
+#   [tiling]   KEY = [ "<Binding>" ... ]: the private chords appended to the
+#              Tiling Assistant defaults, only keys the preset sets
+
+preset = "macos"
+layouts = ["us", "ru", "ua"]

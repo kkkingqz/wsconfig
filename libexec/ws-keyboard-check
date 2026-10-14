@@ -135,7 +135,7 @@ if have gsettings && [[ -r "$kb_json" ]]; then
             fail "GNOME shortcut $schema $key = ${actual:-MISSING}, profile: $value (ws apply keyboard)"
         fi
     done < <(manifest_rows "$kb_json" schema,key,value,kind shortcuts)
-    ((kb_bad == 0)) && pass "GNOME shortcuts match keyboard/keyboard.nix ($kb_total keys)"
+    ((kb_bad == 0)) && pass "GNOME shortcuts match the keyboard profile ($kb_total keys)"
 else
     fail "gsettings or keyboard shortcut data missing"
 fi

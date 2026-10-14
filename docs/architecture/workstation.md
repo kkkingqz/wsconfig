@@ -236,14 +236,14 @@ Source of truth:
 keyboard/
 terminal/ghostty/
 
-bin/ws-keyboard*
-bin/ws-xremap
-bin/ws-window
-bin/ws-nautilus-current
-bin/ws-input-source
-bin/ws-caps-led
-bin/ws-tiling-apply
-bin/ws-keyboard-check
+libexec/ws-keyboard*
+libexec/ws-xremap
+libexec/ws-window
+libexec/ws-nautilus-current
+libexec/ws-input-source
+libexec/ws-caps-led
+libexec/ws-tiling-apply
+libexec/ws-keyboard-check
 
 gnome/extensions/workstation-input-source@local/
 gnome/extensions/workstation-smart-popup@local/
@@ -516,7 +516,7 @@ distrobox/arch/wsbox-host-ntsync/  PKGBUILD NTSYNC-MODULE для Arch-конте
 distrobox/arch/*-hook, wine/       хуки установки Windows-контейнеров
 windows/apps.toml                  Windows-программы с launcher (helpws windows)
 windows/apps.nix                   их launcher, apps.json, проверки
-bin/wsbox, bin/wswin, bin/ws-gpu
+libexec/wsbox, libexec/wswin, libexec/ws-gpu
 ```
 
 Контейнеры объявлены в `distrobox/catalog.toml` (у контейнера — образ,
@@ -764,7 +764,7 @@ Micro help-viewer использует true-color scheme и Markdown syntax high
 
 ## Man generation
 
-Man pages собирает Nix (`nix/pkgs/man.nix`): `bin/ws-doc-build` —
+Man pages собирает Nix (`nix/pkgs/man.nix`): `libexec/ws-doc-build` —
 `lowdown -s -t man` (lowdown из nixpkgs), по странице на `title:` каждого
 `docs/**/*.md`. `ws apply` ставит их ссылками в `~/.local/share/man/man1`; в git `man/` нет,
 `ws check home` предупреждает, если страницы старше `docs/`. После правки документа:
@@ -847,7 +847,7 @@ wsconfig/
 │   ├── kernel/t2gmux/    t2gmux.nix (коммит KaiT2en; helpws plan-dgpu, отложен)
 │   └── kernel/i915-psr/  apple-psr.patch (PSR панели Apple; ws-psr, helpws plan-t2)
 ├── gnome/                config.toml, gnome.nix, gnome-extensions.nix, extensions/<uuid>/
-├── keyboard/             keyboard.nix, xremap.nix, xremap.yml
+├── keyboard/             config.toml, presets/macos.nix, keyboard.nix, xremap.nix, xremap.yml
 ├── terminal/             fish/, ghostty/, micro-help/, xdg-terminals/
 ├── flatpak/              flatpak.nix, catalog.toml, desktop/
 ├── distrobox/            catalog.toml, distrobox.nix, arch/ (wsbox-host-ntsync, хуки), wine/
