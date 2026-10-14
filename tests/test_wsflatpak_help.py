@@ -4,7 +4,7 @@ import sys
 import unittest
 
 
-SCRIPT = Path(__file__).resolve().parents[1] / "bin/wsflatpak"
+SCRIPT = Path(__file__).resolve().parents[1] / "libexec/wsflatpak"
 
 
 class HelpTests(unittest.TestCase):

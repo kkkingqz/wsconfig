@@ -112,7 +112,7 @@ done < <(shortcut_lines required)
 # A container host gets its keys over RDP, without /dev/input: no xremap,
 # GNOME takes its part (keyboard/keyboard.nix, helpws plan-wsgnomebox).
 rdp=false
-[[ "$("$repo/bin/ws" fact boot 2>/dev/null)" != container ]] || rdp=true
+[[ "$("$WS_CORE/bin/ws" fact boot 2>/dev/null)" != container ]] || rdp=true
 
 if [[ "$rdp" == false ]]; then
     command -v xremap >/dev/null 2>&1 || { echo "xremap not found in PATH" >&2; preflight_failed=true; }
@@ -176,7 +176,7 @@ fi
 if [[ "$preflight_failed" == true ]]; then
     echo >&2
     echo "No GNOME shortcuts were changed." >&2
-    echo "Run: $repo/bin/ws-keyboard-status" >&2
+    echo "Run: $WS_CORE/libexec/ws-keyboard-status" >&2
     exit 69
 fi
 

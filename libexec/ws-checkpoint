@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Workstation checkpoint: which Git commit matched which working state.
-# bin/, fish and Ghostty are links into the checkout (nix/home/links.nix), so a
+# bin/, libexec/, fish and Ghostty are links into the checkout (nix/home/links.nix), so a
 # home-manager generation alone is no rollback of the user layer; the commit is
 # the key, the generation and the system tree are what it built.
 
@@ -64,7 +64,7 @@ hm_profile() {
 home_built() {
     local nix="$1"
     "$nix" build --no-link --print-out-paths \
-        "$repo#homeConfigurations.\"$(id -un)@$("$repo/bin/ws" host)\".activationPackage"
+        "$repo#homeConfigurations.\"$(id -un)@$("$WS_CORE/bin/ws" host)\".activationPackage"
 }
 
 cmd_create() {
@@ -93,8 +93,8 @@ cmd_create() {
     echo "$gen_link = this commit"
 
     echo "== system"
-    tree="$("$repo/bin/ws" system tree)"
-    out="$("$repo/bin/ws" system check)" || {
+    tree="$("$WS_CORE/bin/ws" system tree)"
+    out="$("$WS_CORE/bin/ws" system check)" || {
         grep -E '^ *(WARN|FAIL) ' <<<"$out" >&2
         die "the live system differs from the system tree of this commit; ws system apply first"
     }
@@ -122,7 +122,7 @@ cmd_create() {
     git -C "$repo" tag -a -m "ws checkpoint $name" "checkpoint/$name"
 
     echo "== baseline"
-    "$repo/bin/ws-baseline" capture "checkpoint-$name" --no-boxes \
+    "$WS_CORE/libexec/ws-baseline" capture "checkpoint-$name" --no-boxes \
         || die "ws-baseline capture failed; the checkpoint is recorded without a complete baseline"
 
     echo
@@ -201,7 +201,7 @@ cmd_diff() {
     echo
     echo "== system tree"
     old_tree="$(meta "$dir" system)"
-    new_tree="$("$repo/bin/ws" system tree)"
+    new_tree="$("$WS_CORE/bin/ws" system tree)"
     if [[ "$old_tree" == "$new_tree" ]]; then
         echo "same tree: ${new_tree#/nix/store/}"
     else
@@ -228,8 +228,8 @@ cmd_diff() {
         now="checkpoint-$name-now-$(date +%Y%m%d-%H%M%S)"
         echo
         echo "== baseline checkpoint-$name .. now"
-        "$repo/bin/ws-baseline" capture "$now" --no-boxes > /dev/null
-        "$repo/bin/ws-baseline" diff "checkpoint-$name" "$now" || true
+        "$WS_CORE/libexec/ws-baseline" capture "$now" --no-boxes > /dev/null
+        "$WS_CORE/libexec/ws-baseline" diff "checkpoint-$name" "$now" || true
         rm -rf -- "${state:?}/baseline/$now"
     fi
 }

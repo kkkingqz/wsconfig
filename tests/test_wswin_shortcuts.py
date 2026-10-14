@@ -28,7 +28,7 @@ class ShortcutTests(unittest.TestCase):
 
     def menu_add(self, data):
         (self.menu / 'Example.lnk').write_bytes(data)
-        with subprocess.Popen(['bash', str(ROOT / 'bin/wswin'), 'menu', 'add'],
+        with subprocess.Popen(['bash', str(ROOT / 'libexec/wswin'), 'menu', 'add'],
                               env=self.env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                               text=True, start_new_session=True) as process:
             try:

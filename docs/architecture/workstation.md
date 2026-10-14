@@ -797,7 +797,7 @@ man ws-workstation
 Правило:
 
 ```text
-executable source   ~/wsconfig/bin/<tool>
+executable source   ~/wsconfig/bin/ws, ~/wsconfig/libexec/<tool>
 runtime link        ~/.local/bin/<tool>
 config source       ~/wsconfig/<область>/...
 generated           ~/.local/share/workstation/...
@@ -855,7 +855,8 @@ wsconfig/
 ├── steam/                apt.txt, bootstrap.bash (Steam из apt, @steam; nativeSteam)
 ├── gaming/               sources.nix, build.sh, apt.txt (Game Mode; wsgame, helpws gaming)
 ├── bin/
-│   ├── ws                switch, diff, apply, update, check, system, baseline
+│   └── ws                switch, diff, apply, update, check, system, baseline
+├── libexec/              внутренние исполнители; ws вызывает их по пути
 │   ├── helpws
 │   ├── ws-doc-build
 │   ├── ws-keyboard
@@ -903,7 +904,7 @@ GNOME (`nix/pkgs/gnome-extensions.nix`), конфиг `ws flatpak` из
 `flatpak/flatpak.nix`, профиль внешнего вида GNOME
 (`gnome/gnome.nix`, `dconf.settings`); `ws system apply` ставит копии
 системных файлов из сборки `system`; GNOME, Flatpak, Distrobox,
-клавиатура — `bin/`-владельцы, их по порядку вызывает `ws apply`.
+клавиатура — владельцы из `libexec/`, их по порядку вызывает `ws apply`.
 Основная проверка — `ws check`.
 
 Runtime helper paths в `~/.local/bin` используют symlink на repository.

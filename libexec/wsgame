@@ -38,7 +38,7 @@ SOURCES = DATA / "sources.json"
 SRC = DATA / "src"
 DEBS = DATA / "debs"
 CARGO = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "wsgame/cargo"
-BUILD_SCRIPT = REPO / "gaming/build.sh"
+BUILD_SCRIPT = ws_common.CORE / "gaming/build.sh"
 DESKTOP = "ubuntu.desktop"
 
 # Package of each source and its architecture; the debounce patch goes into
@@ -94,7 +94,7 @@ def deb_name(name, version):
 
 
 def fact(name):
-    p = run([str(REPO / "bin/ws"), "fact", name], check=False, capture=True)
+    p = run([str(ws_common.CORE / "bin/ws"), "fact", name], check=False, capture=True)
     return p.stdout.strip() if p.returncode == 0 else ""
 
 

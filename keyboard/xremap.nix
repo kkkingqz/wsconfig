@@ -45,7 +45,7 @@ in
       ] ++ lib.optional (ignore != [ ])
         # Quoted: systemd splits Environment= at spaces.
         ("\"XREMAP_IGNORE=" + lib.concatStringsSep ";" ignore + "\"");
-      ExecStart = "/usr/bin/bash ${repo}/bin/ws-xremap";
+      ExecStart = "/usr/bin/bash ${repo}/libexec/ws-xremap";
       Restart = "on-failure";
       RestartSec = 5;
     };

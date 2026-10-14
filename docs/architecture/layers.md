@@ -53,7 +53,7 @@ ws check           проверки всех владельцев и связе�
 
 ```text
 слой             источник                              применяет            проверяет
-пользователь     nix/home/, terminal/, bin/            ws switch            ws check home
+пользователь     nix/home/, terminal/, bin/, libexec/  ws switch            ws check home
 система          system/*.nix, system/files/           ws system apply      ws system check
 apt              nix/hosts/*apt.txt                    bootstrap.sh, apt    ws check apt
 клавиатура       keyboard/*.nix, xremap.yml            ws switch, ws keyboard apply   ws keyboard check
@@ -90,7 +90,7 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
 - **Nix доставляет, владельцы остаются.** `ws flatpak`, `ws box`, `ws gnome`,
   `ws keyboard`, `ws suspend`, `ws windows` работают как раньше и читают
   собранное Nix.
-- **`bin/` — ссылки на checkout.** Скрипты не собираются в store: им нужны
+- **`bin/` и `libexec/` — ссылки на checkout.** Скрипты не собираются в store: им нужны
   утилиты host (`gsettings`, `gdbus`, `busctl`, PyGObject), правка работает
   сразу. Поэтому откат поколения home-manager не откатывает скрипты —
   состояние задаёт коммит (`ws checkpoint`).

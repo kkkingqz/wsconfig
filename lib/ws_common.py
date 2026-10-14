@@ -1,5 +1,5 @@
 """Roots and helpers shared by the Python tools (helpws plan-v2, 2.1); the
-counterpart of lib/common.bash. A tool in bin/ imports it after putting
+counterpart of lib/common.bash. A tool in libexec/ imports it after putting
 lib/ on sys.path by its own location:
 
     sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))

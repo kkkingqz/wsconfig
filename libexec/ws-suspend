@@ -11,7 +11,7 @@ ws_prog="ws suspend"
 cache="$HOME/.local/share/workstation/t2bce"
 
 t2bce_modules=(t2bce_dma t2bce_core t2bce_vhci t2bce_audio t2bce_ave)
-t2bce_patch="$repo/system/kernel/t2bce/nostate-fix.patch"
+t2bce_patch="$WS_CORE/system/kernel/t2bce/nostate-fix.patch"
 # Kernel release -> linux-t2-patches commit, from system/kernel/t2bce/t2bce.nix.
 t2bce_sources="$HOME/.local/share/workstation/t2bce/sources.json"
 # The host release: the modules are built with the compiler of the kernel.
@@ -65,13 +65,13 @@ cmd_status() {
     # The suspend files are part of the system layer (system/hardware/*.nix);
     # its manifest check covers them with the rest.
     echo "== System files (ws system check) =="
-    "$repo/bin/ws" system check 2>/dev/null | grep -E '^ *(WARN|FAIL) ' || echo "no problems"
+    "$WS_CORE/bin/ws" system check 2>/dev/null | grep -E '^ *(WARN|FAIL) ' || echo "no problems"
 }
 
 # Since phase 4 of helpws history-nix one owner installs all system
 # files, including the suspend layer: `ws system apply` (system).
 cmd_apply() {
-    exec "$repo/bin/ws" system apply
+    exec "$WS_CORE/bin/ws" system apply
 }
 
 cmd_t2bce_build() {
@@ -204,7 +204,7 @@ kver="${2:-$(uname -r)}"
 
 case "$cmd" in
     status) cmd_status ;;
-    check) shift; exec "$repo/bin/ws-suspend-check" "$@" ;;
+    check) shift; exec "$WS_CORE/libexec/ws-suspend-check" "$@" ;;
     apply) cmd_apply ;;
     t2bce-build) cmd_t2bce_build "$kver" ;;
     t2bce-install) cmd_t2bce_install "$kver" ;;

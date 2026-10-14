@@ -10,7 +10,7 @@ set -euo pipefail
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
-patch_file="$repo/system/kernel/i915-psr/apple-psr.patch"
+patch_file="$WS_CORE/system/kernel/i915-psr/apple-psr.patch"
 # Kernel release -> linux-t2-patches commit, from system/kernel/t2bce/t2bce.nix.
 t2_sources="$HOME/.local/share/workstation/t2bce/sources.json"
 # Build results per kernel: generated, not edited.

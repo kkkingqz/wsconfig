@@ -11,7 +11,7 @@ set -o pipefail
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
-. "$repo/lib/check.bash"
+. "$WS_CORE/lib/check.bash"
 
 case "${1:-}" in
     --json) check_json_mode ;;
@@ -27,9 +27,10 @@ is_tracked() {
 section "1. home-manager generation"
 
 # The active home-manager generation is the list of the user layer: every
-# file it links (bin/, fish, ghostty, configs built from Nix) must resolve to
-# the same target from $HOME. Targets in the checkout must be tracked, and
-# those in bin/ executable in Git (they are run through the link).
+# file it links (bin/, libexec/, fish, ghostty, configs built from Nix) must
+# resolve to the same target from $HOME. Targets in the checkout must be
+# tracked, and those in bin/ and libexec/ executable in Git (they are run
+# through the link).
 hm_gen="$(readlink -f "${XDG_STATE_HOME:-$HOME/.local/state}/nix/profiles/home-manager" 2>/dev/null || true)"
 hm_files="$(readlink -f "$hm_gen/home-files" 2>/dev/null || true)"
 if [[ -n "$hm_gen" && -e "$hm_gen/activate" && -d "$hm_files" ]]; then
@@ -50,7 +51,7 @@ if [[ -n "$hm_gen" && -e "$hm_gen/activate" && -d "$hm_files" ]]; then
         path="${want#"$repo"/}"
         if ! is_tracked "$path"; then
             fail "~/$rel links to untracked $path"
-        elif [[ "$path" == bin/* ]]; then
+        elif [[ "$path" == bin/* || "$path" == libexec/* ]]; then
             mode="$(git -C "$repo" ls-files -s -- "$path" | awk 'NR==1{print $1}')"
             [[ "$mode" == 100755 && -x "$want" ]] \
                 || fail "$path linked into ~/.local/bin but not executable (Git mode ${mode:-?})"
@@ -61,11 +62,12 @@ else
     fail "no active home-manager generation (ws switch)"
 fi
 
-# home-manager links wsconfig to the checkout (host.toml: wsconfig).
-if [[ "$(readlink -f "$HOME/.local/share/workstation/wsconfig" 2>/dev/null)" == "$repo" ]]; then
-    pass "~/.local/share/workstation/wsconfig points at this checkout"
+# home-manager links libexec for the callers without PATH (host.toml:
+# wsconfig).
+if [[ "$(readlink -f "$HOME/.local/share/workstation/libexec" 2>/dev/null)" == "$WS_CORE/libexec" ]]; then
+    pass "~/.local/share/workstation/libexec points at libexec/ of this checkout"
 else
-    fail "~/.local/share/workstation/wsconfig does not point at $repo (wsconfig in host.toml; ws switch)"
+    fail "~/.local/share/workstation/libexec does not point at $WS_CORE/libexec (wsconfig in host.toml; ws switch)"
 fi
 
 
@@ -73,7 +75,7 @@ section "2. Nix"
 
 if [[ -d /nix/var/nix ]]; then
     nix_source="$(findmnt -rno SOURCE /nix 2>/dev/null || true)"
-    if [[ "$("$repo/bin/ws" fact boot 2>/dev/null)" == container ]]; then
+    if [[ "$("$WS_CORE/bin/ws" fact boot 2>/dev/null)" == container ]]; then
         # A container host: /nix is a directory of the server, outside the
         # image (helpws plan-wsgnomebox).
         mountpoint -q /nix \
@@ -141,7 +143,7 @@ if have nix; then
         elif [[ -n "$man_built" && "$(readlink -f "$link")" != "$man_built/"* ]]; then
             man_stale=true
         fi
-    done < <(find "$repo/docs" -type f -name '*.md' | sort)
+    done < <(find "$WS_CORE/docs" -type f -name '*.md' | sort)
     [[ "$man_missing" == false ]] && pass "man pages installed for every docs title"
     if [[ -z "$man_built" ]]; then
         warn "cannot evaluate the man package of the flake"

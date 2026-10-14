@@ -12,7 +12,7 @@ import unittest
 import fast_tmp  # noqa: F401  (tmpfs)
 
 ROOT = Path(__file__).resolve().parents[1]
-WSWIDGETS = ROOT / "bin/wswidgets"
+WSWIDGETS = ROOT / "libexec/wswidgets"
 
 CATALOG = [
     {"id": "example", "label": "Example"},

@@ -24,12 +24,12 @@ class ContainerTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         self.repo = self.root / 'repo'
-        (self.repo / 'bin').mkdir(parents=True)
-        shutil.copyfile(ROOT / 'bin/ws-container', self.repo / 'bin/ws-container')
+        (self.repo / 'libexec').mkdir(parents=True)
+        shutil.copyfile(ROOT / 'libexec/ws-container', self.repo / 'libexec/ws-container')
         (self.repo / 'lib').mkdir(exist_ok=True)
         for name in ('common.bash', 'ws_common.py', 'ws_facts.py'):
             shutil.copyfile(ROOT / 'lib' / name, self.repo / 'lib' / name)
-        (self.repo / 'bin/ws-container').chmod(0o755)
+        (self.repo / 'libexec/ws-container').chmod(0o755)
         shutil.copyfile(ROOT / '.gitignore', self.repo / '.gitignore')
         self.host('box', 'container')
         self.host('pc', 'grub')
@@ -73,7 +73,7 @@ exit 0
         return subprocess.check_output(['git', '-C', str(self.repo), *args], text=True).strip()
 
     def ws(self, *args, **env):
-        return subprocess.run([str(self.repo / 'bin/ws-container'), *args], text=True,
+        return subprocess.run([str(self.repo / 'libexec/ws-container'), *args], text=True,
                               capture_output=True, env=dict(self.env, **env))
 
     def test_run_dry_run_expands_home(self):

@@ -116,7 +116,7 @@ manifest_rows {manifest} key nothing; echo end
     def test_tools_find_their_checkout_only_through_common(self):
         # ws-doc-build runs as a lone store file in nix/pkgs/man.nix.
         offenders = []
-        for path in sorted((ROOT / "bin").iterdir()):
+        for path in sorted([*(ROOT / "bin").iterdir(), *(ROOT / "libexec").iterdir()]):
             if not path.is_file() or path.name == "ws-doc-build":
                 continue
             for line in path.read_text(errors="replace").splitlines():

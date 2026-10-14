@@ -21,7 +21,6 @@ apps_json="$data/windows/apps.json"
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 ws_prog="ws windows"
-bin_dir="$WS_CORE/bin"
 
 usage() {
     cat <<'USAGE'
@@ -131,7 +130,7 @@ exec_box() {
     local box="$1"
     shift
 
-    "$bin_dir/wsbox" run "$box" "$@"
+    "$WS_CORE/libexec/wsbox" run "$box" "$@"
 }
 
 # The Windows side of a box: wine PROGRAM or umu-run PROGRAM.
@@ -803,7 +802,7 @@ main() {
 
     case "$cmd" in
         ""|-h|--help|help) usage; return 0 ;;
-        check) shift; exec "$bin_dir/wswin-check" "$@" ;;
+        check) shift; exec "$WS_CORE/libexec/wswin-check" "$@" ;;
     esac
 
     ensure_config

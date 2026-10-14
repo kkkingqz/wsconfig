@@ -14,11 +14,10 @@ set -euo pipefail
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 ws_prog="ws widgets"
-bin_dir="$WS_CORE/bin"
 catalog_py="$WS_CORE/lib/ws_catalog.py"
 # Tests replace the catalog (a JSON file), ws switch and the layer fact.
 catalog_file="${WSWIDGETS_CATALOG:-}"
-switch_cmd="${WSWIDGETS_SWITCH:-$bin_dir/ws switch}"
+switch_cmd="${WSWIDGETS_SWITCH:-$WS_CORE/bin/ws switch}"
 
 usage() {
     cat <<'USAGE'
@@ -39,7 +38,7 @@ USAGE
 
 load_host() {
     [[ -z "${ws_host:-}" ]] || return 0
-    ws_host="$("$bin_dir/ws" host --for-marks)" \
+    ws_host="$("$WS_CORE/bin/ws" host --for-marks)" \
         || die "no host for nix/hosts/HOST/widgets.toml (ws host --for-marks)"
     list_file="nix/hosts/$ws_host/widgets.toml"
 }
@@ -53,7 +52,7 @@ layer() {
     if [[ -n "${WSWIDGETS_FACT:-}" ]]; then
         printf '%s\n' "$WSWIDGETS_FACT"
     else
-        "$bin_dir/ws" fact widgets 2>/dev/null || true
+        "$WS_CORE/bin/ws" fact widgets 2>/dev/null || true
     fi
 }
 
@@ -285,7 +284,7 @@ case "${1:-}" in
     update) shift; cmd_update "$@" ;;
     version) shift; cmd_version ;;
     status) shift; require_layer; exec ws-widgets status "$@" ;;
-    check) shift; exec "$bin_dir/ws-check-widgets" "$@" ;;
+    check) shift; exec "$WS_CORE/libexec/ws-check-widgets" "$@" ;;
     -h|--help|help) usage ;;
     "") usage; exit 64 ;;
     *) usage >&2; exit 64 ;;

@@ -12,7 +12,7 @@ set -o pipefail
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 profile="${WS_GNOME_PROFILE:-$HOME/.local/share/workstation/gnome/settings.json}"
 # shellcheck source=../lib/check.bash
-. "$repo/lib/check.bash"
+. "$WS_CORE/lib/check.bash"
 quiet=false
 
 usage() {
@@ -194,14 +194,14 @@ if have gnome-extensions; then
 fi
 
 for uuid in $(ext_list local); do
-    if mismatches="$(python3 "$repo/lib/gnome_extension_files.py" verify \
-        "$repo/gnome/extensions/$uuid" "$HOME/.local/share/gnome-shell/extensions/$uuid")"; then
+    if mismatches="$(python3 "$WS_CORE/lib/gnome_extension_files.py" verify \
+        "$WS_CORE/gnome/extensions/$uuid" "$HOME/.local/share/gnome-shell/extensions/$uuid")"; then
         pass "$uuid source modules/assets match runtime"
     else
         fail "$uuid runtime modules/assets differ: $mismatches (ws apply extensions)"
     fi
     for file in metadata.json extension.js; do
-        src="$repo/gnome/extensions/$uuid/$file"
+        src="$WS_CORE/gnome/extensions/$uuid/$file"
         dst="$HOME/.local/share/gnome-shell/extensions/$uuid/$file"
         [[ -r "$src" ]] && compare_file "$src" "$dst" "$uuid/$file runtime matches repo"
     done
@@ -210,7 +210,7 @@ done
 section "3. Extension schemas"
 
 for uuid in $(ext_list local); do
-    schema_dir="$repo/gnome/extensions/$uuid/schemas"
+    schema_dir="$WS_CORE/gnome/extensions/$uuid/schemas"
     if [[ -d "$schema_dir" ]]; then
         xml_count="$(find "$schema_dir" -maxdepth 1 -type f -name '*.gschema.xml' | wc -l)"
         if (( xml_count > 0 )); then

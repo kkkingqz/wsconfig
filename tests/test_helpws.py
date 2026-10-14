@@ -1,4 +1,4 @@
-"""bin/helpws: every page has a topic, every `helpws TOPIC` in the
+"""libexec/helpws: every page has a topic, every `helpws TOPIC` in the
 repository opens one, the fish completion knows the same topics."""
 from pathlib import Path
 import re
@@ -10,8 +10,8 @@ COMPLETION = ROOT / "terminal/fish/completions/helpws.fish"
 
 
 def case_labels():
-    """TOPIC -> page title (None for readme, man, help): the case in bin/helpws."""
-    text = (ROOT / "bin/helpws").read_text()
+    """TOPIC -> page title (None for readme, man, help): the case in libexec/helpws."""
+    text = (ROOT / "libexec/helpws").read_text()
     body = text[text.index('case "$topic" in'):]
     body = body[:body.index("\nesac")]
     labels = {}

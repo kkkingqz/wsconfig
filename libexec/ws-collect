@@ -78,14 +78,14 @@ echo "== meta"
     echo "model: $(cat /sys/class/dmi/id/product_name 2>/dev/null || echo '?')"
     echo "kernel: $(uname -r)"
     echo "commit: $(git -C "$repo" rev-parse HEAD 2>/dev/null || echo '?')"
-    echo "flake-host: $("$repo/bin/ws" host 2>/dev/null || echo '?')"
+    echo "flake-host: $("$WS_CORE/bin/ws" host 2>/dev/null || echo '?')"
 } > "$dir/meta/meta.txt"
 cp /etc/os-release "$dir/meta/os-release"
 git -C "$repo" status --short > "$dir/meta/git-status.txt" 2>&1 || true
 git -C "$repo" diff HEAD > "$dir/meta/git-diff.patch" 2>/dev/null || true
 
 echo "== baseline"
-"$repo/bin/ws-baseline" capture "collect-$stamp" --with-sudo
+"$WS_CORE/libexec/ws-baseline" capture "collect-$stamp" --with-sudo
 cp -a "$state/baseline/collect-$stamp" "$dir/baseline"
 rm -rf -- "${state:?}/baseline/collect-$stamp"
 

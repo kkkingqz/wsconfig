@@ -112,6 +112,6 @@ else
     pass "ws windows menu links resolve"
 fi
 
-info "GPU for Proton/Steam: $("$WS_CORE/bin/ws-gpu" status 2>/dev/null || echo unknown)"
+info "GPU for Proton/Steam: $("$WS_CORE/libexec/ws-gpu" status 2>/dev/null || echo unknown)"
 
 check_finish

@@ -5,7 +5,7 @@
 #   . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 #
 # Roots (helpws architecture-v2, 3):
-#   WS_CORE    code: bin/, lib/, gnome/extensions, hooks; where this file is
+#   WS_CORE    code: bin/ws, libexec/, lib/, gnome/extensions, hooks; where this file is
 #   WS_CONFIG  data: nix/hosts, the lists and catalogs, host choices
 #   WS_STATE   this machine only
 # WS_CORE is always where the running code is. WSCONFIG (tests, another
@@ -35,6 +35,18 @@ die() {
 
 need() {
     command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
+}
+
+# Runs a tool of the core by name: ws (bin/) or an internal executor
+# (libexec/), as the step tables of ws name them.
+ws_run() {
+    local name="$1"
+    shift
+    if [[ "$name" == ws ]]; then
+        "$WS_CORE/bin/ws" "$@"
+    else
+        "$WS_CORE/libexec/$name" "$@"
+    fi
 }
 
 nix_bin() {

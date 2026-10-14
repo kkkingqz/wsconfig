@@ -13,7 +13,6 @@ boxes_manifest="$cfg/boxes.json"
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 ws_prog="ws box"
-bin_dir="$WS_CORE/bin"
 # Which containers this host has: nix/hosts/HOST/boxes.toml in the
 # configuration, yes = [...], no = [...]; a container in neither has its
 # default of distrobox.nix (boxes.json; lib/ws_catalog.py). create/apply NAME
@@ -120,7 +119,7 @@ box_hooks() {
 # (ws host --for-marks).
 load_host() {
     [[ -z "${ws_host:-}" ]] || return 0
-    ws_host="$("$bin_dir/ws" host --for-marks)" \
+    ws_host="$("$WS_CORE/bin/ws" host --for-marks)" \
         || die "no host for nix/hosts/HOST/boxes.toml (ws host --for-marks)"
     hosts_file="nix/hosts/$ws_host/boxes.toml"
 }
@@ -221,7 +220,7 @@ enter_flags() {
     local name="$1" prime
 
     [[ "$(box_value "$name" gpu)" == amd ]] || return 0
-    prime="$("$bin_dir/ws-gpu" env)"
+    prime="$("$WS_CORE/libexec/ws-gpu" env)"
     [[ -n "$prime" ]] || return 0
     printf '%s\n' --additional-flags "--env $prime"
 }
@@ -470,9 +469,9 @@ cmd_check() {
     local -A states=()
 
     # Result contract of ws check (--json): lib/check.bash.
-    repo="$(cd "$bin_dir/.." && pwd)"
+    repo="$WS_CORE"
     # shellcheck source=../lib/check.bash
-    . "$repo/lib/check.bash"
+    . "$WS_CORE/lib/check.bash"
     case "${1:-}" in
         --json) check_json_mode ;;
         "") ;;
@@ -616,7 +615,7 @@ cmd_check() {
 
     # wsbox-host-ntsync: the Arch package that stands in for the kernel
     # module the host provides (NTSYNC-MODULE).
-    pkgbuild="$repo/distrobox/arch/wsbox-host-ntsync/PKGBUILD"
+    pkgbuild="$WS_CORE/distrobox/arch/wsbox-host-ntsync/PKGBUILD"
     if bash -n "$pkgbuild" >/dev/null 2>&1; then
         pass "bash syntax: distrobox/arch/wsbox-host-ntsync/PKGBUILD"
     else
@@ -628,7 +627,7 @@ cmd_check() {
     else
         fail "wsbox-host-ntsync PKGBUILD sha256sums does not match README.md (makepkg fails; update it and pkgrel)"
     fi
-    ntsync_hook="$repo/distrobox/arch/wsbox-host-ntsync/install-hook"
+    ntsync_hook="$WS_CORE/distrobox/arch/wsbox-host-ntsync/install-hook"
     while IFS= read -r name; do
         [[ -n "$name" ]] || continue
         if [[ "$(podman inspect -f '{{.State.Running}}' "$name" 2>/dev/null || true)" != true ]]; then

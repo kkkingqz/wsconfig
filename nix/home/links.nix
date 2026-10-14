@@ -1,6 +1,6 @@
 # Links from $HOME into the checkout (~/<facts.wsconfig>), one file each.
-# ~/.local/share/workstation/wsconfig points at the checkout itself, for
-# callers without PATH (the input-source extension runs bin/ws-caps-led).
+# ~/.local/share/workstation/libexec points at libexec/ of the checkout, for
+# callers without PATH (the input-source extension runs ws-caps-led).
 # home-manager owns the links; the files stay in the checkout and are edited
 # there (mkOutOfStoreSymlink: no copy in the store, no switch after edits).
 # New files in the listed directories are linked on the next `ws switch`.
@@ -23,11 +23,11 @@ let
     }) (builtins.filter filter (filesIn from)));
 
   # Not in PATH: called by the GNOME extension by absolute path.
-  binExcluded = [ "ws-caps-led" ];
+  libexecExcluded = [ "ws-caps-led" ];
 in
 {
   xdg.dataFile = {
-    "workstation/wsconfig".source = config.lib.file.mkOutOfStoreSymlink repo;
+    "workstation/libexec".source = link "libexec";
     # MICRO_CONFIG_HOME of helpws; micro writes its buffers/ there.
     "workstation/micro-help/settings.json".source = link "terminal/micro-help/settings.json";
     "workstation/micro-help/bindings.json".source = link "terminal/micro-help/bindings.json";
@@ -43,10 +43,13 @@ in
       to = ".config/ghostty";
       filter = lib.hasSuffix ".ghostty";
     })
+    # ws and, under their old names, the internal tools (helpws plan-v2,
+    # stage 5).
+    (linkDir { from = "bin"; to = ".local/bin"; })
     (linkDir {
-      from = "bin";
+      from = "libexec";
       to = ".local/bin";
-      filter = name: !(builtins.elem name binExcluded);
+      filter = name: !(builtins.elem name libexecExcluded);
     })
     {
       ".config/nix/nix.conf".source = link "nix/nix.conf";

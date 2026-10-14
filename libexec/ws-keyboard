@@ -23,10 +23,10 @@ USAGE
 }
 
 case "${1:-status}" in
-    apply) exec "$repo/bin/ws-keyboard-apply" ;;
-    restore) exec "$repo/bin/ws-keyboard-apply" --restore ;;
-    status) exec "$repo/bin/ws-keyboard-status" ;;
-    check) shift; exec "$repo/bin/ws-keyboard-check" "$@" ;;
+    apply) exec "$WS_CORE/libexec/ws-keyboard-apply" ;;
+    restore) exec "$WS_CORE/libexec/ws-keyboard-apply" --restore ;;
+    status) exec "$WS_CORE/libexec/ws-keyboard-status" ;;
+    check) shift; exec "$WS_CORE/libexec/ws-keyboard-check" "$@" ;;
     start) rm -f "$WS_STATE/keyboard/xremap.disabled"; systemctl --user start xremap.service ;;
     stop) systemctl --user stop xremap.service ;;
     restart) systemctl --user restart xremap.service ;;

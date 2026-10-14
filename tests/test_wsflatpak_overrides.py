@@ -42,7 +42,7 @@ class OverrideTests(unittest.TestCase):
         self.catalog_with('')
         self.host = self.config / 'nix/hosts/test/flatpak.toml'
         self.host.write_text(f'yes = ["{APP}"]\n')
-        self.g = runpy.run_path(str(ROOT / 'bin/wsflatpak'))['cmd_check'].__globals__
+        self.g = runpy.run_path(str(ROOT / 'libexec/wsflatpak'))['cmd_check'].__globals__
         self.g.update(CFG=cfg, MANIFEST=self.manifest, DESKTOP_OVERRIDES=cfg / 'desktop',
                       REPO=self.config, this_host=lambda: 'test')
         self.runtime = ''

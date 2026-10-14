@@ -15,7 +15,7 @@ import unittest
 import fast_tmp  # noqa: F401  (tmpfs)
 
 ROOT = Path(__file__).resolve().parents[1]
-WSBOX = ROOT / "bin/wsbox"
+WSBOX = ROOT / "libexec/wsbox"
 
 STUB = r'''#!/usr/bin/env bash
 # podman and distrobox for wsbox: containers are files in $WSBOX_TEST_STATE.

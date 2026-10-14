@@ -3,7 +3,7 @@ set -u
 set -o pipefail
 
 # The checkout itself: Git integrity, hygiene, syntax of tracked files,
-# executables of bin/, legacy paths and untracked files. Read-only.
+# executables of bin/ and libexec/, legacy paths and untracked files. Read-only.
 # ws check repo runs it with --json (lib/check.bash).
 
 # shellcheck source=../lib/common.bash
@@ -75,13 +75,13 @@ fi
 
 # Changed data files are expected until ws sync publishes them (helpws
 # plan-v2, 2.7): an INFO, not a dirty tree.
-mapfile -t data_files < <("$repo/bin/ws" data-files 2>/dev/null)
+mapfile -t data_files < <("$WS_CORE/bin/ws" data-files 2>/dev/null)
 status_porcelain="$(git -C "$repo" status --porcelain=v1 --untracked-files=all 2>/dev/null \
     | while IFS= read -r line; do
         path="${line:3}"
         printf '%s\n' "${data_files[@]}" | grep -Fxq -- "$path" || printf '%s\n' "$line"
     done || true)"
-unpublished="$("$repo/bin/ws" unpublished 2>/dev/null || true)"
+unpublished="$("$WS_CORE/bin/ws" unpublished 2>/dev/null || true)"
 [[ -z "$unpublished" ]] || info "$unpublished"
 if [[ -z "$status_porcelain" ]]; then
     pass "working tree clean"
@@ -195,7 +195,7 @@ rm -f "$secrets"
 current_home_prefix="${HOME%/}/"
 other_hardcoded_home="$(git -C "$repo" grep -nF "$current_home_prefix" -- \
     ':!docs/**' \
-    ':!bin/ws-check-repo' \
+    ':!libexec/ws-check-repo' \
     2>/dev/null || true)"
 if [[ -n "$other_hardcoded_home" ]]; then
     warn "unexpected hard-coded current HOME paths found outside validated helper locations:"
@@ -342,8 +342,9 @@ done < <(git -C "$repo" ls-files --others --exclude-standard -z)
 
 section "5. Executables"
 
-# bin/ is run through ~/.local/bin links (and ws-caps-led from the checkout):
-# every file there is executable in Git and on disk.
+# bin/ and libexec/ are run through ~/.local/bin links (and ws-caps-led
+# through ~/.local/share/workstation/libexec): every file there is
+# executable in Git and on disk.
 bin_bad=false
 while IFS= read -r -d '' path; do
     mode="$(git -C "$repo" ls-files -s -- "$path" | awk 'NR==1{print $1}')"
@@ -351,8 +352,8 @@ while IFS= read -r -d '' path; do
         bin_bad=true
         fail "$path not executable (Git mode ${mode:-?})"
     fi
-done < <(git -C "$repo" ls-files -z -- bin)
-[[ "$bin_bad" == false ]] && pass "bin/: every file executable (file and Git mode 100755)"
+done < <(git -C "$repo" ls-files -z -- bin libexec)
+[[ "$bin_bad" == false ]] && pass "bin/, libexec/: every file executable (file and Git mode 100755)"
 [[ -x "$repo/bootstrap.sh" ]] && is_tracked bootstrap.sh \
     && pass "bootstrap.sh tracked and executable" \
     || fail "bootstrap.sh missing, untracked or not executable"

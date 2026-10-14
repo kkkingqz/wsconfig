@@ -7,10 +7,10 @@ cmd="${1:-status}"
 shift 2>/dev/null || true
 
 case "$cmd" in
-    status) exec "$repo/bin/ws-gnome-status" "$@" ;;
-    check) exec "$repo/bin/ws-gnome-check" "$@" ;;
-    test) exec "$repo/bin/ws-gnome-test" "$@" ;;
-    extensions) exec "$repo/bin/ws-gnome-extensions" "$@" ;;
+    status) exec "$WS_CORE/libexec/ws-gnome-status" "$@" ;;
+    check) exec "$WS_CORE/libexec/ws-gnome-check" "$@" ;;
+    test) exec "$WS_CORE/libexec/ws-gnome-test" "$@" ;;
+    extensions) exec "$WS_CORE/libexec/ws-gnome-extensions" "$@" ;;
     -h|--help|help)
         cat <<'USAGE'
 Usage: ws gnome [status|check|test|extensions]

@@ -10,7 +10,7 @@ set -o pipefail
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
-. "$repo/lib/check.bash"
+. "$WS_CORE/lib/check.bash"
 
 case "${1:-}" in
     --json) check_json_mode ;;
@@ -21,7 +21,7 @@ esac
 
 # Only hosts with vm = true in host.toml have the VM layer.
 if [[ "$(host_fact vm)" != yes ]]; then
-    info "vm is not true in nix/hosts/$("$repo/bin/ws" host 2>/dev/null)/host.toml: no VM layer, nothing to check"
+    info "vm is not true in nix/hosts/$("$WS_CORE/bin/ws" host 2>/dev/null)/host.toml: no VM layer, nothing to check"
     check_finish
     exit
 fi

@@ -1,4 +1,4 @@
-# wswidgets (bin/wswidgets): the widget layer, helpws widgets.
+# wswidgets (libexec/wswidgets): the widget layer, helpws widgets.
 
 function __wswidgets_needs_command
     test (count (commandline -opc)) -eq 1

@@ -219,7 +219,7 @@ class RealProcessTests(SendFixture, unittest.TestCase):
     stream pipeline, SIGTERM. Real helpers and receiver."""
 
     def cli(self, *args):
-        return subprocess.run([str(ROOT / 'bin/wsbackup'), *args], env=self.env,
+        return subprocess.run([str(ROOT / 'libexec/wsbackup'), *args], env=self.env,
                               text=True, capture_output=True)
 
     def test_sudo_authenticates_on_terminal_before_streaming(self):
@@ -297,7 +297,7 @@ os.execvp(a[1], a[1:])
 
     def test_sigterm_records_failure_and_releases_lock(self):
         self.b.update(receive_delay=10)
-        p = subprocess.Popen([str(ROOT / 'bin/wsbackup'), 'send', 'home'],
+        p = subprocess.Popen([str(ROOT / 'libexec/wsbackup'), 'send', 'home'],
                              env=self.env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         operations = self.b.root / 'state/wsconfig/backup/operations'
         deadline = time.monotonic() + 8

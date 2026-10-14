@@ -11,13 +11,13 @@ topic="${1:-terminal}"
 # A topic names a page by its `title:`, not by a path: docs/ can be
 # rearranged without touching this list.
 open_title() {
-    doc="$(grep -rlx --include='*.md' "title: $1" "$repo/docs" | head -n 1)"
+    doc="$(grep -rlx --include='*.md' "title: $1" "$WS_CORE/docs" | head -n 1)"
     [ -n "$doc" ] || { echo "helpws: no document with title $1" >&2; exit 1; }
     MICRO_CONFIG_HOME="$micro_cfg" exec micro -readonly true "$doc"
 }
 
 case "$topic" in
-    readme) MICRO_CONFIG_HOME="$micro_cfg" exec micro -readonly true "$repo/README.md" ;;
+    readme) MICRO_CONFIG_HOME="$micro_cfg" exec micro -readonly true "$WS_CORE/README.md" ;;
     layers|architecture) open_title ws-layers ;;
     architecture-v2|arch-v2) open_title ws-architecture-v2 ;;
     checks|check) open_title ws-checks ;;

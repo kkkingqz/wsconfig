@@ -11,7 +11,7 @@ done
 
 install_extension() {
     local uuid="$1"
-    local src="$repo/gnome/extensions/$uuid"
+    local src="$WS_CORE/gnome/extensions/$uuid"
     local dst="$HOME/.local/share/gnome-shell/extensions/$uuid"
     local schema_dir="$src/schemas"
 
@@ -35,7 +35,7 @@ PY
 
     mkdir -p "$dst"
 
-    python3 "$repo/lib/gnome_extension_files.py" install "$src" "$dst"
+    python3 "$WS_CORE/lib/gnome_extension_files.py" install "$src" "$dst"
 
     if [[ "$has_schema" == true ]]; then
         mkdir -p "$dst/schemas"

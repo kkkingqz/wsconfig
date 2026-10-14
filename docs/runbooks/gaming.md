@@ -23,7 +23,7 @@ gaming/apt.txt         из Ubuntu, ставит bootstrap.sh: gamescope, mangoa
 steam/apt.txt          Steam из apt (nativeSteam = true)
 system/gaming.nix      автологин SDDM, os-session-select, Return to Game
                        Mode, HandlePowerKey=ignore (ws system apply)
-bin/wsgame             владелец: fetch, build, install, check, mode
+libexec/wsgame         владелец: fetch, build, install, check, mode
 ```
 
 ## Пакеты

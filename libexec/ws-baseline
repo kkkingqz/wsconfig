@@ -84,30 +84,30 @@ cmd_capture() {
     # What the system layer owns (system/*.nix): files, ESP files, units and
     # the files it watches. Kept with the baseline, so diff compares what
     # each baseline covered at its time.
-    "$repo/bin/ws" system manifest > "$dir/system/manifest.txt" 2>/dev/null \
+    "$WS_CORE/bin/ws" system manifest > "$dir/system/manifest.txt" 2>/dev/null \
         || die "ws system manifest failed"
 
     echo "== owner checks"
     # wsbox check first: it starts the containers; verify checks NTSync inside
     # only in running ones.
     if [[ "$boxes" == true ]]; then
-        run_to "$dir/checks/wsbox-check.txt" "$repo/bin/wsbox" check
+        run_to "$dir/checks/wsbox-check.txt" "$WS_CORE/libexec/wsbox" check
     fi
-    run_to "$dir/checks/ws-check-repo.txt" "$repo/bin/ws-check-repo"
-    run_to "$dir/checks/ws-check-home.txt" "$repo/bin/ws-check-home"
-    run_to "$dir/checks/ws-check-virt.txt" "$repo/bin/ws-check-virt"
-    run_to "$dir/checks/ws-check-steam.txt" "$repo/bin/ws-check-steam"
-    run_to "$dir/checks/ws-keyboard-check.txt" "$repo/bin/ws-keyboard-check"
-    run_to "$dir/checks/ws-system-check.txt" "$repo/bin/ws" system check
-    run_to "$dir/checks/wsflatpak-check.txt" "$repo/bin/wsflatpak" check
-    run_to "$dir/checks/wswin-check.txt" "$repo/bin/wswin-check"
-    run_to "$dir/checks/ws-gnome-check.txt" "$repo/bin/ws-gnome" check
-    run_to "$dir/checks/ws-gnome-test.txt" "$repo/bin/ws-gnome" test
-    run_to "$dir/checks/ws-suspend-check.txt" "$repo/bin/ws-suspend-check"
-    run_to "$dir/checks/ws-suspend-status.txt" "$repo/bin/ws-suspend" status
-    run_to "$dir/checks/ws-keyboard-status.txt" "$repo/bin/ws-keyboard-status"
-    run_to "$dir/checks/ws-input-source-status.txt" "$repo/bin/ws-input-source" status
-    run_to "$dir/checks/ws-workstation-verify.txt" "$repo/bin/ws-workstation-verify" --strict
+    run_to "$dir/checks/ws-check-repo.txt" "$WS_CORE/libexec/ws-check-repo"
+    run_to "$dir/checks/ws-check-home.txt" "$WS_CORE/libexec/ws-check-home"
+    run_to "$dir/checks/ws-check-virt.txt" "$WS_CORE/libexec/ws-check-virt"
+    run_to "$dir/checks/ws-check-steam.txt" "$WS_CORE/libexec/ws-check-steam"
+    run_to "$dir/checks/ws-keyboard-check.txt" "$WS_CORE/libexec/ws-keyboard-check"
+    run_to "$dir/checks/ws-system-check.txt" "$WS_CORE/bin/ws" system check
+    run_to "$dir/checks/wsflatpak-check.txt" "$WS_CORE/libexec/wsflatpak" check
+    run_to "$dir/checks/wswin-check.txt" "$WS_CORE/libexec/wswin-check"
+    run_to "$dir/checks/ws-gnome-check.txt" "$WS_CORE/libexec/ws-gnome" check
+    run_to "$dir/checks/ws-gnome-test.txt" "$WS_CORE/libexec/ws-gnome" test
+    run_to "$dir/checks/ws-suspend-check.txt" "$WS_CORE/libexec/ws-suspend-check"
+    run_to "$dir/checks/ws-suspend-status.txt" "$WS_CORE/libexec/ws-suspend" status
+    run_to "$dir/checks/ws-keyboard-status.txt" "$WS_CORE/libexec/ws-keyboard-status"
+    run_to "$dir/checks/ws-input-source-status.txt" "$WS_CORE/libexec/ws-input-source" status
+    run_to "$dir/checks/ws-workstation-verify.txt" "$WS_CORE/libexec/ws-workstation-verify" --strict
 
     echo "== GNOME"
     run_to "$dir/gnome/dconf.ini" dconf dump /
@@ -166,7 +166,7 @@ cmd_capture() {
     # Modules the manifest's modules-load.d and modprobe.d files name:
     # loaded or not (a blacklisted one must stay unloaded).
     local tree mod
-    tree="$("$repo/bin/ws" system tree 2>/dev/null)" || die "ws system tree failed"
+    tree="$("$WS_CORE/bin/ws" system tree 2>/dev/null)" || die "ws system tree failed"
     for mod in $(cat "$tree"/files/etc/modules-load.d/*.conf "$tree"/files/etc/modprobe.d/*.conf 2>/dev/null \
         | awk '/^[[:space:]]*#/ || NF == 0 { next }
                $1 == "options" || $1 == "blacklist" || $1 == "install" { print $2; next }
@@ -189,7 +189,7 @@ cmd_capture() {
     # and the Nix profile (home.packages) of the active generation.
     local h pkg hm
     local host host_list container vm native_steam game_mode
-    h="$("$repo/bin/ws" host)"
+    h="$("$WS_CORE/bin/ws" host)"
     # The same lists as ws check apt (lib/apt.bash).
     # shellcheck source=../lib/apt.bash
     . "$WS_CORE/lib/apt.bash"

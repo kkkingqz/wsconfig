@@ -76,7 +76,7 @@ check     run the owners' checks with --json and summarize their result
           ws check virt, ws check steam, ws game check, ws check backup and
           ws-workstation-verify (cross-layer invariants);
           shows WARN/FAIL messages, -v all;
-          check repo: the checkout (Git, hygiene, syntax, bin/ executables);
+          check repo: the checkout (Git, hygiene, syntax, executables);
           check home: home-manager generation, Nix, man pages, session;
           check widgets: the wswidgets runtime, adapter and IPC (ws-widgets
           check) and its manifest against nix/hosts/HOST/widgets.toml (hosts with
@@ -503,7 +503,7 @@ cmd_apply() {
         step_header "$name: $cmd"
         rc=0
         # shellcheck disable=SC2086 # cmd is a fixed command line
-        "$repo/bin/"$cmd || rc=$?
+        ws_run $cmd || rc=$?
         case "$rc" in
             0) results+=("OK        $name") ;;
             69) results+=("PREFLIGHT $name (log out and in, then: ws apply $name)"); failed=true ;;
@@ -559,8 +559,8 @@ update_extensions() {
 update_steps=(
     "apt update_apt"
     "nix update_nix"
-    "flatpak $repo/bin/wsflatpak update -y"
-    "distrobox $repo/bin/wsbox update"
+    "flatpak ws_run wsflatpak update -y"
+    "distrobox ws_run wsbox update"
     "extensions update_extensions"
 )
 
@@ -672,7 +672,7 @@ cmd_system() {
         diff) ;;
         check)
             # shellcheck source=../lib/check.bash
-            . "$repo/lib/check.bash"
+            . "$WS_CORE/lib/check.bash"
             case "${2:-}" in
                 --json) check_json_mode ;;
                 "") ;;
@@ -1030,7 +1030,7 @@ cmd_check_apt() {
     local -A listed=() manual=()
 
     # shellcheck source=../lib/check.bash
-    . "$repo/lib/check.bash"
+    . "$WS_CORE/lib/check.bash"
     case "${1:-}" in
         --json) check_json_mode ;;
         "") ;;
@@ -1111,13 +1111,13 @@ cmd_check() {
 
     case "${1:-}" in
         apt) shift; cmd_check_apt "$@"; return ;;
-        repo) shift; exec "$repo/bin/ws-check-repo" "$@" ;;
-        home) shift; exec "$repo/bin/ws-check-home" "$@" ;;
-        virt|vm) shift; exec "$repo/bin/ws-check-virt" "$@" ;;
-        steam) shift; exec "$repo/bin/ws-check-steam" "$@" ;;
-        gaming|game) shift; exec "$repo/bin/wsgame" check "$@" ;;
-        backup) shift; exec "$repo/bin/ws-check-backup" "$@" ;;
-        widgets|widget) shift; exec "$repo/bin/ws-check-widgets" "$@" ;;
+        repo) shift; exec "$WS_CORE/libexec/ws-check-repo" "$@" ;;
+        home) shift; exec "$WS_CORE/libexec/ws-check-home" "$@" ;;
+        virt|vm) shift; exec "$WS_CORE/libexec/ws-check-virt" "$@" ;;
+        steam) shift; exec "$WS_CORE/libexec/ws-check-steam" "$@" ;;
+        gaming|game) shift; exec "$WS_CORE/libexec/wsgame" check "$@" ;;
+        backup) shift; exec "$WS_CORE/libexec/ws-check-backup" "$@" ;;
+        widgets|widget) shift; exec "$WS_CORE/libexec/ws-check-widgets" "$@" ;;
         -v|--verbose) verbose=true ;;
         "") ;;
         *) die "unknown check option: $1" ;;
@@ -1133,7 +1133,7 @@ cmd_check() {
         cmd="${step#* }"
         rc=0
         # shellcheck disable=SC2086 # cmd is a fixed command line
-        "$repo/bin/"$cmd --json > "$out" 2> "$err" || rc=$?
+        ws_run $cmd --json > "$out" 2> "$err" || rc=$?
         step_header "$name: $cmd (exit $rc)"
         if res="$(check_result "$out" "$verbose")"; then
             counts="${res%%$'\n'*}"
@@ -1169,7 +1169,7 @@ cmd_check() {
 
 if owner="$(module_owner "${1:-}")"; then
     shift
-    exec "$WS_CORE/bin/$owner" "$@"
+    exec "$WS_CORE/libexec/$owner" "$@"
 fi
 
 case "${1:-}" in
@@ -1181,11 +1181,11 @@ case "${1:-}" in
     news) shift; cmd_news "$@" ;;
     update) shift; cmd_update "$@" ;;
     system) shift; cmd_system "$@" ;;
-    baseline) shift; exec "$repo/bin/ws-baseline" "$@" ;;
-    checkpoint) shift; exec "$repo/bin/ws-checkpoint" "$@" ;;
-    collect) shift; exec "$repo/bin/ws-collect" "$@" ;;
-    container) shift; exec "$repo/bin/ws-container" "$@" ;;
-    btrfs) shift; exec "$repo/bin/ws-btrfs" "$@" ;;
+    baseline) shift; exec "$WS_CORE/libexec/ws-baseline" "$@" ;;
+    checkpoint) shift; exec "$WS_CORE/libexec/ws-checkpoint" "$@" ;;
+    collect) shift; exec "$WS_CORE/libexec/ws-collect" "$@" ;;
+    container) shift; exec "$WS_CORE/libexec/ws-container" "$@" ;;
+    btrfs) shift; exec "$WS_CORE/libexec/ws-btrfs" "$@" ;;
     host) shift; host "$@" ;;
     fact) shift; cmd_fact "$@" ;;
     # The data files and what of them is not published (ws check repo).

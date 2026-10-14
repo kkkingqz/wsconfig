@@ -28,7 +28,7 @@ let
   # (Command+C in GTK apps), Fn+Ctrl+F/C/R and Fn+Option tiling, Smart
   # Popup on the right modifiers, the Nautilus and terminal remaps.
   rdp = facts.boot == "container";
-  bin = "${config.home.homeDirectory}/${facts.wsconfig}/bin";
+  bin = "${config.home.homeDirectory}/${facts.wsconfig}/libexec";
   # NAME = [ BINDING COMMAND ]: GNOME custom shortcuts.
   rdpCommands = {
     ws-caps = [ "<Shift><Control><Alt>space" "${bin}/ws-input-source caps" ];

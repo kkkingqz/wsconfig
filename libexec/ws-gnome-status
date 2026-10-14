@@ -315,7 +315,7 @@ fi
 
 section "9. Managed appearance profile"
 profile="$HOME/.local/share/workstation/gnome/settings.json"
-check_helper="$repo/bin/ws-gnome-check"
+check_helper="$WS_CORE/libexec/ws-gnome-check"
 if [[ -r "$profile" && -x "$check_helper" ]]; then
     if "$check_helper" --quiet >/dev/null 2>&1; then
         kv "gnome/gnome.nix" "in sync"

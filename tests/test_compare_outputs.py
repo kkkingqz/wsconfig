@@ -108,17 +108,17 @@ class CompareOutputsTests(unittest.TestCase):
 
     def test_home_file_list_and_out_of_store_links(self):
         a = self.home("a", {".local/bin/ws": ("link", "/home/u/wsconfig/bin/ws"),
-                            ".local/bin/dotgit": ("link", "/home/u/wsconfig/bin/dotgit")})
+                            ".local/libexec/dotgit": ("link", "/home/u/wsconfig/libexec/dotgit")})
         b = self.home("b", {".local/bin/ws": ("link", "/home/u/wsconfig/bin/ws")})
         findings, _ = self.compare({"home-mbp16": a}, {"home-mbp16": b})
-        self.assertEqual(self.kinds(findings), {(2, "home-mbp16/home-files/.local/bin/dotgit")})
+        self.assertEqual(self.kinds(findings), {(2, "home-mbp16/home-files/.local/libexec/dotgit")})
 
     def test_allow_moves_to_kind_4_and_reports_unused_patterns(self):
-        a = self.home("a", {".local/bin/dotgit": ("link", "/home/u/wsconfig/bin/dotgit")})
+        a = self.home("a", {".local/libexec/dotgit": ("link", "/home/u/wsconfig/libexec/dotgit")})
         b = self.home("b", {})
         findings, unused = self.compare({"home-mbp16": a}, {"home-mbp16": b},
-                                        ["home-*/home-files/.local/bin/dotgit", "system-*/files/etc/none"])
-        self.assertEqual(self.kinds(findings), {(4, "home-mbp16/home-files/.local/bin/dotgit")})
+                                        ["home-*/home-files/.local/libexec/dotgit", "system-*/files/etc/none"])
+        self.assertEqual(self.kinds(findings), {(4, "home-mbp16/home-files/.local/libexec/dotgit")})
         self.assertEqual(unused, ["system-*/files/etc/none"])
 
     def test_output_only_on_one_side(self):
@@ -139,9 +139,9 @@ class CompareOutputsTests(unittest.TestCase):
 
     def test_read_allow_skips_comments(self):
         with tempfile.NamedTemporaryFile("w", suffix=".allow", delete=False) as f:
-            f.write("# step 1.1\nhome-*/home-files/.local/bin/dotgit  # removed\n\n")
+            f.write("# step 1.1\nhome-*/home-files/.local/libexec/dotgit  # removed\n\n")
         self.addCleanup(os.unlink, f.name)
-        self.assertEqual(co.read_allow(f.name), ["home-*/home-files/.local/bin/dotgit"])
+        self.assertEqual(co.read_allow(f.name), ["home-*/home-files/.local/libexec/dotgit"])
 
 
 if __name__ == "__main__":

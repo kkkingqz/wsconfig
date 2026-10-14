@@ -15,7 +15,7 @@ Distrobox под rootless Podman. Как слой появился: `helpws hist
 distrobox/distrobox.nix          контейнеры, пакеты, hooks, экспорты
 distrobox/arch/…, distrobox/wine/…  hooks (root, при каждом старте; сделанное пропускают)
 distrobox/arch/wsbox-host-ntsync/   пакет-заглушка NTSYNC-MODULE для Arch
-bin/wsbox                        владелец: apply, check, update, recreate
+libexec/wsbox                    владелец: apply, check, update, recreate
 ```
 
 `ws switch` собирает в `~/.local/share/workstation/distrobox/`:

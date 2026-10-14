@@ -1,6 +1,7 @@
 """lib/apt.bash: the apt lists of a host by its facts (helpws plan-v2, 2.3)."""
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -17,8 +18,12 @@ class AptListsTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.repo = Path(tmp.name)
-        for d in ("nix/hosts", "virt", "steam", "gaming"):
+        # Data and core in one directory: the lists of the layers are code
+        # (WS_CORE), those of the hosts data (repo).
+        for d in ("nix/hosts", "virt", "steam", "gaming", "lib"):
             (self.repo / d).mkdir(parents=True, exist_ok=True)
+        for name in ("ws_facts.py", "ws_common.py"):
+            shutil.copyfile(ROOT / "lib" / name, self.repo / "lib" / name)
         (self.repo / "nix/hosts/apt.txt").write_text("# common\nfish   # shell\n\nppa:x/y\n")
         (self.repo / "nix/hosts/machine-apt.txt").write_text("rec:tlp\n")
         (self.repo / "virt/apt.txt").write_text("qemu-kvm\n")
@@ -32,7 +37,7 @@ class AptListsTests(unittest.TestCase):
         (d / "apt.txt").write_text(apt)
 
     def bash(self, script):
-        env = {**os.environ, "WS_CORE": str(ROOT)}
+        env = {**os.environ, "WS_CORE": str(self.repo)}
         p = subprocess.run(["bash", "-c", f'repo={self.repo}; . {ROOT}/lib/apt.bash; {script}'],
                            text=True, capture_output=True, env=env)
         self.assertEqual(p.returncode, 0, p.stderr)

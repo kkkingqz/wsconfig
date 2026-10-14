@@ -22,7 +22,7 @@ checkout itself, ~/wsconfig/bin/...) are compared as strings only: they are
 the code the tests check.
 
 The allow file holds fnmatch patterns, one per line, '#' comments; they
-match the labels this script prints, e.g. home-*/home-files/.local/bin/dotgit
+match the labels this script prints, e.g. home-*/home-files/.local/libexec/dotgit
 or system-mbp16/manifest:-unit enabled foo.service. Put its content in the
 commit message of the step.
 """

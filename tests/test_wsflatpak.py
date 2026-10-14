@@ -17,7 +17,7 @@ OTHER = "org.example.Other"
 OTHER_REF = "app/org.example.Other/x86_64/stable"
 BETA_REF = "app/org.example.App/x86_64/beta"
 OTHER_RUNTIME = "org.freedesktop.Platform/x86_64/24.08"
-SCRIPT = Path(__file__).resolve().parents[1] / "bin/wsflatpak"
+SCRIPT = Path(__file__).resolve().parents[1] / "libexec/wsflatpak"
 
 
 class FlatpakState:

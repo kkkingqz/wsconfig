@@ -14,7 +14,7 @@ set -o pipefail
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
-. "$repo/lib/check.bash"
+. "$WS_CORE/lib/check.bash"
 strict=false
 
 usage() {
@@ -44,7 +44,7 @@ t2=false
 section "1. Host / session"
 
 [[ -n "$hardware" ]] \
-    && info "host $("$repo/bin/ws" host): hardware $hardware, boot ${boot:-unknown}" \
+    && info "host $("$WS_CORE/bin/ws" host): hardware $hardware, boot ${boot:-unknown}" \
     || fail "unknown host: no hardware fact (ws fact hardware)"
 model="$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)"
 if [[ "$t2" == true ]]; then
@@ -216,7 +216,7 @@ else
         || fail "/dev/ntsync character device missing"
 fi
 
-ntsync_hook="$repo/distrobox/arch/wsbox-host-ntsync/install-hook"
+ntsync_hook="$WS_CORE/distrobox/arch/wsbox-host-ntsync/install-hook"
 ntsync_boxes="$(
     awk -v hook="init_hooks=\"$ntsync_hook\"" '
         /^\[/ { box = substr($0, 2, length($0) - 2) }

@@ -481,7 +481,7 @@ data             ~/.local/share/<tool>/...
 ```
 
 Терминальная часть: `terminal/` (fish, ghostty, micro-help, xdg-terminals),
-`bin/` (`helpws`, `ws-doc-build`), `docs/`. Весь репозиторий —
+`libexec/` (`helpws`, `ws-doc-build`), `docs/`. Весь репозиторий —
 `helpws readme`.
 
 Каталог checkout — настройка хоста: `wsconfig` в
@@ -542,7 +542,7 @@ man ws-workstation
 ~/.config/fish/completions/   ws, helpws, wsbox, wsflatpak, wswin, ws-gnome
 ```
 
-Все файлы из `terminal/fish/` (и `terminal/ghostty/*.ghostty`, команды `bin/`)
+Все файлы из `terminal/fish/` (и `terminal/ghostty/*.ghostty`, команды `bin/` и `libexec/`)
 подключены ссылками home-manager в checkout (`nix/home/links.nix`);
 новый файл подключается следующим `ws switch`. Man pages — из сборки Nix
 (`nix/home/man.nix`). fzf, zoxide, eza, micro — из Nix

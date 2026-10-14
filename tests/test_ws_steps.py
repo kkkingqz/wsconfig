@@ -22,6 +22,7 @@ class StepsTests(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         self.repo = Path(tmp.name) / "repo"
         (self.repo / "bin").mkdir(parents=True)
+        (self.repo / "libexec").mkdir()
         shutil.copytree(ROOT / "lib", self.repo / "lib", ignore=shutil.ignore_patterns("__pycache__"))
         shutil.copy(ROOT / "bin/ws", self.repo / "bin/ws")
         shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
@@ -43,7 +44,7 @@ class StepsTests(unittest.TestCase):
         subprocess.run([*git, "commit", "-qm", "init"], check=True)
 
     def stub(self, name, body):
-        p = self.repo / "bin" / name
+        p = self.repo / "libexec" / name
         p.write_text("#!/bin/sh\n" + body)
         p.chmod(0o755)
 

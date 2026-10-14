@@ -10,7 +10,7 @@ set -o pipefail
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
-. "$repo/lib/check.bash"
+. "$WS_CORE/lib/check.bash"
 
 case "${1:-}" in
     --json) check_json_mode ;;
@@ -36,7 +36,7 @@ gcontains() {
 
 section "1. xremap"
 
-if [[ "$("$repo/bin/ws" fact boot 2>/dev/null)" == container ]]; then
+if [[ "$("$WS_CORE/bin/ws" fact boot 2>/dev/null)" == container ]]; then
     # Keys over RDP, without /dev/input: GNOME shortcuts do what xremap does
     # (keyboard/keyboard.nix, helpws plan-wsgnomebox).
     info "container: no xremap, keys over RDP (GNOME shortcuts below)"
@@ -52,7 +52,7 @@ else
     xremap_env_bin="$(tr ' ' '\n' <<<"$xremap_env" | sed -n 's/^XREMAP_BIN=//p')"
     if [[ "$xremap_cfg" != /nix/store/* || ! -r "$xremap_cfg" ]]; then
         fail "xremap.service has no store XREMAP_CONFIG (${xremap_cfg:-unset}); run ws switch"
-    elif [[ "$(sed "s|@repo@|$repo|g" "$repo/keyboard/xremap.yml" | sha256sum)" != "$(sha256sum < "$xremap_cfg")" ]]; then
+    elif [[ "$(sed "s|@repo@|$repo|g" "$WS_CORE/keyboard/xremap.yml" | sha256sum)" != "$(sha256sum < "$xremap_cfg")" ]]; then
         warn "xremap store config differs from keyboard/xremap.yml; run ws switch"
     else
         pass "xremap store config matches keyboard/xremap.yml (${xremap_cfg#/nix/store/})"
@@ -175,8 +175,8 @@ for code in us ru ua; do
         || info "MRU source missing: $code (GNOME fills it on a switch from its menu)"
 done
 
-if [[ -x "$repo/bin/ws-input-source" ]]; then
-    state_out="$("$repo/bin/ws-input-source" status 2>/dev/null || true)"
+if [[ -x "$WS_CORE/libexec/ws-input-source" ]]; then
+    state_out="$("$WS_CORE/libexec/ws-input-source" status 2>/dev/null || true)"
     [[ -n "$state_out" ]] \
         && pass "ws-input-source status works: $state_out" \
         || fail "ws-input-source status failed"

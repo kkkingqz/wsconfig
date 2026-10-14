@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Text that ws btrfs make (bin/ws-btrfs) writes for the Btrfs layout of a
+"""Text that ws btrfs make (libexec/ws-btrfs) writes for the Btrfs layout of a
 fresh install: / on @, /home, /var/cache, /tmp and /var/log on their own
 subvolumes (helpws rebuild, section 3).
 

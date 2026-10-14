@@ -14,10 +14,10 @@ apt_lists() {
     # Real machines only, not a container host (helpws plan-wsgnomebox).
     [[ "$container" == true ]] || echo "$repo/nix/hosts/machine-apt.txt"
     # VM packages only on hosts with vm = true (helpws virt).
-    [[ "$vm" == no ]] || echo "$repo/virt/apt.txt"
+    [[ "$vm" == no ]] || echo "${WS_CORE:-$repo}/virt/apt.txt"
     # Native Steam and the Game Mode session (helpws plan-legion-go).
-    [[ "$native_steam" == no ]] || echo "$repo/steam/apt.txt"
-    [[ "$game_mode" == no ]] || echo "$repo/gaming/apt.txt"
+    [[ "$native_steam" == no ]] || echo "${WS_CORE:-$repo}/steam/apt.txt"
+    [[ "$game_mode" == no ]] || echo "${WS_CORE:-$repo}/gaming/apt.txt"
 }
 
 # Package and PPA lines of the apt lists, without comments and blanks: the

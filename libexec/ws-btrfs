@@ -85,7 +85,7 @@ done
 root_dev="$(findmnt -no SOURCE / | sed 's/\[.*$//')"
 uuid="$(findmnt -no UUID /)"
 [[ -n "$uuid" ]] || die "cannot determine the UUID of /"
-boot="$("$repo/bin/ws" fact boot)" || die "no boot in the host.toml of this host"
+boot="$("$WS_CORE/bin/ws" fact boot)" || die "no boot in the host.toml of this host"
 
 # Subvolumes of the layout and where they are mounted; @ is /.
 layout=("@home /home" "@cache /var/cache" "@log /var/log" "@tmp /tmp")
@@ -95,7 +95,7 @@ old_list=/var/lib/ws-btrfs-layout/old-root
 # Size of the installer's swap file: step 2 makes it again on @swap.
 swap_size=/var/lib/ws-btrfs-layout/swap-size
 
-helper() { python3 "$repo/lib/btrfs_layout.py" "$@"; }
+helper() { python3 "$WS_CORE/lib/btrfs_layout.py" "$@"; }
 
 mounts=()
 cleanup() {
@@ -308,7 +308,7 @@ step2() {
         if grep -Eq '^[^#]*[[:space:]]/swap[[:space:]]' /etc/fstab; then
             echo "/swap in fstab: swap file kept as it is"
         else
-            run "$repo/bin/ws-suspend" swap-setup "$(cat "$swap_size")"
+            run "$WS_CORE/libexec/ws-suspend" swap-setup "$(cat "$swap_size")"
         fi
         run sudo rm -f "$swap_size"
     fi

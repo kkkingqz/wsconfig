@@ -18,7 +18,7 @@ class BatchCLI(TransferFixture, unittest.TestCase):
 
     def cli(self, *args):
         """ws backup ARGS in this process, so it talks to the helper model;
-        the wrappers bin/ws and bin/wsbackup run in RealHelpersContract."""
+        the wrappers bin/ws and libexec/wsbackup run in RealHelpersContract."""
         return run_main(self.cli_env, args)
 
     def test_default_cli_runs_batch(self):

@@ -17,7 +17,7 @@ flatpak/catalog.toml          каталог: remotes и все приложен
 nix/hosts/HOST/flatpak.toml   выбор машины (yes, no) и её свои overrides
 flatpak/flatpak.nix           свои .desktop; собирает каталог и выбор машины
 flatpak/desktop/*.desktop     полные .desktop, заменяющие штатные
-bin/wsflatpak                 владелец: install, apply, check
+libexec/wsflatpak             владелец: install, apply, check
 ```
 
 `ws switch` собирает `~/.local/share/workstation/flatpak/` (`flatpak.json`:

@@ -215,12 +215,12 @@ overview LED off (временный EN)
 Внутренний helper:
 
 ```text
-bin/ws-caps-led
+libexec/ws-caps-led
 ```
 
-вызывается GNOME extension через `~/.local/share/workstation/wsconfig/bin/`
-(ссылка home-manager на checkout). Это не пользовательская команда, в
-`~/.local/bin` её нет (`binExcluded` в `nix/home/links.nix`).
+вызывается GNOME extension через `~/.local/share/workstation/libexec/`
+(ссылка home-manager на `libexec/` checkout). Это не пользовательская команда, в
+`~/.local/bin` её нет (`libexecExcluded` в `nix/home/links.nix`).
 
 ## GDM login и GNOME lock screen
 

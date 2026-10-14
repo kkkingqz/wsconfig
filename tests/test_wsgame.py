@@ -7,7 +7,7 @@ import runpy
 import tempfile
 import unittest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "bin/wsgame"
+SCRIPT = Path(__file__).resolve().parents[1] / "libexec/wsgame"
 
 
 class WsgameTests(unittest.TestCase):

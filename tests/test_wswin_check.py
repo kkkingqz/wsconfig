@@ -37,7 +37,7 @@ class WswinCheckTests(unittest.TestCase):
                         WSCONFIG=str(root / "config"), WS_HOST="test")
 
     def check(self):
-        return subprocess.run([str(ROOT / "bin/wswin-check")], env=self.env,
+        return subprocess.run([str(ROOT / "libexec/wswin-check")], env=self.env,
                               text=True, capture_output=True).stdout
 
     def test_only_boxes_marked_yes_are_checked(self):

@@ -10,7 +10,7 @@ set -o pipefail
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
 # shellcheck source=../lib/check.bash
-. "$repo/lib/check.bash"
+. "$WS_CORE/lib/check.bash"
 
 case "${1:-}" in
     --json) check_json_mode ;;
@@ -20,7 +20,7 @@ case "${1:-}" in
 esac
 
 if [[ "$(host_fact widgets)" != yes ]]; then
-    info "widgets is not true in nix/hosts/$("$repo/bin/ws" host 2>/dev/null)/host.toml: no widget layer, nothing to check"
+    info "widgets is not true in nix/hosts/$("$WS_CORE/bin/ws" host 2>/dev/null)/host.toml: no widget layer, nothing to check"
     check_finish
     exit
 fi
@@ -38,7 +38,7 @@ done < <(ws-widgets check --tsv)
 # The manifest the runtime reads against yes of this host in
 # nix/hosts/HOST/widgets.toml (ws widgets enabled), in panel order.
 manifest="${XDG_DATA_HOME:-$HOME/.local/share}/workstation/widgets/manifest.json"
-expected="$("$repo/bin/wswidgets" enabled | paste -sd ' ')"
+expected="$("$WS_CORE/libexec/wswidgets" enabled | paste -sd ' ')"
 delivered="$(python3 -c 'import json, sys; print(" ".join(w["id"] for w in json.load(open(sys.argv[1]))["widgets"]))' "$manifest" 2>/dev/null)"
 if [[ "$delivered" == "$expected" ]]; then
     pass "manifest matches widgets.toml of this host: ${expected:-(none)}"

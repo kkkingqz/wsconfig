@@ -5,8 +5,8 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {getInputSourceManager} from 'resource:///org/gnome/shell/ui/status/keyboard.js';
 
-// ~/.local/share/workstation/wsconfig: home-manager link to the checkout.
-const LED_HELPER = GLib.build_filenamev([GLib.get_home_dir(), '.local/share/workstation/wsconfig/bin/ws-caps-led']);
+// ~/.local/share/workstation/libexec: home-manager link to the internal tools of wsconfig.
+const LED_HELPER = GLib.build_filenamev([GLib.get_home_dir(), '.local/share/workstation/libexec/ws-caps-led']);
 
 const DBUS_XML = `
 <node>

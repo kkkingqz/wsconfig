@@ -33,7 +33,7 @@ from unittest import mock
 
 def run_main(env, args):
     """wsbackup ARGS in this process (so it talks to the model), with its
-    exit code and messages as bin/wsbackup would give them."""
+    exit code and messages as libexec/wsbackup would give them."""
     import backup
     out, err, code = io.StringIO(), io.StringIO(), 0
     handler = signal.getsignal(signal.SIGTERM)

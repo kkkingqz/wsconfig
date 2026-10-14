@@ -138,8 +138,8 @@ expect_gsetting org.gnome.desktop.interface icon-theme "'Yaru-dark'" \
 expect_gsetting org.gnome.desktop.interface cursor-theme "'Yaru'" \
     "cursor theme Yaru"
 
-if [[ -x "$repo/bin/ws-gnome-check" ]]; then
-    if "$repo/bin/ws-gnome-check" --quiet >/dev/null 2>&1; then
+if [[ -x "$WS_CORE/libexec/ws-gnome-check" ]]; then
+    if "$WS_CORE/libexec/ws-gnome-check" --quiet >/dev/null 2>&1; then
         pass "managed appearance/Dock profile is in sync"
     else
         fail "managed appearance/Dock profile has drift"
@@ -203,7 +203,7 @@ fi
 
 section "4.1 Dock spring-loading source policy"
 
-dock_spring_src="$repo/gnome/extensions/workstation-dock-spring@local/extension.js"
+dock_spring_src="$WS_CORE/gnome/extensions/workstation-dock-spring@local/extension.js"
 dock_spring_runtime="$HOME/.local/share/gnome-shell/extensions/workstation-dock-spring@local/extension.js"
 
 if [[ -r "$dock_spring_src" ]]; then
