@@ -23,7 +23,7 @@ Usage:
 
 create    record the working state of the current commit: needs a clean
           checkout, the active home-manager generation built from it (ws
-          switch) and a live system that matches its system tree (ws system
+          apply) and a live system that matches its system tree (ws system
           check); then tags checkpoint/NAME (local, not pushed), keeps the
           generation and the system tree from garbage collection and runs
           ws baseline capture checkpoint-NAME --no-boxes; no sudo

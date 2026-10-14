@@ -15,6 +15,32 @@
 #
 # [settings."DCONF/DIR"]: KEY = value as text, number, true/false or a list
 # of texts.
+#
+# [[extensions]]: the GNOME Shell extensions, in order (uuid, source).
+# enabled-extensions is written on every ws apply: an extension enabled or
+# disabled by hand (Extension Manager, gnome-extensions) is reset by the
+# next apply; add or remove it here instead. New extensions load after a
+# log out and in on Wayland. gnome-extensions.nix adds those that depend on
+# the host: workstation-hibernate (resume= in kernelParams) and the panel
+# adapter of the widgets (layers.widgets). source:
+#   ubuntu  gnome-shell-ubuntu-extensions (apt); enabled by the Ubuntu
+#           session mode (/usr/share/gnome-shell/modes/ubuntu.json), not
+#           written to enabled-extensions
+#   ego     extensions.gnome.org. Without pin: ws apply extensions installs
+#           the latest version for the running GNOME Shell if it is
+#           missing, Extension Manager updates it (ws update extensions
+#           asks GNOME Shell for updates the same way). With
+#           pin = { version = N, hash = "sha256-..." } (N: the number in the
+#           EGO download URL): built by nix/pkgs/gnome-extensions.nix and
+#           linked file by file by ws apply; not updated
+#   local   gnome/extensions/<uuid> of the core, copied (schemas compiled)
+#           by ws apply extensions
+
+# Extensions of the Ubuntu session mode that stay off: the mode enables them
+# whatever enabled-extensions says, only disabled-extensions wins. snapd is
+# purged (nix/hosts/apt.txt), so its prompt and Snap Store search have
+# nothing to talk to.
+disabled_extensions = ["snapd-prompting@canonical.com", "snapd-search-provider@canonical.com"]
 
 [settings."org/gnome/desktop/interface"]
 color-scheme = "prefer-dark"
@@ -40,3 +66,50 @@ show-trash = false
 show-mounts = true
 multi-monitor = true
 click-action = "focus-minimize-or-appspread"
+
+[[extensions]]
+uuid = "ubuntu-dock@ubuntu.com"
+source = "ubuntu"
+
+[[extensions]]
+uuid = "ubuntu-appindicators@ubuntu.com"
+source = "ubuntu"
+
+[[extensions]]
+uuid = "ding@rastersoft.com"
+source = "ubuntu"
+
+[[extensions]]
+uuid = "tiling-assistant@ubuntu.com"
+source = "ubuntu"
+
+[[extensions]]
+uuid = "web-search-provider@ubuntu.com"
+source = "ubuntu"
+
+# Used; enabled since before the repository.
+[[extensions]]
+uuid = "window-monitor-pro@muhammed.hussien2030.gmail.com"
+source = "ego"
+
+# WM_CLASS bridge for xremap application filters (ws-xremap waits for it).
+[[extensions]]
+uuid = "xremap@k0kubun.com"
+source = "ego"
+
+# D-Bus window control for ws-window (helpws keyboard).
+[[extensions]]
+uuid = "window-control@carlo9890.github.io"
+source = "ego"
+
+[[extensions]]
+uuid = "workstation-smart-popup@local"
+source = "local"
+
+[[extensions]]
+uuid = "workstation-input-source@local"
+source = "local"
+
+[[extensions]]
+uuid = "workstation-dock-spring@local"
+source = "local"

@@ -77,7 +77,7 @@ install_ego() {
     echo "installed from extensions.gnome.org: $uuid"
 }
 
-# gnome/gnome-extensions.nix; ws apply builds the list, enables the
+# gnome/config.toml; ws apply builds the list, enables the
 # extensions (enabled-extensions) and links the pinned EGO ones.
 list="$HOME/.local/share/wsconfig/gnome/extensions.json"
 [[ -r "$list" ]] || die "extension list missing: $list (run ws apply)"

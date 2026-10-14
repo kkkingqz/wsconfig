@@ -4,7 +4,7 @@ set -o pipefail
 
 # GNOME owner check: the session against the managed profile of
 # gnome/config.toml (appearance, Ubuntu Dock) and the extensions of
-# gnome/gnome-extensions.nix (enabled set, pins, local sources, schemas).
+# gnome/config.toml (enabled set, pins, local sources, schemas).
 # Read-only; ws apply writes the profile, ws apply extensions installs.
 # ws check runs it with --json (lib/check.bash).
 
@@ -19,7 +19,7 @@ usage() {
     cat <<'USAGE'
 Usage:
   ws-gnome-check           compare the session with gnome/config.toml and
-                           gnome/gnome-extensions.nix
+                           gnome/config.toml
   ws-gnome-check --quiet   exit status only
   ws-gnome-check --json    result object for ws check
 
@@ -45,7 +45,7 @@ is_tracked() {
     git -C "$repo" ls-files --error-unmatch -- "$1" >/dev/null 2>&1
 }
 
-# The extension list is built from gnome/gnome-extensions.nix.
+# The extension list is built from gnome/config.toml.
 # All in order, or those of one source.
 ext_list_file="$HOME/.local/share/wsconfig/gnome/extensions.json"
 ext_list() {
@@ -96,9 +96,9 @@ else
     fi
 fi
 
-section "2. Extensions (gnome/gnome-extensions.nix)"
+section "2. Extensions (gnome/config.toml)"
 
-# Every extension of gnome/gnome-extensions.nix is required.
+# Every extension of gnome/config.toml is required.
 mapfile -t required_gnome_extensions < <(ext_list)
 
 # enabled-extensions = ego + local + nix extensions, in list order (ws apply).
@@ -106,9 +106,9 @@ declared_enabled="[$(for uuid in $(ext_list ego) $(ext_list local) $(ext_list ni
 declared_enabled="${declared_enabled%, }]"
 actual_enabled="$(gsettings get org.gnome.shell enabled-extensions 2>/dev/null || true)"
 if [[ "$actual_enabled" == "$declared_enabled" ]]; then
-    pass "enabled-extensions matches gnome/gnome-extensions.nix"
+    pass "enabled-extensions matches gnome/config.toml"
 else
-    fail "enabled-extensions differs from gnome/gnome-extensions.nix (changed by hand?); ws apply writes it again"
+    fail "enabled-extensions differs from gnome/config.toml (changed by hand?); ws apply writes it again"
 fi
 
 if have gnome-extensions; then

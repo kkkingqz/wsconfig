@@ -8,17 +8,7 @@
 # built from the same attribute set.
 { config, lib, pkgs, facts, wsHost, ... }:
 let
-  schema = import ../lib/schema.nix { inherit lib; };
-  dconfValue = schema.scalar "a text, number, true/false or a list of texts"
-    (v: builtins.isString v || builtins.isInt v || builtins.isFloat v || builtins.isBool v
-      || (builtins.isList v && lib.all builtins.isString v));
-  gnome = (import ../lib/config.nix { inherit lib; }).read {
-    file = ./config.toml;
-    host = ../nix/hosts + "/${wsHost}/gnome.toml";
-    type = schema.table {
-      keys.settings = schema.attrsOf (schema.attrsOf dconfValue);
-    };
-  };
+  gnome = import ./config.nix { inherit lib wsHost; };
 
   profile = lib.recursiveUpdate (gnome.settings or { }) (lib.optionalAttrs (facts.hardware == "t2-mbp16") {
     # The power key hibernates (helpws suspend, Hibernate); logind does the

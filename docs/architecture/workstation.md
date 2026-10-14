@@ -846,7 +846,7 @@ wsconfig/
 │   ├── kernel/t2bce/     nostate-fix.patch, t2bce.nix (ядро -> коммит linux-t2-patches)
 │   ├── kernel/t2gmux/    t2gmux.nix (коммит KaiT2en; helpws plan-dgpu, отложен)
 │   └── kernel/i915-psr/  apple-psr.patch (PSR панели Apple; ws-psr, helpws plan-t2)
-├── gnome/                gnome.nix, gnome-extensions.nix, extensions/<uuid>/
+├── gnome/                config.toml, gnome.nix, gnome-extensions.nix, extensions/<uuid>/
 ├── keyboard/             keyboard.nix, xremap.nix, xremap.yml
 ├── terminal/             fish/, ghostty/, micro-help/, xdg-terminals/
 ├── flatpak/              flatpak.nix, catalog.toml, desktop/

@@ -227,7 +227,7 @@ else
 fi
 
 section "5. GNOME extensions"
-# ego, local and nix extensions of gnome/gnome-extensions.nix.
+# ego, local and nix extensions of gnome/config.toml.
 for uuid in $(for source in ego local nix; do
     manifest_get "$HOME/.local/share/wsconfig/gnome/extensions.json" by_source "$source"
 done); do

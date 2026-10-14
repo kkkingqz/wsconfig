@@ -181,10 +181,11 @@ keyboard, Tiling Assistant или extension baseline.
 
 # GNOME extension policy
 
-Единственный список расширений — `gnome/gnome-extensions.nix`
-(с 2026-09-27; раньше свои копии были в verify, `ws-gnome-test`,
-`ws-gnome-status`, installer и здесь). Для каждого расширения — uuid и
-источник:
+Единственный список расширений — `[[extensions]]` в `gnome/config.toml`
+(с 2026-09-27 один список; раньше свои копии были в verify,
+`ws-gnome-test`, `ws-gnome-status`, installer и здесь). Для каждого
+расширения — uuid и источник; расширения, зависящие от хоста
+(гибернация, адаптер виджетов), добавляет `gnome/gnome-extensions.nix`:
 
 ```text
 ubuntu  gnome-shell-ubuntu-extensions (apt), включает режим сессии Ubuntu
@@ -198,7 +199,7 @@ local   gnome/extensions/<uuid>, копирует ws gnome extensions
 - `enabled-extensions` (ego + local, `dconf.settings`) и пустой
   `disabled-extensions` — пишет `ws apply`. Расширение, включённое или
   выключенное вручную (Extension Manager, `gnome-extensions`), следующий
-  switch вернёт к списку; добавлять и убирать — в `gnome-extensions.nix`.
+  `ws apply` вернёт к списку; добавлять и убирать — в `gnome/config.toml`.
 - `~/.local/share/wsconfig/gnome/extensions.json` (`order` — все UUID по
   порядку, `by_source` — по источникам, `pins` — версии pin) — его читают
   `ws gnome check`, `ws-gnome-test`, `ws-gnome-status`, `ws check repo`,

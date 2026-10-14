@@ -161,7 +161,7 @@ expect_gsetting "$dock_schema" show-trash "false" "Dock trash hidden"
 
 section "4. GNOME extension policy"
 
-# Every extension of gnome/gnome-extensions.nix (built by ws apply).
+# Every extension of gnome/config.toml (built by ws apply).
 ext_list_file="$HOME/.local/share/wsconfig/gnome/extensions.json"
 required_extensions=()
 if [[ -r "$ext_list_file" ]]; then

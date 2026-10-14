@@ -66,7 +66,7 @@ ws game mode game          # переключить сейчас (steamosctl)
 `desktop` (steamos-manager сам начинает с Game Mode).
 
 Новая версия: `url`, `sha256`, `version` в `gaming/sources.nix` → `ws
-switch` → `ws game build` → `ws game install`.
+apply` → `ws game build` → `ws game install`.
 
 ## Переключение
 

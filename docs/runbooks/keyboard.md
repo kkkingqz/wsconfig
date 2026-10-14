@@ -606,7 +606,7 @@ Machine-local state — вне checkout, в `~/.local/state/wsconfig/keyboard/`:
 ## Runtime installation
 
 Command helpers лежат в `libexec/` ядра в store (`nix/pkgs/ws.nix`, `ws
-switch`); xremap и сочетания GNOME вызывают их по пути в store, в PATH их
+apply`); xremap и сочетания GNOME вызывают их по пути в store, в PATH их
 нет.
 
 xremap binary — из Nix: `nix/pkgs/xremap.nix`, upstream

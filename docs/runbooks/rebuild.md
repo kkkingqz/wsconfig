@@ -549,7 +549,7 @@ workstation-input-source@local
 workstation-hibernate@local (пункт Hibernate; хосты с resume= в kernelParams, где logind разрешает)
 ```
 
-Список всех расширений и источник каждого — `gnome/gnome-extensions.nix`;
+Список всех расширений и источник каждого — `gnome/config.toml`;
 `enabled-extensions` из него пишет `ws apply`.
 
 `workstation-*` sources находятся в `wsconfig` и устанавливаются
@@ -570,9 +570,8 @@ ws gnome extensions
 `ws update extensions`). Включает их `ws apply` (`enabled-extensions`); на
 новой машине — logout/login после первого `ws apply`, затем ещё раз `ws apply`.
 
-Закрепить версию: `pin = { version = N; hash = "sha256-…"; }` у расширения
-в `gnome/gnome-extensions.nix` (N — номер из ссылки на zip EGO), `ws
-switch`. Такое расширение ставит Nix ссылками, и обновлять его в Extension
+Закрепить версию: `pin = { version = N, hash = "sha256-…" }` у расширения
+в `gnome/config.toml` (N — номер из ссылки на zip EGO), `ws apply`. Такое расширение ставит Nix ссылками, и обновлять его в Extension
 Manager нельзя: `ws gnome check` покажет FAIL «files not from Nix», `ws update
 extensions` при закреплённых расширениях отказывается.
 
