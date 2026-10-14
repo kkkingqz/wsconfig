@@ -1,6 +1,5 @@
-# Host system file tree (phase 4 of helpws history-nix): the files
-# ws-keyboard-system-apply, ws-suspend apply and the manual steps install,
-# byte for byte. Nix only builds it; `ws system diff|check` compares it with
+# Host system file tree (phase 4 of helpws history-nix): every system file
+# of the host, byte for byte, installed by `ws system apply`. Nix only builds it; `ws system diff|check` compares it with
 # the live system.
 #
 #   $out/files/<absolute path>   files for /

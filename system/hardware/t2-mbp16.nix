@@ -6,7 +6,7 @@
     # Screen brightness: the standard udev rule fails on gmux's PNP parent.
     (file "/etc/udev/rules.d/99-z-gmux-backlight.rules" "system/files/udev/99-z-gmux-backlight.rules" "0644")
 
-    # Touch Bar (ws-keyboard-system-apply)
+    # Touch Bar
     (file "/etc/udev/rules.d/90-touchbar-native.rules" "system/files/udev/90-touchbar-native.rules" "0644")
     (file "/etc/modprobe.d/tb.conf" "system/files/modprobe/tb.conf" "0644")
     (file "/etc/modprobe.d/touchbar-native.conf" "system/files/modprobe/touchbar-native.conf" "0644")
@@ -70,7 +70,7 @@
     "ws-tb-acpi-seed.service" = "enabled";
   };
 
-  # Restarted by every `ws system apply`, as ws-keyboard-system-apply did.
+  # Restarted by every `ws system apply`.
   restart = [
     "ws-touchbar-fn.service"
     # Also start save/restore in the current boot; apply only triggers input udev events.

@@ -1,5 +1,4 @@
-# GNOME appearance and Ubuntu Dock profile (formerly config/gnome/settings.conf
-# applied by ws-gnome apply). home-manager writes it with `dconf load` on every
+# GNOME appearance and Ubuntu Dock profile. home-manager writes it with `dconf load` on every
 # `ws switch`: a manual change of these keys is reverted by the next switch,
 # and a key removed here is reset to its default.
 #

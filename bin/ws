@@ -607,8 +607,8 @@ system_record() {
         "$tree" "$([[ "$rc" == 0 ]] && echo ok || echo problems)" >> "$dir/history"
 }
 
-# One owner of the system files (phase 4 of helpws history-nix):
-# what ws-keyboard-system-apply and ws-suspend apply did, for the whole tree.
+# One owner of the system files (phase 4 of helpws history-nix), for the
+# whole tree.
 # Only files that differ are backed up and replaced; the ESP is not touched,
 # nothing reboots.
 cmd_system_apply() {

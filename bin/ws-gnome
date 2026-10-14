@@ -7,15 +7,7 @@ shift 2>/dev/null || true
 
 case "$cmd" in
     status) exec "$repo/bin/ws-gnome-status" "$@" ;;
-    check|dry-run) exec "$repo/bin/ws-gnome-check" "$@" ;;
-    apply|rollback)
-        cat >&2 <<'MSG'
-ws-gnome: the GNOME profile is declared in gnome/gnome.nix and
-written by `ws switch` (home-manager dconf.settings). To undo a change,
-revert it in the repository and ws switch again.
-MSG
-        exit 64
-        ;;
+    check) exec "$repo/bin/ws-gnome-check" "$@" ;;
     test) exec "$repo/bin/ws-gnome-test" "$@" ;;
     -h|--help|help)
         cat <<'USAGE'
@@ -23,10 +15,9 @@ Usage: ws-gnome [status|check|test]
 
   status     read-only GNOME inventory
   check      compare appearance/Dock state with gnome/gnome.nix
-             (dry-run is an alias)
   test       final read-only GNOME host smoke-test
 
-The profile is applied by `ws switch`; apply and rollback are gone.
+The profile is applied by `ws switch` (gnome/gnome.nix).
 USAGE
         ;;
     *)

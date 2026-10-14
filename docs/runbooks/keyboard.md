@@ -574,7 +574,6 @@ bin/ws-input-source
 bin/ws-caps-led
 bin/ws-tiling-apply
 bin/ws-keyboard-install-extensions
-bin/ws-keyboard-system-apply
 bin/ws-keyboard-check
 
 keyboard/xremap.nix
@@ -697,10 +696,10 @@ modprobe options, `ws-touchbar-fn.service`) применяется отдель�
 требует `sudo`:
 
 ```console
-ws-keyboard-system-apply
+ws system apply
 ```
 
-Это обёртка над `ws system apply`: ставит все системные файлы хоста из
+Она ставит все системные файлы хоста из
 `system` (Nix), только отличающиеся, с бэкапом в
 `/var/backups/workstation/system-<время>/`; проверка без изменений —
 `ws system diff`.

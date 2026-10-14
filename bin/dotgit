@@ -1,3 +1,0 @@
-#!/usr/bin/env sh
-# git in the checkout this command is linked from (facts.nix: wsconfig).
-exec git -C "$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)" "$@"

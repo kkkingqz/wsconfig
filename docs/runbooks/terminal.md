@@ -481,7 +481,7 @@ data             ~/.local/share/<tool>/...
 ```
 
 Терминальная часть: `terminal/` (fish, ghostty, micro-help, xdg-terminals),
-`bin/` (`dotgit`, `helpws`, `ws-doc-build`), `docs/`. Весь репозиторий —
+`bin/` (`helpws`, `ws-doc-build`), `docs/`. Весь репозиторий —
 `helpws readme`.
 
 Каталог checkout — настройка хоста: `wsconfig` в
@@ -489,19 +489,11 @@ data             ~/.local/share/<tool>/...
 checkout по собственному пути (ссылки в `~/.local/bin`), переменная
 `WSCONFIG` его переопределяет.
 
-Реальные пути в `$HOME` используют symlink'и на repository.
+Реальные пути в `$HOME` используют symlink'и на repository. Git — прямо в
+checkout:
 
 ```console
-dotgit status
-dotgit diff
-dotgit add <file>
-dotgit commit -m "message"
-```
-
-`dotgit` — wrapper вокруг:
-
-```console
-git -C ~/wsconfig
+git -C ~/wsconfig status
 ```
 
 ---

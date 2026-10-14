@@ -40,8 +40,7 @@ Distrobox (`helpws distrobox`), Wine (`helpws windows`; Wine только в
 
 # Управляемый appearance profile
 
-Source of truth (с 2026-09-27, раньше `config/gnome/settings.conf` и
-`ws-gnome apply`):
+Source of truth (с 2026-09-27):
 
 ```text
 gnome/gnome.nix
@@ -120,9 +119,8 @@ ws-gnome check
 ws-gnome test
 ```
 
-`ws-gnome apply` и `ws-gnome rollback` больше не применяют ничего: они
-печатают, что профиль пишет `ws switch`, и выходят с кодом 64.
-`ws-gnome dry-run` — синоним `check`.
+Применяет профиль `ws switch`; откат — правка в репозитории и снова
+`ws switch`.
 
 ## status
 
