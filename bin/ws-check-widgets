@@ -3,7 +3,7 @@ set -u
 set -o pipefail
 
 # Widget layer (helpws widgets): wswidgets delivered by ws switch on hosts
-# with widgets = "yes" in facts.nix; the runtime diagnostics are its own
+# with widgets = true in host.toml; the runtime diagnostics are its own
 # (ws-widgets check --tsv), with the widgets yes in nix/hosts/HOST/widgets.toml.
 # Read-only. ws check widgets; ws check runs it with --json (lib/check.bash).
 
@@ -20,7 +20,7 @@ case "${1:-}" in
 esac
 
 if [[ "$(host_fact widgets)" != yes ]]; then
-    info "widgets = \"$(host_fact widgets)\" in nix/hosts/$("$repo/bin/ws" host 2>/dev/null)/facts.nix: no widget layer, nothing to check"
+    info "widgets is not true in nix/hosts/$("$repo/bin/ws" host 2>/dev/null)/host.toml: no widget layer, nothing to check"
     check_finish
     exit
 fi

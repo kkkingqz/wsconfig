@@ -65,11 +65,11 @@ Writable Timeshift-снимок фиксируется при первом им�
 HOME Distrobox/Wine и caches. Нативный btrfs send не исключает файлы.
 Вложенные subvolumes и отдельные mounts не копируются рекурсивно;
 при их обнаружении snapshot отказывает до явного решения о дополнительном scope.
-Одно решение уже принято: top-level `@steam` хоста с `nativeSteam = "yes"`
+Одно решение уже принято: top-level `@steam` хоста с `nativeSteam = true`
 (`~/.local/share/Steam`, `helpws plan-legion-go`) в backup не входит, и этот
 mount внутри `/home` snapshot пропускает.
 
-Scope `vms` есть только на хосте с `vm = "yes"` в `facts.nix` (`helpws virt`):
+Scope `vms` есть только на хосте с `vm = true` в `host.toml` (`helpws virt`):
 иначе `plan|send vms` отказывают, а `plan|send all` — это только HOME.
 
 `send vms` снимает @vms целиком: диски, XML, NVRAM, TPM из `/var/lib/vms`. VM должны быть

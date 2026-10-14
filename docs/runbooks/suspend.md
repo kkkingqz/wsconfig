@@ -18,7 +18,7 @@ cmdline      intel_iommu=on iommu=pt pm_async=off
 t2bce        0.07-nostatefix1 (локальная сборка, updates/t2bce)
 Touch Bar    родной режим (см. helpws touchbar)
 AMD dGPU     ws.dgpu=off: выключена, убрана с шины PCI, порт CPU запаркован
-hibernate    /swap/swapfile 32G, resume=UUID=… resume_offset=… (facts.nix)
+hibernate    /swap/swapfile 32G, resume=UUID=… resume_offset=… (host.toml)
 крышка, Suspend          suspend-then-hibernate: 24 ч S3, затем hibernate
 кнопка питания, Hibernate  hibernate
 ```
@@ -177,7 +177,7 @@ vga_switcheroo при `OFF` открытых клиентов не провер�
 ## ASPM
 
 С 2026-10-01 пункт «Ubuntu» снова грузится с `pcie_aspm=force
-pcie_aspm.policy=powersave` (`refindDefaultParams` в `facts.nix`); «Ubuntu
+pcie_aspm.policy=powersave` (`refindDefaultParams` в `host.toml`); «Ubuntu
 (AMD)» и GRUB (recovery) — без них. Прошивка объявляет, что ASPM не
 поддерживается (FADT), и оставляет его выключенным на всём Thunderbolt;
 с `force` ядро берёт ASPM себе: L1 на Thunderbolt (~1,15 W), Clock PM и L0s
@@ -352,7 +352,7 @@ ws suspend swap-setup 32g    # @swap → /swap, /swap/swapfile, fstab; печа�
 ```
 
 Swapfile — в отдельном subvolume `@swap` (без снапшотов, без CoW).
-Параметры resume — в `nix/hosts/mbp16/facts.nix` (`kernelParams`, все пункты
+Параметры resume — в `nix/hosts/mbp16/host.toml` (`kernelParams`, все пункты
 rEFInd и GRUB):
 
 ```text
@@ -360,7 +360,7 @@ resume=UUID=0cfd2add-849f-47b9-865d-2ac821ca529c   корневая ФС
 resume_offset=31286754                              btrfs inspect-internal map-swapfile -r
 ```
 
-После пересоздания swapfile offset меняется: обновить `facts.nix`,
+После пересоздания swapfile offset меняется: обновить `host.toml`,
 `ws system apply`, перезагрузка. После изменения модуля dracut или
 `ws-t2-detach` — `sudo update-initramfs -u` (`ws suspend check`
 предупреждает, если initrd старше).
@@ -545,7 +545,7 @@ system/files/polkit/50-ws-hibernate.rules
 system/files/dracut/ws-hibernate.conf
 system/files/dracut/95ws-t2-resume/
 gnome/extensions/workstation-hibernate@local/
-nix/hosts/mbp16/facts.nix              resume=, resume_offset=
+nix/hosts/mbp16/host.toml              resume=, resume_offset=
 ```
 
 ## Не использовать

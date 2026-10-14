@@ -283,11 +283,11 @@ def setup(config, host, term):
     """The choices of setup.sh (helpws setup), as checklists, so ws apply
     asks nothing afterwards: the apps of flatpak/catalog.toml and the
     containers of distrobox.nix without a choice of this host, with
-    widgets = "yes" the widgets some host has in yes (ws widgets apply
+    widgets = true the widgets some host has in yes (ws widgets apply
     offers the rest later), and the catalog overrides of the apps the host
     gets. Default ask and yes start checked, no unchecked; an unchecked
     override becomes a skip of the host. Nothing is written until all the
-    lists are answered (None: cancelled). With nativeSteam = "yes" the
+    lists are answered (None: cancelled). With nativeSteam = true the
     Steam flatpak is no without a question: Steam is the apt one there.
     Returns the files written."""
     import flatpak_catalog
@@ -300,13 +300,13 @@ def setup(config, host, term):
     if (ws_facts.fact(host, "nativeSteam", config) == "yes" and catalog.app(STEAM_FLATPAK) is not None
             and STEAM_FLATPAK not in apps.yes() + apps.no()):
         apps.set(STEAM_FLATPAK, "no")
-        term.write(f"\n{STEAM_FLATPAK}: no на {host} (nativeSteam = \"yes\": Steam из apt)\n")
+        term.write(f"\n{STEAM_FLATPAK}: no на {host} (nativeSteam = true: Steam из apt)\n")
 
     remote = lambda app: catalog.app(app)["remote"]
     lists = [(apps, f"Flatpak-приложения на {host}",
               [(a, catalog.default(a)) for a in catalog.ids()], remote),
              (boxes, f"Контейнеры Distrobox на {host}", box_catalog(config), lambda n: "")]
-    # The widget layer only where facts.nix has it (helpws widgets).
+    # The widget layer only where host.toml has it (helpws widgets).
     if ws_facts.fact(host, "widgets", config) == "yes":
         lists.append((widgets, f"Виджеты (ws widgets) на {host}",
                       [(n, "ask") for n, _ in widget_catalog(config)], lambda n: ""))

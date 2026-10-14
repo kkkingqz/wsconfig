@@ -120,12 +120,12 @@ class SetupTests(unittest.TestCase):
     def test_native_steam_host_gets_no_steam_flatpak(self):
         catalog = CATALOG + '\n[[apps]]\nid = "com.valvesoftware.Steam"\nremote = "flathub"\n'
         (self.repo / 'flatpak/catalog.toml').write_text(catalog)
-        (self.repo / 'nix/hosts/new/facts.nix').write_text('{\n  nativeSteam = "yes";\n}\n')
+        (self.repo / 'nix/hosts/new/host.toml').write_text('[layers]\nnativeSteam = true\n')
         self.run_with([[], [], []])
         self.assertNotIn('com.valvesoftware.Steam', self.asked[0][1])
         self.assertIn('com.valvesoftware.Steam', self.read('flatpak.toml')['no'])
         # The flatpak elsewhere: offered as before.
-        (self.repo / 'nix/hosts/new/facts.nix').write_text('{\n  nativeSteam = "no";\n}\n')
+        (self.repo / 'nix/hosts/new/host.toml').write_text('[layers]\nnativeSteam = false\n')
         (self.repo / 'nix/hosts/new/flatpak.toml').write_text('')
         self.asked.clear()
         self.run_with([[], [], []])
@@ -133,7 +133,7 @@ class SetupTests(unittest.TestCase):
 
     def test_widgets_some_host_has_are_offered_on_a_widget_host(self):
         (self.repo / 'nix/hosts/mbp16/widgets.toml').write_text('yes = ["example", "compact"]\n')
-        (self.repo / 'nix/hosts/new/facts.nix').write_text('{\n  widgets = "yes";\n}\n')
+        (self.repo / 'nix/hosts/new/host.toml').write_text('[layers]\nwidgets = true\n')
         (self.repo / 'nix/hosts/new/widgets.toml').write_text('# mine\nno = ["compact"]\n')
         changed = self.run_with([[], [], ['example'], []])
         self.assertEqual(self.asked[2], ('Виджеты (ws widgets) на new', {'example': True}))
@@ -170,7 +170,7 @@ class ApplyOfferTests(unittest.TestCase):
         (self.config / 'flatpak').mkdir(parents=True)
         (self.config / 'flatpak/catalog.toml').write_text(CATALOG)
         (self.config / 'nix/hosts/new').mkdir(parents=True)
-        (self.config / 'nix/hosts/new/facts.nix').write_text('{\n  widgets = "yes";\n}\n')
+        (self.config / 'nix/hosts/new/host.toml').write_text('[layers]\nwidgets = true\n')
         boxes = root / 'distrobox'
         boxes.mkdir()
         (boxes / 'boxes.json').write_text(json.dumps([{'name': 'arch'}, {'name': 't2', 'default': 'no'}]))

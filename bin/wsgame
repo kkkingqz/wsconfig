@@ -9,7 +9,7 @@ ws switch into ~/.local/share/workstation/gaming/sources.json; downloads and
                    host's Ubuntu release (gaming/build.sh)
   test             install and purge the built .debs in a clean container of
                    that release: dependencies resolve, scripts run
-  install          on a host with gameMode = "yes": the .debs with apt, sddm
+  install          on a host with gameMode = true: the .debs with apt, sddm
                    as display manager (and weston for its greeter), services
                    on, default login mode desktop; then reboot
   check [--json]   packages and versions, services, display manager, session
@@ -204,7 +204,7 @@ def installed_version(name):
 def cmd_install():
     sources = load_sources()
     if fact("gameMode") != "yes":
-        die('gameMode is not "yes" in the facts.nix of this host: no Game Mode here')
+        die('gameMode is not true in the host.toml of this host: no Game Mode here')
     debs = [DEBS / deb_name(n, sources[n]["version"]) for n in PACKAGES]
     missing = [d.name for d in debs if not d.exists()]
     if missing:
@@ -234,7 +234,7 @@ def cmd_check(json_mode=False):
     c = ws_check.Check(json_mode)
     game = fact("gameMode")
     if game != "yes":
-        c.msg("info", f'gameMode = "{game or "?"}" in facts.nix: no Game Mode on this host')
+        c.msg("info", 'gameMode is not true in host.toml: no Game Mode on this host')
         return c.finish()
     sources = load_sources()
     versions = {n: installed_version(n) for n in PACKAGES}

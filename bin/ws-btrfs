@@ -85,7 +85,7 @@ done
 root_dev="$(findmnt -no SOURCE / | sed 's/\[.*$//')"
 uuid="$(findmnt -no UUID /)"
 [[ -n "$uuid" ]] || die "cannot determine the UUID of /"
-boot="$("$repo/bin/ws" fact boot)" || die "no boot in the facts.nix of this host"
+boot="$("$repo/bin/ws" fact boot)" || die "no boot in the host.toml of this host"
 
 # Subvolumes of the layout and where they are mounted; @ is /.
 layout=("@home /home" "@cache /var/cache" "@log /var/log" "@tmp /tmp")

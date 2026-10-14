@@ -7,7 +7,9 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
-FACTS = '{\n  boot = "%s";\n  vm = "%s";\n  nativeSteam = "%s";\n  gameMode = "%s";\n}\n'
+FACTS = '[platform]\nboot = "%s"\n\n[layers]\nvm = %s\nnativeSteam = %s\ngameMode = %s\n'
+# yes and no as TOML booleans, anything else as a string.
+toml = lambda v: {"yes": "true", "no": "false"}.get(v, f'"{v}"')
 
 
 class AptListsTests(unittest.TestCase):
@@ -26,7 +28,7 @@ class AptListsTests(unittest.TestCase):
     def host(self, name, boot="grub", vm="no", steam="no", game="no", apt="purge:snapd\n"):
         d = self.repo / "nix/hosts" / name
         d.mkdir()
-        (d / "facts.nix").write_text(FACTS % (boot, vm, steam, game))
+        (d / "host.toml").write_text(FACTS % (boot, toml(vm), toml(steam), toml(game)))
         (d / "apt.txt").write_text(apt)
 
     def bash(self, script):

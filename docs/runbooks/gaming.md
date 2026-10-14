@@ -7,7 +7,7 @@ volume: User Commands
 # GAMING — GAME MODE (GAMESCOPE + STEAM)
 
 Game Mode — отдельная сессия gamescope + Steam, как в SteamOS, на хосте с
-`gameMode = "yes"` в `facts.nix` (сейчас legiongo; `helpws plan-legion-go`).
+`gameMode = true` в `host.toml` (сейчас legiongo; `helpws plan-legion-go`).
 Компоненты взяты из Bazzite и собраны в `.deb`: всё ставит dpkg, вне
 пакетов ничего не лежит. Переключение GNOME ↔ Game Mode — steamos-manager
 через автологин SDDM, без экрана входа.
@@ -20,7 +20,7 @@ gaming/sources.nix     источники: url, sha256, версия пакет�
                        каждом хосте: собирать можно где угодно)
 gaming/build.sh        сборка в контейнере Ubuntu релиза host (podman)
 gaming/apt.txt         из Ubuntu, ставит bootstrap.sh: gamescope, mangoapp
-steam/apt.txt          Steam из apt (nativeSteam = "yes")
+steam/apt.txt          Steam из apt (nativeSteam = true)
 system/gaming.nix      автологин SDDM, os-session-select, Return to Game
                        Mode, HandlePowerKey=ignore (ws system apply)
 bin/wsgame             владелец: fetch, build, install, check, mode
@@ -54,7 +54,7 @@ mangoapp                 из Ubuntu (gaming/apt.txt): оверлей Steam
 ws game build              # fetch (sha256) и сборка .deb в podman, любой хост
 ws game test               # поставить и снять .deb в чистом контейнере Ubuntu
 ws game status             # закреплённая, собранная и установленная версия
-ws game install            # gameMode = "yes": apt install .deb + sddm, weston
+ws game install            # gameMode = true: apt install .deb + sddm, weston
 # reboot: SDDM вместо GDM, автологин в GNOME
 ws game check              # то же, что ws check gaming
 ws game mode game          # переключить сейчас (steamosctl)

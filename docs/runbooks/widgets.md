@@ -17,12 +17,13 @@ wswidgets: <https://github.com/kkkingqz/wswidgets>, полное описани�
 
 Слой включается фактом хоста, как `vm`:
 
-```nix
-# nix/hosts/<host>/facts.nix
-widgets = "yes";   # "no" — без виджетов
+```toml
+# nix/hosts/<host>/host.toml
+[layers]
+widgets = true   # false — без виджетов
 ```
 
-С `widgets = "yes"` `ws switch` подключает модуль Home Manager из flake input
+С `widgets = true` `ws switch` подключает модуль Home Manager из flake input
 `wswidgets` (`widgets/widgets.nix`): Quickshell и Mesa в своём closure,
 `workstation-widgets.service`, QML, manifest/runtime JSON, файлы расширения
 `workstation-widgets@local` и команду `ws-widgets`.
@@ -44,7 +45,7 @@ no = ["clock"]                 # отказались
 Виджет, которого нет ни в `yes`, ни в `no`, — ask: его предлагает
 `ws widgets apply`. Файл правит `ws widgets` (комментарии и порядок
 сохраняются), публикует `ws sync`; править руками тоже можно. Каждый хост
-пишет только свой файл. `setup.sh` на новом хосте (с `widgets = "yes"`)
+пишет только свой файл. `setup.sh` на новом хосте (с `widgets = true`)
 спрашивает о виджетах в состоянии ask вместе с Flatpak и Distrobox.
 
 ## wswidgets
@@ -83,12 +84,12 @@ wsconfig закреплён на коммите wswidgets в `flake.lock`, ка�
 
 ## Проверка
 
-`ws check widgets` (входит в `ws check`): на хосте с `widgets = "yes"` —
+`ws check widgets` (входит в `ws check`): на хосте с `widgets = true` —
 диагностика `ws-widgets check --tsv` (доставка, сервис, IPC, adapter) и
 совпадение manifest с `ws widgets enabled`; на остальных — только INFO.
 
 ## Отключение
 
-Виджет: `ws widgets disable ID`. Весь слой: `widgets = "no"` в `facts.nix` и
+Виджет: `ws widgets disable ID`. Весь слой: `widgets = false` в `host.toml` и
 `ws switch` — Home Manager убирает файлы слоя и сервис, расширение исчезает
 из `enabled-extensions`; выбор в `widgets.toml` остаётся.

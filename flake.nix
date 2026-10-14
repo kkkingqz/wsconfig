@@ -21,24 +21,11 @@
       pkgs = nixpkgs.legacyPackages.${system};
       inherit (nixpkgs) lib;
 
-      # Every directory of nix/hosts is a host: facts.nix and apt.txt.
+      # Every directory of nix/hosts is a host: host.toml and apt.txt.
       hosts = lib.attrNames (lib.filterAttrs (_: type: type == "directory")
         (builtins.readDir ./nix/hosts));
-      factsOf = host:
-        let facts = import ./nix/hosts/${host}/facts.nix; in
-        assert lib.assertMsg (lib.elem (facts.vm or null) [ "yes" "no" ])
-          "nix/hosts/${host}/facts.nix: vm must be \"yes\" or \"no\" (helpws virt)";
-        assert lib.assertMsg (lib.elem (facts.nativeSteam or null) [ "yes" "no" ])
-          "nix/hosts/${host}/facts.nix: nativeSteam must be \"yes\" or \"no\" (helpws plan-legion-go)";
-        assert lib.assertMsg (lib.elem (facts.widgets or null) [ "yes" "no" ])
-          "nix/hosts/${host}/facts.nix: widgets must be \"yes\" or \"no\" (helpws widgets)";
-        assert lib.assertMsg (lib.elem (facts.gameMode or null) [ "yes" "no" ])
-          "nix/hosts/${host}/facts.nix: gameMode must be \"yes\" or \"no\" (helpws plan-legion-go)";
-        # The Game Mode session runs the apt Steam: the flatpak cannot reach
-        # the host helpers (steamos-session-select, steamosctl).
-        assert lib.assertMsg (facts.gameMode == "no" || facts.nativeSteam == "yes")
-          "nix/hosts/${host}/facts.nix: gameMode = \"yes\" needs nativeSteam = \"yes\"";
-        facts;
+      # The facts of host.toml, checked (lib/host.nix).
+      factsOf = (import ./lib/host.nix { inherit lib; }).factsOf ./nix/hosts;
 
       mkHome = host: home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
@@ -74,6 +61,8 @@
         inherit man;
         scale = assert import ./lib/test-scale.nix { inherit lib; };
           pkgs.writeText "scale" "lib/scale.nix: sizes by the display scale";
+        host = assert import ./lib/test-host.nix { inherit lib; };
+          pkgs.writeText "host" "lib/host.nix checks host.toml";
         catalog = assert import ./lib/test-catalog.nix { inherit lib; };
           pkgs.writeText "catalog" "lib/catalog.nix reads the host choices";
       };

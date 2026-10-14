@@ -1,7 +1,7 @@
 # User layer of every host: links into the checkout and terminal CLI; layer
 # owners (wsflatpak reads flatpak/flatpak.nix; wsbox, wswin, ws-gnome,
 # ws-keyboard*, ws-suspend) stay as they are. What differs between hosts
-# comes from facts (nix/hosts/<host>/facts.nix).
+# comes from facts (nix/hosts/<host>/host.toml, lib/host.nix).
 { lib, facts, ... }:
 {
   imports = [
@@ -28,9 +28,9 @@
   # (helpws remmina, helpws plan-wsgnomebox).
   ++ lib.optionals (facts.boot != "container") [ ../../remmina/remmina.nix ]
   # Quickshell widgets from wswidgets (helpws widgets) on hosts with them.
-  ++ lib.optionals (facts.widgets == "yes") [ ../../widgets/widgets.nix ]
+  ++ lib.optionals facts.widgets [ ../../widgets/widgets.nix ]
   # ~/VMs (helpws virt) on hosts with VMs.
-  ++ lib.optionals (facts.vm == "yes") [ ../../virt/virt.nix ]
+  ++ lib.optionals facts.vm [ ../../virt/virt.nix ]
   # Pinned sources of the patched t2bce modules (helpws suspend) and of
   # t2gmux (helpws plan-dgpu); the brightness that the panel ignores at boot
   # and logout, written again in the session (helpws workstation, GRAPHICS).

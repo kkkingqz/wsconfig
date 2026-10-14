@@ -40,7 +40,7 @@ Root работает на **Btrfs**.
 @log
 @nix          /nix: Nix store, отдельно от @ (откат @ не трогает /nix)
 @vms          /var/lib/vms: состояние VM (диски, UEFI, TPM, XML), вне snapshots @
-@steam        ~/.local/share/Steam: Steam из apt (nativeSteam = "yes"), вне snapshots @home
+@steam        ~/.local/share/Steam: Steam из apt (nativeSteam = true), вне snapshots @home
 @wsbackup     /var/lib/workstation-backup: локальные копии backup (helpws backup)
 @swap         /swap: swapfile 32G для hibernate (swapfile нельзя в томе со snapshots)
 timeshift-btrfs  snapshots Timeshift (@, @home); создаёт Timeshift
@@ -382,10 +382,10 @@ Recovery        GRUB, AMD включена
   его initrd (rEFInd не следует по symlink). Их обновляет `ws-boot-links` из
   `/etc/kernel/postinst.d`, `/etc/kernel/postrm.d` и
   `/etc/initramfs/post-update.d`; первый раз — `ws system apply`.
-- Параметры ядра всех пунктов — из `nix/hosts/mbp16/facts.nix`
+- Параметры ядра всех пунктов — из `nix/hosts/mbp16/host.toml`
   (`kernelParams`, `rootUuid`): `refind_linux.conf`, GRUB (`grub.d`) и
   `@AMD_OPTIONS@` в `refind.conf` собираются из них; «Ubuntu» добавляет
-  `refindDefaultParams` (`ws.dgpu=off`). Править только `facts.nix`.
+  `refindDefaultParams` (`ws.dgpu=off`). Править только `host.toml`.
 - «Ubuntu» с `ws.dgpu=off` проверен, включая S3 (`helpws suspend`);
   «Ubuntu (AMD)» загружается, Proton и Steam в нём работают на AMD; S3 в
   нём не проверялся.
@@ -430,7 +430,7 @@ Broadcom ASPM guard        ASPM Wi-Fi off на время сна, без D3cold
 t2bce 0.07-nostatefix1     отказ T2 от stateful suspend не роняет ядро
 Touch Bar родной режим     без appletbdrm / tiny-dfr
 ws-t2-detach               стек T2 снят на время hibernate (у t2bce нет колбэков hibernation)
-/swap/swapfile 32G         resume= / resume_offset= в facts.nix
+/swap/swapfile 32G         resume= / resume_offset= в host.toml
 ```
 
 ASPM в пункте «Ubuntu» у ядра (`pcie_aspm=force pcie_aspm.policy=powersave`,
@@ -824,7 +824,7 @@ Shebang:
 Актуальная структура включает:
 
 Всё, что правится, лежит в `~/wsconfig` (каталог задаёт `wsconfig` в
-`nix/hosts/<host>/facts.nix`), по областям: в каждой — её объявление в Nix
+`nix/hosts/<host>/host.toml`), по областям: в каждой — её объявление в Nix
 и родные файлы программ. Сгенерированное и скачанное — в
 `~/.local/share/workstation/`, состояние (backup сочетаний, baseline) — в
 `~/.local/state/wsconfig/`, HOME контейнеров — в `~/distrobox/<имя>/`.
@@ -835,7 +835,7 @@ wsconfig/
 ├── bootstrap.sh          новая машина (после ws btrfs make): @nix → apt → @vms/libvirt → @steam → @wsbackup → группы → fish → ws switch
 ├── flake.nix, flake.lock nixpkgs 26.05 + home-manager, обновляет ws update nix
 ├── nix/
-│   ├── hosts/            apt.txt всех хостов; <host>/facts.nix, apt.txt
+│   ├── hosts/            apt.txt всех хостов; <host>/host.toml, apt.txt
 │   ├── home/             default.nix (слой всех хостов), links.nix (ссылки на
 │   │                     checkout), cli.nix, man.nix
 │   ├── pkgs/             xremap.nix (закреплён), man.nix (man из docs/),
@@ -888,6 +888,8 @@ wsconfig/
 ├── lib/ws_catalog.py   выбор хоста nix/hosts/HOST/*.toml, вопросы apply и setup.sh
 ├── lib/flatpak_catalog.py  каталог Flatpak и overrides хоста
 ├── lib/catalog.nix      выбор хоста и overrides для Nix
+├── lib/host.nix         факты host.toml для Nix и их проверка
+├── lib/ws_facts.py      хост и факты host.toml без Nix (ws host, ws fact)
 ├── lib/btrfs_layout.py  fstab и stub GRUB для ws btrfs make
 ├── README.md
 └── docs/                architecture/, runbooks/, plans/, history/, superpowers/

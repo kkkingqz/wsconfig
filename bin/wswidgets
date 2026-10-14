@@ -48,7 +48,7 @@ choice() {
     python3 "$catalog_py" --host "$ws_host" widgets "$@"
 }
 
-# widgets = "yes"|"no" of this host's facts.nix: the layer itself.
+# widgets of this host's host.toml, yes or no (ws fact): the layer itself.
 layer() {
     if [[ -n "${WSWIDGETS_FACT:-}" ]]; then
         printf '%s\n' "$WSWIDGETS_FACT"
@@ -60,7 +60,7 @@ layer() {
 require_layer() {
     load_host
     [[ "$(layer)" == yes ]] \
-        || die "widgets = \"$(layer)\" in nix/hosts/$ws_host/facts.nix: no widget layer here (helpws widgets)"
+        || die "widgets is not true in nix/hosts/$ws_host/host.toml: no widget layer here (helpws widgets)"
 }
 
 # lib.catalog of the wswidgets in flake.lock, as JSON.
@@ -123,7 +123,7 @@ cmd_list() {
     local id label state known
     load_host
     printf 'wswidgets %s (%s), %s:\n' "$(lock_field rev | cut -c1-7)" "$(lock_field date)" "$ws_host"
-    [[ "$(layer)" == yes ]] || printf '  (widgets = "%s" in facts.nix: the layer is off here)\n' "$(layer)"
+    [[ "$(layer)" == yes ]] || printf '  (widgets is not true in host.toml: the layer is off here)\n'
     known="$(catalog_rows)" || exit 1
     while IFS=$'\t' read -r id label; do
         [[ -n "$id" ]] || continue
@@ -188,7 +188,7 @@ cmd_apply() {
     esac
     load_host
     if [[ "$(layer)" != yes ]]; then
-        echo "widgets = \"$(layer)\" in nix/hosts/$ws_host/facts.nix: no widget layer, nothing to apply"
+        echo "widgets is not true in nix/hosts/$ws_host/host.toml: no widget layer, nothing to apply"
         return 0
     fi
     # Every widget of the catalog defaults to ask.

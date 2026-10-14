@@ -29,7 +29,7 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | ba
 1. Пароль sudo — в начале каждого запуска.
 2. Вход в GitHub: `gh auth login` в браузере по одноразовому коду; git
    получает `gh auth setup-git`, имя и email — из аккаунта, если их ещё нет.
-3. Хост. Есть `facts.nix` с этим `hostname` — он. Нет — имя (строчные
+3. Хост. Есть `host.toml` с этим `hostname` — он. Нет — имя (строчные
    латинские буквы, цифры, `-` и `_`, до 23 знаков: из него и пользователь
    приёмника `wsbackup-HOST` на Unraid): существующий
    хост даёт ПК свой `hostname`; новое имя — новый хост из generic-pc
@@ -37,16 +37,16 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | ba
    Steam из apt, Game Mode. Новый хост коммитится; публикуется он вместе с
    выбором после вопроса «Опубликовать (ws sync)?».
 4. Списки с галочками (`lib/ws_catalog.py offer --all --setup`): приложения каталога Flatpak,
-   контейнеры Distrobox, при `widgets = "yes"` виджеты и overrides Flatpak —
+   контейнеры Distrobox, при `widgets = true` виджеты и overrides Flatpak —
    всё, где у этого хоста нет выбора. `default` ask и yes отмечены, no — нет;
    overrides — общие значения каталога у приложений, которые на хосте будут.
    Ответ — `yes`/`no` в `nix/hosts/HOST/*.toml` (снятый override — `skip`
    хоста), затем публикация (`ws sync`); `ws apply` потом ничего не
-   спрашивает. Esc — выход без записи. При `nativeSteam = "yes"` Steam из
+   спрашивает. Esc — выход без записи. При `nativeSteam = true` Steam из
    Flatpak не предлагается: `no` без вопроса (Steam там из apt).
 5. Лицензии пакетов, которые иначе спросил бы apt посреди `bootstrap.sh`:
    Microsoft core fonts (`ubuntu-restricted-extras`) и, при
-   `nativeSteam = "yes"`, Steam (debconf).
+   `nativeSteam = true`, Steam (debconf).
 6. «Начать?» — дальше без вопросов.
 
 ## Что делает дальше
@@ -96,7 +96,7 @@ create setup` при расхождении системы с деревом н�
   recovery`, «Хосты с GRUB»).
 - **mbp16 (rEFInd).** setup.sh отказывает (`boot = "refind-grub-recovery"`);
   переустановка — по `helpws rebuild`. Вернуться позже:
-  - значения диска в `facts.nix` после переустановки: `rootUuid`,
+  - значения диска в `host.toml` после переустановки: `rootUuid`,
     `refindEspPartuuid`, `resume=UUID` и `resume_offset` в `kernelParams`;
   - репозиторий T2 и `linux-t2`, удаление generic-ядра, firmware Wi‑Fi и
     Bluetooth из macOS или архива (`helpws rebuild`, раздел 4);

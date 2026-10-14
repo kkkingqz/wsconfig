@@ -23,13 +23,31 @@ ws apply           владельцы по порядку: расширения,
 ws check           проверки всех владельцев и связей между слоями
 ```
 
-Хост — `nix/hosts/<host>/` (`facts.nix`, `apt.txt`): `mbp16`
+Хост — `nix/hosts/<host>/` (`host.toml`, `apt.txt`): `mbp16`
 (MacBookPro16,1, T2) и `wsvm` (проверочная VM, generic-pc, GRUB; VM удалена
-2026-10-02), выбирается по `hostname` в `facts.nix` (`ws host`).
+2026-10-02), выбирается по `hostname` в `host.toml` (`ws host`).
 Пользовательский слой у всех хостов общий (`nix/home/default.nix`),
 системный — `system/common.nix` плюс профили по фактам `boot` и `hardware`
 (`system/boot/`, `system/hardware/`); проверки железа (T2, Touch Bar, dGPU)
 и `/boot/ws` идут только там, где они есть (`ws fact`).
+
+`host.toml` — факты хоста по разделам:
+
+```
+[host]        hostname, user, wsconfig
+[platform]    hardware, boot, kernelParams, displayScale (1 без него),
+              timezone, xremapIgnore; у rEFInd: refindDefaultParams,
+              rootUuid, refindEspPartuuid
+[layers]      vm, nativeSteam, gameMode, widgets — true или false
+[container]   только при boot = "container": server, image, port,
+              mounts, devices (ws container)
+```
+
+Проверяет файл только Nix (`lib/host.nix`): неизвестный раздел или ключ,
+не тот тип, нет обязательного, `gameMode = true` без `nativeSteam = true`
+— ошибка `ws switch` с именем файла. Без Nix факты читает
+`lib/ws_facts.py` (`ws fact`, setup.sh, bootstrap.sh); `true` и `false`
+он печатает как `yes` и `no`.
 
 ## Слои и владельцы
 
@@ -92,11 +110,11 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
 ~/distrobox/<имя>               HOME каждого контейнера
 /var/lib/vms                    всё состояние VM: subvolume @vms вне snapshots @
                                 (диски, UEFI, TPM, XML; bind в пути libvirt; ~/VMs)
-~/.local/share/Steam            Steam из apt (nativeSteam = "yes"): subvolume @steam
+~/.local/share/Steam            Steam из apt (nativeSteam = true): subvolume @steam
                                 вне snapshots и backup @home
 ```
 
-Путь checkout — `wsconfig` в `facts.nix`; скрипты находят его по своему
+Путь checkout — `wsconfig` в `host.toml`; скрипты находят его по своему
 пути (`WSCONFIG` переопределяет).
 
 ## Состояние и возврат

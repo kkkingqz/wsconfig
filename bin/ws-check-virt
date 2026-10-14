@@ -19,9 +19,9 @@ case "${1:-}" in
     *) echo "ws-check-virt: unknown argument: $1" >&2; exit 64 ;;
 esac
 
-# Only hosts with vm = "yes" in facts.nix have the VM layer.
+# Only hosts with vm = true in host.toml have the VM layer.
 if [[ "$(host_fact vm)" != yes ]]; then
-    info "vm = \"$(host_fact vm)\" in nix/hosts/$("$repo/bin/ws" host 2>/dev/null)/facts.nix: no VM layer, nothing to check"
+    info "vm is not true in nix/hosts/$("$repo/bin/ws" host 2>/dev/null)/host.toml: no VM layer, nothing to check"
     check_finish
     exit
 fi

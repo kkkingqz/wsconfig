@@ -61,11 +61,11 @@ else
     fail "no active home-manager generation (ws switch)"
 fi
 
-# home-manager links wsconfig to the checkout (facts.nix: wsconfig).
+# home-manager links wsconfig to the checkout (host.toml: wsconfig).
 if [[ "$(readlink -f "$HOME/.local/share/workstation/wsconfig" 2>/dev/null)" == "$repo" ]]; then
     pass "~/.local/share/workstation/wsconfig points at this checkout"
 else
-    fail "~/.local/share/workstation/wsconfig does not point at $repo (wsconfig in facts.nix; ws switch)"
+    fail "~/.local/share/workstation/wsconfig does not point at $repo (wsconfig in host.toml; ws switch)"
 fi
 
 

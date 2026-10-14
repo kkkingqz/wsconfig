@@ -100,7 +100,7 @@ class BatchCLI(TransferFixture, unittest.TestCase):
         self.assertTrue((self.managed / 'vms' / r['id']).exists())
 
     def test_host_without_vm_layer_has_no_vms_scope(self):
-        # wsvm: vm = "no" in its facts.nix.
+        # wsvm: vm = false in its host.toml.
         self.cli_env['WS_HOST'] = 'wsvm'
         p = self.cli('send', 'vms')
         self.assertNotEqual(p.returncode, 0)

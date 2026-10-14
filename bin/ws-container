@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Container hosts (boot = "container" in facts.nix, helpws plan-wsgnomebox):
+# Container hosts (boot = "container" in host.toml, helpws plan-wsgnomebox):
 # the image is built on the server from a commit of this checkout, the
-# container runs there with the spec of facts.nix `container`. Run from any
+# container runs there with the spec of host.toml [container]. Run from any
 # machine with SSH to the server; nothing is copied to it but the build
 # context.
 
@@ -19,9 +19,9 @@ Usage:
   ws container status HOST
 
 build     docker build on the server from `git archive HEAD` (clean checkout
-          only): image IMAGE:COMMIT and IMAGE:latest of facts.nix container
+          only): image IMAGE:COMMIT and IMAGE:latest (host.toml [container])
 run       replace the container HOST on the server with one from
-          IMAGE:latest: mounts, devices and port of facts.nix container; the
+          IMAGE:latest: mounts, devices and port of host.toml [container]; the
           directories of the mounts must exist (shares of the server)
 status    the container and its image commit against HEAD
 
@@ -29,13 +29,12 @@ status    the container and its image commit against HEAD
 USAGE
 }
 
-# facts.nix `container` of HOST as JSON (Nix reads it, ws fact only strings).
+# [container] of the host.toml of HOST as JSON.
 spec() {
-    local f="$repo/nix/hosts/$1/facts.nix"
-    [[ -r "$f" ]] || die "no nix/hosts/$1/facts.nix"
+    [[ -r "$repo/nix/hosts/$1/host.toml" ]] || die "no nix/hosts/$1/host.toml"
     [[ "$(python3 "$WS_CORE/lib/ws_facts.py" fact --host "$1" boot 2>/dev/null)" == container ]] \
         || die "$1 is not a container host (boot = \"container\")"
-    nix eval --json --file "$f" container
+    python3 "$WS_CORE/lib/ws_facts.py" section --host "$1" container
 }
 
 field() {
@@ -85,8 +84,8 @@ cmd_run() {
         [[ -n "$m" ]] || continue
         src="${m%%:*}"
         rest="${m#*:}"
-        # SRC:~ or SRC:~/PATH: the home of the user of facts.nix.
-        # shellcheck disable=SC2088 # a literal ~ of facts.nix
+        # SRC:~ or SRC:~/PATH: the home of the user of host.toml.
+        # shellcheck disable=SC2088 # a literal ~ of host.toml
         case "$rest" in
             '~' | '~/'* | '~:'*) rest="/home/$user${rest#\~}" ;;
         esac

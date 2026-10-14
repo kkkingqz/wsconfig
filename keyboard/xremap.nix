@@ -12,7 +12,7 @@
 let
   home = config.home.homeDirectory;
   repo = "${home}/${facts.wsconfig}";
-  # Input devices of the host xremap must not grab (facts.nix
+  # Input devices of the host xremap must not grab (host.toml
   # xremapIgnore): virtual keyboards of other remappers, e.g. InputPlumber
   # on legiongo. ";" between names, which may hold spaces.
   ignore = facts.xremapIgnore or [ ];

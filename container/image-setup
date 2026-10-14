@@ -7,9 +7,9 @@ set -euo pipefail
 #
 # - the apt step of bootstrap.sh (lib/apt.bash) with the lists of the host,
 #   the Microsoft fonts EULA accepted;
-# - the user of facts.nix with UID 1000, groups and fish as bootstrap.sh
+# - the user of host.toml with UID 1000, groups and fish as bootstrap.sh
 #   sets them (steps 6 and 7);
-# - LANG (C.UTF-8, as the Ubuntu installer) and the timezone of facts.nix.
+# - LANG (C.UTF-8, as the Ubuntu installer) and the timezone of host.toml.
 #
 #   container/image-setup HOST
 
@@ -28,13 +28,16 @@ run() {
 
 [[ $# -eq 1 ]] || die "usage: container/image-setup HOST"
 host="$1"
-facts="$repo/nix/hosts/$host/facts.nix"
+facts="$repo/nix/hosts/$host/host.toml"
 host_list="$repo/nix/hosts/$host/apt.txt"
-[[ -r "$facts" ]] || die "no nix/hosts/$host/facts.nix"
+[[ -r "$facts" ]] || die "no nix/hosts/$host/host.toml"
 
-# A string fact, as lib/ws_facts.py reads it: the base image has no python3.
+# A string or true/false fact (yes/no), as lib/ws_facts.py prints it: the
+# base image has no python3. A line `NAME = "VALUE"` or `NAME = true|false`.
 fact() {
-    sed -nE "s/^[[:space:]]*$1 = \"([^\"]*)\";.*/\1/p" "$facts" | head -n1
+    sed -nE -e "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"([^\"]*)\".*/\1/p" \
+        -e "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*true([[:space:]#].*)?\$/yes/p" \
+        -e "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*false([[:space:]#].*)?\$/no/p" "$facts" | head -n1
 }
 
 [[ "$(fact boot)" == container ]] || die "nix/hosts/$host: boot is not \"container\""

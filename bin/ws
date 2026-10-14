@@ -80,18 +80,18 @@ check     run the owners' checks with --json and summarize their result
           check home: home-manager generation, Nix, man pages, session;
           check widgets: the wswidgets runtime, adapter and IPC (ws-widgets
           check) and its manifest against nix/hosts/HOST/widgets.toml (hosts with
-          widgets = "yes");
+          widgets = true);
           check virt: KVM, libvirt, VM storage @vms, NAT network, OVMF/TPM
-          (hosts with vm = "yes" in facts.nix);
+          (hosts with vm = true in host.toml);
           check steam: Steam data on @steam in ~/.local/share/Steam (hosts
-          with nativeSteam = "yes");
+          with nativeSteam = true);
           check gaming: the Game Mode packages, services, display manager
-          and session names (ws game check; hosts with gameMode = "yes");
+          and session names (ws game check; hosts with gameMode = true);
           check backup: local copy root on its own subvolume, SSH alias and key;
           check apt compares nix/hosts/apt.txt, nix/hosts/<host>/apt.txt,
           nix/hosts/machine-apt.txt (not in a container) and, with
-          vm = "yes", virt/apt.txt, with nativeSteam = "yes", steam/apt.txt,
-          with gameMode = "yes", gaming/apt.txt (the
+          vm = true, virt/apt.txt, with nativeSteam = true, steam/apt.txt,
+          with gameMode = true, gaming/apt.txt (the
           lists of bootstrap.sh) with the installed packages, report only;
           each takes --json (one result object, what ws check reads)
 system    build the host system file tree (system) and compare it
@@ -131,11 +131,11 @@ checkpoint  which commit matched which working state (home-manager
 container  image and container of a container host (boot = "container",
           helpws plan-wsgnomebox) on its server, see ws-container --help
 host      print the flake host name used for this machine: WS_HOST, else
-          the nix/hosts/<host> whose facts.nix has hostname = "$(hostname)";
+          the nix/hosts/<host> whose host.toml has hostname = "$(hostname)";
           --for-marks: fail unless the name can stand in a list mark
-fact      print a string fact of this host, or of --host HOST (hardware,
-          boot, user, wsconfig, ...) from nix/hosts/<host>/facts.nix,
-          without Nix (lib/ws_facts.py)
+fact      print a fact of this host, or of --host HOST (hardware, boot,
+          user, vm, ...) from nix/hosts/<host>/host.toml, without Nix
+          (lib/ws_facts.py); true and false print as yes and no
 MODULE    the owners of the layers, one command for each (helpws plan-v2,
           2.8); ARG... as the owner takes them, see ws MODULE --help:
             flatpak   Flatpak apps, remotes, overrides (ws flatpak)
@@ -154,7 +154,7 @@ USAGE
 [[ $EUID -ne 0 ]] || die "run as the desktop user, not root"
 
 # Host and string facts: lib/ws_facts.py, the one reader (helpws plan-v2,
-# 2.2). host: WS_HOST, else the host whose facts.nix has this hostname.
+# 2.2). host: WS_HOST, else the host whose host.toml has this hostname.
 facts_py() { python3 "$WS_CORE/lib/ws_facts.py" "$@"; }
 host() { facts_py host "$@" || exit 1; }
 cmd_fact() { facts_py fact "$@"; }

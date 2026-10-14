@@ -22,7 +22,7 @@ if [[ ":${XDG_CURRENT_DESKTOP:-}:" != *:GNOME:* ]] || pgrep -u "$(id -u)" -f '[g
     exit 0
 fi
 
-# The Touch Bar of mbp16 always; the host's own (facts.nix xremapIgnore).
+# The Touch Bar of mbp16 always; the host's own (host.toml xremapIgnore).
 ignore=(--ignore "Dynamic Function Row Virtual Input Device")
 if [[ -n "${XREMAP_IGNORE:-}" ]]; then
     IFS=';' read -r -a names <<<"$XREMAP_IGNORE"

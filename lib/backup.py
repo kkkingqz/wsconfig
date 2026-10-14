@@ -17,8 +17,8 @@ import uuid as uuidlib
 
 import ws_common
 
-# Every source a workstation may have; vms only with vm = "yes" in its
-# facts.nix (scope_sources). The path checks keep all of them.
+# Every source a workstation may have; vms only with vm = true in its
+# host.toml (scope_sources). The path checks keep all of them.
 SOURCES = {'home': '/home', 'vms': '/var/lib/vms'}
 LIVE_PATHS = [*SOURCES.values(), '/var/lib/libvirt', '/etc/libvirt']
 FIELDS = {'schema_version', 'ssh_host', 'remote_host_id', 'source_fs_uuid',
@@ -71,13 +71,13 @@ def load_config(path):
 
 
 def vm_layer():
-    """True with vm = "yes" in this host's facts.nix (helpws virt): only then
+    """True with vm = true in this host's host.toml (helpws virt): only then
     is there a VM layer and its source @vms."""
     p = subprocess.run([str(REPO / 'bin/ws'), 'fact', 'vm'], text=True, capture_output=True)
     vm = p.stdout.strip()
     if p.returncode or vm not in {'yes', 'no'}:
         raise ValueError('vm fact of this host: ' + (p.stderr.strip() or vm or 'missing') +
-                         ' (vm = "yes" or "no" in nix/hosts/<host>/facts.nix)')
+                         ' (vm = true or false in nix/hosts/<host>/host.toml)')
     return vm == 'yes'
 
 
@@ -87,7 +87,7 @@ def scope_sources(scope, vm):
     if scope not in {*SOURCES, 'all'}:
         raise ValueError('scope must be home, vms or all')
     if scope == 'vms' and not vm:
-        raise ValueError('scope vms needs vm = "yes" in facts.nix: this host has no VM layer')
+        raise ValueError('scope vms needs vm = true in host.toml: this host has no VM layer')
     if scope == 'all':
         return {k: v for k, v in SOURCES.items() if vm or k != 'vms'}
     return {scope: SOURCES[scope]}
@@ -109,7 +109,7 @@ def build_batch_plan(config):
                 coverage='inventory at batch start; missing @home reported explicitly',
                 automatic_prune=True, local_retention='one verified parent per scope after whole batch succeeds',
                 remote_retention=False,
-                vms='separate: ws backup send vms (hosts with vm = "yes")')
+                vms='separate: ws backup send vms (hosts with vm = true)')
     return plan
 
 
@@ -479,7 +479,7 @@ def main(argv=None):
         return
     c = load_config(config_path())
     scope = getattr(args, 'scope', None)
-    # The vm fact only where it matters: home needs no facts.nix.
+    # The vm fact only where it matters: home needs no host.toml.
     vm = vm_layer() if args.command in {'plan', 'send'} and scope in {'vms', 'all'} else False
     plan = build_plan(c, scope, vm) if args.command in {'plan', 'send'} and scope else build_batch_plan(c)
     if args.command == 'plan':

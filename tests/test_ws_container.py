@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SPEC = {
     'server': 'root@server.test',
     'image': 'local/box',
-    'port': '3390',
+    'port': 3390,
     'mounts': ['/srv/box/home:~', '/srv/box/nix:/nix', '/srv/projects:~/Projects',
                '/srv/box/config:/config:ro'],
     'devices': ['/dev/fuse'],
@@ -40,8 +40,6 @@ class ContainerTests(unittest.TestCase):
         self.git('commit', '-qm', 'initial')
         self.bin = self.root / 'bin'
         self.bin.mkdir()
-        (self.root / 'spec.json').write_text(json.dumps(SPEC))
-        self.stub('nix', 'cat "$SPEC"\n')
         # ssh: log the remote command and its stdin size; `test -d` of a
         # mount source fails for the paths in $MISSING.
         self.stub('ssh', '''shift 3
@@ -53,14 +51,18 @@ esac
 exit 0
 ''')
         self.calls = self.root / 'calls'
-        self.env = dict(os.environ, WSCONFIG=str(self.repo), SPEC=str(self.root / 'spec.json'),
+        self.env = dict(os.environ, WSCONFIG=str(self.repo),
                         CALLS=str(self.calls), MISSING='',
                         PATH=str(self.bin) + ':' + os.environ['PATH'])
 
     def host(self, name, boot):
         d = self.repo / 'nix/hosts' / name
         d.mkdir(parents=True)
-        (d / 'facts.nix').write_text(f'{{\n  user = "tester";\n  boot = "{boot}";\n}}\n')
+        text = f'[host]\nuser = "tester"\n\n[platform]\nboot = "{boot}"\n'
+        if boot == 'container':
+            # JSON strings and lists are TOML here.
+            text += '\n[container]\n' + ''.join(f'{k} = {json.dumps(v)}\n' for k, v in SPEC.items())
+        (d / 'host.toml').write_text(text)
 
     def stub(self, name, body):
         p = self.bin / name

@@ -120,7 +120,7 @@ class WswidgetsTests(unittest.TestCase):
         self.list.write_text('no = ["example"]\n')
         result = self.run_w("enable", "example", WSWIDGETS_FACT="no")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('widgets = "no"', result.stderr)
+        self.assertIn('widgets is not true in nix/hosts/test/host.toml', result.stderr)
         result = self.run_w("apply", WSWIDGETS_FACT="no")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.list.read_text(), 'no = ["example"]\n')

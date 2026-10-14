@@ -7,7 +7,7 @@ set -euo pipefail
 #   wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash
 #
 # git, gh, xdg-terminal-exec → GitHub login (gh auth login in the browser)
-# → ~/wsconfig → the host: the one whose facts.nix has this hostname, else
+# → ~/wsconfig → the host: the one whose host.toml has this hostname, else
 # asked (an existing one gives the PC its hostname, a new one is made from
 # generic-pc and committed) → all questions at once: Flatpak apps,
 # Distrobox boxes, widgets and overrides without a choice of this host
@@ -49,8 +49,8 @@ ask() {
 done_step() { [[ -e "$state/$1.done" ]]; }
 mark_step() { mkdir -p "$state" && date -Is > "$state/$1.done"; }
 
-# A string fact of a facts.nix (lib/ws_facts.py, after the clone); empty
-# when there is none.
+# A fact of a host.toml (lib/ws_facts.py, after the clone); empty when
+# there is none.
 fact_in() {
     python3 "$repo/lib/ws_facts.py" fact --file "$1" "$2" 2>/dev/null || true
 }
@@ -187,42 +187,47 @@ set_hostname() {
 }
 
 new_host() {
-    local name="$1" dir="$repo/nix/hosts/$1" vm=no widgets=yes steam=no game=no
+    local name="$1" dir="$repo/nix/hosts/$1" vm=false widgets=true steam=false game=false
     say "Новый хост $name (generic-pc, GRUB)"
     if ask "Виртуальные машины (libvirt, helpws virt)?" n; then
-        vm=yes
+        vm=true
     fi
     if ! ask "Виджеты Quickshell на панели GNOME (helpws widgets)?" y; then
-        widgets=no
+        widgets=false
     fi
     if ask "Steam из apt (вместо Flatpak; helpws plan-legion-go)?" n; then
-        steam=yes
+        steam=true
         if ask "Game Mode (сессия Steam как в SteamOS)?" n; then
-            game=yes
+            game=true
         fi
     fi
     mkdir -p "$dir"
-    cat > "$dir/facts.nix" <<EOF
-# $name: made by setup.sh from generic-pc on $(date +%F) (helpws setup).
-{
-  # \`ws host\` finds the host by it.
-  hostname = "$name";
-  user = "$(id -un)";
-  wsconfig = "wsconfig";
-  hardware = "generic-pc";
-  # Virtual machines (helpws virt).
-  vm = "$vm";
-  # Quickshell widgets on the GNOME panel (helpws widgets).
-  widgets = "$widgets";
-  # Native Steam (steam/apt.txt, @steam) and the Game Mode session
-  # (gaming/apt.txt; helpws plan-legion-go).
-  nativeSteam = "$steam";
-  gameMode = "$game";
-  # Display scale of GNOME; Claude, ChatGPT and Wine DPI follow it.
-  displayScale = "1";
-  boot = "grub";
-  kernelParams = [ "quiet" "splash" ];
-}
+    cat > "$dir/host.toml" <<EOF
+# $name: made by setup.sh from generic-pc on $(date +%F) (helpws setup;
+# lib/host.nix checks the file).
+
+[host]
+# \`ws host\` finds the host by it.
+hostname = "$name"
+user = "$(id -un)"
+wsconfig = "wsconfig"
+
+[platform]
+hardware = "generic-pc"
+boot = "grub"
+kernelParams = ["quiet", "splash"]
+# Display scale of GNOME; Claude, ChatGPT and Wine DPI follow it.
+displayScale = 1
+
+[layers]
+# Virtual machines (helpws virt).
+vm = $vm
+# Quickshell widgets on the GNOME panel (helpws widgets).
+widgets = $widgets
+# Native Steam (steam/apt.txt, @steam) and the Game Mode session
+# (gaming/apt.txt; helpws plan-legion-go).
+nativeSteam = $steam
+gameMode = $game
 EOF
     printf '# apt packages of %s on top of nix/hosts/apt.txt.\n' "$name" > "$dir/apt.txt"
     git -C "$repo" add "nix/hosts/$name"
@@ -231,13 +236,13 @@ EOF
 
 # What setup.sh needs from the facts of HOST, checked before the PC is renamed.
 check_facts() {
-    local facts="$repo/nix/hosts/$1/facts.nix"
+    local facts="$repo/nix/hosts/$1/host.toml"
     [[ "$(fact_in "$facts" user)" == "$(id -un)" ]] \
-        || die "nix/hosts/$1/facts.nix: user = \"$(fact_in "$facts" user)\", this user is $(id -un)"
+        || die "nix/hosts/$1/host.toml: user = \"$(fact_in "$facts" user)\", this user is $(id -un)"
     [[ "$(fact_in "$facts" wsconfig)" == wsconfig ]] \
-        || die "nix/hosts/$1/facts.nix: setup.sh knows only wsconfig = \"wsconfig\" (~/wsconfig)"
+        || die "nix/hosts/$1/host.toml: setup.sh knows only wsconfig = \"wsconfig\" (~/wsconfig)"
     [[ "$(fact_in "$facts" boot)" == grub ]] \
-        || die "boot = \"$(fact_in "$facts" boot)\" in nix/hosts/$1/facts.nix: setup.sh knows only GRUB hosts; rEFInd: helpws rebuild"
+        || die "boot = \"$(fact_in "$facts" boot)\" in nix/hosts/$1/host.toml: setup.sh knows only GRUB hosts; rEFInd: helpws rebuild"
 }
 
 step_host() {
@@ -259,9 +264,9 @@ step_host() {
             valid_name "$name" && break
             echo "только строчные латинские буквы, цифры, - и _, до 23 знаков"
         done
-        if [[ -r "$repo/nix/hosts/$name/facts.nix" ]]; then
+        if [[ -r "$repo/nix/hosts/$name/host.toml" ]]; then
             check_facts "$name"
-            set_hostname "$(fact_in "$repo/nix/hosts/$name/facts.nix" hostname)"
+            set_hostname "$(fact_in "$repo/nix/hosts/$name/host.toml" hostname)"
         else
             new_host "$name"
             set_hostname "$name"
@@ -429,6 +434,10 @@ step_backup() {
 
 step_finish() {
     local checkpoint=true
+    # The data of ws sync (data_patterns of bin/ws); step_choices may have
+    # made the host files, so untracked ones count.
+    local -a data_files=(flatpak/catalog.toml flake.lock
+        'nix/hosts/*/flatpak.toml' 'nix/hosts/*/boxes.toml' 'nix/hosts/*/widgets.toml')
     say "Готово"
     ws switch
     # A checkpoint needs a live system that matches its tree (ws system check).
@@ -436,7 +445,7 @@ step_finish() {
         ws checkpoint create setup || checkpoint=false
     fi
     if [[ -n "$(git -C "$repo" log --oneline '@{u}..HEAD' 2>/dev/null)" \
-        || -n "$(git -C "$repo" status --porcelain --untracked-files=no -- flatpak distrobox widgets flake.lock)" ]]; then
+        || -n "$(git -C "$repo" status --porcelain --untracked-files=all -- "${data_files[@]}")" ]]; then
         publish
     fi
     rm -f "$autostart"

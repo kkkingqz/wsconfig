@@ -485,7 +485,7 @@ data             ~/.local/share/<tool>/...
 `helpws readme`.
 
 Каталог checkout — настройка хоста: `wsconfig` в
-`nix/hosts/<host>/facts.nix` (относительно `$HOME`). Скрипты находят
+`nix/hosts/<host>/host.toml` (относительно `$HOME`). Скрипты находят
 checkout по собственному пути (ссылки в `~/.local/bin`), переменная
 `WSCONFIG` его переопределяет.
 

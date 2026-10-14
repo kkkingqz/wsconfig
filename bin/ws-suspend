@@ -28,7 +28,7 @@ Usage: ws suspend <command> [KERNEL]
   t2bce-install [KERNEL] install built modules into /lib/modules/KERNEL/updates/t2bce (sudo)
   t2bce-rollback [KERNEL] remove them; the in-tree modules take over (sudo)
   swap-setup [SIZE]      swapfile for hibernation in subvolume @swap at /swap,
-                         SIZE 32g (RAM); prints resume= for facts.nix (sudo)
+                         SIZE 32g (RAM); prints resume= for host.toml (sudo)
 
 KERNEL defaults to the running kernel (uname -r).
 USAGE
@@ -160,7 +160,7 @@ cmd_t2bce_rollback() {
 # Hibernation needs swap (helpws suspend, Hibernate): a swapfile in its own
 # subvolume @swap (no snapshots of it, no CoW, no compression), mounted at
 # /swap like the other subvolumes in /etc/fstab. Idempotent; prints the
-# kernel parameters for facts.nix kernelParams.
+# kernel parameters for host.toml kernelParams.
 cmd_swap_setup() {
     local size="$1" uuid top offset
     uuid="$(findmnt -no UUID /)"
@@ -195,7 +195,7 @@ cmd_swap_setup() {
 
     offset="$(sudo btrfs inspect-internal map-swapfile -r /swap/swapfile)"
     echo
-    echo "facts.nix kernelParams: \"resume=UUID=$uuid\" \"resume_offset=$offset\""
+    echo "host.toml kernelParams: \"resume=UUID=$uuid\", \"resume_offset=$offset\""
     echo "then: ws system apply; sudo update-initramfs -u; reboot (helpws suspend, Hibernate)"
 }
 

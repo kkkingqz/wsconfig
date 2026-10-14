@@ -12,8 +12,8 @@ VM работают на host: KVM, QEMU и libvirt связаны с ядром
 
 ## Что где
 
-Слой VM есть только на машинах с `vm = "yes"` в
-`nix/hosts/<host>/facts.nix` (mbp16 — `yes`, wsvm — `no`). С `vm = "no"`
+Слой VM есть только на машинах с `vm = true` в
+`nix/hosts/<host>/host.toml` (mbp16 — `true`, wsvm — `false`). С `vm = false`
 пакеты, `@vms`, группа `libvirt`, описание прошивки и `~/VMs` не ставятся,
 `ws check virt` ничего не проверяет.
 

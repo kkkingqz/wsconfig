@@ -69,7 +69,7 @@ Linux root    Btrfs, без отдельного /boot (раздел 3)
 ```
 
 UUID и PARTUUID новой установки другие: их записать в
-`nix/hosts/<host>/facts.nix` (`rootUuid`, `refindEspPartuuid`) до `ws system
+`nix/hosts/<host>/host.toml` (`rootUuid`, `refindEspPartuuid`) до `ws system
 apply` — из них собираются `refind_linux.conf`, `refind.conf` и manifest.
 Старые значения — в `boot/blkid.txt` архива.
 
@@ -81,7 +81,7 @@ apply` — из них собираются `refind_linux.conf`, `refind.conf` �
 @  @home  @cache  @tmp  @log
 @nix       создаёт bootstrap.sh (раздел 6.0)
 @vms       состояние VM в /var/lib/vms, создаёт bootstrap.sh; backup — отдельно
-@steam     Steam из apt в ~/.local/share/Steam (nativeSteam = "yes"), создаёт
+@steam     Steam из apt в ~/.local/share/Steam (nativeSteam = true), создаёт
            bootstrap.sh; вне snapshots и backup @home
 @wsbackup  локальные копии backup в /var/lib/workstation-backup, создаёт
            bootstrap.sh (helpws backup)
@@ -120,7 +120,7 @@ git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
 2. `/` — `@`: проверяет, что все пять смонтированы из своих subvolumes;
    swapfile установщика, если он был, создаётся заново того же размера в
    `@swap` (`ws suspend swap-setup`, `helpws suspend`); при
-   `boot = "refind-…"` в `facts.nix` (mbp16) делает `@` default subvolume —
+   `boot = "refind-…"` в `host.toml` (mbp16) делает `@` default subvolume —
    rEFInd берёт ядро из него, хост только с GRUB оставляет default 5;
    показывает старый корень на верхнем уровне (ровно то, что там было до
    снимка) и после подтверждения удаляет его вместе с прежним stub.
@@ -169,7 +169,7 @@ i915 с PSR — `ws-psr build && ws-psr install` (раздел 8).
 # 5. Boot / rEFInd
 
 rEFInd — основное меню. Всё, что ему нужно, собирается из репозитория
-(`facts.nix`: `kernelParams`, `refindDefaultParams`, `rootUuid`):
+(`host.toml`: `kernelParams`, `refindDefaultParams`, `rootUuid`):
 
 ```text
 /boot/refind_linux.conf      ставит ws system apply
@@ -182,7 +182,7 @@ grub.d drop-ins              ставит ws system apply (GRUB — recovery)
 pcie_aspm.policy=powersave` (AMD без драйвера убрана с шины и выключена, её
 порт запаркован, ASPM у ядра; `helpws suspend`, `helpws workstation`), ручной
 «Ubuntu (AMD)» грузит `/boot/ws` без них, GRUB (recovery) — тоже. Всё из
-`facts.nix`. Generic-ядро Ubuntu не ставится: ядро только T2 (`linux-t2`),
+`host.toml`. Generic-ядро Ubuntu не ставится: ядро только T2 (`linux-t2`),
 запасной путь — пункты GRUB и снапшоты Timeshift (раздел 12). Метапакеты
 `linux-generic-hwe-*`, если их поставил установщик, удалить вместе с
 generic-ядром (2026-10-02).
@@ -249,19 +249,19 @@ nautilus-my-computer; `purge:snapd` — без snap; в списке хоста
 всё в Recommends: `ubuntu-restricted-extras`, Steam; apt берёт Recommends
 только при установке пакета, так что на хосте, где он уже стоит, его
 снимают и запускают `bootstrap.sh` заново) → при
-`vm = "yes"` в
-`facts.nix`: пакеты `virt/apt.txt`, `@vms` в `/var/lib/vms` с
+`vm = true` в
+`host.toml`: пакеты `virt/apt.txt`, `@vms` в `/var/lib/vms` с
 bind-монтированиями в пути libvirt, пул и сеть `default`
-(`virt/bootstrap.bash`) → при `nativeSteam = "yes"`: пакеты
+(`virt/bootstrap.bash`) → при `nativeSteam = true`: пакеты
 `steam/apt.txt` (Steam из apt, i386) и subvolume `@steam` в
 `~/.local/share/Steam` (`steam/bootstrap.bash`; до первого запуска Steam);
-при `gameMode = "yes"` — пакеты `gaming/apt.txt` → группы `nix-users`,
-`input` (xremap читает клавиатуры), при `vm = "yes"` и `libvirt` → fish как
+при `gameMode = true` — пакеты `gaming/apt.txt` → группы `nix-users`,
+`input` (xremap читает клавиатуры), при `vm = true` и `libvirt` → fish как
 login shell → первый `ws switch` (заменяемые файлы сохраняются как
-`*.pre-hm`). Хост определяется по `hostname` в `nix/hosts/*/facts.nix` (`ws
+`*.pre-hm`). Хост определяется по `hostname` в `nix/hosts/*/host.toml` (`ws
 host`, переопределяет `WS_HOST=<name>`); для новой машины — каталог
-`nix/hosts/<name>/` с `facts.nix` (в том числе `vm`, `nativeSteam` и
-`gameMode` — `"yes"` или `"no"`) и `apt.txt`. Повторный запуск ничего не меняет.
+`nix/hosts/<name>/` с `host.toml` (в том числе `vm`, `nativeSteam` и
+`gameMode` — `true` или `false`; разделы — `helpws layers`) и `apt.txt`. Повторный запуск ничего не меняет.
 
 Шаг `ws apply`, чей preflight не прошёл (exit 69), выводится в конце как
 `PREFLIGHT`; отдельный шаг — `ws apply keyboard`.

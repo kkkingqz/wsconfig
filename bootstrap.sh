@@ -9,12 +9,12 @@ set -euo pipefail
 # → Steam data on @steam (steam/bootstrap.bash) → local backup copies on
 # @wsbackup → groups nix-users, libvirt, input → fish as login shell → first
 # `ws switch`. The VM parts only with
-# vm = "yes" in facts.nix, the Steam parts with nativeSteam = "yes", the
-# Game Mode list with gameMode = "yes". A container host (boot =
+# vm = true in host.toml [layers], the Steam parts with nativeSteam = true,
+# the Game Mode list with gameMode = true. A container host (boot =
 # "container") skips what its image or the server holds.
 #
 # Runs as the desktop user from the checkout at ~/<wsconfig of
-# nix/hosts/<host>/facts.nix> and calls sudo itself. Every step checks
+# nix/hosts/<host>/host.toml> and calls sudo itself. Every step checks
 # the current state first, so a second run changes nothing.
 #
 #   ./bootstrap.sh [--dry-run]
@@ -50,25 +50,27 @@ run() {
 command -v sudo >/dev/null 2>&1 || die "sudo not found"
 host="$("$repo/bin/ws" host)"
 host_list="$repo/nix/hosts/$host/apt.txt"
-[[ -r "$repo/nix/hosts/$host/facts.nix" ]] || die "no nix/hosts/$host/facts.nix"
+toml="nix/hosts/$host/host.toml"
+[[ -r "$repo/$toml" ]] || die "no $toml"
 # The checkout path is a fact of the host: home-manager links point there.
-expected="$HOME/$("$repo/bin/ws" fact wsconfig)" || die "no wsconfig in nix/hosts/$host/facts.nix"
+expected="$HOME/$("$repo/bin/ws" fact wsconfig)" || die "no wsconfig in [host] of $toml"
 [[ "$repo" == "$expected" ]] \
-    || die "checkout must be $expected (wsconfig in nix/hosts/$host/facts.nix), not $repo"
+    || die "checkout must be $expected (wsconfig in $toml), not $repo"
 # VM layer (helpws virt): packages of virt/apt.txt, @vms and libvirt.
-vm="$("$repo/bin/ws" fact vm)" || die "no vm in nix/hosts/$host/facts.nix (\"yes\" or \"no\")"
-[[ "$vm" == yes || "$vm" == no ]] || die "vm in nix/hosts/$host/facts.nix must be \"yes\" or \"no\", not \"$vm\""
+# The layers are true or false; ws fact prints them as yes and no.
+vm="$("$repo/bin/ws" fact vm)" || die "no vm in [layers] of $toml (true or false)"
+[[ "$vm" == yes || "$vm" == no ]] || die "vm in $toml must be true or false, not \"$vm\""
 # Native Steam and the Game Mode session (helpws plan-legion-go).
 native_steam="$("$repo/bin/ws" fact nativeSteam)" \
-    || die "no nativeSteam in nix/hosts/$host/facts.nix (\"yes\" or \"no\")"
+    || die "no nativeSteam in [layers] of $toml (true or false)"
 [[ "$native_steam" == yes || "$native_steam" == no ]] \
-    || die "nativeSteam in nix/hosts/$host/facts.nix must be \"yes\" or \"no\", not \"$native_steam\""
+    || die "nativeSteam in $toml must be true or false, not \"$native_steam\""
 game_mode="$("$repo/bin/ws" fact gameMode)" \
-    || die "no gameMode in nix/hosts/$host/facts.nix (\"yes\" or \"no\")"
+    || die "no gameMode in [layers] of $toml (true or false)"
 [[ "$game_mode" == yes || "$game_mode" == no ]] \
-    || die "gameMode in nix/hosts/$host/facts.nix must be \"yes\" or \"no\", not \"$game_mode\""
+    || die "gameMode in $toml must be true or false, not \"$game_mode\""
 [[ "$game_mode" == no || "$native_steam" == yes ]] \
-    || die "gameMode = \"yes\" needs nativeSteam = \"yes\" in nix/hosts/$host/facts.nix"
+    || die "gameMode = true needs nativeSteam = true in $toml"
 echo "Host: $host (vm = $vm, widgets = $("$repo/bin/ws" fact widgets 2>/dev/null), nativeSteam = $native_steam, gameMode = $game_mode)"
 # A container host (helpws plan-wsgnomebox): the image holds the apt
 # packages, groups and login shell, /nix is a directory of the server; no
@@ -147,7 +149,7 @@ echo "== 3. VM state on @vms, libvirt (helpws virt)"
 if [[ "$vm" == yes ]]; then
     . "$repo/virt/bootstrap.bash"
 else
-    echo "vm = \"$vm\" in nix/hosts/$host/facts.nix: no VM layer"
+    echo "vm = false in $toml: no VM layer"
 fi
 
 echo
@@ -155,7 +157,7 @@ echo "== 4. Steam data on @steam (helpws plan-legion-go)"
 if [[ "$native_steam" == yes ]]; then
     . "$repo/steam/bootstrap.bash"
 else
-    echo "nativeSteam = \"$native_steam\" in nix/hosts/$host/facts.nix: no apt Steam"
+    echo "nativeSteam = false in $toml: no apt Steam"
 fi
 
 echo

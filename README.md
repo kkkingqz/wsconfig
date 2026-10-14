@@ -37,7 +37,7 @@ ws check                    # все проверки
 ## Слои
 
 ```text
-nix/            flake-хосты (facts.nix, apt.txt), home-manager, пакеты
+nix/            flake-хосты (host.toml, apt.txt), home-manager, пакеты
 system/         системные файлы в /etc, /boot, /usr/local, ядро t2bce (ws system)
 keyboard/       macOS-клавиатура: xremap, сочетания GNOME и Tiling Assistant
 gnome/          профиль GNOME, расширения (свои — gnome/extensions/)
@@ -55,8 +55,8 @@ docs/           документация, из неё собираются man-�
 
 Хосты — `mbp16` (эта машина), `legiongo` (Lenovo Legion Go, Game Mode;
 `helpws plan-legion-go`) и `wsvm` (проверочная VM фазы 6; сама VM удалена
-2026-10-02, описание оставлено), выбираются по `hostname` в `facts.nix`
-(`ws host`). Хост — каталог `nix/hosts/<name>/` (`facts.nix`, `apt.txt`);
+2026-10-02, описание оставлено), выбираются по `hostname` в `host.toml`
+(`ws host`). Хост — каталог `nix/hosts/<name>/` (`host.toml`, `apt.txt`);
 новый на GRUB делает `setup.sh` из generic-pc (`helpws setup`).
 
 ## Документация

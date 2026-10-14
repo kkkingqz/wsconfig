@@ -54,7 +54,7 @@ let
   ++ lib.optional hibernate { uuid = "workstation-hibernate@local"; source = "local"; }
   # The panel adapter of the widget layer (helpws widgets): its files come
   # from the wswidgets module (source "nix"), here it is only enabled.
-  ++ lib.optional (facts.widgets == "yes")
+  ++ lib.optional facts.widgets
     { uuid = config.programs.wswidgets.extensionUuid; source = "nix"; };
 
   # Extensions of the Ubuntu session mode that stay off: the mode enables

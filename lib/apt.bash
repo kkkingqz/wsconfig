@@ -13,7 +13,7 @@ apt_lists() {
     printf '%s\n' "$repo/nix/hosts/apt.txt" "$host_list"
     # Real machines only, not a container host (helpws plan-wsgnomebox).
     [[ "$container" == true ]] || echo "$repo/nix/hosts/machine-apt.txt"
-    # VM packages only on hosts with vm = "yes" (helpws virt).
+    # VM packages only on hosts with vm = true (helpws virt).
     [[ "$vm" == no ]] || echo "$repo/virt/apt.txt"
     # Native Steam and the Game Mode session (helpws plan-legion-go).
     [[ "$native_steam" == no ]] || echo "$repo/steam/apt.txt"
