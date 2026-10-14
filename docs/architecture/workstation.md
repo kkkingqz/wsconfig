@@ -112,8 +112,8 @@ gnome/gnome.nix
 Управление:
 
 ```console
-ws-gnome status
-ws-gnome check
+ws gnome status
+ws gnome check
 ```
 
 Текущий профиль фиксирует небольшой curated набор appearance и Ubuntu Dock
@@ -441,7 +441,7 @@ ASPM). Порт CPU выключенной AMD паркуется как в macO
 Управление и подробности:
 
 ```console
-ws-suspend status
+ws suspend status
 helpws suspend
 ```
 
@@ -521,8 +521,8 @@ bin/wsbox, bin/wswin, bin/ws-gpu
 значения по умолчанию, у контейнера — только образ, HOME, пакеты,
 экспорты). `ws switch` собирает из них `containers.ini` (формат
 `distrobox assemble`) и `boxes.json` (контейнеры, hooks, экспорты) в
-`~/.local/share/workstation/distrobox/`, `wsbox` и `wswin` читают оттуда. Изменение: правка `distrobox.nix`, `ws switch`,
-затем `wsbox apply NAME` или `wsbox recreate NAME`.
+`~/.local/share/workstation/distrobox/`, `ws box` и `ws windows` читают оттуда. Изменение: правка `distrobox.nix`, `ws switch`,
+затем `ws box apply NAME` или `ws box recreate NAME`.
 
 Managed containers:
 
@@ -541,15 +541,15 @@ touchbar-build  Ubuntu релиза хоста, порт Touch Bar (~/touchbar):
 (`~/touchbar`) видны как `/home/<user>/touchbar`. Rootfs считается disposable: пакеты — `packages` контейнера
 в `distrobox.nix` (`additional_packages` в собранном `containers.ini`).
 
-Образы — теги, не digest. Пакеты внутри обновляет `wsbox update [NAME...]`
+Образы — теги, не digest. Пакеты внутри обновляет `ws box update [NAME...]`
 (`distrobox upgrade`: apt в Ubuntu, pacman в Arch; AUR — вручную `paru`);
-новый образ берётся только при `wsbox recreate NAME`: rootfs пересоздаётся,
+новый образ берётся только при `ws box recreate NAME`: rootfs пересоздаётся,
 HOME остаётся, пакеты из AUR в `arch` ставятся заново (`helpws rebuild`,
 раздел 6.3). Build-контейнеры берут релиз Ubuntu хоста (`@HOST_VERSION_ID@`
-в `distrobox.nix`, `wsbox` подставляет `VERSION_ID` из `/etc/os-release`):
+в `distrobox.nix`, `ws box` подставляет `VERSION_ID` из `/etc/os-release`):
 то, что в них собирается, должно совпадать с хостом. После обновления
-Ubuntu `wsbox check` покажет image drift — `wsbox recreate NAME`. Закрепить
-образ: `repo@sha256:…` в `distrobox.nix`, `wsbox check` сверит repo digest.
+Ubuntu `ws box check` покажет image drift — `ws box recreate NAME`. Закрепить
+образ: `repo@sha256:…` в `distrobox.nix`, `ws box check` сверит repo digest.
 
 Arch-контейнеры (`arch`, `wine-wayland`, `proton`) используют NTSync из host
 T2 kernel. Host загружает `ntsync`, а `wsbox-host-ntsync` внутри Arch только
@@ -559,13 +559,13 @@ T2 kernel. Host загружает `ntsync`, а `wsbox-host-ntsync` внутри
 Управление и проверка:
 
 ```console
-wsbox status
-wsbox apps
-wsbox check
-wsbox apply [NAME]
+ws box status
+ws box apps
+ws box check
+ws box apply [NAME]
 ```
 
-Windows-программы, prefixes, `wswin`, Steam: `helpws windows`. WinBox —
+Windows-программы, prefixes, `ws windows`, Steam: `helpws windows`. WinBox —
 prefix `winbox` в `wine-wayland` (переживает destructive rebuild):
 
 ```text
@@ -895,7 +895,7 @@ Nix доставляет, владельцы слоёв не меняются (`
 home-manager ставит ссылки на checkout (`~/.local/bin`, fish, Ghostty), man pages
 и CLI (fzf, zoxide, eza, micro, nvd, xremap), unit `xremap.service` с
 `xremap.yml` из store, `enabled-extensions` и закреплённые расширения
-GNOME (`nix/pkgs/gnome-extensions.nix`), конфиг `wsflatpak` из
+GNOME (`nix/pkgs/gnome-extensions.nix`), конфиг `ws flatpak` из
 `flatpak/flatpak.nix`, профиль внешнего вида GNOME
 (`gnome/gnome.nix`, `dconf.settings`); `ws system apply` ставит копии
 системных файлов из сборки `system`; GNOME, Flatpak, Distrobox,
@@ -924,7 +924,7 @@ git diff --cached
 
 Файлы данных — `flatpak/apps.txt`, `flatpak/overrides.txt`,
 `distrobox/hosts.txt`, `widgets/widgets.txt`, `flake.lock` — правят
-инструменты (пометки, `ws update nix`, `wswidgets update`). Их коммитит и
+инструменты (пометки, `ws update nix`, `ws widgets update`). Их коммитит и
 публикует только `ws sync`: один коммит с тем, что изменилось, затем
 `git pull --rebase` и `git push`, если у ветки есть upstream (без remote
 коммит остаётся локальным). `ws sync` отказывается при операции Git,

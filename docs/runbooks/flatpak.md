@@ -24,7 +24,7 @@ remotes, приложения и overrides этого хоста; `desktop/`) и
 `~/.local/share/applications` — только приложений с пометкой `HOST=yes` для
 этой машины (без пометки — по `all=`): у не поставленного приложения ярлык
 ничего бы не запускал. После `apply`, изменившего пометки, — `ws switch`.
-`wsflatpak apply` добавляет remotes, ставит приложения и применяет overrides; overrides управляемого приложения сначала
+`ws flatpak apply` добавляет remotes, ставит приложения и применяет overrides; overrides управляемого приложения сначала
 сбрасываются, так что строка, убранная из `overrides.txt`, исчезает.
 
 Какие приложения на какой машине, записано в самом `apps.txt` — пометками
@@ -40,8 +40,8 @@ flathub org.gimp.GIMP mbp16=yes wsvm=no all=ask
 - `all=…` действует только для машины без своей пометки (`all=yes` —
   ставить везде, где не сказано иначе). Нет ни своей пометки, ни `all` — ask.
 
-`wsflatpak install|manage APP` ставит своей машине `yes` (новая строка
-получает `all=ask`), `wsflatpak remove APP` удаляет строку, если других
+`ws flatpak install|manage APP` ставит своей машине `yes` (новая строка
+получает `all=ask`), `ws flatpak remove APP` удаляет строку, если других
 машин в ней нет, иначе ставит своей `no`; `unmanage` удаляет строку целиком.
 
 О не предложенных `apply` выводит список и спрашивает «Поставить все?
@@ -51,25 +51,25 @@ flathub org.gimp.GIMP mbp16=yes wsvm=no all=ask
 раз), остальное `apply` делает. Ответ пишется в `apps.txt` (`HOST=yes` /
 `HOST=no`), `ws switch` ставит `.desktop` новых `yes`, `ws sync` публикует файл. Уже
 установленное без пометки получает `yes` молча.
-`wsflatpak apply --select` спрашивает и о `HOST=no` (они без галочки). Без
+`ws flatpak apply --select` спрашивает и о `HOST=no` (они без галочки). Без
 терминала не предложенные не ставятся. `check`: `yes`, но не установлено —
 FAIL; установлено, но `no` или без пометки — WARN; `no`/`ask` без установки
 — INFO.
 
 Remotes: `flathub`, `flatpark` (Claude Desktop). Новый remote — строка
 `NAME = "URL.flatpakrepo";` в `remotes` файла `flatpak/flatpak.nix`
-(`wsflatpak remote-add NAME URL` печатает её), затем `ws switch &&
-wsflatpak apply`; приложение из него — `wsflatpak install --remote NAME
-APP`. Только user remotes: system remotes `wsflatpak check` считает ошибкой,
+(`ws flatpak remote-add NAME URL` печатает её), затем `ws switch &&
+ws flatpak apply`; приложение из него — `ws flatpak install --remote NAME
+APP`. Только user remotes: system remotes `ws flatpak check` считает ошибкой,
 remote не из `flatpak.nix` — предупреждением. Браузер — Firefox
 (`org.mozilla.firefox`): snap в системе нет (`purge:snapd`, `helpws rebuild`, раздел 6.0).
 
 ## Установить и убрать
 
 ```console
-wsflatpak help                     # общая справка и список команд
-wsflatpak help install             # справка и примеры конкретной команды
-wsflatpak install --help            # то же через --help
+ws flatpak help                     # общая справка и список команд
+ws flatpak help install             # справка и примеры конкретной команды
+ws flatpak install --help            # то же через --help
 ```
 
 Fish дополняет команды, флаги, пользовательские remotes, App ID и полные refs
@@ -90,15 +90,15 @@ remotes: сначала remote приложения, затем остальны
 Проверка использует полный ref приложения с архитектурой и веткой;
 `apply` обрабатывает все установленные ветки управляемого приложения.
 Дополнительно установленный runtime не закрепляется автоматически, поэтому
-`wsflatpak cleanup` может удалить его, когда он больше не нужен приложениям.
+`ws flatpak cleanup` может удалить его, когда он больше не нужен приложениям.
 
 ```console
-wsflatpak install APP                # ставит, в apps.txt: HOST=yes
-wsflatpak install --unmanaged APP    # только ставит
-wsflatpak manage APP [REMOTE]        # уже установленное — HOST=yes
-wsflatpak unmanage APP               # убрать строку из apps.txt
-wsflatpak remove APP                 # удаляет; строку или HOST=no
-wsflatpak apply [--select]           # ставит HOST=yes, спрашивает об ask
+ws flatpak install APP                # ставит, в apps.txt: HOST=yes
+ws flatpak install --unmanaged APP    # только ставит
+ws flatpak manage APP [REMOTE]        # уже установленное — HOST=yes
+ws flatpak unmanage APP               # убрать строку из apps.txt
+ws flatpak remove APP                 # удаляет; строку или HOST=no
+ws flatpak apply [--select]           # ставит HOST=yes, спрашивает об ask
 ws switch                            # собирает apps.txt
 ws sync                              # публикует: коммит, pull --rebase, push
 ```
@@ -116,13 +116,13 @@ ws sync                              # публикует: коммит, pull --
 `install` — `apps.txt`; систему они не меняют:
 
 ```console
-wsflatpak filesystem APP SPEC        # home:ro, xdg-download, /mnt/x:ro, ...
-wsflatpak host APP                   # = filesystem APP host
-wsflatpak env APP KEY VALUE          # или KEY=VALUE; новое значение заменяет
-wsflatpak talk APP BUS
-wsflatpak unfilesystem|unhost|unenv|untalk APP ...
+ws flatpak filesystem APP SPEC        # home:ro, xdg-download, /mnt/x:ro, ...
+ws flatpak host APP                   # = filesystem APP host
+ws flatpak env APP KEY VALUE          # или KEY=VALUE; новое значение заменяет
+ws flatpak talk APP BUS
+ws flatpak unfilesystem|unhost|unenv|untalk APP ...
 ws switch                            # собирает overrides.txt (публикует ws sync)
-wsflatpak apply                      # применяет
+ws flatpak apply                      # применяет
 ```
 
 APP — ID, имя или часть имени установленного приложения. Значение — одно
@@ -138,7 +138,7 @@ com.anydesk.Anydesk env GDK_SCALE=2 mbp16=yes legiongo=no all=yes
 com.anydesk.Anydesk env GDK_SCALE=1 legiongo=yes all=no
 ```
 
-- `wsflatpak filesystem|host|env|talk` ставит своей машине `yes`; новая
+- `ws flatpak filesystem|host|env|talk` ставит своей машине `yes`; новая
   строка — `HOST=yes all=yes`.
 - Другое значение того же ключа (имя env, путь filesystem при любом режиме)
   меняет строку на месте, если других машин в ней нет. Иначе та строка
@@ -148,8 +148,8 @@ com.anydesk.Anydesk env GDK_SCALE=1 legiongo=yes all=no
   `ws switch` отвергает.
 
 ```console
-wsflatpak permissions APP
-wsflatpak reset-permissions APP
+ws flatpak permissions APP
+ws flatpak reset-permissions APP
 ```
 
 Свои `.desktop`: Claude Desktop (Wayland, масштаб 1.5, URL handler), Steam
@@ -158,11 +158,11 @@ wsflatpak reset-permissions APP
 ## Прочее
 
 ```console
-wsflatpak list | search TERM | info APP | run APP [ARG...]
-wsflatpak update                     # flatpak update --user (ws update flatpak)
-wsflatpak cleanup                    # unused runtimes
-wsflatpak status
-wsflatpak test                       # portals, PipeWire + check
+ws flatpak list | search TERM | info APP | run APP [ARG...]
+ws flatpak update                     # flatpak update --user (ws update flatpak)
+ws flatpak cleanup                    # unused runtimes
+ws flatpak status
+ws flatpak test                       # portals, PipeWire + check
 ```
 
 Портал документов (`flatpak.nix`): после перелогина старый `fusermount3`
@@ -175,7 +175,7 @@ wsflatpak test                       # portals, PipeWire + check
 ## Проверка
 
 ```console
-wsflatpak check [--json]
+ws flatpak check [--json]
 ws check
 ```
 

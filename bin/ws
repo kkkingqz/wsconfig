@@ -46,9 +46,9 @@ apply     run the layer owners in order, as by hand (no sudo steps):
             extensions  ws gnome extensions
             tiling      ws-tiling-apply
             keyboard    ws-keyboard-apply
-            flatpak     wsflatpak apply
-            distrobox   wsbox apply
-            widgets     wswidgets apply (offers widgets not offered yet)
+            flatpak     ws flatpak apply
+            distrobox   ws box apply
+            widgets     ws widgets apply (offers widgets not offered yet)
           a step whose preflight fails (exit 69: e.g. new extensions need a
           logout/login) is reported at the end; on a new machine:
           ws apply, log out and in, ws apply
@@ -57,8 +57,8 @@ update    bring everything that is not pinned to the latest version, in order:
                         packages such as linux-t2 stay)
             nix         nix flake update (nixpkgs, home-manager, wswidgets), the
                         package difference (nvd), switch; then ws sync
-            flatpak     wsflatpak update
-            distrobox   wsbox update (packages inside the containers)
+            flatpak     ws flatpak update
+            distrobox   ws box update (packages inside the containers)
             extensions  GNOME Shell checks extensions.gnome.org for updates
                         of the unpinned EGO extensions, as Extension Manager
                         does; they are installed at the next log out and in
@@ -67,10 +67,10 @@ update    bring everything that is not pinned to the latest version, in order:
           with pin, container images by digest
 check     run the owners' checks with --json and summarize their result
           objects (lib/check.bash): ws check repo, ws check home,
-          ws-keyboard check, ws-gnome check, ws check widgets,
-          wsflatpak check, wsbox check,
-          wswin check, ws-suspend check, ws system check, ws check apt,
-          ws check virt, ws check steam, wsgame check, ws check backup and
+          ws keyboard check, ws gnome check, ws check widgets,
+          ws flatpak check, ws box check,
+          ws windows check, ws suspend check, ws system check, ws check apt,
+          ws check virt, ws check steam, ws game check, ws check backup and
           ws-workstation-verify (cross-layer invariants);
           shows WARN/FAIL messages, -v all;
           check repo: the checkout (Git, hygiene, syntax, bin/ executables);
@@ -83,7 +83,7 @@ check     run the owners' checks with --json and summarize their result
           check steam: Steam data on @steam in ~/.local/share/Steam (hosts
           with nativeSteam = "yes");
           check gaming: the Game Mode packages, services, display manager
-          and session names (wsgame check; hosts with gameMode = "yes");
+          and session names (ws game check; hosts with gameMode = "yes");
           check backup: local copy root on its own subvolume, SSH alias and key;
           check apt compares nix/hosts/apt.txt, nix/hosts/<host>/apt.txt,
           nix/hosts/machine-apt.txt (not in a container) and, with
@@ -122,7 +122,7 @@ backup    Timeshift snapshots to Unraid, then retain final local ro parents;
           plan/status work before SSH is configured; list shows the local
           copies (asks sudo);
           recovery-export OUTPUT writes autonomous Live USB ws-restore;
-          see wsbackup --help and helpws backup / helpws recovery
+          see ws backup --help and helpws backup / helpws recovery
 checkpoint  which commit matched which working state (home-manager
           generation, system tree, kernel, baseline), see ws-checkpoint --help
 container  image and container of a container host (boot = "container",
@@ -135,15 +135,15 @@ fact      print a string fact of this host, or of --host HOST (hardware,
           without Nix (lib/ws_facts.py)
 MODULE    the owners of the layers, one command for each (helpws plan-v2,
           2.8); ARG... as the owner takes them, see ws MODULE --help:
-            flatpak   Flatpak apps, remotes, overrides (wsflatpak)
-            box       Distrobox containers (wsbox)
-            windows   Windows programs in the Windows boxes (wswin)
-            widgets   Quickshell widgets (wswidgets)
-            game      Game Mode from Bazzite parts (wsgame)
-            keyboard  xremap and the GNOME shortcuts (ws-keyboard)
-            gnome     GNOME profile, extensions (ws-gnome)
-            suspend   suspend, hibernate, t2bce (ws-suspend)
-            backup    Timeshift snapshots to Unraid (wsbackup)
+            flatpak   Flatpak apps, remotes, overrides (ws flatpak)
+            box       Distrobox containers (ws box)
+            windows   Windows programs in the Windows boxes (ws windows)
+            widgets   Quickshell widgets (ws widgets)
+            game      Game Mode from Bazzite parts (ws game)
+            keyboard  xremap and the GNOME shortcuts (ws keyboard)
+            gnome     GNOME profile, extensions (ws gnome)
+            suspend   suspend, hibernate, t2bce (ws suspend)
+            backup    Timeshift snapshots to Unraid (ws backup)
           the old names still work: .desktop files and shortcuts call them
 USAGE
 }

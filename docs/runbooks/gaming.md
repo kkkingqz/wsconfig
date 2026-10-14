@@ -51,13 +51,13 @@ mangoapp                 из Ubuntu (gaming/apt.txt): оверлей Steam
 ## Команды
 
 ```console
-wsgame build              # fetch (sha256) и сборка .deb в podman, любой хост
-wsgame test               # поставить и снять .deb в чистом контейнере Ubuntu
-wsgame status             # закреплённая, собранная и установленная версия
-wsgame install            # gameMode = "yes": apt install .deb + sddm, weston
+ws game build              # fetch (sha256) и сборка .deb в podman, любой хост
+ws game test               # поставить и снять .deb в чистом контейнере Ubuntu
+ws game status             # закреплённая, собранная и установленная версия
+ws game install            # gameMode = "yes": apt install .deb + sddm, weston
 # reboot: SDDM вместо GDM, автологин в GNOME
-wsgame check              # то же, что ws check gaming
-wsgame mode game          # переключить сейчас (steamosctl)
+ws game check              # то же, что ws check gaming
+ws game mode game          # переключить сейчас (steamosctl)
 ```
 
 `install` выбирает sddm display manager через debconf (без вопроса), GDM
@@ -66,13 +66,13 @@ wsgame mode game          # переключить сейчас (steamosctl)
 `desktop` (steamos-manager сам начинает с Game Mode).
 
 Новая версия: `url`, `sha256`, `version` в `gaming/sources.nix` → `ws
-switch` → `wsgame build` → `wsgame install`.
+switch` → `ws game build` → `ws game install`.
 
 ## Переключение
 
 ```text
 GNOME → Game Mode    «Return to Game Mode» (ярлык, TryExec=steamosctl) или
-                     wsgame mode game: steamosctl пишет
+                     ws game mode game: steamosctl пишет
                      /etc/sddm.conf.d/zzt-holo-temp-login.conf, сессия
                      завершается, SDDM (Relogin=true) входит в gamescope
 Game Mode → GNOME    Steam → Power → Switch to Desktop → os-session-select
@@ -86,8 +86,8 @@ xremap в Game Mode не работает (`helpws keyboard`); кнопкой п
 
 ## Проверка
 
-`wsgame check` (в `ws check`): на хосте без `gameMode` — только сообщение;
-до `wsgame install` — «not installed yet», без FAIL. Дальше: пакеты и их
+`ws game check` (в `ws check`): на хосте без `gameMode` — только сообщение;
+до `ws game install` — «not installed yet», без FAIL. Дальше: пакеты и их
 версии, sddm и weston, display manager, `steamos-manager.service` и
 `inputplumber.service` включены, пользовательский steamos-manager включён
 глобально, powerbuttond в wants сессии Steam, `platform.toml` с

@@ -46,7 +46,7 @@ else
     warn "Service unit" "MISSING (ws switch)"
 fi
 [[ -e "$WS_STATE/keyboard/xremap.disabled" ]] \
-    && warn "Restore flag" "xremap off (ws-keyboard apply turns it on)"
+    && warn "Restore flag" "xremap off (ws keyboard apply turns it on)"
 
 systemctl --user is-active --quiet xremap.service 2>/dev/null && ok "Service" || warn "Service" "$(systemctl --user is-active xremap.service 2>/dev/null || echo inactive)"
 

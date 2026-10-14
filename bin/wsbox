@@ -12,6 +12,7 @@ manifest="${XDG_RUNTIME_DIR:-/tmp}/wsbox-$(id -u)/containers.ini"
 boxes_manifest="$cfg/boxes.json"
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws box"
 bin_dir="$WS_CORE/bin"
 # Which containers this workstation has: distrobox/hosts.txt in the checkout,
 # NAME HOST=yes|no|ask ... all=STATE (lib/ws_marks.py). create/apply NAME mark
@@ -20,26 +21,26 @@ bin_dir="$WS_CORE/bin"
 hosts_file="${WSBOX_HOSTS:-$bin_dir/../distrobox/hosts.txt}"
 marks_py="$bin_dir/../lib/ws_marks.py"
 select_py="$bin_dir/../lib/ws_select.py"
-select_hint="wsbox apply --select"
+select_hint="ws box apply --select"
 
 usage() {
     cat <<'USAGE'
 Usage:
-  wsbox list
-  wsbox status [NAME]
-  wsbox check [--json]
-  wsbox dry-run [NAME]
-  wsbox apply [--select | NAME]
-  wsbox update [NAME...]
-  wsbox create NAME
-  wsbox enter NAME
-  wsbox run NAME COMMAND [ARG...]
-  wsbox stop NAME
-  wsbox remove NAME
-  wsbox recreate NAME
-  wsbox apps [NAME]
-  wsbox export NAME APP
-  wsbox unexport NAME APP
+  ws box list
+  ws box status [NAME]
+  ws box check [--json]
+  ws box dry-run [NAME]
+  ws box apply [--select | NAME]
+  ws box update [NAME...]
+  ws box create NAME
+  ws box enter NAME
+  ws box run NAME COMMAND [ARG...]
+  ws box stop NAME
+  ws box remove NAME
+  ws box recreate NAME
+  ws box apps [NAME]
+  ws box export NAME APP
+  ws box unexport NAME APP
 USAGE
 }
 
@@ -327,7 +328,7 @@ apply_exports_for() {
         source="$(export_source "$name" "$alias")"
 
         if [[ -z "$source" ]] || ! export_source_exists "$name" "$source"; then
-            printf '  WARN  managed export source missing: %s/%s: %s (install it, then wsbox apply %s)\n' \
+            printf '  WARN  managed export source missing: %s/%s: %s (install it, then ws box apply %s)\n' \
                 "$name" "$alias" "${source:-<empty>}" "$name"
             continue
         fi
@@ -461,7 +462,7 @@ cmd_check() {
     case "${1:-}" in
         --json) check_json_mode ;;
         "") ;;
-        *) die "usage: wsbox check [--json]" ;;
+        *) die "usage: ws box check [--json]" ;;
     esac
 
     # Host packages (podman, distrobox, uidmap, …) are listed in nix/hosts/apt.txt
@@ -540,17 +541,17 @@ cmd_check() {
 
         if ! container_exists "$name"; then
             case "$state" in
-                yes) fail "managed container missing: $name ($host=yes; wsbox apply)" ;;
+                yes) fail "managed container missing: $name ($host=yes; ws box apply)" ;;
                 no) info "managed container declined on $host: $name ($select_hint)" ;;
-                *) info "managed container not offered on $host yet: $name (wsbox apply asks)" ;;
+                *) info "managed container not offered on $host yet: $name (ws box apply asks)" ;;
             esac
             continue
         fi
 
         case "$state" in
             yes) pass "managed container exists: $name" ;;
-            no) warn "managed container exists but marked $host=no: $name (wsbox remove $name, or wsbox apply $name)" ;;
-            *) warn "managed container exists but not marked for $host: $name (wsbox apply marks it)" ;;
+            no) warn "managed container exists but marked $host=no: $name (ws box remove $name, or ws box apply $name)" ;;
+            *) warn "managed container exists but not marked for $host: $name (ws box apply marks it)" ;;
         esac
 
         actual_image="$(container_image "$name")"
@@ -558,7 +559,7 @@ cmd_check() {
         if image_matches "$name" "$expected_image"; then
             pass "$name image matches manifest"
         else
-            fail "$name image drift: got $actual_image, expected $expected_image (wsbox recreate $name)"
+            fail "$name image drift: got $actual_image, expected $expected_image (ws box recreate $name)"
         fi
 
         if [[ -d "$expected_home" ]]; then
@@ -622,7 +623,7 @@ cmd_check() {
         if podman exec "$name" pacman -Q wsbox-host-ntsync >/dev/null 2>&1; then
             pass "$name: wsbox-host-ntsync installed"
         else
-            fail "$name: wsbox-host-ntsync missing (wsbox recreate $name)"
+            fail "$name: wsbox-host-ntsync missing (ws box recreate $name)"
         fi
         for pkg in linux mkinitcpio mkinitcpio-busybox; do
             if podman exec "$name" pacman -Q "$pkg" >/dev/null 2>&1; then
@@ -714,11 +715,11 @@ cmd_apply() {
             2)
                 # Cancel answers only the question: the offered containers
                 # stay ask; those marked yes are still created.
-                printf 'wsbox: выбор отменён, предложенные контейнеры не тронуты (спросит в следующий раз)\n' >&2
+                printf 'ws box: выбор отменён, предложенные контейнеры не тронуты (спросит в следующий раз)\n' >&2
                 ;;
             3)
                 [[ "$reselect" == false ]] || die "$select_hint: needs a terminal"
-                printf 'Not offered on %s yet (no terminal to ask): %s; run wsbox apply in a terminal\n' \
+                printf 'Not offered on %s yet (no terminal to ask): %s; run ws box apply in a terminal\n' \
                     "$host" "${offered[*]}" >&2
                 ;;
             *) exit "$rc" ;;
@@ -759,7 +760,7 @@ cmd_update() {
 
     # A workstation may have none (distrobox/hosts.txt): nothing to update.
     if ((${#names[@]} == 0)); then
-        echo "no managed container on this workstation: nothing to update (wsbox apply)"
+        echo "no managed container on this workstation: nothing to update (ws box apply)"
         return 0
     fi
 
@@ -850,7 +851,7 @@ cmd_remove() {
     while (($#)); do
         case "$1" in
             -h|--help)
-                echo "Usage: wsbox remove NAME"
+                echo "Usage: ws box remove NAME"
                 return 0
                 ;;
 
@@ -895,7 +896,7 @@ cmd_remove() {
     esac
 
     echo \
-        "Managed definition and custom HOME were kept. Use 'wsbox apply $name' to recreate it."
+        "Managed definition and custom HOME were kept. Use 'ws box apply $name' to recreate it."
 }
 
 # --replace removes the old container with distrobox rm, which also deletes
@@ -970,7 +971,7 @@ cmd_export() {
 
     require_managed "$name"
     [[ -n "$alias" ]] || die "managed app alias required"
-    [[ $# -eq 2 ]] || die "Usage: wsbox export NAME APP"
+    [[ $# -eq 2 ]] || die "Usage: ws box export NAME APP"
     export_one "$name" "$alias"
 }
 
@@ -979,7 +980,7 @@ cmd_unexport() {
 
     require_managed "$name"
     [[ -n "$alias" ]] || die "managed app alias required"
-    [[ $# -eq 2 ]] || die "Usage: wsbox unexport NAME APP"
+    [[ $# -eq 2 ]] || die "Usage: ws box unexport NAME APP"
     unexport_one "$name" "$alias"
 }
 

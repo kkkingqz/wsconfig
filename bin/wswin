@@ -20,25 +20,26 @@ boxes_json="$data/distrobox/boxes.json"
 apps_json="$data/windows/apps.json"
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws windows"
 bin_dir="$WS_CORE/bin"
 
 usage() {
     cat <<'USAGE'
 Usage:
-  wswin list
-  wswin check [--json]
-  wswin install [--box BOX] [--prefix NAME] [--desktop[=WxH]] SETUP.exe|.msi [ARG...]
-  wswin portable [--box BOX] [--prefix NAME] FILE.exe|DIR|FILE.zip [APPNAME]
-  wswin run APP [ARG...]
-  wswin exec [--box BOX] [--prefix NAME] [--desktop[=WxH]] PROGRAM [ARG...]
-  wswin prefix [--box BOX] NAME init [--dpi N]
-  wswin prefix [--box BOX] NAME winecfg|regedit|kill|path
-  wswin prefix [--box BOX] NAME winetricks [ARG...]
-  wswin prefix [--box BOX] NAME remove
-  wswin shell [--box BOX] [--prefix NAME]
-  wswin menu [--box BOX] [--prefix NAME] add [PROGRAM.exe [TITLE]]
-  wswin menu list|sync
-  wswin menu remove ID
+  ws windows list
+  ws windows check [--json]
+  ws windows install [--box BOX] [--prefix NAME] [--desktop[=WxH]] SETUP.exe|.msi [ARG...]
+  ws windows portable [--box BOX] [--prefix NAME] FILE.exe|DIR|FILE.zip [APPNAME]
+  ws windows run APP [ARG...]
+  ws windows exec [--box BOX] [--prefix NAME] [--desktop[=WxH]] PROGRAM [ARG...]
+  ws windows prefix [--box BOX] NAME init [--dpi N]
+  ws windows prefix [--box BOX] NAME winecfg|regedit|kill|path
+  ws windows prefix [--box BOX] NAME winetricks [ARG...]
+  ws windows prefix [--box BOX] NAME remove
+  ws windows shell [--box BOX] [--prefix NAME]
+  ws windows menu [--box BOX] [--prefix NAME] add [PROGRAM.exe [TITLE]]
+  ws windows menu list|sync
+  ws windows menu remove ID
 
 BOX defaults to the default_box of apps.json, NAME to "default" (the
 standard prefix $HOME/.wine of the box). --desktop runs the program in a
@@ -155,7 +156,7 @@ ensure_prefix() {
     [[ -n "$dpi" ]] || dpi="$(box_value "$box" dpi)"
     overrides="$(box_value "$box" init_overrides)"
 
-    printf 'wswin: prefix %s/%s: %s\n' "$box" "$name" "$prefix" >&2
+    printf 'ws windows: prefix %s/%s: %s\n' "$box" "$name" "$prefix" >&2
     mkdir -p "$prefix"
 
     in_box "$box" "$prefix" bash -c '
@@ -339,7 +340,7 @@ d = open(path, 'rb').read()
 if d[:4] != b'L\0\0\0':
     sys.exit(0)
 def malformed():
-    print(f'wswin: skipping malformed shortcut: {path}', file=sys.stderr)
+    print(f'ws windows: skipping malformed shortcut: {path}', file=sys.stderr)
     sys.exit(0)
 if len(d) < 76:
     malformed()
@@ -502,9 +503,9 @@ cmd_menu() {
             ;;
         remove)
             local id="${2:-}" link target
-            [[ -n "$id" ]] || die "usage: wswin menu remove ID"
+            [[ -n "$id" ]] || die "usage: ws windows menu remove ID"
             link="$apps_dir/${id%.desktop}.desktop"
-            [[ -L "$link" ]] || die "no wswin menu entry: $id"
+            [[ -L "$link" ]] || die "no ws windows menu entry: $id"
             target="$(readlink -f "$link" || true)"
             rm -f -- "$link"
             [[ -z "$target" ]] || rm -f -- "$target" "${target%.desktop}.png"
@@ -529,7 +530,7 @@ cmd_menu() {
             done < <(manifest_get "$boxes_json")
             ;;
         *)
-            die "usage: wswin menu [--box BOX] [--prefix NAME] add | menu list|sync | menu remove ID"
+            die "usage: ws windows menu [--box BOX] [--prefix NAME] add | menu list|sync | menu remove ID"
             ;;
     esac
 }
@@ -569,7 +570,7 @@ cmd_portable() {
     local -a exes=()
     parse_target "$@"
     set -- "${rest[@]}"
-    (($#)) || die "usage: wswin portable [--box BOX] [--prefix NAME] FILE.exe|DIR|FILE.zip [APPNAME]"
+    (($#)) || die "usage: ws windows portable [--box BOX] [--prefix NAME] FILE.exe|DIR|FILE.zip [APPNAME]"
 
     [[ -e "$1" ]] || die "not found: $1"
     src="$(realpath -- "$1")"
@@ -617,7 +618,7 @@ cmd_portable() {
             "$(basename "$exe")" "" "$exe"
         [[ -z "$icon" ]] || rm -f -- "$icon"
     fi
-    printf 'Start: wswin exec --box %s --prefix %s %q\n' "$box" "$pname" "$exe"
+    printf 'Start: ws windows exec --box %s --prefix %s %q\n' "$box" "$pname" "$exe"
 }
 
 cmd_install() {
@@ -652,7 +653,7 @@ cmd_install() {
         grep -qxF "$mtime $entry" <<<"$before" && continue
         offer_lnk_entry "$box" "$pname" "$entry"
     done < <(lnk_entries "$prefix")
-    printf 'More later: wswin menu --box %s --prefix %s add [PROGRAM.exe [TITLE]]\n' "$box" "$pname"
+    printf 'More later: ws windows menu --box %s --prefix %s add [PROGRAM.exe [TITLE]]\n' "$box" "$pname"
 }
 
 cmd_exec() {
@@ -687,7 +688,7 @@ cmd_run() {
     prefix="$(prefix_path "$box" "$pname")"
 
     [[ -f "$prefix/$exe" ]] \
-        || die "$app: not installed: $prefix/$exe (wswin install --box $box --prefix $pname ...)"
+        || die "$app: not installed: $prefix/$exe (ws windows install --box $box --prefix $pname ...)"
 
     args_line="$(app_value "$app" args)"
     env_line="$(app_value "$app" env)"
@@ -703,7 +704,7 @@ cmd_prefix() {
     local box pname desktop rest prefix run action
     parse_target "$@"
     set -- "${rest[@]}"
-    (($# >= 2)) || die "usage: wswin prefix [--box BOX] NAME ACTION"
+    (($# >= 2)) || die "usage: ws windows prefix [--box BOX] NAME ACTION"
     pname="$1"
     action="$2"
     shift 2

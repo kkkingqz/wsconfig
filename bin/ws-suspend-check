@@ -15,8 +15,8 @@ set -o pipefail
 case "${1:-}" in
     --json) check_json_mode ;;
     "") ;;
-    -h|--help) echo "Usage: ws-suspend check [--json]"; exit 0 ;;
-    *) echo "ws-suspend check: unknown argument: $1" >&2; exit 64 ;;
+    -h|--help) echo "Usage: ws suspend check [--json]"; exit 0 ;;
+    *) echo "ws suspend check: unknown argument: $1" >&2; exit 64 ;;
 esac
 
 # The suspend layer (deep-only sleep, t2bce, Touch Bar) is part of the T2
@@ -83,7 +83,7 @@ else
     swap_kb="$(awk '$1 == "/swap/swapfile" { print $3 }' /proc/swaps)"
     mem_kb="$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)"
     if [[ -z "$swap_kb" ]]; then
-        fail "/swap/swapfile is not active swap (ws-suspend swap-setup)"
+        fail "/swap/swapfile is not active swap (ws suspend swap-setup)"
     elif (( swap_kb < mem_kb )); then
         warn "/swap/swapfile $((swap_kb / 1024)) MiB < RAM $((mem_kb / 1024)) MiB: a large image may not fit"
     else
@@ -94,7 +94,7 @@ else
         || fail "resume device not set by the initramfs (/sys/power/resume 0:0; update-initramfs -u)"
     [[ "$(cat /sys/power/resume_offset 2>/dev/null)" == "${offset_arg#resume_offset=}" ]] \
         && pass "resume offset $(cat /sys/power/resume_offset)" \
-        || fail "resume offset $(cat /sys/power/resume_offset 2>/dev/null) != ${offset_arg:-no resume_offset=} (ws-suspend swap-setup prints it)"
+        || fail "resume offset $(cat /sys/power/resume_offset 2>/dev/null) != ${offset_arg:-no resume_offset=} (ws suspend swap-setup prints it)"
     initrd="/boot/initrd.img-$(uname -r)"
     newest=""
     for f in /etc/dracut.conf.d/ws-hibernate.conf /usr/lib/dracut/modules.d/95ws-t2-resume/* \

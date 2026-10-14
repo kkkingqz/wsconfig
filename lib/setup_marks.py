@@ -76,7 +76,7 @@ def run(repo, host, term):
     lists = [(apps, f"Flatpak-приложения на {host}"), (boxes, f"Контейнеры Distrobox на {host}")]
     # The widget layer only where facts.nix has it (helpws widgets).
     if fact(host, "widgets", repo) == "yes":
-        lists.append((widgets, f"Виджеты wswidgets на {host}"))
+        lists.append((widgets, f"Виджеты (ws widgets) на {host}"))
     for marked, title in lists:
         items = offer(marked, host)
         chosen = ask(term, title, items)

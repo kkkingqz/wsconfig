@@ -38,17 +38,17 @@ ws check           проверки всех владельцев и связе�
 пользователь     nix/home/, terminal/, bin/            ws switch            ws check home
 система          system/*.nix, system/files/           ws system apply      ws system check
 apt              nix/hosts/*apt.txt                    bootstrap.sh, apt    ws check apt
-клавиатура       keyboard/*.nix, xremap.yml            ws switch, ws-keyboard apply   ws-keyboard check
-GNOME            gnome/gnome.nix, gnome-extensions.nix ws switch, ws apply extensions ws-gnome check
+клавиатура       keyboard/*.nix, xremap.yml            ws switch, ws keyboard apply   ws keyboard check
+GNOME            gnome/gnome.nix, gnome-extensions.nix ws switch, ws apply extensions ws gnome check
 виджеты          widgets/*.txt, flake input wswidgets  wswidgets, ws switch ws check widgets
-Flatpak          flatpak/*.txt, flatpak.nix            wsflatpak apply      wsflatpak check
-Distrobox        distrobox/distrobox.nix               wsbox apply          wsbox check
-Windows          windows/apps.nix (+ боксы Distrobox)  ws switch, wswin     wswin check
+Flatpak          flatpak/*.txt, flatpak.nix            ws flatpak apply      ws flatpak check
+Distrobox        distrobox/distrobox.nix               ws box apply          ws box check
+Windows          windows/apps.nix (+ боксы Distrobox)  ws switch, ws windows     ws windows check
 Remmina          remmina/*.nix, machine-apt.txt        ws switch, bootstrap.sh  ws check apt
-suspend / T2     system/hardware, system/kernel/t2bce  ws system apply, ws-suspend t2bce-*   ws-suspend check
+suspend / T2     system/hardware, system/kernel/t2bce  ws system apply, ws suspend t2bce-*   ws suspend check
 VM               apt.txt, bootstrap.sh, virt/virt.nix   bootstrap.sh, virt-manager           ws check virt
 Steam (apt)      steam/apt.txt, steam/bootstrap.bash   bootstrap.sh         ws check steam
-Game Mode        gaming/*, system/gaming.nix           wsgame               wsgame check
+Game Mode        gaming/*, system/gaming.nix           ws game               ws game check
 checkout         весь репозиторий                      git                  ws check repo
 ```
 
@@ -63,13 +63,13 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
   из Nix, и не держат своих копий списков. Родные форматы программ остаются
   (`xremap.yml`, ghostty, fish, udev/modprobe, `*.gschema.xml`,
   `containers.ini`); простой текст — `nix/hosts/*apt.txt` (его читает
-  `bootstrap.sh` до Nix) и `flatpak/apps.txt`, `flatpak/overrides.txt` (их правит `wsflatpak`).
+  `bootstrap.sh` до Nix) и `flatpak/apps.txt`, `flatpak/overrides.txt` (их правит `ws flatpak`).
 - **Владелец выдаёт список.** Системный слой — `ws system manifest`,
   пользовательский — активное поколение home-manager, Distrobox —
   `containers.ini`, расширения — собранный список. Проверки, baseline и
   checkpoint читают эти списки, а не свои.
-- **Nix доставляет, владельцы остаются.** `wsflatpak`, `wsbox`, `ws-gnome`,
-  `ws-keyboard`, `ws-suspend`, `wswin` работают как раньше и читают
+- **Nix доставляет, владельцы остаются.** `ws flatpak`, `ws box`, `ws gnome`,
+  `ws keyboard`, `ws suspend`, `ws windows` работают как раньше и читают
   собранное Nix.
 - **`bin/` — ссылки на checkout.** Скрипты не собираются в store: им нужны
   утилиты host (`gsettings`, `gdbus`, `busctl`, PyGObject), правка работает

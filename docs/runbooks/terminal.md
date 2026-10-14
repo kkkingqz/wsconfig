@@ -222,7 +222,7 @@ Home Manager генерирует `~/.config/fish/functions/ssh.fish`; Fish за
 
 ## Цвета Distrobox-сессий
 
-`distrobox enter NAME`, `distrobox-enter -n NAME` и `wsbox enter NAME`
+`distrobox enter NAME`, `distrobox-enter -n NAME` и `ws box enter NAME`
 меняют обычный цвет текста Ghostty на время сессии. Цвет каждого контейнера
 и fallback для остальных задаются в `terminal/distrobox-colors.nix`;
 после правки — `ws switch`. Имя определяется из аргументов или

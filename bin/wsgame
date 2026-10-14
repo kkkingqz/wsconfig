@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""wsgame: the packages of the Game Mode session (helpws gaming, helpws
+"""ws game: the packages of the Game Mode session (helpws gaming, helpws
 plan-legion-go 3.4). Sources and versions are gaming/sources.nix, built by
 ws switch into ~/.local/share/workstation/gaming/sources.json; downloads and
 .debs live next to it. Nothing is installed from outside dpkg.
@@ -56,7 +56,7 @@ APT = ["sddm", "weston"]
 
 
 def die(text):
-    ws_common.die("wsgame", text)
+    ws_common.die("ws game", text)
 
 
 def run(args, check=True, capture=False, **kw):
@@ -151,7 +151,7 @@ def cmd_build():
     missing = [n for n in PACKAGES if not (DEBS / deb_name(n, sources[n]["version"])).exists()]
     if missing:
         die(f"build made no package for: {', '.join(missing)}")
-    print(f"\nPackages in {DEBS}; install on a gameMode host: wsgame install")
+    print(f"\nPackages in {DEBS}; install on a gameMode host: ws game install")
     return 0
 
 
@@ -178,7 +178,7 @@ def cmd_test():
     debs = [DEBS / deb_name(n, sources[n]["version"]) for n in PACKAGES]
     missing = [d.name for d in debs if not d.exists()]
     if missing:
-        die(f"not built: {', '.join(missing)} (wsgame build)")
+        die(f"not built: {', '.join(missing)} (ws game build)")
     image = f"docker.io/library/ubuntu:{host_release()}"
     print(f"== Install and purge in {image}")
     with_debs = DEBS / ".test"
@@ -208,7 +208,7 @@ def cmd_install():
     debs = [DEBS / deb_name(n, sources[n]["version"]) for n in PACKAGES]
     missing = [d.name for d in debs if not d.exists()]
     if missing:
-        die(f"not built: {', '.join(missing)} (wsgame build)")
+        die(f"not built: {', '.join(missing)} (ws game build)")
     # sddm becomes the display manager without the debconf question; GDM
     # stays installed.
     seed = "".join(f"{p} shared/default-x-display-manager select sddm\n" for p in ("sddm", "gdm3"))
@@ -222,7 +222,7 @@ def cmd_install():
     run(["steamosctl", "set-default-desktop-session", DESKTOP])
     run(["steamosctl", "set-default-login-mode", "desktop"])
     print("\nInstalled. Reboot: SDDM logs into GNOME, Game Mode is a switch away "
-          "(Return to Game Mode, wsgame mode game).")
+          "(Return to Game Mode, ws game mode game).")
     return 0
 
 
@@ -239,28 +239,28 @@ def cmd_check(json_mode=False):
     sources = load_sources()
     versions = {n: installed_version(n) for n in PACKAGES}
     if not any(versions.values()):
-        c.msg("info", "Game Mode packages not installed yet: wsgame build, wsgame install "
+        c.msg("info", "Game Mode packages not installed yet: ws game build, ws game install "
                       "(helpws plan-legion-go, stage 6)")
         return c.finish()
 
     for name, got in versions.items():
         want = sources[name]["version"]
         if got is None:
-            c.msg("fail", f"package missing: {name} (wsgame install)")
+            c.msg("fail", f"package missing: {name} (ws game install)")
         elif got != want:
-            c.msg("warn", f"{name} {got} installed, {want} pinned (wsgame build, wsgame install)")
+            c.msg("warn", f"{name} {got} installed, {want} pinned (ws game build, ws game install)")
         else:
             c.msg("pass", f"{name} {got}")
     for name in APT:
         (c.msg("pass", f"{name} installed") if installed_version(name)
-         else c.msg("fail", f"{name} missing (wsgame install)"))
+         else c.msg("fail", f"{name} missing (ws game install)"))
 
     dm = Path("/etc/X11/default-display-manager")
     (c.msg("pass", "display manager: sddm") if dm.exists() and "sddm" in dm.read_text()
-     else c.msg("fail", f"display manager is not sddm ({dm}; wsgame install)"))
+     else c.msg("fail", f"display manager is not sddm ({dm}; ws game install)"))
     for unit in ("steamos-manager.service", "inputplumber.service"):
         (c.msg("pass", f"{unit} enabled") if ok(["systemctl", "is-enabled", "--quiet", unit])
-         else c.msg("fail", f"{unit} not enabled (wsgame install)"))
+         else c.msg("fail", f"{unit} not enabled (ws game install)"))
     (c.msg("pass", "user steamos-manager.service enabled")
      if ok(["systemctl", "--global", "is-enabled", "--quiet", "steamos-manager.service"])
      else c.msg("fail", "user steamos-manager.service not enabled (package postinst)"))
@@ -271,12 +271,12 @@ def cmd_check(json_mode=False):
     platform = Path("/usr/share/steamos-manager/platform.toml")
     text = platform.read_text() if platform.exists() else ""
     (c.msg("pass", f"steamos-manager desktop session: {DESKTOP}") if f'desktop = "{DESKTOP}"' in text
-     else c.msg("fail", f"{platform}: no [session] desktop = \"{DESKTOP}\" (wsgame build)"))
+     else c.msg("fail", f"{platform}: no [session] desktop = \"{DESKTOP}\" (ws game build)"))
     device = Path("/usr/share/steamos-manager/devices/legion-go-series.toml")
     if device.exists():
         (c.msg("pass", "no TDP limit or performance profile in steamos-manager (PPD owns platform_profile)")
          if "tdp_limit" not in device.read_text()
-         else c.msg("fail", f"{device} has tdp_limit: Steam would fight PPD (wsgame build)"))
+         else c.msg("fail", f"{device} has tdp_limit: Steam would fight PPD (ws game build)"))
     (c.msg("pass", "power-profiles-daemon active") if ok(["systemctl", "is-active", "--quiet", "power-profiles-daemon"])
      else c.msg("warn", "power-profiles-daemon not active"))
 
@@ -307,7 +307,7 @@ def cmd_mode(mode):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="wsgame", description=__doc__.split("\n\n")[0],
+    p = argparse.ArgumentParser(prog="ws game", description=__doc__.split("\n\n")[0],
                                 formatter_class=argparse.RawDescriptionHelpFormatter,
                                 epilog=__doc__.split("\n\n", 1)[1])
     sp = p.add_subparsers(dest="cmd", required=True)
@@ -335,7 +335,7 @@ if __name__ == "__main__":
     try:
         sys.exit(main())
     except subprocess.CalledProcessError as e:
-        sys.exit(f"wsgame: {' '.join(map(str, e.cmd))}: exit {e.returncode}")
+        sys.exit(f"ws game: {' '.join(map(str, e.cmd))}: exit {e.returncode}")
     except KeyboardInterrupt:
         print(file=sys.stderr)
         sys.exit(130)

@@ -121,7 +121,7 @@ if [[ "$t2" == true ]]; then
     if [[ "$t2bce_ver" == *nostatefix* ]]; then
         pass "patched t2bce loaded: t2bce_core $t2bce_ver"
     else
-        warn "t2bce_core '${t2bce_ver:-not loaded}' is not the patched build; run ws-suspend t2bce-build && ws-suspend t2bce-install (helpws suspend)"
+        warn "t2bce_core '${t2bce_ver:-not loaded}' is not the patched build; run ws suspend t2bce-build && ws suspend t2bce-install (helpws suspend)"
     fi
 
     if apt-mark showhold 2>/dev/null | grep -qx 'linux-t2'; then

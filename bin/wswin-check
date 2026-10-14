@@ -15,8 +15,8 @@ set -o pipefail
 case "${1:-}" in
     --json) check_json_mode ;;
     "") ;;
-    -h|--help) echo "Usage: wswin check [--json]"; exit 0 ;;
-    *) echo "wswin check: unknown argument: $1" >&2; exit 64 ;;
+    -h|--help) echo "Usage: ws windows check [--json]"; exit 0 ;;
+    *) echo "ws windows check: unknown argument: $1" >&2; exit 64 ;;
 esac
 
 data="${WSWIN_DATA:-$HOME/.local/share/workstation}"
@@ -54,9 +54,9 @@ on_host() { [[ "${box_state[$1]:-ask}" == yes ]]; }
 
 default_box="$(manifest_get "$apps_json" default_box)"
 if [[ -n "$default_box" ]] && grep -qxF "$default_box" <<<"$win_boxes"; then
-    pass "wswin default box is a Windows box: $default_box"
+    pass "ws windows default box is a Windows box: $default_box"
 else
-    fail "wswin default box is not a Windows box: ${default_box:-<none>}"
+    fail "ws windows default box is not a Windows box: ${default_box:-<none>}"
 fi
 
 while IFS= read -r app; do
@@ -68,7 +68,7 @@ while IFS= read -r app; do
         fail "app $app: box ${app_box:-<none>} is not a Windows box"
     fi
     if ! on_host "$app_box"; then
-        info "app $app: box $app_box is not on $host, no launcher (wsbox apply $app_box)"
+        info "app $app: box $app_box is not on $host, no launcher (ws box apply $app_box)"
         continue
     fi
     # The program itself is machine state (wswin install, a prefix from a
@@ -103,9 +103,9 @@ for link in "$HOME"/.local/share/applications/wswin-*.desktop; do
     [[ -L "$link" && ! -e "$link" ]] && dangling_menu+=" $(basename "$link")"
 done
 if [[ -n "$dangling_menu" ]]; then
-    warn "wswin menu links to missing prefixes:$dangling_menu (wswin menu sync)"
+    warn "ws windows menu links to missing prefixes:$dangling_menu (ws windows menu sync)"
 else
-    pass "wswin menu links resolve"
+    pass "ws windows menu links resolve"
 fi
 
 info "GPU for Proton/Steam: $("$repo/bin/ws-gpu" status 2>/dev/null || echo unknown)"

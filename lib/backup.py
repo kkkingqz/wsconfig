@@ -524,8 +524,8 @@ if __name__ == '__main__':
     try:
         main()
     except (ValueError, OSError, Terminated) as e:
-        print(f'wsbackup: {e}', file=sys.stderr)
+        print(f'ws backup: {e}', file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:
-        print('wsbackup: interrupted; see operation record', file=sys.stderr)
+        print('ws backup: interrupted; see operation record', file=sys.stderr)
         sys.exit(130)

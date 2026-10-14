@@ -320,7 +320,7 @@ if [[ -r "$profile" && -x "$check_helper" ]]; then
     if "$check_helper" --quiet >/dev/null 2>&1; then
         kv "gnome/gnome.nix" "in sync"
     else
-        kv "gnome/gnome.nix" "DRIFT — run: ws-gnome check"
+        kv "gnome/gnome.nix" "DRIFT — run: ws gnome check"
     fi
 else
     kv "managed profile" "not installed yet"

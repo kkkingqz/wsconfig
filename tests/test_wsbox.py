@@ -197,7 +197,7 @@ class WsboxTests(unittest.TestCase):
         self.marks("a test=yes all=ask\nb test=no all=ask\nghost test=yes\n")
         self.exists("b")
         out = self.wsbox("check").stdout
-        self.assertIn("FAIL  managed container missing: a (test=yes; wsbox apply)", out)
+        self.assertIn("FAIL  managed container missing: a (test=yes; ws box apply)", out)
         self.assertIn("WARN  managed container exists but marked test=no: b", out)
         self.assertIn("INFO  managed container not offered on test yet: c", out)
         self.assertIn("WARN  distrobox/hosts.txt marks an undeclared container: ghost", out)

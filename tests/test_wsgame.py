@@ -73,7 +73,7 @@ class WsgameTests(unittest.TestCase):
         rc, result = self.check("yes", {"steamos-manager": "0-old", "inputplumber": "1-1ws1"})
         self.assertEqual(rc, 1)
         texts = [m["text"] for m in result["messages"]]
-        self.assertIn("package missing: powerbuttond (wsgame install)", texts)
+        self.assertIn("package missing: powerbuttond (ws game install)", texts)
         self.assertTrue(any(t.startswith("steamos-manager 0-old installed, 1-1ws1 pinned") for t in texts))
         self.assertIn("inputplumber 1-1ws1", texts)
 

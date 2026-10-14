@@ -34,19 +34,19 @@ Thunderbolt ACPI seed  resume ~3 с вместо ~23 с
 hibernate              стек T2 снимается до образа и поднимается после
 ```
 
-Всё управляется командой `ws-suspend`:
+Всё управляется командой `ws suspend`:
 
 ```console
-ws-suspend status
-ws-suspend apply
-ws-suspend t2bce-build [KERNEL]
-ws-suspend t2bce-install [KERNEL]
-ws-suspend t2bce-rollback [KERNEL]
-ws-suspend swap-setup [SIZE]
-ws-suspend check
+ws suspend status
+ws suspend apply
+ws suspend t2bce-build [KERNEL]
+ws suspend t2bce-install [KERNEL]
+ws suspend t2bce-rollback [KERNEL]
+ws suspend swap-setup [SIZE]
+ws suspend check
 ```
 
-`ws-suspend apply` — обёртка над `ws system apply`: ставит все системные
+`ws suspend apply` — обёртка над `ws system apply`: ставит все системные
 файлы хоста из `system` (Nix), а не только слой suspend; проверка
 без изменений — `ws system diff`.
 
@@ -187,7 +187,7 @@ pcie_aspm.policy=powersave` (`refindDefaultParams` в `facts.nix`); «Ubuntu
 Убирали его 2026-09-25 из осторожности: все отказы T2 случились с forced
 ASPM, но вместе с Touch Bar в режиме дисплея; с родным Touch Bar и forced
 ASPM было 16 циклов S3 без сбоев (helpws history-suspend), 2026-10-01 — ещё
-циклы с t2bce 0.07-nostatefix1. `ws-suspend check` предупреждает, если в
+циклы с t2bce 0.07-nostatefix1. `ws suspend check` предупреждает, если в
 пункте «Ubuntu» параметров нет; `ws system check` — если вернётся
 `/etc/default/grub.d/90-pcie-aspm.cfg` (forced ASPM для GRUB/recovery не
 нужен).
@@ -348,7 +348,7 @@ Initramfs собирает dracut (`update-initramfs` — его обёртка,
 ### Swap и resume
 
 ```console
-ws-suspend swap-setup 32g    # @swap → /swap, /swap/swapfile, fstab; печатает offset
+ws suspend swap-setup 32g    # @swap → /swap, /swap/swapfile, fstab; печатает offset
 ```
 
 Swapfile — в отдельном subvolume `@swap` (без снапшотов, без CoW).
@@ -362,7 +362,7 @@ resume_offset=31286754                              btrfs inspect-internal map-s
 
 После пересоздания swapfile offset меняется: обновить `facts.nix`,
 `ws system apply`, перезагрузка. После изменения модуля dracut или
-`ws-t2-detach` — `sudo update-initramfs -u` (`ws-suspend check`
+`ws-t2-detach` — `sudo update-initramfs -u` (`ws suspend check`
 предупреждает, если initrd старше).
 
 ### Когда
@@ -419,7 +419,7 @@ Hibernate проверен только с пунктом rEFInd «Ubuntu» (`ws
 
 `linux-t2` заморожен (`apt-mark hold`): модули в `updates/` привязаны к одной
 версии ядра, и новое ядро без пересборки загрузило бы штатный `t2bce`.
-`ws-suspend status` показывает `held`, `ws-workstation-verify` предупреждает,
+`ws suspend status` показывает `held`, `ws-workstation-verify` предупреждает,
 если hold снят. Обновление — осознанный шаг:
 
 1. Проверить, вошло ли исправление в upstream (#215, deqrocks/t2bce#9,
@@ -432,8 +432,8 @@ Hibernate проверен только с пунктом rEFInd «Ubuntu» (`ws
 ```console
 sudo apt-mark unhold linux-t2
 sudo apt install linux-t2
-ws-suspend t2bce-build NEW_KERNEL
-ws-suspend t2bce-install NEW_KERNEL
+ws suspend t2bce-build NEW_KERNEL
+ws suspend t2bce-install NEW_KERNEL
 ws-psr build NEW_KERNEL
 ws-psr install NEW_KERNEL
 sudo apt-mark hold linux-t2
@@ -452,15 +452,15 @@ sudo apt-mark hold linux-t2
 ## Откат
 
 ```console
-ws-suspend t2bce-rollback
+ws suspend t2bce-rollback
 sudo reboot
 ```
 
 ## Проверка
 
 ```console
-ws-suspend status
-ws-suspend check
+ws suspend status
+ws suspend check
 ws-workstation-verify     # ядро ↔ t2bce
 ```
 
@@ -475,7 +475,7 @@ t2bce_core                0.07-nostatefix1, stateful_sleep=Y
 runtime files             OK
 ```
 
-`ws-suspend check`, раздел Hibernation: swapfile активен и не меньше
+`ws suspend check`, раздел Hibernation: swapfile активен и не меньше
 MemTotal, `/sys/power/resume` выставлен initrd, `resume_offset` совпадает
 с cmdline, initrd не старше модуля dracut и `ws-t2-detach`.
 

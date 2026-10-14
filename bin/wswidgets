@@ -13,6 +13,7 @@ set -euo pipefail
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws widgets"
 bin_dir="$WS_CORE/bin"
 # The checkout whose flake.lock and widgets.txt are used (tests: a copy).
 list_file="${WSWIDGETS_LIST:-$repo/widgets/widgets.txt}"
@@ -25,15 +26,15 @@ switch_cmd="${WSWIDGETS_SWITCH:-$bin_dir/ws switch}"
 usage() {
     cat <<'USAGE'
 Usage:
-  wswidgets list                 widgets of the pinned wswidgets and their state here
-  wswidgets enabled              IDs enabled on this workstation, in panel order
-  wswidgets enable [-n] ID...    mark this workstation yes, then ws switch
-  wswidgets disable [-n] ID...   drop the line or mark this workstation no, then ws switch
-  wswidgets apply [--select]     offer the widgets not offered here yet, then ws switch
-  wswidgets update [-n]          newest wswidgets from GitHub: flake.lock, ws switch
-  wswidgets version              the pinned wswidgets revision
-  wswidgets status               ws-widgets status (the running runtime)
-  wswidgets check [--json]       ws check widgets
+  ws widgets list                 widgets of the pinned wswidgets and their state here
+  ws widgets enabled              IDs enabled on this workstation, in panel order
+  ws widgets enable [-n] ID...    mark this workstation yes, then ws switch
+  ws widgets disable [-n] ID...   drop the line or mark this workstation no, then ws switch
+  ws widgets apply [--select]     offer the widgets not offered here yet, then ws switch
+  ws widgets update [-n]          newest wswidgets from GitHub: flake.lock, ws switch
+  ws widgets version              the pinned wswidgets revision
+  ws widgets status               ws-widgets status (the running runtime)
+  ws widgets check [--json]       ws check widgets
 
 -n (--no-switch): only edit the list or flake.lock; ws switch applies it later.
 USAGE
@@ -156,7 +157,7 @@ cmd_enabled() {
 cmd_enable() {
     local no_switch=false id ids
     if no_switch_flag "${1:-}"; then no_switch=true; shift; fi
-    (($#)) || die "usage: wswidgets enable [-n] ID..."
+    (($#)) || die "usage: ws widgets enable [-n] ID..."
     require_layer
     ids="$(catalog_ids)" || exit 1
     for id in "$@"; do
@@ -173,7 +174,7 @@ cmd_enable() {
 cmd_disable() {
     local no_switch=false id result
     if no_switch_flag "${1:-}"; then no_switch=true; shift; fi
-    (($#)) || die "usage: wswidgets disable [-n] ID..."
+    (($#)) || die "usage: ws widgets disable [-n] ID..."
     require_layer
     for id in "$@"; do
         [[ "$(state_of "$id")" == yes ]] || die "$id is not enabled on $ws_host"
@@ -196,7 +197,7 @@ cmd_apply() {
     case "${1:-}" in
         --select) reselect=true ;;
         "") ;;
-        *) die "usage: wswidgets apply [--select]" ;;
+        *) die "usage: ws widgets apply [--select]" ;;
     esac
     load_host
     if [[ "$(layer)" != yes ]]; then
@@ -225,10 +226,10 @@ cmd_apply() {
             done
             changed=true
             ;;
-        2) echo "wswidgets: выбор отменён, предложенные виджеты не тронуты (спросит в следующий раз)" >&2 ;;
+        2) echo "ws widgets: выбор отменён, предложенные виджеты не тронуты (спросит в следующий раз)" >&2 ;;
         3)
-            [[ "$reselect" == false ]] || die "wswidgets apply --select: needs a terminal"
-            echo "Not offered on $ws_host yet (no terminal to ask): ${offered[*]}; run wswidgets apply in a terminal" >&2
+            [[ "$reselect" == false ]] || die "ws widgets apply --select: needs a terminal"
+            echo "Not offered on $ws_host yet (no terminal to ask): ${offered[*]}; run ws widgets apply in a terminal" >&2
             ;;
         *) exit "$rc" ;;
     esac
@@ -238,7 +239,7 @@ cmd_apply() {
 cmd_update() {
     local no_switch=false old new nix backup gone=() missing id
     if no_switch_flag "${1:-}"; then no_switch=true; shift; fi
-    (($# == 0)) || die "usage: wswidgets update [-n]"
+    (($# == 0)) || die "usage: ws widgets update [-n]"
     nix="$(nix_bin)"
     git -C "$repo" diff --quiet HEAD -- flake.lock \
         || die "flake.lock has uncommitted changes; commit or restore them first"
@@ -259,7 +260,7 @@ cmd_update() {
     new_ids="$(catalog_ids)" || { restore; exit 1; }
 
     # A widget enabled on some workstation must still exist: its home
-    # configuration would not build. Disable it first (wswidgets disable).
+    # configuration would not build. Disable it first (ws widgets disable).
     while IFS= read -r id; do
         [[ -n "$id" ]] || continue
         grep -Fxq -- "$id" <<<"$new_ids" && continue
@@ -275,7 +276,7 @@ cmd_update() {
     echo "wswidgets ${old:0:7} -> ${new:0:7} ($(lock_field date))"
     echo "  https://github.com/$(lock_field repo)/compare/$old...$new"
     missing="$(comm -13 <(sort <<<"$old_ids") <(sort <<<"$new_ids") | paste -sd ' ')"
-    [[ -z "$missing" ]] || echo "  new widgets: $missing (wswidgets apply offers them)"
+    [[ -z "$missing" ]] || echo "  new widgets: $missing (ws widgets apply offers them)"
     missing="$(comm -23 <(sort <<<"$old_ids") <(sort <<<"$new_ids") | paste -sd ' ')"
     [[ -z "$missing" ]] || echo "  removed widgets: $missing"
 

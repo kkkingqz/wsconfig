@@ -61,7 +61,7 @@ gnome/gnome.nix
 ```console
 $EDITOR ~/wsconfig/gnome/gnome.nix
 ws switch
-ws-gnome check
+ws gnome check
 ```
 
 Откат — `git revert`/правка и `ws switch` (или активация предыдущего
@@ -105,18 +105,18 @@ Distrobox settings
 Wine settings
 ```
 
-Keyboard shortcuts не перенесены в `dconf.settings`: `ws-keyboard restore`
+Keyboard shortcuts не перенесены в `dconf.settings`: `ws keyboard restore`
 и откат неудачного apply возвращают сочетания GNOME, а home-manager
 записывал бы их обратно при каждом `ws switch`.
 
-# ws-gnome
+# ws gnome
 
 Основной wrapper:
 
 ```console
-ws-gnome status
-ws-gnome check
-ws-gnome test
+ws gnome status
+ws gnome check
+ws gnome test
 ```
 
 Применяет профиль `ws switch`; откат — правка в репозитории и снова
@@ -125,7 +125,7 @@ ws-gnome test
 ## status
 
 ```console
-ws-gnome status
+ws gnome status
 ```
 
 Read-only inventory. Показывает GNOME/Wayland session, Mutter display state,
@@ -141,7 +141,7 @@ ws-gnome-status
 ## check
 
 ```console
-ws-gnome check
+ws gnome check
 ```
 
 Сравнивает сессию (`gsettings get`) с `~/.local/share/workstation/gnome/
@@ -198,7 +198,7 @@ local   gnome/extensions/<uuid>, копирует ws gnome extensions
   switch вернёт к списку; добавлять и убирать — в `gnome-extensions.nix`.
 - `~/.local/share/workstation/gnome/extensions.json` (`order` — все UUID по
   порядку, `by_source` — по источникам, `pins` — версии pin) — его читают
-  `ws-gnome check`, `ws-gnome-test`, `ws-gnome-status`, `ws check repo`,
+  `ws gnome check`, `ws-gnome-test`, `ws-gnome-status`, `ws check repo`,
   `ws update extensions` и `ws gnome extensions`.
 
 Все расширения списка обязательны. Посмотреть текущий список:
@@ -245,7 +245,7 @@ Desktop Icons NG и `ubuntu-dock@ubuntu.com` этим extension не патча�
 # Smoke-test
 
 ```console
-ws-gnome test
+ws gnome test
 ```
 
 или:

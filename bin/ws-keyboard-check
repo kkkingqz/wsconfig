@@ -15,8 +15,8 @@ set -o pipefail
 case "${1:-}" in
     --json) check_json_mode ;;
     "") ;;
-    -h|--help) echo "Usage: ws-keyboard check [--json]"; exit 0 ;;
-    *) echo "ws-keyboard check: unknown argument: $1" >&2; exit 64 ;;
+    -h|--help) echo "Usage: ws keyboard check [--json]"; exit 0 ;;
+    *) echo "ws keyboard check: unknown argument: $1" >&2; exit 64 ;;
 esac
 
 gget() {
@@ -87,11 +87,11 @@ else
         && pass "xremap.service wanted by graphical-session.target" \
         || fail "xremap.service wants link missing; run ws switch"
     [[ -e "$WS_STATE/keyboard/xremap.disabled" ]] \
-        && warn "xremap switched off by ws-keyboard restore (ws-keyboard apply turns it on)" \
-        || pass "xremap not switched off by ws-keyboard restore"
+        && warn "xremap switched off by ws keyboard restore (ws keyboard apply turns it on)" \
+        || pass "xremap not switched off by ws keyboard restore"
     [[ -s "$WS_STATE/keyboard/gsettings-backup.tsv" ]] \
-        && pass "original GNOME shortcuts saved for ws-keyboard restore" \
-        || warn "no ~/.local/state/workstation/keyboard/gsettings-backup.tsv; ws-keyboard restore has nothing to restore"
+        && pass "original GNOME shortcuts saved for ws keyboard restore" \
+        || warn "no ~/.local/state/workstation/keyboard/gsettings-backup.tsv; ws keyboard restore has nothing to restore"
     [[ -n "$xremap_env_bin" && "$xremap_env_bin" == "$xremap_real" ]] \
         && pass "xremap.service runs the same binary as ~/.local/bin/xremap" \
         || fail "xremap.service XREMAP_BIN ${xremap_env_bin:-unset} differs from ~/.local/bin/xremap"

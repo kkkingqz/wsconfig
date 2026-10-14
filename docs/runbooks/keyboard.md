@@ -600,8 +600,8 @@ gnome/extensions/workstation-input-source@local/
 Generated `gnome/extensions/*/schemas/gschemas.compiled` не коммитится.
 
 Machine-local state — вне checkout, в `~/.local/state/workstation/keyboard/`:
-`gsettings-backup.tsv` (сочетания GNOME до первого `ws-keyboard apply`, их
-возвращает `ws-keyboard restore`) и `xremap.disabled`.
+`gsettings-backup.tsv` (сочетания GNOME до первого `ws keyboard apply`, их
+возвращает `ws keyboard restore`) и `xremap.disabled`.
 
 ## Runtime installation
 
@@ -616,7 +616,7 @@ xremap binary — из Nix: `nix/pkgs/xremap.nix`, upstream
 ```
 
 Обновление xremap: версия и hash в `nix/pkgs/xremap.nix`, затем `ws switch`
-и `ws-keyboard restart`.
+и `ws keyboard restart`.
 
 xremap service — `systemd.user.services.xremap` home-manager
 (`keyboard/xremap.nix`); unit и ссылку в
@@ -636,10 +636,10 @@ home-manager перезапускает сервис (`--watch=config` store-ф�
 Без `XREMAP_CONFIG` `ws-xremap` не запускается.
 
 Включает сервис home-manager; решает, работает ли xremap, по-прежнему
-`ws-keyboard`. `restore` и неудачный `apply` создают флаг
+`ws keyboard`. `restore` и неудачный `apply` создают флаг
 `~/.local/state/workstation/keyboard/xremap.disabled` (в unit —
 `ConditionPathExists=!…`), поэтому xremap не стартует и после
-перезагрузки; `ws-keyboard apply` и `ws-keyboard start` флаг удаляют.
+перезагрузки; `ws keyboard apply` и `ws keyboard start` флаг удаляют.
 
 Наши GNOME extensions устанавливаются как реальные directories в:
 
@@ -658,16 +658,16 @@ home-manager перезапускает сервис (`--watch=config` store-ф�
 в `keyboard/keyboard.nix`. `ws switch` собирает из них
 `~/.local/share/workstation/keyboard/keyboard.json` (shortcuts и tiling);
 по ним работают `ws-keyboard-apply` (preflight, backup, установка),
-`ws-tiling-apply`, `ws-keyboard check` и `ws-keyboard-status`. Это не `dconf.settings`:
+`ws-tiling-apply`, `ws keyboard check` и `ws-keyboard-status`. Это не `dconf.settings`:
 сочетания ставятся только после preflight и запуска xremap, и
-`ws-keyboard restore` должен уметь вернуть исходные.
+`ws keyboard restore` должен уметь вернуть исходные.
 
 Изменить сочетание:
 
 ```console
 $EDITOR ~/wsconfig/keyboard/keyboard.nix
 ws switch
-ws-keyboard apply      # или ws-tiling-apply для Tiling
+ws keyboard apply      # или ws-tiling-apply для Tiling
 ```
 
 Исходное значение нового ключа в существующий backup не попадает: backup
@@ -676,7 +676,7 @@ ws-keyboard apply      # или ws-tiling-apply для Tiling
 Основной профиль:
 
 ```console
-ws-keyboard apply
+ws keyboard apply
 ```
 
 Tiling private bindings применяются через:
@@ -711,12 +711,12 @@ ws system apply
 ## Restore
 
 ```console
-ws-keyboard restore
+ws keyboard restore
 ```
 
 восстанавливает исходный snapshot GNOME shortcuts, останавливает xremap и
 ставит флаг `xremap.disabled` (см. «Runtime installation»): xremap не
-стартует до `ws-keyboard apply` или `ws-keyboard start`.
+стартует до `ws keyboard apply` или `ws keyboard start`.
 
 Он не удаляет Tiling Assistant, Window Control, `ws-touchbar-fn` или локальные
 GNOME extensions. Их lifecycle управляется отдельно.
@@ -726,16 +726,16 @@ GNOME extensions. Их lifecycle управляется отдельно.
 Полная read-only проверка:
 
 ```console
-ws-keyboard check
+ws keyboard check
 ws-workstation-verify     # GNOME ↔ клавиатура: мост xremap, Input Source, Tiling Assistant
 ```
 
 Основные ручные diagnostics:
 
 ```console
-ws-keyboard status
-ws-keyboard devices
-ws-keyboard gnome-apps
+ws keyboard status
+ws keyboard devices
+ws keyboard gnome-apps
 ws-input-source status
 
 systemctl --user status xremap.service

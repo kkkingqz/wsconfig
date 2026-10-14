@@ -24,7 +24,7 @@ bin/wsbox                        владелец: apply, check, update, recreat
 containers.ini   манифест distrobox assemble
 boxes.json       контейнеры по порядку: image, home, hooks, exports
                  (ALIAS: .desktop внутри контейнера), gpu; у Windows-боксов
-                 profile, driver, dpi, init_overrides (wsbox, wswin)
+                 profile, driver, dpi, init_overrides (ws box, ws windows)
 ```
 
 Host-пакеты (`podman`, `distrobox`, `uidmap`, …) — в `nix/hosts/apt.txt`,
@@ -41,7 +41,7 @@ t2bce-build     ручные сборки ядра/модулей (релиз ho
 touchbar-build  порт Touch Bar, Rust в своём HOME (релиз host)
 ```
 
-Windows-боксы и `wswin` — `helpws windows`.
+Windows-боксы и `ws windows` — `helpws windows`.
 
 HOME каждого — `~/distrobox/NAME`; он переживает `recreate`. Rootfs —
 расходный. HOME хоста смонтирован в контейнер по тому же пути
@@ -49,21 +49,21 @@ HOME каждого — `~/distrobox/NAME`; он переживает `recreate`
 
 Образы — теги: `archlinux:latest`, для build-контейнеров и
 `wine` — релиз host (`@HOST_VERSION_ID@` из `/etc/os-release`). После
-обновления Ubuntu `wsbox check` покажет drift образа → `wsbox recreate NAME`.
+обновления Ubuntu `ws box check` покажет drift образа → `ws box recreate NAME`.
 Digest (`repo@sha256:…`) тоже поддерживается.
 
 ## Команды
 
 ```console
-wsbox list | status [NAME] | apps [NAME]
-wsbox check [--json]
-wsbox dry-run [NAME]
-wsbox apply [--select|NAME]   создать недостающие, восстановить экспорты
-wsbox update [NAME...]        пакеты внутри (distrobox upgrade)
-wsbox recreate NAME           новый rootfs, тот же HOME
-wsbox remove NAME
-wsbox enter NAME | run NAME CMD [ARG...] | stop NAME
-wsbox export NAME APP | unexport NAME APP
+ws box list | status [NAME] | apps [NAME]
+ws box check [--json]
+ws box dry-run [NAME]
+ws box apply [--select|NAME]   создать недостающие, восстановить экспорты
+ws box update [NAME...]        пакеты внутри (distrobox upgrade)
+ws box recreate NAME           новый rootfs, тот же HOME
+ws box remove NAME
+ws box enter NAME | run NAME CMD [ARG...] | stop NAME
+ws box export NAME APP | unexport NAME APP
 ```
 
 `apply` не трогает существующий контейнер. `recreate` и `remove` меняют
@@ -72,8 +72,8 @@ wsbox export NAME APP | unexport NAME APP
 Какие контейнеры на какой машине — `distrobox/hosts.txt`: `NAME HOST=STATE…
 all=STATE`, те же пометки, что в `flatpak/apps.txt` (`helpws flatpak`):
 `yes` — создан, `no` — отказались, `ask` — не предложено; `all=` — для машины
-без своей пометки; контейнер без строки — ask. `wsbox create NAME` и
-`wsbox apply NAME` ставят своей машине `yes`, `wsbox remove NAME` удаляет
+без своей пометки; контейнер без строки — ask. `ws box create NAME` и
+`ws box apply NAME` ставят своей машине `yes`, `ws box remove NAME` удаляет
 строку, если других машин в ней нет, иначе ставит своей `no` (описание в
 `distrobox.nix` остаётся). `recreate` пометки не трогает. Публикует файл
 `ws sync`.
@@ -82,10 +82,10 @@ all=STATE`, те же пометки, что в `flatpak/apps.txt` (`helpws flat
 «Поставить все? [Y/n]», на `n` — список с галочками (Space, `a`, Enter,
 Esc/q), ответ пишется в `hosts.txt`. Esc/q отменяет только вопрос:
 предложенные остаются `ask`, контейнеры с `yes` всё равно создаются.
-`wsbox apply --select` спрашивает и о `no`. Без терминала не предложенные не
+`ws box apply --select` спрашивает и о `no`. Без терминала не предложенные не
 создаются.
 
-В Fish + Ghostty `wsbox enter NAME`, `distrobox enter NAME` и
+В Fish + Ghostty `ws box enter NAME`, `distrobox enter NAME` и
 `distrobox-enter -n NAME` меняют обычный цвет текста до выхода из контейнера.
 Цвета контейнеров и fallback задаются в `terminal/distrobox-colors.nix`
 и применяются через `ws switch`. Подробнее: `helpws terminal`,
@@ -94,9 +94,9 @@ Esc/q), ответ пишется в `hosts.txt`. Esc/q отменяет тол�
 ## Изменить контейнер
 
 1. Правка `distrobox/distrobox.nix`, `ws switch`.
-2. Новый контейнер — `wsbox apply NAME`; другой образ, пакеты или hooks —
-   `wsbox recreate NAME`.
-3. `wsbox check`.
+2. Новый контейнер — `ws box apply NAME`; другой образ, пакеты или hooks —
+   `ws box recreate NAME`.
+3. `ws box check`.
 
 Пакеты, поставленные руками внутри (AUR в `arch`), после `recreate` ставятся
 снова: `helpws rebuild`, раздел 6.3.
@@ -114,7 +114,7 @@ pacman -T NTSYNC-MODULE      # внутри: пустой вывод
 ls -l /dev/ntsync            # и на host, и внутри
 ```
 
-`wsbox check` проверяет пакет и отсутствие `linux`/`mkinitcpio` в
+`ws box check` проверяет пакет и отсутствие `linux`/`mkinitcpio` в
 контейнерах; `ws-workstation-verify` — модуль host и `/dev/ntsync` внутри.
 
 ## Граница host
@@ -126,6 +126,6 @@ managers, SDK) и Wine. Исключения — инфраструктура, �
 ## Проверка
 
 ```console
-wsbox check
+ws box check
 ws check
 ```

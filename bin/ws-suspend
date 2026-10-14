@@ -6,6 +6,7 @@ set -euo pipefail
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws suspend"
 # Build results (sources, modules per kernel): generated, not edited.
 cache="$HOME/.local/share/workstation/t2bce"
 
@@ -18,7 +19,7 @@ build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")
 
 usage() {
     cat <<'USAGE'
-Usage: ws-suspend <command> [KERNEL]
+Usage: ws suspend <command> [KERNEL]
 
   status                 show sleep mode, t2bce state and runtime drift (read-only)
   check [--json]         deep sleep, t2bce stateful sleep, Touch Bar mode (ws check)
@@ -118,7 +119,7 @@ cmd_t2bce_build() {
         printf '%-12s %-20s %s\n' "$m" "$(modinfo -F version "$out/$m.ko")" "$(modinfo -F vermagic "$out/$m.ko" | awk '{print $1}')"
     done
     echo
-    echo "Built into $out. Install with: ws-suspend t2bce-install $kver"
+    echo "Built into $out. Install with: ws suspend t2bce-install $kver"
 }
 
 cmd_t2bce_install() {
@@ -127,7 +128,7 @@ cmd_t2bce_install() {
     dest="/lib/modules/$kver/updates/t2bce"
     [[ -d "/lib/modules/$kver" ]] || die "kernel $kver is not installed"
     for m in "${t2bce_modules[@]}"; do
-        [[ -r "$out/$m.ko" ]] || die "missing $out/$m.ko; run: ws-suspend t2bce-build $kver"
+        [[ -r "$out/$m.ko" ]] || die "missing $out/$m.ko; run: ws suspend t2bce-build $kver"
         vm="$(modinfo -F vermagic "$out/$m.ko" | awk '{print $1}')"
         [[ "$vm" == "$kver" ]] || die "vermagic mismatch in $m.ko: $vm"
     done

@@ -119,7 +119,7 @@ git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
    generic, корень берёт из командной строки ядра).
 2. `/` — `@`: проверяет, что все пять смонтированы из своих subvolumes;
    swapfile установщика, если он был, создаётся заново того же размера в
-   `@swap` (`ws-suspend swap-setup`, `helpws suspend`); при
+   `@swap` (`ws suspend swap-setup`, `helpws suspend`); при
    `boot = "refind-…"` в `facts.nix` (mbp16) делает `@` default subvolume —
    rEFInd берёт ядро из него, хост только с GRUB оставляет default 5;
    показывает старый корень на верхнем уровне (ровно то, что там было до
@@ -163,7 +163,7 @@ wpctl status
 bluetoothctl show
 ```
 
-Патченые модули t2bce — `ws-suspend t2bce-build && ws-suspend t2bce-install`,
+Патченые модули t2bce — `ws suspend t2bce-build && ws suspend t2bce-install`,
 i915 с PSR — `ws-psr build && ws-psr install` (раздел 8).
 
 # 5. Boot / rEFInd
@@ -277,9 +277,9 @@ host`, переопределяет `WS_HOST=<name>`); для новой маш�
 установленными; ничего не меняет. Пустой вывод — система совпадает с repo.
 `ws check apt` сравнивает списки apt с установленными пакетами и только
 сообщает о различиях. `ws check` запускает проверки владельцев: `ws check
-repo` (checkout), `ws check home` (home-manager, Nix, man), `ws-keyboard
-check`, `ws-gnome check`, `wsflatpak check`, `wsbox check`, `wswin check`,
-`ws-suspend check`, `ws system check`, `ws check apt` и последним
+repo` (checkout), `ws check home` (home-manager, Nix, man), `ws keyboard
+check`, `ws gnome check`, `ws flatpak check`, `ws box check`, `ws windows check`,
+`ws suspend check`, `ws system check`, `ws check apt` и последним
 `ws-workstation-verify` — только связи между слоями (GNOME ↔ клавиатура,
 ядро ↔ t2bce, загрузка ↔ dGPU, Distrobox ↔ NTSync). Каждая проверка с
 `--json` печатает один объект `{"status","passes","warnings","failures",
@@ -288,7 +288,7 @@ check`, `ws-gnome check`, `wsflatpak check`, `wsbox check`, `wswin check`,
 `ws update` обновляет всё, что не закреплено, до последних версий: apt
 (`sudo apt full-upgrade`, `linux-t2` остаётся held), Nix (`nix flake update`,
 разница пакетов, switch; изменившийся `flake.lock` публикует `ws sync`), Flatpak,
-пакеты внутри контейнеров (`wsbox update`) и расширения с
+пакеты внутри контейнеров (`ws box update`) и расширения с
 extensions.gnome.org (GNOME Shell скачивает обновления, как Extension
 Manager; ставятся после logout/login). Отдельный шаг — `ws update nix`.
 Закреплены намеренно: ядро (`linux-t2`, `system/kernel/t2bce/t2bce.nix`),
@@ -332,9 +332,9 @@ checkpoint/NAME`, `ws switch`, `ws system apply`, `ws apply`, загрузка
 
 Flatpak: remotes объявлены в `flatpak/flatpak.nix`, приложения — в
 `flatpak/apps.txt`, overrides — в `flatpak/overrides.txt` (оба правит
-`wsflatpak`, публикует `ws sync`); `ws switch` собирает из них
+`ws flatpak`, публикует `ws sync`); `ws switch` собирает из них
 `~/.local/share/workstation/flatpak/` и ставит `.desktop` Claude, шаг `flatpak`
-в `ws apply` (`wsflatpak apply`) добавляет remotes, ставит приложения и
+в `ws apply` (`ws flatpak apply`) добавляет remotes, ставит приложения и
 применяет overrides (`helpws flatpak`).
 
 Разделы 6.1–10 ниже описывают те же шаги по отдельности.
@@ -344,8 +344,8 @@ Flatpak: remotes объявлены в `flatpak/flatpak.nix`, приложени
 После clone repository сначала проверить текущий desktop state:
 
 ```console
-ws-gnome status
-ws-gnome check
+ws gnome status
+ws gnome check
 ```
 
 Source of truth:
@@ -355,7 +355,7 @@ gnome/gnome.nix
 ```
 
 Профиль записывает `ws switch` (home-manager `dconf.settings`); отдельного
-шага в `ws apply` нет. Drift в `ws-gnome check` значит, что ключ изменили
+шага в `ws apply` нет. Drift в `ws gnome check` значит, что ключ изменили
 вручную: следующий `ws switch` запишет значение из `gnome.nix` снова.
 
 Профиль не управляет display scale, `monitors.xml`, Mutter
@@ -381,7 +381,7 @@ Wine не устанавливать на host: Windows-программы жи�
 
 Host-пакеты (`podman`, `distrobox`, `uidmap`, …) ставит `bootstrap.sh`,
 модуль `ntsync` — `ws system apply`, контейнеры — шаг `distrobox` в `ws
-apply` (`wsbox apply`). HOME контейнеров (`~/distrobox/<имя>/`) приходит с
+apply` (`ws box apply`). HOME контейнеров (`~/distrobox/<имя>/`) приходит с
 восстановленным HOME пользователя; без него контейнеры создаются пустыми.
 
 Вручную после создания:
@@ -397,8 +397,8 @@ apply` (`wsbox apply`). HOME контейнеров (`~/distrobox/<имя>/`) п
   rm -rf "$tmp"
   ```
 
-  затем нужные AUR-пакеты и `wsbox apply arch` (экспорты).
-- WinBox, если prefix потерян: `wswin prefix --box wine-wayland winbox init`
+  затем нужные AUR-пакеты и `ws box apply arch` (экспорты).
+- WinBox, если prefix потерян: `ws windows prefix --box wine-wayland winbox init`
   и `winbox.exe` (WinBox 3.x, mikrotik.com) в
   `~/distrobox/wine-wayland/prefixes/winbox/drive_c/Program Files/WinBox/`.
 - Rust в `touchbar-build`, если его HOME потерян: rustup в HOME контейнера
@@ -409,7 +409,7 @@ hook), Wine/WineHQ/umu — хуки Windows-контейнеров. Steam — fl
 контроллеров — `steam-devices` (apt-список).
 
 ```console
-wsbox check
+ws box check
 ```
 
 Подробности: `helpws distrobox`, `helpws windows`.
@@ -424,7 +424,7 @@ wsbox check
 logout/login и ещё один `ws apply`.
 
 ```console
-ws-keyboard check
+ws keyboard check
 ws-input-source status
 ```
 
@@ -464,8 +464,8 @@ deep / S3
 t2bce собираются под установленное ядро:
 
 ```console
-ws-suspend t2bce-build
-ws-suspend t2bce-install
+ws suspend t2bce-build
+ws suspend t2bce-install
 ws-psr build
 ws-psr install
 sudo reboot
@@ -481,8 +481,8 @@ sudo reboot
 Проверить:
 
 ```bash
-ws-suspend check
-ws-suspend status
+ws suspend check
+ws suspend status
 ```
 
 Затем ручной тест:
@@ -521,7 +521,7 @@ Touch Bar USB runtime PM специально не оптимизировать.
 Проверить:
 
 ```console
-ws-suspend check      # USB configuration 1, без appletbdrm, ws-touchbar-fn active
+ws suspend check      # USB configuration 1, без appletbdrm, ws-touchbar-fn active
 ```
 
 Не устанавливать Touch Bar renderer/daemon, которые переводят Touch Bar в
@@ -567,7 +567,7 @@ ws gnome extensions
 Закрепить версию: `pin = { version = N; hash = "sha256-…"; }` у расширения
 в `gnome/gnome-extensions.nix` (N — номер из ссылки на zip EGO), `ws
 switch`. Такое расширение ставит Nix ссылками, и обновлять его в Extension
-Manager нельзя: `ws-gnome check` покажет FAIL «files not from Nix», `ws update
+Manager нельзя: `ws gnome check` покажет FAIL «files not from Nix», `ws update
 extensions` при закреплённых расширениях отказывается.
 
 `Window Monitor Pro` обязателен в списке расширений; клавиатура от него не
@@ -589,7 +589,7 @@ closed Dock app + external file drag + long hover
 # 10.1. Проверка GNOME
 
 ```console
-ws-gnome test        # автоматическая часть: RESULT: AUTOMATED CHECKS PASSED
+ws gnome test        # автоматическая часть: RESULT: AUTOMATED CHECKS PASSED
 ```
 
 Затем по его списку вручную, в том числе Dock Spring:

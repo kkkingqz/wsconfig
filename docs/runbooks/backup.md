@@ -29,7 +29,7 @@ ws backup recovery-export OUTPUT      # один автономный ws-restore
 `list` показывает локальные копии всех scope: дату создания, источник
 (снимок Timeshift или отдельный send), статус передачи и какая из них —
 сохранённый parent для следующей инкрементальной передачи. Копия без ro-флага
-помечается `NOT READ-ONLY`. `wsbackup list` — та же команда.
+помечается `NOT READ-ONLY`. `ws backup list` — та же команда.
 `ws check backup` без sudo и сети проверяет mount `@wsbackup`, его строку fstab,
 alias SSH и ключ.
 

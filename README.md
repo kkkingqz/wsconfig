@@ -3,7 +3,7 @@
 Конфигурация рабочей станции: Ubuntu 26.04 + GNOME 50 (Wayland) на MacBook
 Pro 16" 2019 с T2 (`MacBookPro16,1`). Ubuntu остаётся базовой системой; Nix и
 home-manager доставляют конфигурацию поверх неё, владельцы слоёв (`ws`,
-`wsflatpak`, `wsbox`, `wswin`, `ws-keyboard`, `ws-gnome`, `ws-suspend`)
+`ws flatpak`, `ws box`, `ws windows`, `ws keyboard`, `ws gnome`, `ws suspend`)
 применяют и проверяют её.
 
 ## Установка
@@ -43,9 +43,9 @@ keyboard/       macOS-клавиатура: xremap, сочетания GNOME и 
 gnome/          профиль GNOME, расширения (свои — gnome/extensions/)
 widgets/        слой виджетов: wswidgets из flake.lock, widgets.txt по хостам (wswidgets)
 terminal/       Ghostty, fish, micro, xdg-terminal-exec
-flatpak/        приложения (apps.txt), remotes и overrides (wsflatpak)
-distrobox/      контейнеры Distrobox и их hooks (wsbox)
-windows/        Windows-программы в контейнерах Wine/Proton (wswin)
+flatpak/        приложения (apps.txt), remotes и overrides (ws flatpak)
+distrobox/      контейнеры Distrobox и их hooks (ws box)
+windows/        Windows-программы в контейнерах Wine/Proton (ws windows)
 remmina/        RDP-клиент Remmina из Nix: H.264, файлы через буфер
 virt/           виртуальные машины: KVM, libvirt, virt-manager (ссылка ~/VMs)
 bin/            команды; ссылками в ~/.local/bin

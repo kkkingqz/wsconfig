@@ -19,8 +19,8 @@ proton        Arch                 umu-launcher + Proton: игры, тяжёло
 ```
 
 Описаны в `distrobox/distrobox.nix` (`windows = { profile; driver; dpi; }`),
-живут как обычные managed boxes: `wsbox status`, `wsbox update`,
-`wsbox recreate NAME`. HOME каждого — `~/distrobox/NAME`, переживает
+живут как обычные managed boxes: `ws box status`, `ws box update`,
+`ws box recreate NAME`. HOME каждого — `~/distrobox/NAME`, переживает
 recreate. Что ставится при создании:
 
 ```text
@@ -42,7 +42,7 @@ Proton и Steam Runtime umu скачивает при первом запуск�
 свой          ~/distrobox/BOX/prefixes/NAME
 ```
 
-При создании prefix `wswin` задаёт драйвер (`wine-wayland`: `Graphics=wayland`
+При создании prefix `ws windows` задаёт драйвер (`wine-wayland`: `Graphics=wayland`
 в `HKCU\Software\Wine\Drivers`) и DPI контейнера (`wine`: `LogPixels=192`,
 200% при `xwayland-native-scaling`). Настройки стандартного prefix общие для
 всех программ в нём.
@@ -60,22 +60,22 @@ Windows: кодировка `cp1251` для не-Unicode программ. С `C
 (`LC_MESSAGES=en_US.UTF-8`) оставляет его английским, как в сессии host. Локаль есть в Arch-контейнерах
 (glibc-locales), в `wine` её создаёт `distrobox/wine/locale-hook`.
 
-## wswin
+## ws windows
 
 ```console
-wswin list
-wswin install [--box BOX] [--prefix NAME] [--desktop[=WxH]] SETUP.exe|.msi [ARG...]
-wswin portable [--box BOX] [--prefix NAME] FILE.exe|DIR|FILE.zip [APPNAME]
-wswin run APP [ARG...]
-wswin exec [--box BOX] [--prefix NAME] [--desktop[=WxH]] PROGRAM [ARG...]
-wswin prefix [--box BOX] NAME init [--dpi N]
-wswin prefix [--box BOX] NAME winecfg|regedit|kill|path
-wswin prefix [--box BOX] NAME winetricks [ARG...]
-wswin prefix [--box BOX] NAME remove
-wswin shell [--box BOX] [--prefix NAME]
-wswin menu [--box BOX] [--prefix NAME] add [PROGRAM.exe [TITLE]]
-wswin menu list|sync
-wswin menu remove ID
+ws windows list
+ws windows install [--box BOX] [--prefix NAME] [--desktop[=WxH]] SETUP.exe|.msi [ARG...]
+ws windows portable [--box BOX] [--prefix NAME] FILE.exe|DIR|FILE.zip [APPNAME]
+ws windows run APP [ARG...]
+ws windows exec [--box BOX] [--prefix NAME] [--desktop[=WxH]] PROGRAM [ARG...]
+ws windows prefix [--box BOX] NAME init [--dpi N]
+ws windows prefix [--box BOX] NAME winecfg|regedit|kill|path
+ws windows prefix [--box BOX] NAME winetricks [ARG...]
+ws windows prefix [--box BOX] NAME remove
+ws windows shell [--box BOX] [--prefix NAME]
+ws windows menu [--box BOX] [--prefix NAME] add [PROGRAM.exe [TITLE]]
+ws windows menu list|sync
+ws windows menu remove ID
 ```
 
 - По умолчанию `--box wine-wayland` и стандартный prefix (`NAME` = `default`).
@@ -88,28 +88,28 @@ wswin menu remove ID
   размер игнорируется (проверено 2026-09-28).
 - Файлы из host HOME, `/tmp`, `/media`, `/mnt` видны в контейнере по тому же
   пути.
-- Двойной клик по `.exe` в «Файлах» — `wswin exec --box wine-wayland FILE`:
+- Двойной клик по `.exe` в «Файлах» — `ws windows exec --box wine-wayland FILE`:
   стандартный prefix `wine-wayland` (создаётся при первом запуске), запуск
   из каталога файла. Обработчик `ws-win-exe.desktop` (`windows/apps.nix`),
   `ws switch` делает его приложением по умолчанию для типов `.exe`
   (`xdg-mime`, только эти ключи `~/.config/mimeapps.list`). Установщик,
   запущенный так, работает, но пунктов меню не предлагает (нет терминала для
-  вопросов): для этого — `wswin install` или потом `wswin menu add`.
+  вопросов): для этого — `ws windows install` или потом `ws windows menu add`.
 
 ## Меню GNOME
 
 Установщик создаёт ярлыки Windows (`.lnk`) в меню «Пуск» и на рабочем столе
-prefix. После установщика `wswin install` спрашивает про каждый новый ярлык
+prefix. После установщика `ws windows install` спрашивает про каждый новый ярлык
 этого prefix, добавить ли его в меню host (по одному вопросу на exe; ярлыки
 не на exe пропускаются). Так же во всех контейнерах, включая `proton`
-(Proton не создаёт Linux-пунктов Wine). Позже — `wswin menu --box BOX
+(Proton не создаёт Linux-пунктов Wine). Позже — `ws windows menu --box BOX
 --prefix NAME add`; пункт на любой exe —
-`wswin menu --box BOX --prefix NAME add PROGRAM.exe [TITLE]` (путь на host
+`ws windows menu --box BOX --prefix NAME add PROGRAM.exe [TITLE]` (путь на host
 или внутри prefix). Иконка берётся из exe (`icoutils` в контейнере), запуск
 — из каталога программы.
 
 ```console
-wswin install --prefix foo ~/Downloads/foo-setup.exe
+ws windows install --prefix foo ~/Downloads/foo-setup.exe
 ```
 
 Portable-программа (exe, каталог или zip) копируется в
@@ -117,21 +117,21 @@ Portable-программа (exe, каталог или zip) копируетс�
 иконка берётся из exe (`icoutils` в контейнере), затем вопрос про меню:
 
 ```console
-wswin portable --prefix tools ~/Downloads/tool.zip
+ws windows portable --prefix tools ~/Downloads/tool.zip
 ```
 
 Пункт меню хранится в prefix (`PREFIX/.wswin/menu/wswin-BOX-PREFIX-NAME.desktop`
 и иконка), в `~/.local/share/applications` — ссылка на него. Запуск:
-`wswin exec --box BOX --prefix NAME …`. Удаляется вместе с prefix
-(`wswin prefix … remove`) или `wswin menu remove ID`; после новой
-системы с сохранённым HOME — `wswin menu sync`.
+`ws windows exec --box BOX --prefix NAME …`. Удаляется вместе с prefix
+(`ws windows prefix … remove`) или `ws windows menu remove ID`; после новой
+системы с сохранённым HOME — `ws windows menu sync`.
 
 Программы, которые должны возвращаться вместе с репозиторием, — в
 `windows/apps.nix` (`exe` — путь внутри prefix), `ws switch`: launcher
-`ws-win-NAME.desktop` (`wswin run NAME`), как у WinBox. Launcher ставится
+`ws-win-NAME.desktop` (`ws windows run NAME`), как у WinBox. Launcher ставится
 только на машине, где box программы помечен `HOST=yes` в
 `distrobox/hosts.txt` (`helpws distrobox`); `ws-win-exe.desktop` и обработчик
-`.exe` — там, где помечен `wine-wayland`. `wswin check` программы других
+`.exe` — там, где помечен `wine-wayland`. `ws windows check` программы других
 box не проверяет (INFO).
 
 ## GPU
@@ -143,7 +143,7 @@ ws-gpu status
 `proton` (`gpu = "amd"` в `distrobox.nix`) и Steam работают на AMD, если
 система загружена в rEFInd «Ubuntu (AMD)», иначе на Intel. `ws-gpu` ищет
 render node с драйвером `amdgpu` при каждом запуске и передаёт
-`DRI_PRIME=pci-0000_03_00_0`; `wsbox enter/run proton` добавляют его через
+`DRI_PRIME=pci-0000_03_00_0`; `ws box enter/run proton` добавляют его через
 `distrobox enter --additional-flags`, поэтому контейнер один для обеих
 загрузок. `wine` и `wine-wayland` GPU не выбирают.
 
@@ -166,19 +166,19 @@ render node с драйвером `amdgpu` при каждом запуске и
 Программа или игра со своим prefix — вместе с её пунктами меню:
 
 ```console
-wswin prefix --box BOX NAME remove
+ws windows prefix --box BOX NAME remove
 ```
 
 Контейнер целиком (навсегда):
 
-1. `wsbox remove BOX` — rootfs (пока контейнер ещё в `distrobox.nix`);
+1. `ws box remove BOX` — rootfs (пока контейнер ещё в `distrobox.nix`);
 2. убрать контейнер из `distrobox/distrobox.nix` и его программы из
    `windows/apps.nix`, `ws switch`;
 3. `rm -rf ~/distrobox/BOX` — HOME: prefixes, программы, сохранения;
-4. `wswin menu sync` — убрать ссылки меню, ставшие битыми (`ws check`
+4. `ws windows menu sync` — убрать ссылки меню, ставшие битыми (`ws check`
    предупреждает о них).
 
-`wsbox remove`/`recreate` HOME не трогают намеренно: пересоздание
+`ws box remove`/`recreate` HOME не трогают намеренно: пересоздание
 контейнера не теряет программ. Шаги по отдельности проверены (recreate,
 удаление prefix со ссылками, предупреждение `ws check`); цепочка целиком не
 прогонялась.
@@ -187,6 +187,6 @@ wswin prefix --box BOX NAME remove
 
 ```console
 ws check
-wsbox check
-wswin list
+ws box check
+ws windows list
 ```

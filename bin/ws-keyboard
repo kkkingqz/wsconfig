@@ -5,7 +5,7 @@ set -euo pipefail
 
 usage() {
     cat <<'USAGE'
-Usage: ws-keyboard COMMAND
+Usage: ws keyboard COMMAND
 
 Commands:
   apply       Apply GNOME shortcuts, symlinks and start xremap if ready

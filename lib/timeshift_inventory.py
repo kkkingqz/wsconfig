@@ -92,5 +92,5 @@ if __name__ == '__main__':
             result = matches[0]
         print(json.dumps(result))
     except (ValueError, OSError) as e:
-        print('wsbackup: ' + str(e), file=sys.stderr)
+        print('ws backup: ' + str(e), file=sys.stderr)
         sys.exit(1)

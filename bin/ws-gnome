@@ -25,7 +25,7 @@ The profile is applied by `ws switch` (gnome/gnome.nix).
 USAGE
         ;;
     *)
-        echo "ws-gnome: unknown command: $cmd" >&2
+        echo "ws gnome: unknown command: $cmd" >&2
         exit 64
         ;;
 esac

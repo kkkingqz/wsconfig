@@ -36,7 +36,7 @@ USER_APPLICATIONS = Path.home() / ".local/share/applications"
 # all=STATE for a workstation without its own mark. install/manage mark this
 # workstation yes, remove drops the line or marks it no, apply asks about
 # the apps not offered here yet (lib/ws_select.py) and records the answer.
-SELECT_HINT = "wsflatpak apply --select"
+SELECT_HINT = "ws flatpak apply --select"
 # overrides.txt lines carry marks after APP KIND VALUE, yes or no only: a
 # line applies where its state is yes, all=yes when unmarked; flatpak.nix
 # builds those of this workstation. filesystem/env/talk mark it yes, un…
@@ -61,7 +61,7 @@ def app_marks():
     try:
         return ws_marks.MarkedList(APPS_LIST, key_fields={2})
     except ValueError as e:
-        raise SystemExit(f"wsflatpak: {e}")
+        raise SystemExit(f"ws flatpak: {e}")
 
 
 def run(args, check=True, capture=False):
@@ -73,22 +73,22 @@ def run(args, check=True, capture=False):
 
 def need_flatpak():
     if not shutil.which("flatpak"):
-        raise SystemExit("wsflatpak: flatpak is not installed")
+        raise SystemExit("ws flatpak: flatpak is not installed")
 
 
 def ensure_cfg():
     if not MANIFEST.is_file():
         raise SystemExit(
-            f"wsflatpak: {CFG} is missing; run `ws switch` "
+            f"ws flatpak: {CFG} is missing; run `ws switch` "
             f"(built from {SOURCE})"
         )
 
 
 def declare_hint(action, snippet):
     raise SystemExit(
-        f"wsflatpak: Flatpak state is declared in {SOURCE}.\n"
+        f"ws flatpak: Flatpak state is declared in {SOURCE}.\n"
         f"{action}:\n\n    {snippet}\n\n"
-        "then: ws switch && wsflatpak apply"
+        "then: ws switch && ws flatpak apply"
     )
 
 
@@ -97,7 +97,7 @@ def parse_managed_line(raw):
     try:
         parts = ws_marks.Line(raw).key
     except ValueError as e:
-        raise SystemExit(f"wsflatpak: invalid managed app line: {e}")
+        raise SystemExit(f"ws flatpak: invalid managed app line: {e}")
 
     if not parts:
         return None
@@ -106,14 +106,14 @@ def parse_managed_line(raw):
     if len(parts) == 2:
         return parts[0], parts[1]
 
-    raise SystemExit(f"wsflatpak: invalid managed app line (REMOTE APP): {raw}")
+    raise SystemExit(f"ws flatpak: invalid managed app line (REMOTE APP): {raw}")
 
 
 def manifest():
     ensure_cfg()
     data = ws_common.load(MANIFEST)
     if not isinstance(data, dict):
-        raise SystemExit(f"wsflatpak: {MANIFEST} is not a manifest; run `ws switch`")
+        raise SystemExit(f"ws flatpak: {MANIFEST} is not a manifest; run `ws switch`")
     return data
 
 
@@ -127,7 +127,7 @@ def managed_entries():
         if app in seen:
             if seen[app] != remote:
                 raise SystemExit(
-                    f"wsflatpak: app {app} is assigned to multiple remotes: "
+                    f"ws flatpak: app {app} is assigned to multiple remotes: "
                     f"{seen[app]}, {remote}"
                 )
             continue
@@ -176,7 +176,7 @@ def list_remove(app):
     ]
 
     if len(keep) == len(lines):
-        raise SystemExit(f"wsflatpak: {app} is not in {APPS_LIST}")
+        raise SystemExit(f"ws flatpak: {app} is not in {APPS_LIST}")
 
     APPS_LIST.write_text("".join(keep))
     print(
@@ -196,7 +196,7 @@ def override_marks():
     try:
         return ws_marks.MarkedList(OVERRIDES_LIST, **ws_marks.OVERRIDES)
     except ValueError as e:
-        raise SystemExit(f"wsflatpak: {e}")
+        raise SystemExit(f"ws flatpak: {e}")
 
 
 def parse_override_line(raw):
@@ -204,14 +204,14 @@ def parse_override_line(raw):
     try:
         parts = ws_marks.Line(raw, fixed=3).key
     except ValueError as e:
-        raise SystemExit(f"wsflatpak: invalid line in {OVERRIDES_LIST}: {e}")
+        raise SystemExit(f"ws flatpak: invalid line in {OVERRIDES_LIST}: {e}")
 
     if not parts:
         return None
 
     if len(parts) != 3 or parts[1] not in OVERRIDE_KINDS:
         raise SystemExit(
-            f"wsflatpak: invalid line in {OVERRIDES_LIST}: {raw.rstrip()}"
+            f"ws flatpak: invalid line in {OVERRIDES_LIST}: {raw.rstrip()}"
         )
 
     return tuple(parts)
@@ -306,7 +306,7 @@ def overrides_add(entry):
     marks.save()
     print(
         f"{action} {OVERRIDES_LIST}: {line.render() or text}\n"
-        "then: ws switch && wsflatpak apply; ws sync"
+        "then: ws switch && ws flatpak apply; ws sync"
     )
 
 
@@ -321,7 +321,7 @@ def overrides_remove(key):
 
     if not active:
         raise SystemExit(
-            f"wsflatpak: not declared for {host} in {OVERRIDES_LIST}: {' '.join(key)}"
+            f"ws flatpak: not declared for {host} in {OVERRIDES_LIST}: {' '.join(key)}"
         )
 
     for x in active:
@@ -329,7 +329,7 @@ def overrides_remove(key):
         done = "Removed from" if result == "removed" else f"Marked {host}=no in"
         print(f"{done} {OVERRIDES_LIST}: {' '.join(x.key)}")
     marks.save()
-    print("then: ws switch && wsflatpak apply; ws sync")
+    print("then: ws switch && ws flatpak apply; ws sync")
 
 
 def cmd_override(ns):
@@ -346,13 +346,13 @@ def cmd_override(ns):
         elif "=" in ns.key:
             value = ns.key
         else:
-            raise SystemExit("wsflatpak: env needs KEY VALUE or KEY=VALUE")
+            raise SystemExit("ws flatpak: env needs KEY VALUE or KEY=VALUE")
     else:
         value = ns.key if kind == "env" else ns.value
 
     if not value or any(c.isspace() or c == "#" for c in value):
         raise SystemExit(
-            f"wsflatpak: {kind} value must be one word without #: {value!r}"
+            f"ws flatpak: {kind} value must be one word without #: {value!r}"
         )
 
     if kind == "filesystem":
@@ -422,7 +422,7 @@ def resolve_user_app(query):
 
     if len(exact) > 1:
         raise SystemExit(
-            "wsflatpak: ambiguous app name "
+            "ws flatpak: ambiguous app name "
             + query
             + ": "
             + ", ".join(exact)
@@ -447,14 +447,14 @@ def resolve_user_app(query):
 
     if len(fuzzy) > 1:
         raise SystemExit(
-            "wsflatpak: ambiguous app name "
+            "ws flatpak: ambiguous app name "
             + query
             + ": "
             + ", ".join(fuzzy)
         )
 
     raise SystemExit(
-        f"wsflatpak: {query} is not installed in user scope"
+        f"ws flatpak: {query} is not installed in user scope"
     )
 
 
@@ -496,7 +496,7 @@ def ensure_user_runtime(app, install_args=()):
         capture=True,
     ).stdout.strip()
     if not runtime:
-        raise SystemExit(f"wsflatpak: could not determine runtime for {app}")
+        raise SystemExit(f"ws flatpak: could not determine runtime for {app}")
 
     ref = f"runtime/{runtime}"
     if run(
@@ -522,7 +522,7 @@ def ensure_user_runtime(app, install_args=()):
             break
     else:
         raise SystemExit(
-            f"wsflatpak: no user remote provides runtime {runtime} for {app}"
+            f"ws flatpak: no user remote provides runtime {runtime} for {app}"
         )
 
     print(f"Installing user runtime for {app}: {remote} {runtime}")
@@ -653,7 +653,7 @@ def apply_override(app):
     for name, policy in read_managed_session_bus(app).items():
         if policy != "talk":
             raise SystemExit(
-                f"wsflatpak: unsupported session bus policy: "
+                f"ws flatpak: unsupported session bus policy: "
                 f"{name}={policy}"
             )
 
@@ -686,7 +686,7 @@ def cmd_install(ns):
 
     if ns.remote not in remotes:
         raise SystemExit(
-            f"wsflatpak: user remote not configured: {ns.remote}"
+            f"ws flatpak: user remote not configured: {ns.remote}"
         )
 
     before = set(user_app_refs())
@@ -1036,17 +1036,17 @@ def cmd_check(json_mode=False):
 
         if not installed_user(app):
             if state == "yes":
-                fail(f"managed app missing: {app} ({host}=yes; wsflatpak apply)")
+                fail(f"managed app missing: {app} ({host}=yes; ws flatpak apply)")
             elif state == "no":
                 info(f"managed app declined on {host}: {app} ({SELECT_HINT})")
             else:
-                info(f"managed app not offered on {host} yet: {app} (wsflatpak apply asks)")
+                info(f"managed app not offered on {host} yet: {app} (ws flatpak apply asks)")
             continue
 
         if state == "no":
-            warn(f"managed app installed but marked {host}=no: {app} (wsflatpak remove, or install to mark yes)")
+            warn(f"managed app installed but marked {host}=no: {app} (ws flatpak remove, or install to mark yes)")
         elif state == "ask":
-            warn(f"managed app installed but not marked for {host}: {app} (wsflatpak apply marks it)")
+            warn(f"managed app installed but not marked for {host}: {app} (ws flatpak apply marks it)")
         else:
             passed(f"managed app installed: {app}")
 
@@ -1288,13 +1288,13 @@ def cmd_apply(reselect=False):
         chosen = []
         if offer:
             print(f"Not offered on {host} yet (no terminal to ask): "
-                  f"{', '.join(app for app, _ in offer)}; run wsflatpak apply in a terminal",
+                  f"{', '.join(app for app, _ in offer)}; run ws flatpak apply in a terminal",
                   file=sys.stderr)
         offer = []
     if chosen is None:
         # Cancel answers only the question: the offered apps keep their
         # marks and are asked about next time; the rest is applied.
-        print("wsflatpak: выбор отменён, предложенные приложения не тронуты "
+        print("ws flatpak: выбор отменён, предложенные приложения не тронуты "
               "(спросит в следующий раз)", file=sys.stderr)
         chosen, offer = [], []
     for app, remote in offer:
@@ -1468,7 +1468,7 @@ Runtimes с ручным pin сохраняются.
 
 def build_parser():
     p = argparse.ArgumentParser(
-        prog="wsflatpak",
+        prog="ws flatpak",
         description="Пользовательские Flatpak-приложения и их конфигурация в wsconfig.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Установка в домашний каталог:
