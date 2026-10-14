@@ -279,10 +279,13 @@ def run(cmd, **kw):
     return subprocess.run(cmd, check=True, text=True, stdout=subprocess.PIPE, **kw).stdout
 
 
-def outputs(ref):
-    """{name: store path} of system-HOST and home-HOST of a flake."""
-    homes = json.loads(run(["nix", "eval", "--json", f"{ref}#homeConfigurations", "--apply", "builtins.attrNames"]))
-    systems = json.loads(run(["nix", "eval", "--json", f"{ref}#packages.{SYSTEM}", "--apply",
+def outputs(ref, extra=()):
+    """{name: store path} of system-HOST and home-HOST of a flake; EXTRA:
+    arguments of every nix call (--override-input)."""
+    extra = list(extra)
+    homes = json.loads(run(["nix", "eval", *extra, "--json", f"{ref}#homeConfigurations", "--apply",
+                            "builtins.attrNames"]))
+    systems = json.loads(run(["nix", "eval", *extra, "--json", f"{ref}#packages.{SYSTEM}", "--apply",
                               'p: builtins.filter (n: builtins.substring 0 7 n == "system-") (builtins.attrNames p)']))
     names, installables = [], []
     for home in homes:
@@ -291,7 +294,7 @@ def outputs(ref):
     for system in systems:
         names.append(system)
         installables.append(f"{ref}#packages.{SYSTEM}.{system}")
-    built = json.loads(run(["nix", "build", "--no-link", "--json", *installables]))
+    built = json.loads(run(["nix", "build", *extra, "--no-link", "--json", *installables]))
     return {n: b["outputs"]["out"] for n, b in zip(names, built)}
 
 
@@ -315,7 +318,14 @@ def main(argv=None):
     p.add_argument("base", metavar="BASE", help="commit to compare with")
     p.add_argument("--allow", metavar="FILE", help="patterns of differences this step expects")
     p.add_argument("--diff", action="store_true", help="show content diffs (store hashes masked)")
+    p.add_argument("--config", metavar="DIR",
+                   help="the other side: the configuration repository DIR instead of the working tree "
+                        "(ws help plan-v2, 8.9)")
+    p.add_argument("--core", metavar="DIR",
+                   help="with --config: build it with the core checkout DIR (--override-input wsconfig)")
     args = p.parse_args(argv)
+    if args.core and not args.config:
+        p.error("--core only with --config")
 
     repo = run(["git", "rev-parse", "--show-toplevel"], cwd=Path(__file__).resolve().parent).strip()
     patterns = read_allow(args.allow) if args.allow else []
@@ -330,8 +340,15 @@ def main(argv=None):
         run(["git", "-C", repo, "worktree", "add", "--quiet", "--detach", worktree, base])
         print(f"building BASE {base[:12]}", file=sys.stderr)
         base_out = outputs(f"git+file://{worktree}")
-        print("building the working tree", file=sys.stderr)
-        work_out = outputs(f"git+file://{repo}")
+        if args.config:
+            extra = (["--override-input", "wsconfig", f"git+file://{os.path.abspath(args.core)}"]
+                     if args.core else [])
+            print(f"building the configuration {args.config}" + (f" with the core {args.core}" if args.core else ""),
+                  file=sys.stderr)
+            work_out = outputs(f"git+file://{os.path.abspath(args.config)}", extra)
+        else:
+            print("building the working tree", file=sys.stderr)
+            work_out = outputs(f"git+file://{repo}")
     except subprocess.CalledProcessError as e:
         print(f"compare-outputs: {' '.join(e.cmd[:3])} failed", file=sys.stderr)
         return 2

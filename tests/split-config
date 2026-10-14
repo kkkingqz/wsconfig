@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+"""Build the configuration repository from this checkout (ws help plan-v2,
+8.9). One-time, like compare-outputs; removed in 8.13.
+
+From a clean checkout whose HEAD is published (origin/main): the data files
+of HEAD (hosts/, apt.txt, wsconfig.toml, the catalogs and TOML of the
+modules, home/, backup/ TOML if tracked) go to DEST; DEST gets a flake.nix
+whose outputs are wsconfig.lib.mkConfig of the core (input wsconfig), a
+flake.lock with the same nixpkgs, home-manager and wswidgets as this
+checkout and the core at HEAD, .gitignore, README.md; then git init and one
+commit. Nothing is pushed: creating the remote repository and pushing are
+the user's (gh repo create --private NAME, git push).
+
+Check: tests/compare-outputs HEAD --config DEST --core .
+"""
+import argparse
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+# What is data: the files ws sync publishes, the personal settings and the
+# lists of the user (ws help architecture-v2, 4).
+DATA = ["hosts", "apt.txt", "wsconfig.toml", "flatpak/catalog.toml", "distrobox/catalog.toml",
+        "windows/apps.toml", "gnome/config.toml", "keyboard/config.toml", "keyboard/xremap.yml",
+        "terminal/config.toml", "home", "backup/config.toml"]
+# The inputs of the configuration besides the core, as this checkout pins them.
+INPUTS = ["nixpkgs", "home-manager", "wswidgets"]
+CORE_URL = "github:kkkingqz/wsconfig"
+
+FLAKE = '''{
+  description = "Workstation configuration (data of wsconfig; ws help architecture-v2)";
+
+  inputs = {
+%(inputs)s
+    # The core: ws, its modules and tools; pinned here, ws update core.
+    wsconfig = {
+      url = "%(core)s";
+%(follows)s
+    };
+  };
+
+  # The outputs are those of the core for the data here.
+  outputs = inputs: inputs.wsconfig.lib.mkConfig { root = ./.; inherit inputs; };
+}
+'''
+
+README = '''# Workstation configuration
+
+The data of a workstation set up with wsconfig (%(core)s): the core
+(`ws`, its modules and tools) is the flake input `wsconfig`, pinned by
+flake.lock (`ws update core`); this repository holds what is the user's.
+
+- `wsconfig.toml`: the schema version the core reads
+- `hosts/HOST/`: host.toml (facts), apt.txt, the choices of the catalogs
+  (flatpak.toml, boxes.toml, widgets.toml) and the host files of the
+  modules (gnome.toml, keyboard.toml, terminal.toml, backup.toml)
+- `apt.txt`: apt packages on every host, on top of what the core needs
+- `flatpak/`, `distrobox/`, `windows/`, `gnome/`, `keyboard/`,
+  `terminal/`: catalogs and settings of the modules (TOML; their comments
+  say the keys)
+- `home/`: personal settings, mirroring $HOME; every tracked file home/P is
+  a link ~/P into this checkout
+- `backup/config.toml`: the backup target, if set
+
+`ws apply` builds and applies it, `ws sync` publishes what changed. Help:
+`ws help`, the architecture: `ws help architecture-v2`.
+'''
+
+
+def run(*cmd, cwd=None, capture=True):
+    return subprocess.run(cmd, cwd=cwd, check=True, text=True,
+                          stdout=subprocess.PIPE if capture else None).stdout
+
+
+def url_of(original):
+    """The flake URL of a lock node's original (github only here)."""
+    if original.get("type") != "github":
+        raise SystemExit(f"split-config: input of type {original.get('type')}, only github is known")
+    url = f"github:{original['owner']}/{original['repo']}"
+    return url + (f"/{original['ref']}" if "ref" in original else "")
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p.add_argument("dest", metavar="DEST", type=Path, help="new directory of the configuration repository")
+    args = p.parse_args(argv)
+    repo = Path(run("git", "rev-parse", "--show-toplevel", cwd=Path(__file__).resolve().parent).strip())
+    dest = args.dest.resolve()
+    if dest.exists() and any(dest.iterdir()):
+        raise SystemExit(f"split-config: {dest} is not empty")
+    if run("git", "-C", str(repo), "status", "--porcelain").strip():
+        raise SystemExit("split-config: the checkout has changes; commit them first")
+    head = run("git", "-C", str(repo), "rev-parse", "HEAD").strip()
+    published = run("git", "-C", str(repo), "rev-parse", "origin/main").strip()
+    if head != published:
+        raise SystemExit(f"split-config: HEAD {head[:12]} is not origin/main {published[:12]}: push first")
+
+    tracked = set(run("git", "-C", str(repo), "ls-tree", "-r", "--name-only", "HEAD").split("\n"))
+    paths = [d for d in DATA if d in tracked or any(t.startswith(d + "/") for t in tracked)]
+    dest.mkdir(parents=True, exist_ok=True)
+    archive = subprocess.run(["git", "-C", str(repo), "archive", "--format=tar", "HEAD", "--", *paths],
+                             check=True, stdout=subprocess.PIPE).stdout
+    subprocess.run(["tar", "-x", "-C", str(dest)], input=archive, check=True)
+
+    lock = json.loads((repo / "flake.lock").read_text())
+    nodes = lock["nodes"]
+    root_inputs = nodes[lock["root"]]["inputs"]
+    inputs, follows = [], []
+    for name in INPUTS:
+        node = nodes[root_inputs[name]]
+        sub = node.get("inputs", {})
+        follow = "".join(f'\n      inputs.{k}.follows = "{v[0]}";' for k, v in sub.items()
+                         if isinstance(v, list) and len(v) == 1)
+        if follow:
+            inputs.append(f'    {name} = {{\n      url = "{url_of(node["original"])}";{follow}\n    }};')
+        else:
+            inputs.append(f'    {name}.url = "{url_of(node["original"])}";')
+        follows.append(f'      inputs.{name}.follows = "{name}";')
+    (dest / "flake.nix").write_text(FLAKE % {"inputs": "\n".join(inputs), "core": CORE_URL,
+                                             "follows": "\n".join(follows)})
+    # The same nixpkgs, home-manager and wswidgets: nix flake lock keeps
+    # them and adds only the core.
+    (dest / "flake.lock").write_text(json.dumps(lock, indent=2) + "\n")
+    (dest / ".gitignore").write_text("result\nresult-*\n")
+    (dest / "README.md").write_text(README % {"core": CORE_URL})
+
+    run("git", "init", "-q", "-b", "main", cwd=dest)
+    run("git", "add", "-A", cwd=dest)
+    # The core at main, which is HEAD (published, checked above); no
+    # override: it would pin the revision in the original and ws update
+    # core would never move it.
+    run("nix", "flake", "lock", f"git+file://{dest}", cwd=dest, capture=False)
+    new = json.loads((dest / "flake.lock").read_text())
+    for name in INPUTS:
+        old_rev = nodes[root_inputs[name]]["locked"].get("rev")
+        new_rev = new["nodes"][new["nodes"][new["root"]]["inputs"][name]]["locked"].get("rev")
+        if old_rev != new_rev:
+            raise SystemExit(f"split-config: {name} moved {old_rev} -> {new_rev}")
+    core = new["nodes"][new["nodes"][new["root"]]["inputs"]["wsconfig"]]
+    if core["locked"].get("rev") != head:
+        raise SystemExit(f"split-config: the core is locked at {core['locked'].get('rev')}, not {head}")
+    run("git", "add", "-A", cwd=dest)
+    run("git", "-c", "commit.gpgsign=false", "commit", "-q", "-m",
+        f"Configuration split from kkkingqz/wsconfig at {head[:12]} (ws help plan-v2, 8.9)", cwd=dest)
+    print(f"{dest}: {len(run('git', 'ls-files', cwd=dest).split())} files, core {head[:12]}")
+    print(f"check: tests/compare-outputs HEAD --config {dest} --core {repo}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
