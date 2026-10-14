@@ -229,7 +229,7 @@ for uuid in $(ext_list local); do
 
         if have glib-compile-schemas; then
             schema_tmp="$(mktemp -d)"
-            cp -a "$schema_dir/." "$schema_tmp/"
+            cp -r --no-preserve=mode "$schema_dir/." "$schema_tmp/"
             rm -f "$schema_tmp/gschemas.compiled"
             if glib-compile-schemas "$schema_tmp" >/dev/null 2>&1; then
                 pass "$uuid schema compiles"

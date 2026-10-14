@@ -55,6 +55,12 @@ class NtsyncHookTests(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertEqual(self.calls_made(), ["pacman -Q wsbox-host-ntsync"])
 
+    def test_pkgbuild_checksum_matches_the_readme(self):
+        # makepkg refuses a source with another sum (ws box check reports it).
+        import hashlib
+        readme = hashlib.sha256((HOOK / "README.md").read_bytes()).hexdigest()
+        self.assertIn(f'sha256sums=("{readme}")', (HOOK / "PKGBUILD").read_text())
+
     def test_user_is_required(self):
         p = self.hook(INSTALLED="")
         self.assertNotEqual(p.returncode, 0)

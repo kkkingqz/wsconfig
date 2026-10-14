@@ -1,12 +1,12 @@
 pkgname=wsbox-host-ntsync
 pkgver=1
-pkgrel=2
+pkgrel=3
 pkgdesc="Virtual NTSYNC-MODULE provider for Distrobox using the host kernel"
 arch=("any")
 license=("custom")
 provides=("NTSYNC-MODULE")
 source=("README.md")
-sha256sums=("853ac40b48e4dc12615b59bbe5eb38b6dd9d66b8cf6cfdcf2b1d3dac760e7ac1")
+sha256sums=("9207fc9180133bf9dcd7711c4342171d2ca5f9839cfd50c54bf203ce7133ae89")
 
 package() {
     install -Dm644 "$srcdir/README.md" \
