@@ -79,30 +79,31 @@ apply` — из них собираются `refind_linux.conf`, `refind.conf` �
 
 ```text
 @  @home  @cache  @tmp  @log
-@nix       создаёт bootstrap.sh (раздел 6.0)
-@vms       состояние VM в /var/lib/vms, создаёт bootstrap.sh; backup — отдельно
+@nix       создаёт install.sh до раскладки, остаётся на верхнем уровне
+@vms       состояние VM в /var/lib/vms, создаёт ws setup; backup — отдельно
 @steam     Steam из apt в ~/.local/share/Steam (nativeSteam = true), создаёт
-           bootstrap.sh; вне snapshots и backup @home
+           ws setup; вне snapshots и backup @home
 @wsbackup  локальные копии backup в /var/lib/workstation-backup, создаёт
-           bootstrap.sh (ws help backup)
+           ws setup (ws help backup)
 ```
 
 Root грузится с `rootflags=subvol=@`. Установщик Ubuntu 26.04 при ручной
 разметке Btrfs subvolumes не создаёт вовсе: `/` оказывается в корне
 файловой системы (subvolid=5; проверено в VM, фаза 6 в `ws help
 history-nix`). Раскладку делает `ws btrfs make` из самой установленной
-системы, до `bootstrap.sh`, в два запуска; между ними reboot через GRUB (на
-mbp16 тоже: rEFInd — позже, раздел 5):
+системы, до подготовки системы, в два запуска; между ними reboot через GRUB
+(на mbp16 тоже: rEFInd — позже, раздел 5). На хосте с GRUB её запускает
+`ws setup` (`ws help setup`). На mbp16 — руками: `ws setup` после выбора
+останавливается и показывает команды:
 
 ```console
-sudo apt install git gh
-gh auth login && gh auth setup-git          # доступ к закрытой конфигурации
-git clone URL_КОНФИГУРАЦИИ ~/wsconfig       # данные: hosts/, каталоги, home/
-git clone https://github.com/kkkingqz/wsconfig.git ~/Projects/wsconfig   # ядро
-~/Projects/wsconfig/bin/ws btrfs make --dry-run   # только показывает шаги
-~/Projects/wsconfig/bin/ws btrfs make             # шаг 1, спрашивает подтверждение
+wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/install.sh | bash -s -- --repo URL_КОНФИГУРАЦИИ
+ws=~/.local/state/wsconfig/setup/ws/bin/ws   # ws ревизии setup (GC root)
+$ws btrfs make --dry-run   # только показывает шаги
+$ws btrfs make             # шаг 1, спрашивает подтверждение
 # reboot сразу: записанное после снимка остаётся в старом корне
-~/Projects/wsconfig/bin/ws btrfs make             # шаг 2
+$ws btrfs make             # шаг 2
+$ws setup                  # проверит ручные шаги и продолжит
 ```
 
 1. `/` в корне Btrfs. Сначала проверки, до первого изменения: `/boot/efi`
@@ -129,8 +130,10 @@ git clone https://github.com/kkkingqz/wsconfig.git ~/Projects/wsconfig   # яд�
 
 До удаления на шаге 2 старый корень загружается: в GRUB `c`, затем
 `configfile /boot/grub/grub.cfg` — его меню. Повторный запуск проверяет
-состояние и ничего не повторяет; `bootstrap.sh` без `@` отказывается.
-Сценарий проверен только тестами текста fstab и stub, в VM не прогонялся.
+состояние и ничего не повторяет; подготовка системы без `@` отказывается.
+`@nix`, смонтированный в `/nix`, шаг 1 оставляет на верхнем уровне (в `@`
+от него остаётся пустой каталог — он удаляется), другие подвольюмы до
+раскладки — отказ.
 
 ```bash
 findmnt /
@@ -147,7 +150,7 @@ Apple Wi‑Fi/Bluetooth firmware
 ```
 
 T2 repository (t2linux, codename `resolute`) — если installer его не
-подключил. Пакеты — `hosts/mbp16/apt.txt` (ставит `bootstrap.sh`).
+подключил. Пакеты — `hosts/mbp16/apt.txt` (ставит `ws setup`).
 
 Firmware: `get-apple-firmware.service` (`ws apply system`) берёт её из macOS
 при загрузке. Без macOS — из архива:
@@ -221,15 +224,15 @@ systemctl --user is-active wireplumber
 Не ставить SwayNC/SwayOSD/swaylock/swayidle и не заменять штатные GNOME components.
 
 
-# 6.0. Bootstrap и слои
+# 6.0. Подготовка и слои
 
-На хосте с GRUB разделы 3 и 6.0–12 (без ручных проверок раздела 11) проходит
-`setup.sh` (`ws help setup`). После разделов 2–5 (Ubuntu, Btrfs, T2, rEFInd)
-и штатного GNOME вся конфигурация ставится так (`ws help layers`):
+Разделы 3 и 6.0–12 (без ручных проверок раздела 11) проходит `ws setup`
+(`ws help setup`). На mbp16 он сначала проверяет разделы 2–5 (Ubuntu,
+Btrfs, T2, rEFInd) и останавливается, пока они не сделаны. Дальше —
+подготовка системы и слои (`ws help layers`), по порядку:
 
 ```console
-# ~/wsconfig (конфигурация) и ~/Projects/wsconfig (ядро) уже есть с раздела 3
-~/Projects/wsconfig/bootstrap.sh
+libexec/ws-prepare  # шаг ws setup; @nix уже сделал install.sh
 # reboot: группы nix-users, libvirt, input, PATH из 00-nix.fish, fish как login shell
 #   (logout/login не хватает, пока открыта другая сессия пользователя, например ssh)
 ws apply            # apt, системные файлы (sudo), home-manager, расширения → tiling →
@@ -239,8 +242,9 @@ ws apply            # после входа: шаги, не прошедшие p
 ws check            # проверки всех владельцев и verify (связи между слоями)
 ```
 
-`bootstrap.sh` (от пользователя, sudo вызывает сам; `--dry-run` только
-показывает шаги): subvolume `@nix` и строка `/nix` в fstab → пакеты из
+Подготовка (`libexec/ws-prepare`, от пользователя, sudo вызывает сам;
+`--dry-run` только показывает шаги): `@nix` в `/nix` (install.sh уже
+сделал — проверка) → пакеты из
 `system/apt.txt`, `system/apt-machine.txt` (Btrfs, Timeshift,
 `steam-devices`; не для контейнера, `boot = "container"`) и
 `hosts/<host>/apt.txt` (PPA fish и
@@ -250,7 +254,7 @@ nautilus-my-computer; `purge:snapd` — без snap; в списке хоста
 ставятся без Recommends, кроме строк `rec:NAME` — метапакеты, у которых
 всё в Recommends: `ubuntu-restricted-extras`, Steam; apt берёт Recommends
 только при установке пакета, так что на хосте, где он уже стоит, его
-снимают и запускают `bootstrap.sh` заново) → при
+снимают и запускают `ws apply apt`) → при
 `vm = true` в
 `host.toml`: пакеты `virt/apt.txt`, `@vms` в `/var/lib/vms` с
 bind-монтированиями в пути libvirt, пул и сеть `default`
@@ -380,14 +384,14 @@ Wine не устанавливать на host: Windows-программы жи�
 # 6.2. Host Qt integration
 
 `qgnomeplatform-qt5`, `qgnomeplatform-qt6`, `qtwayland5`, `qt6-wayland` — в
-`system/apt.txt` (ставит `bootstrap.sh`, сверяет `ws check apt`).
+`system/apt.txt` (ставит `ws setup`, сверяет `ws check apt`).
 Глобальных Qt overrides (`QT_QPA_PLATFORM` и т. п.) нет, это проверяет
 `ws check home`. Qt5 и Qt6 сами берут native Wayland и QGnomePlatform.
 
 
 # 6.3. Distrobox / Podman managed layer
 
-Host-пакеты (`podman`, `distrobox`, `uidmap`, …) ставит `bootstrap.sh`,
+Host-пакеты (`podman`, `distrobox`, `uidmap`, …) ставит `ws setup`,
 модуль `ntsync` — `ws apply system`, контейнеры — шаг `distrobox` в `ws
 apply` (`ws box apply`). HOME контейнеров (`~/distrobox/<имя>/`) приходит с
 восстановленным HOME пользователя; без него контейнеры создаются пустыми.

@@ -76,7 +76,7 @@ Architecture (docs/architecture):
   workstation      Current workstation in detail, repository map
 
 Runbooks (docs/runbooks):
-  setup            New PC on wsconfig: setup.sh (GRUB hosts)
+  setup            New PC on wsconfig: install.sh, ws setup
   rebuild          Reinstall to the current state
   keyboard         macOS-style keyboard layer
   gnome            GNOME desktop

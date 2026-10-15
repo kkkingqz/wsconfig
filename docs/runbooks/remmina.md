@@ -30,7 +30,7 @@ system/apt-machine.txt  purge: пакетов remmina из apt
 `~/.local/share/applications` (Exec — путь в `/nix/store`: `~/.nix-profile/share`
 не в `XDG_DATA_DIRS`) и иконки в `~/.local/share/icons`. ID ярлыков те же, что
 у пакета apt: `rdp://`, файлы `.remmina` и разрешение GNOME на перехват
-клавиатуры (`ws help keyboard`) остаются за Remmina. `bootstrap.sh` удаляет
+клавиатуры (`ws help keyboard`) остаются за Remmina. Подготовка `ws setup` и `ws apply apt` удаляют
 пакеты apt (`purge:`), `ws check apt` проверяет, что их нет.
 
 ## Патчи

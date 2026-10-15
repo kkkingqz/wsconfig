@@ -835,8 +835,8 @@ Shebang:
 
 ```text
 wsconfig/
-├── setup.sh              новый ПК с GRUB: GitHub, хост, выбор, ws btrfs make, bootstrap.sh, слои, Timeshift
-├── bootstrap.sh          новая машина (после ws btrfs make): @nix → apt → @vms/libvirt → @steam → @wsbackup → группы → fish → ws apply
+├── install.sh            свежая Ubuntu: git, gh, @nix, Nix из apt, nix-users → ws setup той же ревизии
+├── template/             начало новой конфигурации (ws setup --new); tests/config ссылается на него
 ├── flake.nix, flake.lock lib.mkConfig (lib/mkconfig.nix); выходы для tests/config
 ├── nix/
 │   ├── home/             default.nix (слой всех хостов), links.nix (ссылки на
@@ -872,6 +872,8 @@ wsconfig/
 │   ├── ws-suspend, ws-suspend-check
 │   ├── ws-baseline, ws-checkpoint, ws-collect
 │   ├── ws-btrfs          ws btrfs make: раскладка Btrfs свежей установки
+│   ├── ws-setup          ws setup: новый ПК — конфигурация, ядро, хост, выбор, раскладка, слои, Timeshift
+│   ├── ws-prepare        шаг ws setup: apt → @vms/libvirt → @steam → @wsbackup → группы → fish → ws apply home
 │   ├── wsgame            пакеты Game Mode: build, install, check (ws help gaming)
 │   ├── ws-gnome
 │   ├── ws-gnome-check
@@ -889,7 +891,10 @@ wsconfig/
 ├── lib/common.bash      корни WS_CORE, WS_CONFIG, WS_STATE, die, need, nix_bin
 ├── lib/ws_common.py    то же для Python-инструментов
 ├── lib/check.bash       общий формат результата проверок (--json для ws check)
-├── lib/ws_catalog.py   выбор хоста hosts/HOST/*.toml, вопросы apply и setup.sh
+├── lib/ws_catalog.py   выбор хоста hosts/HOST/*.toml, вопросы apply и ws setup
+├── lib/ws_inventory.py  инвентаризация машины и новый хост (ws setup)
+├── lib/ws_template.py   новая конфигурация из template/ и её flake.lock (ws setup --new)
+├── lib/btrfs.bash       подвольюмы с fstab (@nix в install.sh, остальные в ws-prepare)
 ├── lib/flatpak_catalog.py  каталог Flatpak и overrides хоста
 ├── lib/catalog.nix      выбор хоста и overrides для Nix
 ├── lib/host.nix         факты host.toml для Nix и их проверка

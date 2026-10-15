@@ -70,14 +70,15 @@ volume: User Commands
 # 3. С чего начать
 
 1. Понять, где остановились:
-   - `ls ~/.local/state/workstation/setup/` — пройденные шаги `setup.sh`
-     (`choices`, `bootstrap`, `system`, `apply1`, `apply2`, `check`,
-     `timeshift`, `backup`); пока есть
-     `~/.config/autostart/ws-setup.desktop`, setup.sh не закончен — его
-     перезапуск `~/wsconfig/setup.sh` продолжит с первого непройденного
-     (его запускает пользователь: он спрашивает sudo);
-   - `~/.local/state/workstation/setup/check.txt` — вывод `ws check` из
-     setup.sh;
+   - `ls ~/.local/state/wsconfig/setup/` — пройденные шаги `ws setup`
+     (`choices`, `prepare`, `apply1`, `apply2`, `check`, `timeshift`,
+     `backup`; до плана v2, этап 9, — `bootstrap` вместо `prepare`); пока
+     есть `~/.config/autostart/ws-setup.desktop`, setup не закончен — его
+     перезапуск `ws setup` (до первого `ws apply home` —
+     `~/.local/state/wsconfig/setup/ws/bin/ws setup`) продолжит с первого
+     непройденного (его запускает пользователь: он спрашивает sudo);
+   - `~/.local/state/wsconfig/setup/check.txt` — вывод `ws check` из
+     setup;
    - `git -C ~/wsconfig log --oneline -10`, `git status` и
      `git tag -l 'checkpoint/*'`;
    - разделы «Этапы» в плане (`docs/plans/legion-go.md`, раздел 5) —
@@ -90,8 +91,8 @@ volume: User Commands
 # 4. План
 
 Источник — `docs/plans/legion-go.md` (`ws help plan-legion-go`). Этапы 0–3
-делает пользователь до тебя (BIOS, установка Ubuntu, `setup.sh`); этап 4
-setup.sh проходит сам. Твоя работа — проверки этапа 4 и этапы 5–9:
+делает пользователь до тебя (BIOS, установка Ubuntu, `install.sh`); этап
+4 `ws setup` проходит сам. Твоя работа — проверки этапа 4 и этапы 5–9:
 
 - **4. База.** Проверить по списку в плане: `uname -r` (XanMod),
   `/proc/cmdline` против `kernelParams` в `nix/hosts/legiongo/facts.nix`,
@@ -167,8 +168,8 @@ setup.sh проходит сам. Твоя работа — проверки э�
 
 # 7. Известные риски
 
-Раздел 6 плана. Главное: `setup.sh` и `ws btrfs make` до этого устройства
-целиком не прогонялись; если `@` не загрузится — в GRUB `c`, затем
+Раздел 6 плана. Главное: `ws setup` и `ws btrfs make` до этого устройства
+на железе не прогонялись (только VM wsvm, ws help plan-v2, 9.10); если `@` не загрузится — в GRUB `c`, затем
 `configfile /boot/grub/grub.cfg` (старый корень). `hid-lenovo-go` вместе с
 InputPlumber — проверить гироскоп и кнопки. gamescope 3.16.20 может быть
 старше нужного клиенту Steam. На generic-ядре AppArmor может не дать

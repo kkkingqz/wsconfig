@@ -19,8 +19,8 @@ VM работают на host: KVM, QEMU и libvirt связаны с ядром
 
 ```text
 virt/apt.txt                qemu, libvirt, virt-manager, SPICE, OVMF, swtpm, virtiofsd
-virt/bootstrap.bash         шаг 3 bootstrap.sh: @vms и bind-монтирования, пул и сеть default
-bootstrap.sh                группа libvirt
+virt/bootstrap.bash         шаг 3 ws-prepare (ws setup): @vms и bind-монтирования, пул и сеть default
+libexec/ws-prepare          группа libvirt
 system/virt.nix             описание прошивки OVMF (qcow2-переменные)
 virt/virt.nix               ~/VMs -> /var/lib/libvirt/images
 libexec/ws-check-virt           ws check virt
@@ -44,7 +44,7 @@ virbr0, 192.168.122.0/24              NAT-сеть «default»
 `@vms` не входит в snapshots `@`: откат `@` не трогает ни диски, ни
 описания, ни UEFI и TPM, а snapshots не раздуваются. Если откатить `@` на
 состояние до `@vms` (без его строк в fstab), libvirt увидит старые пустые
-каталоги `@` — VM не пропадут, вернутся с `bootstrap.sh`. Без
+каталоги `@` — VM не пропадут, вернутся с `ws setup` (шаг подготовки, `libexec/ws-prepare`). Без
 copy-on-write у образов нет контрольных сумм Btrfs и сжатия — обычная цена
 за qcow2 без фрагментации.
 
@@ -59,7 +59,7 @@ copy-on-write у образов нет контрольных сумм Btrfs и 
 «Browse Local» (так появились `iso` и `iso-1` → `~/VMs/iso`), и это
 штатно: qemu получает путь через HOME и проходит его по ACL
 `user:libvirt-qemu:--x` на HOME (только проход, не чтение; ставит
-`bootstrap.sh`, проверяет `ws check virt`). AppArmor пропускает файл по
+`ws setup`, проверяет `ws check virt`). AppArmor пропускает файл по
 настоящему пути в пуле. Проверено 2026-10-02: временная VM с ISO из
 `~/VMs/iso` запускается.
 
@@ -111,7 +111,7 @@ qcow2, а шаблон пакета `ovmf` — raw, и переводить ег
 Поэтому:
 
 ```text
-/var/lib/vms/firmware/OVMF_VARS_4M.ms.qcow2      шаблон в qcow2 (bootstrap.sh)
+/var/lib/vms/firmware/OVMF_VARS_4M.ms.qcow2      шаблон в qcow2 (ws setup)
 /etc/qemu/firmware/30-...-qcow2-vars.json        описание прошивки: код пакета
                                                  raw, шаблон qcow2; приоритет
                                                  выше пакетных (system/virt.nix,
@@ -132,7 +132,7 @@ virsh -c qemu:///system define /tmp/NAME.xml
 ```
 
 `ws check virt` отмечает WARN у VM с NVRAM в raw и проверяет, что шаблон
-совпадает с пакетным (после обновления `ovmf` — снова `bootstrap.sh`).
+совпадает с пакетным (после обновления `ovmf` — снова `ws setup`).
 
 ## Устройства
 
@@ -159,7 +159,7 @@ USB-устройство в гостя — «Redirect USB device» в консо
 Окна консолей VM (`virt-manager`, `remote-viewer`, `virt-viewer`) xremap на
 host не трогает (`keyboard/presets/macos-xremap.yml`, `&vm_consoles`): клавиши уходят в
 гостя как есть, macOS-профиль работает в госте, если он там поставлен
-(`bootstrap.sh`, `ws apply`). Иначе Command+C приходил бы в гостя как Ctrl+C
+(`ws setup`, `ws apply`). Иначе Command+C приходил бы в гостя как Ctrl+C
 (в терминале — прерывание). Главное окно virt-manager — тот же класс, в нём
 Command-сочетания тоже не переводятся.
 

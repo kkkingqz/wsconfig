@@ -13,10 +13,11 @@ Ubuntu остаётся базовой системой; Nix и home-manager д�
 ## Порядок
 
 ```text
-setup.sh           новый ПК с GRUB: всё ниже по порядку, вопросы в начале (ws help setup)
+install.sh         свежая Ubuntu: git, gh, @nix и Nix из apt, затем ws setup
+ws setup           новый ПК: всё ниже по порядку, вопросы в начале (ws help setup)
 ws btrfs make      раскладка Btrfs свежей установки: @, @home, @cache, @tmp, @log
-bootstrap.sh       @nix, apt-списки, @vms и libvirt, @steam, группы, fish,
-                   первый ws apply home
+ws-prepare         шаг ws setup: apt-списки, @vms и libvirt, @steam, @wsbackup,
+                   группы, fish, первый ws apply home
 ws apply           всё по порядку: выбор новых позиций, сборка, apt и
                    системные файлы (sudo — только когда есть что делать),
                    home-manager, затем владельцы: расширения, tiling,
@@ -48,7 +49,7 @@ ws check           проверки всех владельцев и связе�
 Проверяет файл только Nix (`lib/host.nix`): неизвестный раздел или ключ,
 не тот тип, нет обязательного, `gameMode = true` без `nativeSteam = true`
 — ошибка `ws apply` с именем файла. Без Nix факты читает
-`lib/ws_facts.py` (`ws fact`, setup.sh, bootstrap.sh); `true` и `false`
+`lib/ws_facts.py` (`ws fact`, `ws setup`, `ws-prepare`); `true` и `false`
 он печатает как `yes` и `no`.
 
 ## Слои и владельцы
@@ -57,17 +58,17 @@ ws check           проверки всех владельцев и связе�
 слой             источник                              применяет            проверяет
 пользователь     nix/home/, terminal/, bin/, libexec/  ws apply            ws check home
 система          system/*.nix, system/files/           ws apply system      ws system check
-apt              hosts/*apt.txt                    bootstrap.sh, apt    ws check apt
+apt              hosts/*apt.txt                    ws setup, apt       ws check apt
 клавиатура       keyboard/*.nix, xremap.yml            ws apply, ws keyboard apply   ws keyboard check
 GNOME            gnome/gnome.nix, gnome-extensions.nix ws apply, ws apply extensions ws gnome check
 виджеты          widgets/*.txt, flake input wswidgets  wswidgets, ws apply ws check widgets
 Flatpak          flatpak/*.txt, flatpak.nix            ws flatpak apply      ws flatpak check
 Distrobox        distrobox/catalog.toml, distrobox.nix ws box apply          ws box check
 Windows          windows/apps.toml (+ боксы Distrobox)  ws apply, ws windows     ws windows check
-Remmina          remmina/*.nix, system/apt-machine.txt        ws apply, bootstrap.sh  ws check apt
+Remmina          remmina/*.nix, system/apt-machine.txt        ws apply, ws setup    ws check apt
 suspend / T2     system/hardware, system/kernel/t2bce  ws apply system, ws suspend t2bce-*   ws suspend check
-VM               apt.txt, bootstrap.sh, virt/virt.nix   bootstrap.sh, virt-manager           ws check virt
-Steam (apt)      steam/apt.txt, steam/bootstrap.bash   bootstrap.sh         ws check steam
+VM               apt.txt, ws-prepare, virt/virt.nix     ws setup, virt-manager               ws check virt
+Steam (apt)      steam/apt.txt, steam/bootstrap.bash   ws setup             ws check steam
 Game Mode        gaming/*, system/gaming.nix           ws game               ws game check
 checkout         весь репозиторий                      git                  ws check repo
 ```
@@ -83,7 +84,7 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
   из Nix, и не держат своих копий списков. Родные форматы программ остаются
   (`xremap.yml`, ghostty, fish, udev/modprobe, `*.gschema.xml`,
   `containers.ini`); простой текст — `hosts/*apt.txt` (его читает
-  `bootstrap.sh` до Nix); TOML — каталог `flatpak/catalog.toml` и выбор машин
+  подготовка `ws setup` до первой сборки); TOML — каталог `flatpak/catalog.toml` и выбор машин
   `hosts/*/*.toml` (их правят `ws flatpak`, `ws box`, `ws widgets`).
 - **Владелец выдаёт список.** Системный слой — `ws system manifest`,
   пользовательский — активное поколение home-manager, Distrobox —

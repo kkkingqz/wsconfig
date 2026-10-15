@@ -19,7 +19,7 @@ gaming/sources.nix     источники: url, sha256, версия пакет�
                        ~/.local/share/wsconfig/gaming/sources.json, на
                        каждом хосте: собирать можно где угодно)
 gaming/build.sh        сборка в контейнере Ubuntu релиза host (podman)
-gaming/apt.txt         из Ubuntu, ставит bootstrap.sh: gamescope, mangoapp
+gaming/apt.txt         из Ubuntu, ставит ws setup: gamescope, mangoapp
 steam/apt.txt          Steam из apt (nativeSteam = true)
 system/gaming.nix      автологин SDDM, os-session-select, Return to Game
                        Mode, HandlePowerKey=ignore (ws apply system)

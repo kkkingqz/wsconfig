@@ -650,7 +650,7 @@ t2_pre() {
             t2_line no "@ не подвольюм по умолчанию (сейчас ID ${def:-?})" "sudo btrfs subvolume set-default $id /"
         fi
     else
-        t2_line no "/ не на @" "раскладка Btrfs: ws btrfs make, перезагрузка через GRUB, ws btrfs make (ws help rebuild, раздел 3)"
+        t2_line no "/ не на @" "раскладка Btrfs: $(setup_ws) btrfs make, перезагрузка через GRUB, ещё раз то же (ws help rebuild, раздел 3)"
     fi
     kernel="$(uname -r)"
     if [[ "$kernel" == *t2* ]]; then

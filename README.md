@@ -10,36 +10,26 @@ home-manager доставляют конфигурацию поверх неё, 
 хосты, каталоги, выбор, личные настройки (`home/`) — в отдельном
 репозитории конфигурации пользователя (`~/wsconfig`), чей `flake.nix`
 берёт это ядро входом `wsconfig` (`ws help architecture-v2`). Пример
-конфигурации — `tests/config/`. Checkout ядра для разработки —
+конфигурации — `tests/config/`, начало новой — `template/`. Checkout ядра для разработки —
 `~/Projects/wsconfig`; `ws apply --core ~/Projects/wsconfig` собирает
 конфигурацию с ним.
 
 ## Установка
 
-Новый ПК с GRUB — одной командой после установки Ubuntu (ESP и корень
-Btrfs): все вопросы в начале, дальше только перезагрузки (`ws help setup`):
+Новый ПК — одной командой после установки Ubuntu (ESP и корень Btrfs). Все
+вопросы задаются в начале, дальше нужны только перезагрузки (`ws help
+setup`):
 
 ```console
-wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash -s -- URL_КОНФИГУРАЦИИ
+wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/install.sh | bash -s -- --repo URL_КОНФИГУРАЦИИ
 ```
 
-Вручную, и для mbp16 (`docs/runbooks/rebuild.md`, разделы 1–2):
-
-```console
-sudo apt install git gh
-gh auth login && gh auth setup-git          # доступ к закрытой конфигурации
-git clone URL_КОНФИГУРАЦИИ ~/wsconfig       # данные: hosts/, каталоги, home/
-git clone https://github.com/kkkingqz/wsconfig.git ~/Projects/wsconfig   # ядро
-~/Projects/wsconfig/bin/ws btrfs make  # раскладка Btrfs: @, @home, @cache, @tmp, @log
-# reboot через GRUB, ещё раз ~/Projects/wsconfig/bin/ws btrfs make (раздел 3)
-# mbp16: ядро T2 и rEFInd (разделы 4–5)
-~/Projects/wsconfig/bootstrap.sh     # @nix, apt-списки, @vms и libvirt, @steam, группы, fish, первый ws apply home
-# reboot
-ws apply                    # apt, системные файлы (sudo), home-manager, расширения → tiling →
-                            # клавиатура → Flatpak → Distrobox → виджеты
-# logout/login, если ws apply так сказал, затем ещё раз ws apply
-ws check                    # все проверки
-```
+`--new` вместо `--repo URL` создаёт новую конфигурацию из `template/`.
+`install.sh` ставит git, gh и Nix (`/nix` на `@nix`), а дальше всё делает
+`ws setup` ядра этой ревизии: хост, выбор, раскладку Btrfs, подготовку
+системы (`libexec/ws-prepare`), `ws apply`, `ws check`, Timeshift. На mbp16
+(rEFInd) шаги `ws help rebuild`, разделы 2–5, делаются руками: `ws setup`
+их проверяет (`ws setup --check`) и останавливается, пока они не сделаны.
 
 Дальше: правка файла → `ws apply` (только нужное: `ws apply flatpak`,
 `ws apply system`, …) → `ws check`. Обновления — `ws update`.
@@ -68,7 +58,7 @@ docs/           документация, из неё собираются man-�
 `ws help plan-legion-go`) и `wsvm` (проверочная VM фазы 6; сама VM удалена
 2026-10-02, описание оставлено), выбираются по `hostname` в `host.toml`
 (`ws host`). Хост — каталог `hosts/<name>/` (`host.toml`, `apt.txt`);
-новый на GRUB делает `setup.sh` из generic-pc (`ws help setup`).
+новый делает `ws setup` из инвентаризации машины (`ws help setup`).
 
 ## Документация
 
