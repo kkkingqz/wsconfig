@@ -234,7 +234,7 @@ Source of truth:
 
 ```text
 keyboard/
-terminal/ghostty/
+home/.config/ghostty/ конфигурации
 
 libexec/ws-keyboard*
 libexec/ws-xremap
@@ -750,12 +750,12 @@ Micro help-viewer использует true-color scheme и Markdown syntax high
 ## Documentation source
 
 ```text
-~/wsconfig/README.md            входная точка
-~/wsconfig/docs/architecture/   слои и правила, проверки, этот документ
-~/wsconfig/docs/runbooks/       как работает и что делать, по слоям
-~/wsconfig/docs/plans/          roadmap и незавершённые планы
-~/wsconfig/docs/history/        как строились завершённые слои
-~/wsconfig/docs/superpowers/    проекты (specs/) и планы реализации (plans/) backup,
+~/Projects/wsconfig/README.md            входная точка (checkout ядра)
+~/Projects/wsconfig/docs/architecture/   слои и правила, проверки, этот документ
+~/Projects/wsconfig/docs/runbooks/       как работает и что делать, по слоям
+~/Projects/wsconfig/docs/plans/          roadmap и незавершённые планы
+~/Projects/wsconfig/docs/history/        как строились завершённые слои
+~/Projects/wsconfig/docs/superpowers/    проекты (specs/) и планы реализации (plans/) backup,
                                 recovery и виджетов; без title:, не man-страницы
 ```
 
@@ -789,14 +789,14 @@ man ws-workstation
 ~/.local/bin
 ```
 
-Исходники хранятся в Git repository (`~/wsconfig/bin/ws`,
-`~/wsconfig/libexec/`); в `~/.local/bin` — только `ws` и `ws help` из ядра в
+Исходники — в checkout ядра (`~/Projects/wsconfig/bin/ws`,
+`~/Projects/wsconfig/libexec/`); в `~/.local/bin` — только `ws` из ядра в
 store.
 
 Правило:
 
 ```text
-executable source   ~/wsconfig/bin/ws, ~/wsconfig/libexec/<tool>
+executable source   ~/Projects/wsconfig/bin/ws, ~/Projects/wsconfig/libexec/<tool>
 runtime link        ~/.local/bin/ws → ядро в store (nix/pkgs/ws.nix)
 config source       ~/wsconfig/<область>/...
 generated           ~/.local/share/wsconfig/...
@@ -814,27 +814,31 @@ Shebang:
 
 # WORKSTATION CONFIG REPOSITORY
 
-Единый обычный Git repository:
+Два Git-репозитория (ws help plan-v2, этап 8; ws help architecture-v2):
 
 ```text
-~/wsconfig
+~/wsconfig            конфигурация (закрытый репозиторий пользователя): данные
+~/Projects/wsconfig   ядро (kkkingqz/wsconfig): код, модули, документация
 ```
 
-Актуальная структура включает:
-
-Всё, что правится, лежит в `~/wsconfig` (каталог задаёт `wsconfig` в
-`hosts/<host>/host.toml`), по областям: в каждой — её объявление в Nix
-и родные файлы программ. Сгенерированное и скачанное — в
-`~/.local/share/wsconfig/`, состояние (backup сочетаний, baseline) — в
+Конфигурация (каталог задаёт `wsconfig` в `hosts/<host>/host.toml`):
+`wsconfig.toml` (схема), `flake.nix` и `flake.lock` (вход `wsconfig` —
+ядро, `ws update core`), `hosts/<host>/` (host.toml, apt.txt, выбор
+каталогов и файлы хоста модулей), `apt.txt`, каталоги и TOML модулей
+(`flatpak/`, `distrobox/`, `windows/`, `gnome/`, `keyboard/`,
+`terminal/`), `home/` — личные настройки, ссылки `~/P` на `home/P`.
+Всё в ней — данные, публикует `ws sync`. Сгенерированное и скачанное —
+в `~/.local/share/wsconfig/`, состояние (backup сочетаний, baseline) — в
 `~/.local/state/wsconfig/`, HOME контейнеров — в `~/distrobox/<имя>/`.
+
+Ядро (данных нет; tests/config — тестовая конфигурация):
 
 ```text
 wsconfig/
 ├── setup.sh              новый ПК с GRUB: GitHub, хост, выбор, ws btrfs make, bootstrap.sh, слои, Timeshift
 ├── bootstrap.sh          новая машина (после ws btrfs make): @nix → apt → @vms/libvirt → @steam → @wsbackup → группы → fish → ws apply
-├── flake.nix, flake.lock nixpkgs 26.05 + home-manager, обновляет ws update nix
+├── flake.nix, flake.lock lib.mkConfig (lib/mkconfig.nix); выходы для tests/config
 ├── nix/
-│   ├── hosts/            apt.txt всех хостов; <host>/host.toml, apt.txt
 │   ├── home/             default.nix (слой всех хостов), links.nix (ссылки на
 │   │                     checkout), cli.nix, man.nix
 │   ├── pkgs/             xremap.nix (закреплён), man.nix (man из docs/),
@@ -845,12 +849,12 @@ wsconfig/
 │   ├── kernel/t2bce/     nostate-fix.patch, t2bce.nix (ядро -> коммит linux-t2-patches)
 │   ├── kernel/t2gmux/    t2gmux.nix (коммит KaiT2en; ws help plan-dgpu, отложен)
 │   └── kernel/i915-psr/  apple-psr.patch (PSR панели Apple; ws-psr, ws help plan-t2)
-├── gnome/                config.toml, gnome.nix, gnome-extensions.nix, extensions/<uuid>/
-├── keyboard/             config.toml, presets/macos.nix, keyboard.nix, xremap.nix, xremap.yml
-├── terminal/             fish/, ghostty/, micro-help/, xdg-terminals/
-├── flatpak/              flatpak.nix, catalog.toml, desktop/
-├── distrobox/            catalog.toml, distrobox.nix, arch/ (wsbox-host-ntsync, хуки), wine/
-├── windows/              apps.toml (Windows-программы с launcher), apps.nix
+├── gnome/                config.nix, gnome.nix, gnome-extensions.nix, extensions/<uuid>/
+├── keyboard/             config.nix, presets/ (macos.nix, macos-xremap.yml), keyboard.nix, xremap.nix
+├── terminal/             fish/ (completions, conf.d ядра), micro-help/, *-colors.nix, config.nix
+├── flatpak/              flatpak.nix, desktop/
+├── distrobox/            distrobox.nix, arch/ (wsbox-host-ntsync, хуки), wine/
+├── windows/              apps.nix (Windows-программы с launcher)
 ├── steam/                apt.txt, bootstrap.bash (Steam из apt, @steam; nativeSteam)
 ├── gaming/               sources.nix, build.sh, apt.txt (Game Mode; wsgame, ws help gaming)
 ├── bin/

@@ -486,12 +486,13 @@ data             ~/.local/share/<tool>/...
 `libexec/` (`ws help`, `ws-doc-build`), `docs/`. Весь репозиторий —
 `ws help readme`.
 
-Каталог checkout — настройка хоста: `wsconfig` в
+Каталог checkout конфигурации — настройка хоста: `wsconfig` в
 `hosts/<host>/host.toml` (относительно `$HOME`), по нему home-manager
-ставит ссылки fish и Ghostty. `ws` из PATH — ядро в store; checkout он
-берёт из `~/.local/state/wsconfig/host.json` (пишет `ws apply`), без него —
-`~/wsconfig`. `~/wsconfig/bin/ws` работает со своим checkout. Переменная
-`WSCONFIG` переопределяет оба.
+ставит ссылки fish и Ghostty в её `home/`. `ws` из PATH — ядро в store;
+конфигурацию он берёт из `~/.local/state/wsconfig/host.json` (пишет `ws
+apply`), без него — `~/wsconfig`. Так же и `~/Projects/wsconfig/bin/ws`
+(checkout ядра, данных в нём нет). Переменная `WSCONFIG` переопределяет
+оба.
 
 Реальные пути в `$HOME` используют symlink'и на repository. Git — прямо в
 checkout:
@@ -561,6 +562,6 @@ xdg-terminals. Каждый отслеживаемый файл `home/P` — с�
 ## Help viewer
 
 ```text
-~/wsconfig/terminal/micro-help/           settings.json, bindings.json
-~/.local/share/wsconfig/micro-help/    MICRO_CONFIG_HOME ws help: ссылки на них + buffers/
+terminal/micro-help/ ядра                 settings.json, bindings.json
+~/.local/share/wsconfig/micro-help/    MICRO_CONFIG_HOME ws help: ссылки на них в store + buffers/
 ```

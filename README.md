@@ -6,24 +6,34 @@ home-manager доставляют конфигурацию поверх неё, 
 `ws flatpak`, `ws box`, `ws windows`, `ws keyboard`, `ws gnome`, `ws suspend`)
 применяют и проверяют её.
 
+Это ядро: `ws`, модули, их Nix и документация. Данные рабочей станции —
+хосты, каталоги, выбор, личные настройки (`home/`) — в отдельном
+репозитории конфигурации пользователя (`~/wsconfig`), чей `flake.nix`
+берёт это ядро входом `wsconfig` (`ws help architecture-v2`). Пример
+конфигурации — `tests/config/`. Checkout ядра для разработки —
+`~/Projects/wsconfig`; `ws apply --core ~/Projects/wsconfig` собирает
+конфигурацию с ним.
+
 ## Установка
 
 Новый ПК с GRUB — одной командой после установки Ubuntu (ESP и корень
 Btrfs): все вопросы в начале, дальше только перезагрузки (`ws help setup`):
 
 ```console
-wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash
+wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash -s -- URL_КОНФИГУРАЦИИ
 ```
 
 Вручную, и для mbp16 (`docs/runbooks/rebuild.md`, разделы 1–2):
 
 ```console
-sudo apt install git
-git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
-~/wsconfig/bin/ws btrfs make  # раскладка Btrfs: @, @home, @cache, @tmp, @log
-# reboot через GRUB, ещё раз ~/wsconfig/bin/ws btrfs make (раздел 3)
+sudo apt install git gh
+gh auth login && gh auth setup-git          # доступ к закрытой конфигурации
+git clone URL_КОНФИГУРАЦИИ ~/wsconfig       # данные: hosts/, каталоги, home/
+git clone https://github.com/kkkingqz/wsconfig.git ~/Projects/wsconfig   # ядро
+~/Projects/wsconfig/bin/ws btrfs make  # раскладка Btrfs: @, @home, @cache, @tmp, @log
+# reboot через GRUB, ещё раз ~/Projects/wsconfig/bin/ws btrfs make (раздел 3)
 # mbp16: ядро T2 и rEFInd (разделы 4–5)
-~/wsconfig/bootstrap.sh     # @nix, apt-списки, @vms и libvirt, @steam, группы, fish, первый ws apply home
+~/Projects/wsconfig/bootstrap.sh     # @nix, apt-списки, @vms и libvirt, @steam, группы, fish, первый ws apply home
 # reboot
 ws apply                    # apt, системные файлы (sudo), home-manager, расширения → tiling →
                             # клавиатура → Flatpak → Distrobox → виджеты

@@ -232,7 +232,7 @@ status/resume/rollback — `ws help recovery`. Checkout и локальный ba
 ## Проверка кода
 
 ```console
-python3 -m unittest discover -s ~/wsconfig/tests -v
+python3 -m unittest discover -s ~/Projects/wsconfig/tests -v
 ws check repo
 ```
 

@@ -95,12 +95,14 @@ history-nix`). Раскладку делает `ws btrfs make` из самой �
 mbp16 тоже: rEFInd — позже, раздел 5):
 
 ```console
-sudo apt install git
-git clone https://github.com/kkkingqz/wsconfig.git ~/wsconfig
-~/wsconfig/bin/ws btrfs make --dry-run   # только показывает шаги
-~/wsconfig/bin/ws btrfs make             # шаг 1, спрашивает подтверждение
+sudo apt install git gh
+gh auth login && gh auth setup-git          # доступ к закрытой конфигурации
+git clone URL_КОНФИГУРАЦИИ ~/wsconfig       # данные: hosts/, каталоги, home/
+git clone https://github.com/kkkingqz/wsconfig.git ~/Projects/wsconfig   # ядро
+~/Projects/wsconfig/bin/ws btrfs make --dry-run   # только показывает шаги
+~/Projects/wsconfig/bin/ws btrfs make             # шаг 1, спрашивает подтверждение
 # reboot сразу: записанное после снимка остаётся в старом корне
-~/wsconfig/bin/ws btrfs make             # шаг 2
+~/Projects/wsconfig/bin/ws btrfs make             # шаг 2
 ```
 
 1. `/` в корне Btrfs. Сначала проверки, до первого изменения: `/boot/efi`
@@ -226,8 +228,8 @@ systemctl --user is-active wireplumber
 и штатного GNOME вся конфигурация ставится так (`ws help layers`):
 
 ```console
-# ~/wsconfig уже есть с раздела 3
-~/wsconfig/bootstrap.sh
+# ~/wsconfig (конфигурация) и ~/Projects/wsconfig (ядро) уже есть с раздела 3
+~/Projects/wsconfig/bootstrap.sh
 # reboot: группы nix-users, libvirt, input, PATH из 00-nix.fish, fish как login shell
 #   (logout/login не хватает, пока открыта другая сессия пользователя, например ssh)
 ws apply            # apt, системные файлы (sudo), home-manager, расширения → tiling →

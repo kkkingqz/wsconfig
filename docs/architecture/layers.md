@@ -96,8 +96,9 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
   `libexec/`, `lib/`, модули) — копия checkout в store без данных
   (`nix/pkgs/ws.nix`); `~/.local/bin` ссылается на неё. Им по-прежнему нужны
   утилиты host (`gsettings`, `gdbus`, `busctl`, PyGObject, python3). Правка
-  кода действует после `ws apply`; `~/wsconfig/bin/ws` берёт код из
-  checkout сразу. Откат поколения home-manager откатывает и инструменты;
+  кода действует после `ws apply`; `~/Projects/wsconfig/bin/ws` (checkout
+  ядра) берёт код сразу, `ws apply --core ~/Projects/wsconfig` собирает
+  конфигурацию с ним. Откат поколения home-manager откатывает и инструменты;
   fish и Ghostty остаются ссылками в checkout, поэтому ключ состояния —
   коммит (`ws checkpoint`).
 - **Последние версии.** Закреплено только то, что нужно: ядро (`linux-t2`
