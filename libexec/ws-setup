@@ -325,52 +325,74 @@ config_rel() {
     echo "${repo#"$HOME"/}"
 }
 
+# A yes/no question whose default is a fact (yes or no) of the base host.
+ask_layer() {
+    local question="$1" default="$2"
+    [[ "$default" == yes ]] && default=y || default=n
+    ask "$question" "$default"
+}
+
+# hosts/NAME from the inventory of this machine (lib/ws_inventory.py), or
+# from a host of the same hardware; then the layers.
 new_host() {
-    local name="$1" dir="$repo/hosts/$1" vm=false widgets=true steam=false game=false
-    say "Новый хост $name (generic-pc, GRUB)"
-    if ask "Виртуальные машины (libvirt, ws help virt)?" n; then
-        vm=true
+    local name="$1" inv="$state/inventory.json" hw known guest kvm base='' h
+    local vm=no widgets=yes steam=no game=no
+    local -a flags=()
+    python3 "$WS_CORE/lib/ws_inventory.py" > "$inv" || die "the inventory of this machine failed"
+    hw="$(manifest_get "$inv" hardware)"
+    known="$(manifest_get "$inv" known)"
+    guest="$(manifest_get "$inv" guest)"
+    kvm="$(manifest_get "$inv" kvm)"
+    say "Новый хост $name"
+    echo "Машина: $(manifest_get "$inv" model)$([[ "$guest" == false ]] || echo ', виртуальная')"
+    echo "  hardware = $hw$([[ "$known" == true ]] || echo ' (не из списка: общий ПК)'), boot = $(manifest_get "$inv" boot), displayScale = $(manifest_get "$inv" displayScale)"
+    if [[ "$known" == false || "$guest" == true ]]; then
+        ask "Так и записать?" y \
+            || die "hosts/$name/host.toml by hand (ws help setup, lib/host.nix), then ws setup again"
     fi
-    if ! ask "Виджеты Quickshell на панели GNOME (ws help widgets)?" y; then
-        widgets=false
+    if [[ "$known" == true ]]; then
+        for h in "$repo"/hosts/*/host.toml; do
+            [[ -r "$h" && "$(fact_in "$h" hardware)" == "$hw" ]] || continue
+            h="$(basename "$(dirname "$h")")"
+            if ask "Взять за основу hosts/$h (то же железо: параметры ядра, пакеты)?" y; then
+                base="$h"
+                break
+            fi
+        done
     fi
-    if ask "Steam из apt (вместо Flatpak; ws help plan-legion-go)?" n; then
-        steam=true
-        if ask "Game Mode (сессия Steam как в SteamOS)?" n; then
-            game=true
-        fi
+    if [[ -n "$base" ]]; then
+        vm="$(fact_in "$repo/hosts/$base/host.toml" vm)"
+        widgets="$(fact_in "$repo/hosts/$base/host.toml" widgets)"
+        steam="$(fact_in "$repo/hosts/$base/host.toml" nativeSteam)"
+        game="$(fact_in "$repo/hosts/$base/host.toml" gameMode)"
+        flags+=(--base "$base")
+    elif [[ "$kvm" == true && "$guest" == false ]]; then
+        vm=yes
     fi
-    mkdir -p "$dir"
-    cat > "$dir/host.toml" <<EOF
-# $name: made by ws setup from generic-pc on $(date +%F) (ws help setup;
-# lib/host.nix checks the file).
-
-[host]
-# \`ws host\` finds the host by it.
-hostname = "$name"
-user = "$(id -un)"
-wsconfig = "$(config_rel)"
-
-[platform]
-hardware = "generic-pc"
-boot = "grub"
-kernelParams = ["quiet", "splash"]
-# Display scale of GNOME; Claude, ChatGPT and Wine DPI follow it.
-displayScale = 1
-
-[layers]
-# Virtual machines (ws help virt).
-vm = $vm
-# Quickshell widgets on the GNOME panel (ws help widgets).
-widgets = $widgets
-# Native Steam (steam/apt.txt, @steam) and the Game Mode session
-# (gaming/apt.txt; ws help plan-legion-go).
-nativeSteam = $steam
-gameMode = $game
-EOF
-    printf '# apt packages of %s on top of system/apt.txt and apt.txt.\n' "$name" > "$dir/apt.txt"
+    if [[ "$kvm" == false ]]; then
+        echo "Нет /dev/kvm: без виртуальных машин."
+        vm=no
+    elif ask_layer "Виртуальные машины (libvirt, ws help virt)?" "$vm"; then
+        vm=yes
+    else
+        vm=no
+    fi
+    ask_layer "Виджеты Quickshell на панели GNOME (ws help widgets)?" "$widgets" && widgets=yes || widgets=no
+    if ask_layer "Steam из apt (вместо Flatpak; ws help plan-legion-go)?" "$steam"; then
+        steam=yes
+        ask_layer "Game Mode (сессия Steam как в SteamOS)?" "$game" && game=yes || game=no
+    else
+        steam=no
+        game=no
+    fi
+    [[ "$vm" == no ]] || flags+=(--vm)
+    [[ "$widgets" == yes ]] || flags+=(--no-widgets)
+    [[ "$steam" == no ]] || flags+=(--steam)
+    [[ "$game" == no ]] || flags+=(--game)
+    python3 "$WS_CORE/lib/ws_inventory.py" write-host --config "$repo" --name "$name" \
+        --inventory "$inv" "${flags[@]}" >/dev/null || die "hosts/$name not written"
     git -C "$repo" add "hosts/$name"
-    git -C "$repo" commit -q -m "Hosts: $name from generic-pc (ws setup)" -- "hosts/$name"
+    git -C "$repo" commit -q -m "Hosts: $name${base:+ from $base} (ws setup)" -- "hosts/$name"
 }
 
 # What ws setup needs from the facts of HOST, checked before the PC is renamed.
