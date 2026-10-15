@@ -70,13 +70,18 @@ done
 
 # A question of make; --yes answers it.
 confirm() {
-    local a
+    local rc=0
     if [[ "$yes" == true ]]; then
-        echo "$1 [y/N] yes (--yes)"
+        echo "$1 yes (--yes)"
         return 0
     fi
-    read -r -p "$1 [y/N] " a || a=
-    [[ "$a" == [yY]* ]]
+    "$WS_CORE/libexec/ws-ui" confirm --default no "$1" || rc=$?
+    case "$rc" in
+        0) return 0 ;;
+        1 | 2) return 1 ;;
+        3) die "no terminal to ask \"$1\" (--yes answers it)" ;;
+        *) exit "$rc" ;;
+    esac
 }
 
 [[ $EUID -ne 0 ]] || die "run as the desktop user, not root"

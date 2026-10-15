@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""The dialogs of lib/ws_ui.py for bash (ws-setup, ws-btrfs, wswin).
+
+    ws-ui confirm [--default yes|no] TEXT       exit 0 yes, 1 no
+    ws-ui input [--value V] [--placeholder P] TEXT
+                                                prints the line
+    ws-ui choose [--selected ID] TITLE ID<TAB>LABEL...
+                                                prints the id
+    ws-ui pause TEXT                            waits for Enter
+
+Exit 2 when cancelled (Esc), 3 without a terminal, 130 on Ctrl+C, 1 when
+gum fails (with a message).
+"""
+import argparse
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+import ws_ui  # noqa: E402
+
+
+def main(argv):
+    p = argparse.ArgumentParser(prog="ws-ui", description=__doc__.split("\n\n")[0])
+    sub = p.add_subparsers(dest="cmd", required=True)
+    c = sub.add_parser("confirm")
+    c.add_argument("--default", choices=["yes", "no"], default="yes")
+    c.add_argument("text")
+    i = sub.add_parser("input")
+    i.add_argument("--value", default="")
+    i.add_argument("--placeholder", default="")
+    i.add_argument("text")
+    ch = sub.add_parser("choose")
+    ch.add_argument("--selected")
+    ch.add_argument("title")
+    ch.add_argument("items", nargs="+", metavar="ID<TAB>LABEL")
+    pa = sub.add_parser("pause")
+    pa.add_argument("text")
+    ns = p.parse_args(argv)
+    try:
+        if ns.cmd == "confirm":
+            return 0 if ws_ui.confirm(ns.text, ns.default == "yes") else 1
+        if ns.cmd == "input":
+            answer = ws_ui.input_text(ns.text, ns.value, ns.placeholder)
+        elif ns.cmd == "choose":
+            items = [tuple((x.split("\t", 1) + [""])[:2]) for x in ns.items]
+            answer = ws_ui.choose(ns.title, items, [ns.selected] if ns.selected else (), many=False)
+        else:
+            ws_ui.pause(ns.text)
+            return 0
+    except ws_ui.NoTerminal:
+        print("ws-ui: no terminal to ask on", file=sys.stderr)
+        return ws_ui.NO_TERMINAL
+    except KeyboardInterrupt:
+        sys.stderr.write("\n")
+        return ws_ui.INTERRUPTED
+    except ValueError as e:
+        raise SystemExit(f"ws-ui: {e}")
+    if answer is None:
+        return ws_ui.CANCELLED
+    print(answer)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

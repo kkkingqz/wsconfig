@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "lib"))
 
 import ws_catalog  # noqa: E402
-import ws_select  # noqa: E402
+import ws_ui  # noqa: E402
 
 FIXTURE = ROOT / "tests/fixtures/catalog"
 
@@ -107,7 +107,7 @@ class CatalogTests(unittest.TestCase):
             asked.append((offered, list(unchecked)))
             return ["new"]
 
-        with mock.patch.object(ws_select, "choose", choose):
+        with mock.patch.object(ws_ui, "offer", choose):
             self.assertEqual(ws_catalog.offer(self.choice(), items), ["new"])
             self.assertEqual(asked[-1], ([("new", "New"), ("other", "")], []))
             c = self.choice()
@@ -119,7 +119,7 @@ class CatalogTests(unittest.TestCase):
 
     def test_cancelled_offer_writes_nothing(self):
         before = self.path().read_text()
-        with mock.patch.object(ws_select, "choose", lambda *a: None):
+        with mock.patch.object(ws_ui, "offer", lambda *a: None):
             self.assertIsNone(ws_catalog.offer(self.choice(), [("new", "ask", "")]))
         self.assertEqual(self.path().read_text(), before)
 
@@ -137,7 +137,7 @@ class CatalogTests(unittest.TestCase):
     def test_cli_offer_without_a_terminal_names_the_offered(self):
         p = self.cli("boxes", "offer", "--what", "containers", "--",
                      "arch\task\t", "new\task\tNew", "t2\tno\t")
-        self.assertEqual(p.returncode, ws_select.NO_TERMINAL, p.stderr)
+        self.assertEqual(p.returncode, ws_ui.NO_TERMINAL, p.stderr)
         self.assertEqual(p.stdout.split(), ["new"])
         self.assertEqual(self.choice().state("new"), "ask")
 

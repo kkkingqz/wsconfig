@@ -36,13 +36,13 @@ USER_APPLICATIONS = Path.home() / ".local/share/applications"
 # The state of an app on this host (lib/ws_catalog.py): yes (installed),
 # no (declined), else the default of its catalog entry (ask: offered).
 # install/manage put it in yes, remove in no, apply asks about the apps in
-# state ask (lib/ws_select.py) and records the answer.
+# state ask (lib/ws_ui.py offer) and records the answer.
 SELECT_HINT = "ws flatpak apply --select"
 
 import flatpak_catalog  # noqa: E402
 import ws_catalog  # noqa: E402
 import ws_check  # noqa: E402
-import ws_select  # noqa: E402
+import ws_ui  # noqa: E402
 
 
 _host = None
@@ -1254,7 +1254,7 @@ def cmd_apply(reselect=False):
         items = []
     try:
         chosen = ws_catalog.offer(choice, items, reselect, "Flatpak apps")
-    except ws_select.NoTerminal:
+    except ws_ui.NoTerminal:
         if reselect:
             raise SystemExit(f"{SELECT_HINT}: needs a terminal")
         chosen = []
@@ -1419,9 +1419,10 @@ Examples:
 runtime for every installed branch of the managed apps.
 What goes on this machine is up to its hosts/HOST/flatpak.toml (HOST is the name
 of ws host): yes is installed without a question, no is skipped; an app in
-neither gets the default of the catalog. For those in state ask apply asks
-"Install all? [Y/n]", on n a list where Space checks and unchecks; the answer
-goes into yes / no. --select asks about no again too.
+neither gets the default of the catalog. For those in state ask apply shows
+one list, all checked (Space toggles, Ctrl+A all, Enter accepts, Esc
+cancels); checked go into yes, unchecked into no. --select asks about no
+again too (unchecked).
 Without a terminal the ones not offered are not installed.
 Then it resets their overrides, applies the declared values and runs check.
 Usually run by ws apply (ws apply flatpak): that one builds the configuration

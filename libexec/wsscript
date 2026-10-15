@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
 import ws_catalog  # noqa: E402
 import ws_check  # noqa: E402
 import ws_common  # noqa: E402
-import ws_select  # noqa: E402
+import ws_ui  # noqa: E402
 
 PROG = "ws script"
 REPO = ws_common.CONFIG
@@ -279,7 +279,7 @@ def cmd_apply(args):
     offered = [] if os.environ.get("WS_OFFERED") and not select else items
     try:
         chosen = ws_catalog.offer(c, offered, select, "scripts")
-    except ws_select.NoTerminal:
+    except ws_ui.NoTerminal:
         if select:
             die("ws script apply --select: needs a terminal")
         names = [n for n, d, _ in items if c.state(n, d) == "ask"]
@@ -288,7 +288,7 @@ def cmd_apply(args):
         chosen = []
     except KeyboardInterrupt:
         sys.stderr.write("\n")
-        return ws_select.INTERRUPTED
+        return ws_ui.INTERRUPTED
     if chosen is None:
         print("ws script: choice cancelled, the offered scripts left as they are "
               "(asked next time)", file=sys.stderr)

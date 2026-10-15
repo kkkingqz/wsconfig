@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "lib"))
 
 import ws_catalog  # noqa: E402
-import ws_select  # noqa: E402
+import ws_ui  # noqa: E402
 
 IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
             "GIT_COMMITTER_EMAIL": "t@t"}
@@ -85,12 +85,14 @@ class CatalogTests(unittest.TestCase):
         (self.config / "hosts/new").mkdir(parents=True)
         asked = []
 
-        def checklist(term, title, items, checked):
-            asked.append((title, items, checked))
+        def checklist(tty, title, items):
+            if not items:
+                return []
+            asked.append((title, [(n, label) for n, label, _ in items], [c for _, _, c in items]))
             return ["hello"]
-        with mock.patch.object(ws_select, "checklist", checklist), \
+        with mock.patch.object(ws_catalog, "checklist", checklist), \
                 mock.patch.object(ws_catalog.ws_common, "git_add_new"):
-            written = ws_catalog.setup(self.config, "new", io.StringIO())
+            written = ws_catalog.setup(self.config, "new", err=io.StringIO())
         self.assertEqual(asked, [("Scripts on new", [("hello", "Hi."), ("never", "")], [True, False])])
         self.assertEqual(written, ["hosts/new/scripts.toml"])
         choice = ws_catalog.Choice("scripts", "new", self.config)
@@ -105,7 +107,7 @@ class CatalogTests(unittest.TestCase):
             asked.append((what, offered))
             return ["hello"]
         with mock.patch.object(ws_catalog.ws_common, "CONFIG", self.config), \
-                mock.patch.object(ws_select, "choose", choose), \
+                mock.patch.object(ws_ui, "offer", choose), \
                 mock.patch.object(ws_catalog.ws_common, "git_add_new"):
             written = ws_catalog.apply_offer("new", ["scripts"])
         self.assertEqual(asked, [("scripts", [("hello", "Hi.")])])

@@ -1,15 +1,12 @@
 """wsbox apply, create, remove and check against the workstation marks of
 hosts/HOST/boxes.toml, with podman and distrobox replaced by shell stubs: a
-container is a file in the state directory. The checklist runs on a real
-pseudo terminal (pty.fork gives wsbox a controlling terminal)."""
+container is a file in the state directory. The checklist runs on the gum of
+the tests (tests/fixtures/bin/gum)."""
 import json
 import os
 from pathlib import Path
-import pty
-import select
 import subprocess
 import tempfile
-import time
 import unittest
 
 import fast_tmp  # noqa: F401  (tmpfs)
@@ -45,7 +42,7 @@ class WsboxTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        root = Path(self.temp.name)
+        root = self.root = Path(self.temp.name)
         self.state = root / "state"
         cfg = root / "cfg"
         stubs = root / "bin"
@@ -96,33 +93,19 @@ class WsboxTests(unittest.TestCase):
         return subprocess.run([str(WSBOX), *args], env=self.env, text=True,
                               capture_output=True, stdin=subprocess.DEVNULL)
 
-    def wsbox_tty(self, keys, *args):
-        """wsbox ARGS on a pseudo terminal; KEYS are typed one chunk at a
-        time once the question is on the screen. Returns (exit code, screen)."""
-        pid, master = pty.fork()
-        if pid == 0:
-            try:
-                os.execve(str(WSBOX), [str(WSBOX), *args], self.env)
-            finally:
-                os._exit(127)
-        screen, keys = b"", list(keys)
-        deadline = time.monotonic() + 20
-        while time.monotonic() < deadline:
-            if keys and b"[Y/n]" in screen:
-                time.sleep(0.02)
-                os.write(master, keys.pop(0).encode())
-            if not select.select([master], [], [], 0.05)[0]:
-                continue
-            try:
-                data = os.read(master, 4096)
-            except OSError:
-                break
-            if not data:
-                break
-            screen += data
-        os.close(master)
-        _, status = os.waitpid(pid, 0)
-        return os.waitstatus_to_exitcode(status), screen.decode(errors="replace")
+    def wsbox_ui(self, answers, *args):
+        """wsbox ARGS with the gum of the tests (lib/ws_ui.py): ANSWERS one per
+        dialog (tests/fixtures/bin/gum). Returns (exit code, output, the
+        arguments of each gum call)."""
+        log, replies = self.root / "gum-log", self.root / "gum-answers"
+        log.unlink(missing_ok=True)
+        replies.write_text("".join(json.dumps(a) + "\n" for a in answers))
+        env = self.env | {"WS_GUM": str(ROOT / "tests/fixtures/bin/gum"), "WS_UI_TTY": "/dev/null",
+                          "WS_GUM_LOG": str(log), "WS_GUM_ANSWERS": str(replies)}
+        p = subprocess.run([str(WSBOX), *args], env=env, text=True,
+                           capture_output=True, stdin=subprocess.DEVNULL)
+        calls = [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
+        return p.returncode, p.stdout + p.stderr, calls
 
     def test_apply_creates_yes_marks_existing_and_waits_for_a_terminal(self):
         self.marks('# mine\nyes = ["a"]\n')
@@ -146,20 +129,22 @@ class WsboxTests(unittest.TestCase):
     def test_apply_asks_and_writes_the_answer(self):
         self.marks('no = ["a"]\n')
         self.defaults(c="ask")
-        # Offered: b, c (ask); uncheck b, keep c.
-        code, screen = self.wsbox_tty(["n\n", " ", "\r"], "apply")
-        self.assertEqual(code, 0, screen)
-        self.assertIn("Install all? [Y/n]", screen)
+        # Offered: b, c (ask), both checked; uncheck b, keep c.
+        code, out, calls = self.wsbox_ui([["c"]], "apply")
+        self.assertEqual(code, 0, out)
+        self.assertEqual([a for a in calls[0] if a.startswith("--selected=")],
+                         ["--selected=b  img-b", "--selected=c  img-c"])
         self.assertEqual(self.containers(), {"c"})
         self.assertEqual(self.hosts.read_text(), 'no = ["a", "b"]\nyes = ["c"]\n')
 
     def test_select_offers_declined_unchecked(self):
         self.marks('no = ["a"]\nyes = ["b"]\n')
         self.exists("b")
-        code, screen = self.wsbox_tty(["\n"], "apply", "--select")
-        self.assertEqual(code, 0, screen)
-        self.assertIn("(declined)", screen)
-        # a (declined) and c (default no) were offered and taken.
+        code, out, calls = self.wsbox_ui([["a", "c"]], "apply", "--select")
+        self.assertEqual(code, 0, out)
+        # a (declined) and c (default no) were offered unchecked, then taken.
+        self.assertIn("a  img-a (declined)\ta", calls[0])
+        self.assertFalse([a for a in calls[0] if a.startswith("--selected=")])
         self.assertEqual(self.containers(), {"a", "b", "c"})
         self.assertEqual(self.hosts.read_text(), 'no = []\nyes = ["b", "a", "c"]\n')
 
@@ -167,9 +152,9 @@ class WsboxTests(unittest.TestCase):
         self.marks('yes = ["a"]\n')
         self.defaults(c="ask")
         self.exists("b")
-        code, screen = self.wsbox_tty(["n\n", "\x1b"], "apply")
-        self.assertEqual(code, 0, screen)
-        self.assertIn("choice cancelled", screen)
+        code, out, _ = self.wsbox_ui(["esc"], "apply")
+        self.assertEqual(code, 0, out)
+        self.assertIn("choice cancelled", out)
         self.assertEqual(self.containers(), {"a", "b"})
         self.assertEqual(self.hosts.read_text(), 'yes = ["a", "b"]\nno = []\n')
 

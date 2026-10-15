@@ -156,7 +156,7 @@ class UserRuntimeTests(unittest.TestCase):
         patch.object(self.g["ws_common"], "apply_module",
                      side_effect=lambda *m: self.applied.append(m)).start()
         # No terminal: apply asks nothing (apps not offered stay so).
-        patch.object(self.g["ws_select"], "open_tty", return_value=None).start()
+        patch.object(self.g["ws_ui"], "open_tty", return_value=None).start()
         patch("shutil.which", return_value="/fake/flatpak").start()
         self.output = contextlib.redirect_stdout(io.StringIO())
         self.output.__enter__()
@@ -228,14 +228,14 @@ class UserRuntimeTests(unittest.TestCase):
     def test_answer_is_written_for_this_host(self):
         state = FlatpakState(system_runtime=True)
         self.choose("# mine\n")
-        with patch.object(self.g["ws_select"], "choose", return_value=[APP]):
+        with patch.object(self.g["ws_ui"], "offer", return_value=[APP]):
             self.execute(state, "apply")
         self.assertTrue(state.app)
         self.assertEqual(self.chosen(), ([APP], []))
         self.assertTrue(self.host.read_text().startswith("# mine\n"))
         state = FlatpakState(system_runtime=True)
         self.choose("")
-        with patch.object(self.g["ws_select"], "choose", return_value=[]):
+        with patch.object(self.g["ws_ui"], "offer", return_value=[]):
             self.execute(state, "apply")
         self.assertFalse(state.app)
         self.assertEqual(self.chosen(), ([], [APP]))
@@ -244,7 +244,7 @@ class UserRuntimeTests(unittest.TestCase):
         state = FlatpakState(system_runtime=True)
         self.declare(APP, OTHER)
         self.choose(f'yes = ["{APP}"]\n')
-        with patch.object(self.g["ws_select"], "choose", return_value=None), \
+        with patch.object(self.g["ws_ui"], "offer", return_value=None), \
                 contextlib.redirect_stderr(io.StringIO()) as err:
             self.assertFalse(self.execute(state, "apply"))
         self.assertIn("choice cancelled", err.getvalue())

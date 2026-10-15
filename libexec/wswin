@@ -241,22 +241,21 @@ slug() {
     printf '%s\n' "${s:-app}"
 }
 
-# y/N (or Y/n with a second argument "yes") from the terminal; no terminal:
-# the default.
+# Yes or no (default no, or yes with a second argument "yes") through gum
+# (libexec/ws-ui); no terminal: the default.
 ask() {
-    local question="$1" default="${2:-no}" hint="[y/N]" answer=""
+    local question="$1" default="${2:-no}" rc=0
 
-    [[ "$default" == yes ]] && hint="[Y/n]"
-    if { exec 3<>/dev/tty; } 2>/dev/null; then
-        printf '%s %s ' "$question" "$hint" >&3
-        read -r answer <&3 || answer=""
-        exec 3>&-
-    else
-        printf '%s %s (no terminal: %s)\n' "$question" "$hint" "$default" >&2
-    fi
-    answer="${answer,,}"
-    [[ -z "$answer" ]] && answer="$default"
-    [[ "$answer" == y || "$answer" == yes ]]
+    "$WS_CORE/libexec/ws-ui" confirm --default "$default" "$question" || rc=$?
+    case "$rc" in
+        0) return 0 ;;
+        1 | 2) return 1 ;;
+        3)
+            printf '%s (no terminal: %s)\n' "$question" "$default" >&2
+            [[ "$default" == yes ]]
+            ;;
+        *) exit "$rc" ;;
+    esac
 }
 
 # An argument for Exec= (desktop entry quoting, then string escaping).

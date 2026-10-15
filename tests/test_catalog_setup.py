@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'lib'))
 
 import ws_catalog  # noqa: E402
-import ws_select  # noqa: E402
+import ws_ui  # noqa: E402
 
 CATALOG = '''[remotes]
 flathub = "https://example.org/repo"
@@ -76,17 +76,20 @@ class SetupTests(unittest.TestCase):
         # An own choice of new: not offered again.
         (self.repo / 'hosts/new/flatpak.toml').write_text('# mine\nno = ["org.example.Mine"]\n')
         self.asked = []
+        self.err = FakeTerm()
 
     def run_with(self, answers):
         """answers: per checklist, the names to check (None cancels)."""
         replies = iter(answers)
 
-        def checklist(term, title, items, checked):
-            self.asked.append((title, dict(zip([n for n, _ in items], checked))))
+        def checklist(tty, title, items):
+            if not items:
+                return []
+            self.asked.append((title, {n: c for n, _, c in items}))
             return next(replies)
 
-        with mock.patch.object(ws_select, 'checklist', checklist):
-            return ws_catalog.setup(self.repo, 'new', FakeTerm())
+        with mock.patch.object(ws_catalog, 'checklist', checklist):
+            return ws_catalog.setup(self.repo, 'new', err=self.err)
 
     def read(self, name):
         path = self.repo / 'hosts/new' / name
@@ -189,7 +192,7 @@ class ApplyOfferTests(unittest.TestCase):
         def choose(offered, what, unchecked, tty):
             self.asked.append((what, [n for n, _ in offered], list(unchecked)))
             return next(replies)
-        return mock.patch.object(ws_select, 'choose', choose)
+        return mock.patch.object(ws_ui, 'offer', choose)
 
     def test_asks_each_module_about_its_ask_positions(self):
         err = io.StringIO()
@@ -208,7 +211,7 @@ class ApplyOfferTests(unittest.TestCase):
 
     def test_without_a_terminal_names_the_positions(self):
         err = io.StringIO()
-        with mock.patch.object(ws_select, 'open_tty', return_value=None):
+        with mock.patch.object(ws_ui, 'open_tty', return_value=None):
             self.assertEqual(ws_catalog.apply_offer('new', ['boxes'], err=err), [])
         self.assertIn('no terminal to ask): arch;', err.getvalue())
 

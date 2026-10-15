@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""A gum for the tests (WS_GUM): appends its arguments as a JSON line to
+WS_GUM_LOG; answers by the first line of WS_GUM_ANSWERS (and drops it), else
+as Enter on the defaults would. An answer line is JSON: "default", "esc",
+"ctrl-c" or a list of lines for stdout (exit 0)."""
+import json
+import os
+import re
+import sys
+
+args = sys.argv[1:]
+log = os.environ.get("WS_GUM_LOG")
+if log:
+    with open(log, "a") as f:
+        f.write(json.dumps(args, ensure_ascii=False) + "\n")
+
+answer = "default"
+path = os.environ.get("WS_GUM_ANSWERS")
+if path and os.path.exists(path):
+    with open(path) as f:
+        lines = f.read().splitlines()
+    if lines:
+        answer = json.loads(lines[0])
+        with open(path, "w") as f:
+            f.write("".join(line + "\n" for line in lines[1:]))
+
+if answer == "esc":
+    sys.exit(1)
+if answer == "ctrl-c":
+    sys.exit(130)
+if isinstance(answer, list):
+    print("\n".join(answer))
+    sys.exit(0)
+
+cmd, flags, rest = args[0], {}, []
+for a in args[1:]:
+    if a.startswith("--"):
+        key, _, value = a[2:].partition("=")
+        flags.setdefault(key, []).append(value)
+    else:
+        rest.append(a)
+if cmd == "choose":
+    options = [o.split("\t", 1) for o in rest]
+    selected = [s.replace("\\,", ",") for v in flags.get("selected", [])
+                for s in re.split(r"(?<!\\),", v)]
+    ids = [o[1] for o in options if o[0] in selected]
+    if "no-limit" in flags:
+        print("\n".join(ids))
+    else:
+        print((ids or [options[0][1]])[0])
+elif cmd == "confirm":
+    if flags.get("negative") == [""]:
+        sys.exit(0)
+    sys.exit(0 if flags.get("default", ["true"])[0] == "true" else 1)
+elif cmd == "input":
+    print(flags.get("value", [""])[0])
+else:
+    sys.exit(f"gum stub: unknown command {cmd}")

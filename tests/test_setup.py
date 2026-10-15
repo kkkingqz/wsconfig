@@ -62,7 +62,8 @@ class SetupTests(unittest.TestCase):
                     if not k.startswith(("WS", "GIT_", "XDG_", "NIX_"))}
         self.env.update(HOME=str(self.home), PATH=f"{stubs}:{os.environ['PATH']}",
                         GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1",
-                        WS_SETUP_TTY="/dev/null", FAKE_CORE=str(self.fake))
+                        WS_SETUP_TTY="/dev/null", FAKE_CORE=str(self.fake),
+                        WS_GUM=str(ROOT / "tests/fixtures/bin/gum"))
         self.config = self.root / "config-origin"
         self.config.mkdir()
         (self.config / "wsconfig.toml").write_text("schema = 1\n")
@@ -258,6 +259,7 @@ class T2Tests(unittest.TestCase):
                     if not k.startswith(("WS", "XDG_", "NIX_"))}
         self.env.update(HOME=str(self.home), PATH=f"{stubs}:{os.environ['PATH']}", WS_HOST="mac",
                         WSCONFIG=str(self.config), WS_SETUP_TTY="/dev/null", WS_SETUP_ROOT=str(self.machine),
+                        WS_GUM=str(ROOT / "tests/fixtures/bin/gum"),
                         DEFAULT_ID="285", ESP=str(esp), TREE=str(tree))
 
     def write_host(self, boot, **params):

@@ -6,7 +6,7 @@ of distrobox/catalog.toml, the widgets of the pinned wswidgets, the files of
 scripts/. Each position has a default, what a host without its own choice
 gets:
 
-    ask  offered (apply asks: "Install all? [Y/n]", then a checklist)
+    ask  offered (apply asks in a checklist, lib/ws_ui.py offer)
     no   not offered (apply --select still asks)
     yes  on every host without its own choice, without a question
 
@@ -56,7 +56,7 @@ import tomllib
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ws_common  # noqa: E402
 import ws_facts  # noqa: E402
-import ws_select  # noqa: E402
+import ws_ui  # noqa: E402
 
 PROG = "ws_catalog"
 STATES = ("yes", "no", "ask")
@@ -201,7 +201,7 @@ def offer(choice, items, select=False, what="", tty=None):
     """items: [(name, default, label)] of the catalog. Asks about those in
     state ask (with SELECT also no, unchecked), writes the answer and
     returns the names it set yes; [] with nothing to ask. None when
-    cancelled (nothing written); raises ws_select.NoTerminal."""
+    cancelled (nothing written); raises ws_ui.NoTerminal."""
     offered, unchecked = [], []
     for name, default, label in items:
         state = choice.state(name, default)
@@ -211,7 +211,7 @@ def offer(choice, items, select=False, what="", tty=None):
                 unchecked.append(name)
     if not offered:
         return []
-    chosen = ws_select.choose(offered, what, unchecked, tty)
+    chosen = ws_ui.offer(offered, what, unchecked, tty)
     if chosen is None:
         return None
     for name, _ in offered:
@@ -242,7 +242,7 @@ def summary(old_text, new_text):
 # All the modules at once: ws setup before the long part (--setup) and the
 # start of ws apply.
 STEAM_FLATPAK = "com.valvesoftware.Steam"
-CANCELLED, NO_TERMINAL = ws_select.CANCELLED, ws_select.NO_TERMINAL
+CANCELLED, NO_TERMINAL = ws_ui.CANCELLED, ws_ui.NO_TERMINAL
 
 
 def box_catalog(config=None):
@@ -375,17 +375,16 @@ def script_catalog(config=None):
     return out
 
 
-def checklist(term, title, items):
+def checklist(tty, title, items):
     """items: [(name, label, checked)]; the checked names, None when
     cancelled."""
     if not items:
         return []
-    term.write(f"\n{title}: {len(items)}\n")
-    return ws_select.checklist(term, title, [(n, l) for n, l, _ in items],
-                               [c for _, _, c in items])
+    return ws_ui.choose(f"{title} ({len(items)})", [(n, l) for n, l, _ in items],
+                        [n for n, _, c in items if c], tty=tty)
 
 
-def setup(config, host, term):
+def setup(config, host, tty=None, err=sys.stderr):
     """The choices of ws setup (ws help setup), as checklists, so ws apply
     asks nothing afterwards: the apps of flatpak/catalog.toml and the
     containers of distrobox/catalog.toml without a choice of this host, with
@@ -407,7 +406,7 @@ def setup(config, host, term):
     if (ws_facts.fact(host, "nativeSteam", config) == "yes" and catalog.app(STEAM_FLATPAK) is not None
             and STEAM_FLATPAK not in apps.yes() + apps.no()):
         apps.set(STEAM_FLATPAK, "no")
-        term.write(f"\n{STEAM_FLATPAK}: no on {host} (nativeSteam = true: Steam from apt)\n")
+        err.write(f"{STEAM_FLATPAK}: no on {host} (nativeSteam = true: Steam from apt)\n")
 
     remote = lambda app: catalog.app(app)["remote"]
     lists = [(apps, f"Flatpak apps on {host}",
@@ -423,7 +422,7 @@ def setup(config, host, term):
     for choice, title, positions, label in lists:
         items = [(name, label(name), default != "no") for name, default in positions
                  if name not in choice.yes() + choice.no()]
-        chosen = checklist(term, title, items)
+        chosen = checklist(tty, title, items)
         if chosen is None:
             return None
         for name, _, _ in items:
@@ -439,7 +438,7 @@ def setup(config, host, term):
                 name = f"{app} {kind} {value}"
                 items.append((name, "", True))
                 keys[name] = (app, kind, flatpak_catalog.key_of(kind, value))
-    chosen = checklist(term, f"Flatpak overrides on {host}", items)
+    chosen = checklist(tty, f"Flatpak overrides on {host}", items)
     if chosen is None:
         return None
     for name, _, _ in items:
@@ -452,7 +451,7 @@ def setup(config, host, term):
 def apply_offer(host, modules, select=False, tty=None, err=sys.stderr):
     """The start of ws apply: for each of MODULES (flatpak, boxes, widgets, scripts)
     the positions in state ask (with SELECT also no), as each module's
-    apply asks: "Install all? [Y/n]", then a checklist. A cancel or a
+    apply asks: one checklist (ws_ui.offer). A cancel or a
     missing terminal leaves that module's positions ask and goes on.
     Returns the files written."""
     import flatpak_catalog
@@ -479,7 +478,7 @@ def apply_offer(host, modules, select=False, tty=None, err=sys.stderr):
         before = choice.text
         try:
             chosen = offer(choice, items, select, what, tty)
-        except ws_select.NoTerminal:
+        except ws_ui.NoTerminal:
             names = [n for n, d, _ in items if choice.state(n, d) == "ask"]
             err.write(f"Not offered on {host} yet (no terminal to ask): {' '.join(names)}; "
                       "run ws apply in a terminal\n")
@@ -501,15 +500,15 @@ def cli_offer_all(host, args):
         for path in apply_offer(host, modules, select):
             print(path)
         return 0
-    fd = ws_select.open_tty()
+    fd = ws_ui.open_tty()
     if fd is None:
         sys.stderr.write(f"{PROG}: no terminal to ask on\n")
         return NO_TERMINAL
     try:
-        changed = setup(ws_common.CONFIG, host, ws_select.Terminal(fd))
+        changed = setup(ws_common.CONFIG, host, fd)
     except KeyboardInterrupt:
         sys.stderr.write(f"\n{PROG}: interrupted, nothing written\n")
-        return ws_select.INTERRUPTED
+        return ws_ui.INTERRUPTED
     finally:
         os.close(fd)
     if changed is None:
@@ -589,18 +588,18 @@ def cli_offer(choice, args):
         items.append((name, default or "ask", label))
     try:
         chosen = offer(choice, items, select, what)
-    except ws_select.NoTerminal:
+    except ws_ui.NoTerminal:
         # The names that would be asked about, for the caller's message.
         for name, default, _ in items:
             state = choice.state(name, default)
             if state == "ask" or (state == "no" and select):
                 print(name)
-        return ws_select.NO_TERMINAL
+        return ws_ui.NO_TERMINAL
     except KeyboardInterrupt:
         sys.stderr.write("\n")
-        return ws_select.INTERRUPTED
+        return ws_ui.INTERRUPTED
     if chosen is None:
-        return ws_select.CANCELLED
+        return ws_ui.CANCELLED
     for name in chosen:
         print(name)
     return 0

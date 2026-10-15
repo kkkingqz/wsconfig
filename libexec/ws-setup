@@ -87,13 +87,36 @@ say() {
     printf '\n== %s\n' "$*"
 }
 
+# The dialogs: gum through libexec/ws-ui (ws help plan-v2, 11). Esc is no
+# (confirm) or the default (input); Ctrl+C or a gum failure ends setup.
+ui() {
+    local rc=0
+    "$WS_CORE/libexec/ws-ui" "$@" || rc=$?
+    case "$rc" in
+        0 | 1 | 2) return "$rc" ;;
+        3) die "no terminal to ask on" ;;
+        130) die "interrupted" ;;
+        *) die "the dialog failed (ws-ui exit $rc)" ;;
+    esac
+}
+
 # yes/no question; $2 is the answer on Enter (y or n).
 ask() {
-    local a hint='[Y/n]'
-    [[ "${2:-y}" == y ]] || hint='[y/N]'
-    read -r -p "$1 $hint " a || a=
-    [[ -n "$a" ]] || a="${2:-y}"
-    [[ "$a" == [yYдД]* ]]
+    local default=yes
+    [[ "${2:-y}" == y ]] || default=no
+    ui confirm --default "$default" "$1"
+}
+
+# A line of text; $2 is in the field, Enter or Esc keeps it.
+ask_text() {
+    local a
+    a="$(ui input --value "$2" "$1")" || a=
+    echo "${a:-$2}"
+}
+
+# Wait for Enter.
+pause() {
+    "$WS_CORE/libexec/ws-ui" pause "$1" || true
 }
 
 done_step() { [[ -e "$state/$1.done" ]]; }
@@ -107,15 +130,16 @@ fact_in() {
 }
 
 # The terminal: install.sh gives it as stdin (wget | bash); WS_SETUP_TTY
-# replaces it (tests).
+# replaces it (tests), also for the dialogs (WS_UI_TTY of lib/ws_ui.py).
 if [[ -n "${WS_SETUP_TTY:-}" ]]; then
     exec <"$WS_SETUP_TTY"
+    export WS_UI_TTY="$WS_SETUP_TTY"
 else
     [[ -t 0 ]] || die "run it in a terminal: it asks questions"
 fi
 # The terminal of the autostart closes with the script: keep it open.
 if [[ "$autostarted" == true ]]; then
-    trap 'echo; read -r -p "Enter: close the window " _ || true' EXIT
+    trap 'echo; pause "Enter: close the window"' EXIT
 fi
 # One run at a time (the autostart and a terminal); exec keeps the PID.
 # --check only reads.
@@ -145,7 +169,7 @@ setup_ws() {
 reboot_now() {
     say "Reboot: $1"
     echo "After the login ws setup goes on by itself."
-    read -r -p "Enter: reboot " _ || true
+    pause "Enter: reboot"
     trap - EXIT
     sudo systemctl reboot
     exit 0
@@ -265,12 +289,12 @@ own_rev() {
 git_identity() {
     local name email
     if [[ -z "$(git config --global user.name)" ]]; then
-        read -r -p "Name of the commit author [$(id -un)]: " name || true
-        git config --global user.name "${name:-$(id -un)}"
+        name="$(ask_text "Name of the commit author" "$(id -un)")"
+        git config --global user.name "$name"
     fi
     if [[ -z "$(git config --global user.email)" ]]; then
-        read -r -p "E-mail of the commit author [$(id -un)@$(hostname)]: " email || true
-        git config --global user.email "${email:-$(id -un)@$(hostname)}"
+        email="$(ask_text "E-mail of the commit author" "$(id -un)@$(hostname)")"
+        git config --global user.email "$email"
     fi
     [[ -n "$(git config --global init.defaultBranch)" ]] || git config --global init.defaultBranch main
 }
@@ -472,6 +496,23 @@ check_facts() {
     esac
 }
 
+# The host of this PC: one of the configuration (the one named as this PC
+# preselected) or "new host…", then its name (this PC's name in the field).
+pick_host() {
+    local current="$1" sel="new host…" h a
+    shift
+    for h in "$@"; do
+        [[ "$h" != "$current" ]] || sel="$h"
+    done
+    if (($#)); then
+        a="$(ui choose --selected "$sel" "Host of this PC" "$@" "new host…")" || return 1
+        [[ "$a" == "new host…" ]] || { echo "$a"; return 0; }
+    fi
+    valid_name "$current" || current=
+    a="$(ui input --value "$current" "Name of the new host")" && [[ -n "$a" ]] || return 1
+    echo "$a"
+}
+
 step_host() {
     local name hosts current
     if host="$(ws host 2>/dev/null)"; then
@@ -483,14 +524,8 @@ step_host() {
         echo "Hosts: ${hosts:-none}"
         name="$host_arg"
         while :; do
-            if [[ -z "$name" ]]; then
-                if valid_name "$current"; then
-                    read -r -p "Host name (existing or new) [$current]: " name || die "no answer"
-                    name="${name:-$current}"
-                else
-                    read -r -p "Host name (existing or new): " name || die "no answer"
-                fi
-            fi
+            # shellcheck disable=SC2086 # one word per host
+            [[ -n "$name" ]] || name="$(pick_host "$current" $hosts)" || die "no answer"
             valid_name "$name" && break
             echo "only lowercase latin letters, digits, - and _, up to 23 characters"
             [[ -z "$host_arg" ]] || die "--host $host_arg: not a host name"
@@ -807,8 +842,8 @@ new_remote() {
         return 0
     fi
     step_github
-    read -r -p "Repository name [$(basename "$repo")]: " name || true
-    gh repo create --private "${name:-$(basename "$repo")}" --source "$repo" --remote origin --push \
+    name="$(ask_text "Repository name" "$(basename "$repo")")"
+    gh repo create --private "$name" --source "$repo" --remote origin --push \
         || echo "Not created; later: gh repo create --private NAME --source $repo --push"
 }
 
