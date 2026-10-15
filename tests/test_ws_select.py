@@ -41,7 +41,7 @@ class ChooseTests(unittest.TestCase):
         reader.start()
         typist.start()
         try:
-            result = ws_select.choose(items, "тест", unchecked, tty=slave)
+            result = ws_select.choose(items, "test", unchecked, tty=slave)
             typist.join()
         finally:
             # Closing the slave ends the reader (EIO) once it has read
@@ -54,7 +54,7 @@ class ChooseTests(unittest.TestCase):
 
     def test_enter_installs_all(self):
         self.assertEqual(self.choose(["\n"]), ["a.App", "b.App", "c.App"])
-        self.assertIn("Поставить все? [Y/n]", self.screen)
+        self.assertIn("Install all? [Y/n]", self.screen)
 
     def test_space_unchecks(self):
         self.assertEqual(self.choose(["n\n", DOWN, " ", "\n"]), ["a.App", "c.App"])
@@ -78,15 +78,15 @@ class ChooseTests(unittest.TestCase):
     def test_declined_start_unchecked(self):
         self.assertEqual(self.choose(["n\n", "\n"], unchecked={"b.App"}), ["a.App", "c.App"])
         self.assertIn("[ ] b.App", self.screen)
-        self.assertIn("(отказались)", self.screen)
+        self.assertIn("(declined)", self.screen)
 
     def test_nothing_to_ask_needs_no_terminal(self):
-        self.assertEqual(ws_select.choose([], "тест", tty=-1), [])
+        self.assertEqual(ws_select.choose([], "test", tty=-1), [])
 
     def test_without_terminal(self):
         with mock.patch.object(ws_select, "open_tty", return_value=None):
             with self.assertRaises(ws_select.NoTerminal):
-                ws_select.choose(ITEMS, "тест")
+                ws_select.choose(ITEMS, "test")
 
 
 if __name__ == "__main__":

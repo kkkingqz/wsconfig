@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Functional baseline of the workstation: what every layer owner reports and
 # what is actually installed. Used as the regression gate of the Nix migration
-# (ws help history-nix, "Эталон функционала").
+# (ws help history-nix, the baseline section).
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"

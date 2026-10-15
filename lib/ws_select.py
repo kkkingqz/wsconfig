@@ -2,7 +2,7 @@
 """Interactive choice of the items apply would install (lib/ws_catalog.py
 offer: the positions in state ask on this host).
 
-Asks "Поставить все? [Y/n]"; on "n" a checklist (Space toggles, a toggles
+Asks "Install all? [Y/n]"; on "n" a checklist (Space toggles, a toggles
 all, Enter confirms, Esc/q cancels). The caller writes the answer into the
 host choice: chosen items yes, the rest no; a cancel answers only the
 question (the items stay ask, the rest of apply goes on).
@@ -99,8 +99,8 @@ def checklist(term, title, items, checked):
     checked = list(checked)
     pos = top = 0
     width = max(len(n) for n, _ in items)
-    help_line = ("↑/↓ — выбор, Space — галочка, a — все/ничего, "
-                 "Enter — установить отмеченные, Esc/q — не сейчас")
+    help_line = ("↑/↓: move, Space: check, a: all/none, "
+                 "Enter: install the checked, Esc/q: not now")
     drawn = 0
 
     old = termios.tcgetattr(term.fd)
@@ -128,8 +128,8 @@ def checklist(term, title, items, checked):
             more = len(items) - height
             count = sum(checked)
             lines.append(f"\x1b[2m{cut(help_line)}\x1b[0m")
-            lines.append(cut(f"отмечено {count} из {len(items)}"
-                             + (f", строки {top + 1}–{top + height}" if more > 0 else "")))
+            lines.append(cut(f"{count} of {len(items)} checked"
+                             + (f", lines {top + 1}–{top + height}" if more > 0 else "")))
             out = (f"\x1b[{drawn - 1}A" if drawn > 1 else "") + "\r"
             out += "\n".join(f"\x1b[2K{x}" for x in lines)
             out += "\x1b[J"
@@ -176,12 +176,12 @@ def choose(items, what, unchecked=(), tty=None):
     term = Terminal(fd)
     try:
         width = max(len(n) for n, _ in items)
-        term.write(f"\nНе установлены {what} ({len(items)}):\n")
+        term.write(f"\nNot installed: {what} ({len(items)}):\n")
         for n, label in items:
-            mark = " (отказались)" if n in unchecked else ""
+            mark = " (declined)" if n in unchecked else ""
             term.write(f"  {n:<{width}}  {label}{mark}\n")
         while True:
-            term.write("Поставить все? [Y/n] ")
+            term.write("Install all? [Y/n] ")
             answer = term.readline()
             if answer is None:
                 term.write("\n")
@@ -190,7 +190,7 @@ def choose(items, what, unchecked=(), tty=None):
             if answer in ("", "y", "yes", "д", "да"):
                 return [n for n, _ in items]
             if answer in ("n", "no", "н", "нет"):
-                return checklist(term, f"Что поставить ({what}):", items,
+                return checklist(term, f"What to install ({what}):", items,
                                  [n not in unchecked for n, _ in items])
     finally:
         if tty is None:

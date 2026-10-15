@@ -1,4 +1,4 @@
-# t2-mbp16: виджеты (ws widgets); порядок yes — порядок кнопок на панели.
-# yes — есть здесь, no — отказались; чего нет ни там, ни там, — default каталога.
+# t2-mbp16: widgets (ws widgets); the order of yes is the order of the panel buttons.
+# yes: here, no: declined; what is in neither gets the default of the catalog.
 yes = ["example", "compact"]
 no = []

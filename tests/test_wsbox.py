@@ -149,7 +149,7 @@ class WsboxTests(unittest.TestCase):
         # Offered: b, c (ask); uncheck b, keep c.
         code, screen = self.wsbox_tty(["n\n", " ", "\r"], "apply")
         self.assertEqual(code, 0, screen)
-        self.assertIn("Поставить все? [Y/n]", screen)
+        self.assertIn("Install all? [Y/n]", screen)
         self.assertEqual(self.containers(), {"c"})
         self.assertEqual(self.hosts.read_text(), 'no = ["a", "b"]\nyes = ["c"]\n')
 
@@ -158,7 +158,7 @@ class WsboxTests(unittest.TestCase):
         self.exists("b")
         code, screen = self.wsbox_tty(["\n"], "apply", "--select")
         self.assertEqual(code, 0, screen)
-        self.assertIn("(отказались)", screen)
+        self.assertIn("(declined)", screen)
         # a (declined) and c (default no) were offered and taken.
         self.assertEqual(self.containers(), {"a", "b", "c"})
         self.assertEqual(self.hosts.read_text(), 'no = []\nyes = ["b", "a", "c"]\n')
@@ -169,7 +169,7 @@ class WsboxTests(unittest.TestCase):
         self.exists("b")
         code, screen = self.wsbox_tty(["n\n", "\x1b"], "apply")
         self.assertEqual(code, 0, screen)
-        self.assertIn("выбор отменён", screen)
+        self.assertIn("choice cancelled", screen)
         self.assertEqual(self.containers(), {"a", "b"})
         self.assertEqual(self.hosts.read_text(), 'yes = ["a", "b"]\nno = []\n')
 

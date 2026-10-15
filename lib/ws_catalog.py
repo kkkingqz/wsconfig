@@ -5,7 +5,7 @@ A module's catalog is all it can install: the Flatpak apps, the containers
 of distrobox/catalog.toml, the widgets of the pinned wswidgets. Each position has a
 default, what a host without its own choice gets:
 
-    ask  offered (apply asks: "Поставить все? [Y/n]", then a checklist)
+    ask  offered (apply asks: "Install all? [Y/n]", then a checklist)
     no   not offered (apply --select still asks)
     yes  on every host without its own choice, without a question
 
@@ -60,8 +60,8 @@ DEFAULTS = STATES
 # MODULE -> the header of a new host file.
 MODULES = {
     "flatpak": "Flatpak (ws flatpak)",
-    "boxes": "контейнеры Distrobox (ws box)",
-    "widgets": "виджеты (ws widgets); порядок yes — порядок кнопок на панели",
+    "boxes": "Distrobox containers (ws box)",
+    "widgets": "widgets (ws widgets); the order of yes is the order of the panel buttons",
 }
 
 
@@ -140,7 +140,7 @@ class Choice:
             if self.text is None:
                 self.doc = kit.document()
                 self.doc.add(kit.comment(f"{self.host}: {MODULES[self.module]}."))
-                self.doc.add(kit.comment("yes — есть здесь, no — отказались; чего нет ни там, ни там, — default каталога."))
+                self.doc.add(kit.comment("yes: here, no: declined; what is in neither gets the default of the catalog."))
             else:
                 self.doc = kit.parse(self.text)
         return self.doc
@@ -296,15 +296,15 @@ def setup(config, host, term):
     if (ws_facts.fact(host, "nativeSteam", config) == "yes" and catalog.app(STEAM_FLATPAK) is not None
             and STEAM_FLATPAK not in apps.yes() + apps.no()):
         apps.set(STEAM_FLATPAK, "no")
-        term.write(f"\n{STEAM_FLATPAK}: no на {host} (nativeSteam = true: Steam из apt)\n")
+        term.write(f"\n{STEAM_FLATPAK}: no on {host} (nativeSteam = true: Steam from apt)\n")
 
     remote = lambda app: catalog.app(app)["remote"]
-    lists = [(apps, f"Flatpak-приложения на {host}",
+    lists = [(apps, f"Flatpak apps on {host}",
               [(a, catalog.default(a)) for a in catalog.ids()], remote),
-             (boxes, f"Контейнеры Distrobox на {host}", box_catalog(config), lambda n: "")]
+             (boxes, f"Distrobox containers on {host}", box_catalog(config), lambda n: "")]
     # The widget layer only where host.toml has it (ws help widgets).
     if ws_facts.fact(host, "widgets", config) == "yes":
-        lists.append((widgets, f"Виджеты (ws widgets) на {host}",
+        lists.append((widgets, f"Widgets (ws widgets) on {host}",
                       [(n, "ask") for n, _ in widget_catalog(config)], lambda n: ""))
     for choice, title, positions, label in lists:
         items = [(name, label(name), default != "no") for name, default in positions
@@ -325,7 +325,7 @@ def setup(config, host, term):
                 name = f"{app} {kind} {value}"
                 items.append((name, "", True))
                 keys[name] = (app, kind, flatpak_catalog.key_of(kind, value))
-    chosen = checklist(term, f"Overrides Flatpak на {host}", items)
+    chosen = checklist(term, f"Flatpak overrides on {host}", items)
     if chosen is None:
         return None
     for name, _, _ in items:
@@ -338,7 +338,7 @@ def setup(config, host, term):
 def apply_offer(host, modules, select=False, tty=None, err=sys.stderr):
     """The start of ws apply: for each of MODULES (flatpak, boxes, widgets)
     the positions in state ask (with SELECT also no), as each module's
-    apply asks: "Поставить все? [Y/n]", then a checklist. A cancel or a
+    apply asks: "Install all? [Y/n]", then a checklist. A cancel or a
     missing terminal leaves that module's positions ask and goes on.
     Returns the files written."""
     import flatpak_catalog
@@ -348,15 +348,15 @@ def apply_offer(host, modules, select=False, tty=None, err=sys.stderr):
         if module == "flatpak":
             catalog = flatpak_catalog.Catalog()
             items = [(a, catalog.default(a), catalog.app(a)["remote"]) for a in catalog.ids()]
-            what = "приложения Flatpak"
+            what = "Flatpak apps"
         elif module == "boxes":
             items = [(n, d, "") for n, d in box_catalog()]
-            what = "контейнеры Distrobox"
+            what = "Distrobox containers"
         elif module == "widgets":
             if ws_facts.fact(host, "widgets") != "yes":
                 continue
             items = [(n, "ask", label) for n, label in widget_catalog()]
-            what = "виджеты wswidgets"
+            what = "wswidgets widgets"
         else:
             raise ValueError(f"unknown module {module!r}")
         before = choice.text
@@ -368,7 +368,7 @@ def apply_offer(host, modules, select=False, tty=None, err=sys.stderr):
                       "run ws apply in a terminal\n")
             continue
         if chosen is None:
-            err.write(f"ws apply: выбор отменён, {what} не тронуты (спросит в следующий раз)\n")
+            err.write(f"ws apply: choice cancelled, {what} left as they are (asked next time)\n")
             continue
         if choice.text != before:
             written.append(str(choice.path))

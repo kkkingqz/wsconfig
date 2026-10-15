@@ -721,7 +721,7 @@ cmd_apply() {
     # ws apply asked already (ws_catalog offer --all).
     [[ -z "${WS_OFFERED:-}" || ${#select[@]} -gt 0 ]] || items=()
     if ((${#items[@]})); then
-        chosen="$(choice offer "${select[@]}" --what "контейнеры Distrobox" -- "${items[@]}")" || rc=$?
+        chosen="$(choice offer "${select[@]}" --what "Distrobox containers" -- "${items[@]}")" || rc=$?
         case "$rc" in
             0)
                 while IFS= read -r box; do
@@ -733,7 +733,7 @@ cmd_apply() {
             2)
                 # Cancel answers only the question: the offered containers
                 # stay ask; those in yes are still created.
-                printf 'ws box: выбор отменён, предложенные контейнеры не тронуты (спросит в следующий раз)\n' >&2
+                printf 'ws box: choice cancelled, the offered containers left as they are (asked next time)\n' >&2
                 ;;
             3)
                 ((${#select[@]} == 0)) || die "$select_hint: needs a terminal"

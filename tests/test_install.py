@@ -90,7 +90,7 @@ class InstallTests(unittest.TestCase):
         p = self.install("--repo", "https://github.com/u/cfg.git")
         self.assertEqual(p.returncode, 0, p.stderr)
         log = self.log()
-        self.assertIn(f"Ядро: main → {self.main}", p.stdout)
+        self.assertIn(f"Core: main → {self.main}", p.stdout)
         self.assertEqual((self.state / "core").read_text().strip(), self.main)
         self.assertIn(f"wget https://raw.example/core/{self.main}/lib/btrfs.bash", log)
         self.assertIn("sudo btrfs subvolume create /run/btrfs-top/@nix", log)

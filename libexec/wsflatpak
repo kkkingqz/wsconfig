@@ -1253,7 +1253,7 @@ def cmd_apply(reselect=False):
         # ws apply asked already (ws_catalog offer --all).
         items = []
     try:
-        chosen = ws_catalog.offer(choice, items, reselect, "приложения Flatpak")
+        chosen = ws_catalog.offer(choice, items, reselect, "Flatpak apps")
     except ws_select.NoTerminal:
         if reselect:
             raise SystemExit(f"{SELECT_HINT}: needs a terminal")
@@ -1264,8 +1264,8 @@ def cmd_apply(reselect=False):
     if chosen is None:
         # Cancel answers only the question: the offered apps keep their
         # state and are asked about next time; the rest is applied.
-        print("ws flatpak: выбор отменён, предложенные приложения не тронуты "
-              "(спросит в следующий раз)", file=sys.stderr)
+        print("ws flatpak: choice cancelled, the offered apps left as they are "
+              "(asked next time)", file=sys.stderr)
         chosen = []
     wanted |= set(chosen)
     choice.save()
@@ -1318,123 +1318,123 @@ def cmd_declare(cmd, args):
 
 
 COMMAND_HELP = {
-    "install": "Установить приложения и их runtimes в пользовательскую установку.",
-    "manage": "Добавить установленное приложение в каталог и в yes этой машины.",
-    "unmanage": "Убрать приложение из каталога (у всех машин), оставив его установленным.",
-    "remove": "Удалить пользовательское приложение; по умолчанию также удалить данные.",
-    "permissions": "Показать права приложения, текущие и объявленные overrides.",
-    "reset-permissions": "Сбросить overrides и права порталов приложения.",
-    "info": "Показать сведения об установленном пользовательском приложении.",
-    "filesystem": "Объявить доступ приложения к каталогу (каталог или --host).",
-    "unfilesystem": "Убрать объявленный доступ к каталогу на этой машине (--all: везде).",
-    "host": "Объявить filesystem=host для приложения.",
-    "unhost": "Убрать объявленный filesystem=host для приложения.",
-    "env": "Объявить или заменить переменную окружения приложения.",
-    "unenv": "Убрать объявленную переменную окружения приложения.",
-    "talk": "Объявить доступ приложения к имени D-Bus session bus.",
-    "untalk": "Убрать объявленный доступ к имени D-Bus session bus.",
-    "remote-add": "Показать декларацию нового remote для flatpak/catalog.toml.",
-    "update": "Обновить пользовательские приложения и runtimes.",
-    "cleanup": "Удалить неиспользуемые пользовательские runtimes.",
-    "list": "Показать пользовательские приложения и runtimes.",
-    "search": "Найти приложения в настроенных Flatpak remotes.",
-    "run": "Запустить приложение через .desktop или flatpak run.",
-    "check": "Проверить приложения, remotes, overrides и desktop-файлы.",
-    "status": "Показать пользовательскую, системную и объявленную конфигурацию Flatpak.",
-    "test": "Проверить порталы, PipeWire и конфигурацию; вывести ручной чеклист.",
-    "apply": "Установить объявленные приложения, их runtimes и применить overrides.",
-    "help": "Показать общую справку или справку по команде.",
+    "install": "Install apps and their runtimes into the user installation.",
+    "manage": "Add an installed app to the catalog and to yes of this machine.",
+    "unmanage": "Drop an app from the catalog (on all machines), keeping it installed.",
+    "remove": "Remove a user app; its data too by default.",
+    "permissions": "Show the permissions of an app, its current and declared overrides.",
+    "reset-permissions": "Reset the overrides and portal permissions of an app.",
+    "info": "Show details of an installed user app.",
+    "filesystem": "Declare access of an app to a directory (a directory or --host).",
+    "unfilesystem": "Drop a declared directory access on this machine (--all: everywhere).",
+    "host": "Declare filesystem=host for an app.",
+    "unhost": "Drop a declared filesystem=host of an app.",
+    "env": "Declare or replace an environment variable of an app.",
+    "unenv": "Drop a declared environment variable of an app.",
+    "talk": "Declare access of an app to a D-Bus session bus name.",
+    "untalk": "Drop a declared access to a D-Bus session bus name.",
+    "remote-add": "Print the declaration of a new remote for flatpak/catalog.toml.",
+    "update": "Update user apps and runtimes.",
+    "cleanup": "Remove unused user runtimes.",
+    "list": "List user apps and runtimes.",
+    "search": "Search apps in the configured Flatpak remotes.",
+    "run": "Run an app through its .desktop or flatpak run.",
+    "check": "Check apps, remotes, overrides and desktop files.",
+    "status": "Show the user, system and declared Flatpak configuration.",
+    "test": "Check portals, PipeWire and the configuration; print a manual checklist.",
+    "apply": "Install the declared apps and their runtimes, apply the overrides.",
+    "help": "Show the general help or the help of a command.",
 }
 
-OVERRIDE_HELP = """APP — ID, имя или однозначная часть имени установленного приложения.
-Команды un… также принимают ID приложения с объявленными overrides после его
-удаления. Значение должно быть одним словом без пробелов и #.
+OVERRIDE_HELP = """APP: the ID, the name or an unambiguous part of the name of an installed app.
+The un… commands also take the ID of an app with declared overrides after it
+was removed. A value is one word without spaces and #.
 
-Без --host значение пишется в запись приложения в flatpak/catalog.toml и
-действует на каждой машине, где приложение стоит; с --host — в
-[overrides."APP"] файла hosts/HOST/flatpak.toml этой машины (ws host).
-Значение того же ключа (имя env, путь filesystem, имя шины) заменяется;
-значение машины заменяет значение каталога. un… убирает значение на этой
-машине: своё — из её flatpak.toml, общее — через skip там же; с --all общее
-удаляется из каталога. Чтобы применить:
+Without --host the value goes into the entry of the app in flatpak/catalog.toml
+and acts on every machine that has the app; with --host into
+[overrides."APP"] of hosts/HOST/flatpak.toml of this machine (ws host).
+A value of the same key (env name, filesystem path, bus name) is replaced;
+the value of the machine replaces that of the catalog. un… drops the value on
+this machine: its own from its flatpak.toml, a common one by a skip there; with
+--all the common one is removed from the catalog. To apply:
   ws apply flatpak
-При apply текущие overrides управляемого приложения сбрасываются и заменяются
-объявленными. Ручные изменения через Flatseal при этом исчезают.
+apply resets the current overrides of a managed app and replaces them with the
+declared ones. Manual changes made with Flatseal are lost then.
 """
 
 COMMAND_DETAILS = {
-    "install": """Приложения и runtimes устанавливаются с --user, обычно в ~/.local/share/flatpak.
-Runtime устанавливается для пользователя, даже если уже доступен системно.
-Дополнительная установка зависимости не создаёт автоматический pin.
+    "install": """Apps and runtimes are installed with --user, usually into ~/.local/share/flatpak.
+A runtime is installed for the user even when the system has it.
+Installing a dependency by hand does not pin it.
 
-Флаги --remote и --unmanaged указывайте перед APP.
-После APP можно указать другие приложения, ветку или аргументы flatpak install.
-Новые приложения добавляются в flatpak/catalog.toml и в yes этой машины
-(hosts/HOST/flatpak.toml) и применяется: ws apply flatpak.
-Объявленные overrides нового приложения применяются через ws flatpak apply.
+Give --remote and --unmanaged before APP.
+After APP: more apps, a branch or arguments of flatpak install.
+New apps are added to flatpak/catalog.toml and to yes of this machine
+(hosts/HOST/flatpak.toml); to apply: ws apply flatpak.
+Declared overrides of a new app are applied by ws flatpak apply.
 
-Примеры:
+Examples:
   ws flatpak install org.videolan.VLC
   ws flatpak install org.gimp.GIMP org.videolan.VLC -y
   ws flatpak install --remote flatpark com.anthropic.ClaudeDesktop
   ws flatpak install --unmanaged app/org.mozilla.firefox/x86_64/beta
 """,
-    "manage": """APP — ID, имя или однозначная часть имени установленного приложения.
-Без REMOTE используется origin приложения, затем flathub как запасной вариант.
-Приложение добавляется в flatpak/catalog.toml (если его там нет) и в yes этой
-машины; применяется через ws apply flatpak.
+    "manage": """APP: the ID, the name or an unambiguous part of the name of an installed app.
+Without REMOTE the origin of the app is used, then flathub as a fallback.
+The app is added to flatpak/catalog.toml (unless it is there) and to yes of
+this machine; to apply: ws apply flatpak.
 
-Пример: ws flatpak manage org.videolan.VLC
+Example: ws flatpak manage org.videolan.VLC
 """,
-    "unmanage": """Укажите точный App ID из flatpak/catalog.toml. Приложение не удаляется.
-Запись уходит из каталога вместе с overrides, а из файлов всех машин — их
-выбор и overrides приложения. ws apply flatpak обновляет собранный
-список управляемых приложений.
+    "unmanage": """Give the exact App ID of flatpak/catalog.toml. The app is not removed.
+The entry leaves the catalog with its overrides, and the files of all machines
+lose their choice and overrides of the app. ws apply flatpak updates the built
+list of managed apps.
 
-Пример: ws flatpak unmanage org.videolan.VLC
+Example: ws flatpak unmanage org.videolan.VLC
 """,
-    "remove": """По умолчанию используется flatpak uninstall --user --delete-data.
---keep-data сохраняет данные приложения.
-Управляемое приложение попадает в no этой машины (hosts/HOST/flatpak.toml);
-запись в каталоге остаётся для других машин (убрать: unmanage).
-Затем выполняется ws apply flatpak; ws sync публикует файл.
+    "remove": """By default: flatpak uninstall --user --delete-data.
+--keep-data keeps the data of the app.
+A managed app goes to no of this machine (hosts/HOST/flatpak.toml);
+the catalog entry stays for other machines (to drop it: unmanage).
+Then ws apply flatpak runs; ws sync publishes the file.
 """,
-    "reset-permissions": """Объявленные overrides остаются в конфигурации и восстанавливаются при apply.
-Для постоянного изменения используйте unfilesystem, unhost, unenv или untalk.
+    "reset-permissions": """Declared overrides stay in the configuration and come back on apply.
+For a lasting change use unfilesystem, unhost, unenv or untalk.
 """,
-    "remote-add": """Команда печатает строку NAME = "URL" для [remotes] в flatpak/catalog.toml.
-После правки файла выполните ws apply flatpak.
+    "remote-add": """Prints a line NAME = "URL" for [remotes] in flatpak/catalog.toml.
+After editing the file run ws apply flatpak.
 
-Пример: ws flatpak remote-add example https://example.org/repo.flatpakrepo
+Example: ws flatpak remote-add example https://example.org/repo.flatpakrepo
 """,
-    "run": """Без аргументов приложения используется gtk-launch, если экспортирован .desktop.
---direct или аргументы приложения переключают запуск на flatpak run.
-Укажите --direct перед APP; аргументы приложения — после APP.
+    "run": """Without app arguments gtk-launch is used when a .desktop is exported.
+--direct or app arguments switch to flatpak run.
+Give --direct before APP, app arguments after APP.
 
-Примеры:
+Examples:
   ws flatpak run org.videolan.VLC
   ws flatpak run --direct org.videolan.VLC /home/user/video.mkv
 """,
-    "apply": """Добавляет объявленные user remotes, устанавливает отсутствующие приложения
-и обеспечивает user runtime для всех установленных веток управляемых приложений.
-Что ставить на этой машине, решает её hosts/HOST/flatpak.toml (HOST — имя
-из ws host): yes ставится без вопроса, no пропускается; приложение, которого
-нет ни там, ни там, получает default из каталога. О тех, что в состоянии ask,
-apply спрашивает «Поставить все? [Y/n]», на n — список, где Space ставит и
-снимает галочку; ответ пишется в yes / no. --select спрашивает снова и о no.
-Без терминала не предложенные не ставятся.
-Затем сбрасывает их overrides, применяет объявленные значения и запускает check.
-Обычно запускается из ws apply (ws apply flatpak): тот сначала собирает
-конфигурацию и ставит ссылки на свои .desktop.
+    "apply": """Adds the declared user remotes, installs missing apps and provides the user
+runtime for every installed branch of the managed apps.
+What goes on this machine is up to its hosts/HOST/flatpak.toml (HOST is the name
+of ws host): yes is installed without a question, no is skipped; an app in
+neither gets the default of the catalog. For those in state ask apply asks
+"Install all? [Y/n]", on n a list where Space checks and unchecks; the answer
+goes into yes / no. --select asks about no again too.
+Without a terminal the ones not offered are not installed.
+Then it resets their overrides, applies the declared values and runs check.
+Usually run by ws apply (ws apply flatpak): that one builds the configuration
+first and links its .desktop files.
 """,
-    "check": """Код возврата 1 означает ошибки, 0 — отсутствие ошибок; предупреждения допустимы.
---json выводит объект с status, passes, warnings, failures и messages.
-Системные remotes и системные приложения/runtimes считаются ошибкой политики.
+    "check": """Exit status 1 means errors, 0 no errors; warnings are allowed.
+--json prints an object with status, passes, warnings, failures and messages.
+System remotes and system apps/runtimes are a policy error.
 """,
-    "cleanup": """Передаёт аргументы в flatpak uninstall --user --unused.
-Runtimes с ручным pin сохраняются.
+    "cleanup": """Passes the arguments to flatpak uninstall --user --unused.
+Runtimes pinned by hand are kept.
 
-Пример: ws flatpak cleanup -y
+Example: ws flatpak cleanup -y
 """,
 }
 
@@ -1442,25 +1442,25 @@ Runtimes с ручным pin сохраняются.
 def build_parser():
     p = argparse.ArgumentParser(
         prog="ws flatpak",
-        description="Пользовательские Flatpak-приложения и их конфигурация в wsconfig.",
+        description="User Flatpak apps and their configuration in wsconfig.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""Установка в домашний каталог:
+        epilog="""Installing into the home directory:
   ws flatpak install org.videolan.VLC
   ws flatpak install --unmanaged org.gimp.GIMP
   ws flatpak install --remote flatpark com.anthropic.ClaudeDesktop
   ws apply flatpak
 
-Приложения и runtimes — обычно ~/.local/share/flatpak, данные — ~/.var/app/APP_ID.
-Доступ к домашним файлам задаётся отдельно через filesystem/host.
-install/manage/unmanage редактируют flatpak/catalog.toml и выбор машины
-hosts/HOST/flatpak.toml; filesystem/host/env/talk и un… — overrides там же.
-ws apply flatpak собирает и применяет их.
+Apps and runtimes: usually ~/.local/share/flatpak, data: ~/.var/app/APP_ID.
+Access to home files is set separately by filesystem/host.
+install/manage/unmanage edit flatpak/catalog.toml and the choices of the machine
+in hosts/HOST/flatpak.toml; filesystem/host/env/talk and un… the overrides there.
+ws apply flatpak builds and applies them.
 
-Справка по команде: ws flatpak help install или ws flatpak install --help.
-Подробное руководство: ws help flatpak / man ws-flatpak.
+Help of a command: ws flatpak help install or ws flatpak install --help.
+The guide: ws help flatpak / man ws-flatpak.
 """,
     )
-    sp = p.add_subparsers(dest="cmd", required=True, title="Команды", metavar="COMMAND")
+    sp = p.add_subparsers(dest="cmd", required=True, title="Commands", metavar="COMMAND")
 
     def command(name, **kwargs):
         detail = COMMAND_DETAILS.get(name)
@@ -1474,86 +1474,86 @@ ws apply flatpak собирает и применяет их.
 
     q = command("install")
     q.add_argument("--remote", default="flathub",
-                   help="пользовательский remote (по умолчанию flathub)")
+                   help="user remote (default flathub)")
     q.add_argument("--unmanaged", action="store_true",
-                   help="не добавлять приложение в каталог")
-    q.add_argument("app", metavar="APP", help="App ID, запрос Flatpak или полный ref")
+                   help="do not add the app to the catalog")
+    q.add_argument("app", metavar="APP", help="App ID, a Flatpak query or a full ref")
     q.add_argument("extra", nargs=argparse.REMAINDER, metavar="ARG",
-                   help="другие приложения, ветка или аргументы flatpak install")
+                   help="more apps, a branch or arguments of flatpak install")
 
     q = command("manage")
-    q.add_argument("app", metavar="APP", help="установленное приложение")
-    q.add_argument("remote", nargs="?", metavar="REMOTE", help="remote для каталога")
+    q.add_argument("app", metavar="APP", help="installed app")
+    q.add_argument("remote", nargs="?", metavar="REMOTE", help="remote for the catalog")
 
     q = command("unmanage")
-    q.add_argument("app", metavar="APP", help="точный App ID из каталога")
+    q.add_argument("app", metavar="APP", help="exact App ID of the catalog")
 
     q = command("remove", aliases=["uninstall"])
-    q.add_argument("--keep-data", action="store_true", help="сохранить данные приложения")
-    q.add_argument("app", metavar="APP", help="установленное приложение")
+    q.add_argument("--keep-data", action="store_true", help="keep the data of the app")
+    q.add_argument("app", metavar="APP", help="installed app")
 
     for name in ("permissions", "reset-permissions", "info"):
         q = command(name)
-        q.add_argument("app", metavar="APP", help="ID, имя или часть имени приложения")
+        q.add_argument("app", metavar="APP", help="ID, name or part of the name of the app")
 
     def scope(q, cmd):
         if cmd.startswith("un"):
             q.add_argument("--all", dest="everywhere", action="store_true",
-                           help="убрать общее значение из каталога (у всех машин)")
+                           help="drop the common value from the catalog (all machines)")
         else:
             q.add_argument("--host", dest="own", action="store_true",
-                           help="только для этой машины (её flatpak.toml)")
+                           help="only for this machine (its flatpak.toml)")
 
     for name, arg, detail in (
-        ("filesystem", "SPEC", "каталог и режим: host, home:ro, xdg-download, /path:rw"),
-        ("talk", "BUS", "имя D-Bus session bus, например org.freedesktop.Flatpak"),
+        ("filesystem", "SPEC", "directory and mode: host, home:ro, xdg-download, /path:rw"),
+        ("talk", "BUS", "D-Bus session bus name, e.g. org.freedesktop.Flatpak"),
     ):
         for cmd in (name, "un" + name):
             q = command(cmd)
             scope(q, cmd)
-            q.add_argument("app", metavar="APP", help="приложение")
+            q.add_argument("app", metavar="APP", help="app")
             q.add_argument("value", metavar=arg, help=detail)
     for cmd in ("host", "unhost"):
         q = command(cmd)
         scope(q, cmd)
-        q.add_argument("app", metavar="APP", help="приложение")
+        q.add_argument("app", metavar="APP", help="app")
     q = command("env")
     scope(q, "env")
-    q.add_argument("app", metavar="APP", help="приложение")
-    q.add_argument("key", metavar="KEY[=VALUE]", help="переменная или KEY=VALUE")
-    q.add_argument("value", nargs="?", metavar="VALUE", help="значение переменной")
+    q.add_argument("app", metavar="APP", help="app")
+    q.add_argument("key", metavar="KEY[=VALUE]", help="variable or KEY=VALUE")
+    q.add_argument("value", nargs="?", metavar="VALUE", help="value of the variable")
     q = command("unenv")
     scope(q, "unenv")
-    q.add_argument("app", metavar="APP", help="приложение")
-    q.add_argument("key", metavar="KEY", help="имя объявленной переменной")
+    q.add_argument("app", metavar="APP", help="app")
+    q.add_argument("key", metavar="KEY", help="name of the declared variable")
 
     for name in DECLARE:
         q = command(name)
-        q.add_argument("args", nargs="*", metavar="NAME URL", help="имя и URL remote")
+        q.add_argument("args", nargs="*", metavar="NAME URL", help="name and URL of the remote")
 
     for name in ("update", "cleanup", "list", "search"):
         q = command(name)
         q.add_argument("args", nargs=argparse.REMAINDER, metavar="ARG",
-                       help="аргументы соответствующей команды Flatpak")
+                       help="arguments of the matching Flatpak command")
 
     q = command("run")
-    q.add_argument("--direct", action="store_true", help="запускать напрямую через flatpak run")
-    q.add_argument("app", metavar="APP", help="установленное приложение")
-    q.add_argument("args", nargs=argparse.REMAINDER, metavar="ARG", help="аргументы приложения")
+    q.add_argument("--direct", action="store_true", help="run directly with flatpak run")
+    q.add_argument("app", metavar="APP", help="installed app")
+    q.add_argument("args", nargs=argparse.REMAINDER, metavar="ARG", help="arguments of the app")
 
     q = command("check")
-    q.add_argument("--json", action="store_true", help="вывести результат в JSON")
+    q.add_argument("--json", action="store_true", help="print the result as JSON")
 
     for name in ("status", "test"):
         command(name)
 
     q = command("apply")
     q.add_argument("--select", action="store_true",
-                   help="спросить и о приложениях в no этой машины")
+                   help="ask about apps in no of this machine too")
 
     q = command("help")
     q.add_argument("command", nargs="?", choices=tuple(sp.choices), metavar="COMMAND",
-                   help="команда, для которой показать справку")
+                   help="command to show the help of")
     q.set_defaults(help_parsers=sp.choices)
     return p
 

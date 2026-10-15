@@ -102,7 +102,7 @@ class SetupTests(unittest.TestCase):
         p = self.setup("--repo", str(self.config))
         self.assertEqual(p.returncode, 1)
         self.assertEqual(self.nix_calls(), [])
-        self.assertIn("не найден", p.stdout)
+        self.assertIn("No host for", p.stdout)
         self.assertIn("ws setup: no answer", p.stderr)
         # Without --repo it goes on with the configuration of the state.
         p = self.setup()
@@ -275,7 +275,7 @@ class T2Tests(unittest.TestCase):
         p = self.check()
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         self.assertEqual(p.stdout.count("  OK   "), 8, p.stdout)
-        self.assertIn("Все ручные шаги сделаны.", p.stdout)
+        self.assertIn("All manual steps are done.", p.stdout)
         self.assertFalse((self.home / ".local/state/wsconfig/setup").exists())
 
     def test_what_is_left(self):
@@ -284,17 +284,17 @@ class T2Tests(unittest.TestCase):
         (self.esp / "EFI/BOOT/refind.conf").write_text("old\n")
         p = self.check(DEFAULT_ID="5")
         self.assertEqual(p.returncode, 1)
-        for left in ("@ не подвольюм по умолчанию", 'rootUuid = "old"', 'refindEspPartuuid = "apple-esp"',
-                     "нет firmware Wi-Fi", "refind.conf на ESP не тот"):
+        for left in ("@ is not the default subvolume", 'rootUuid = "old"', 'refindEspPartuuid = "apple-esp"',
+                     "no Wi-Fi firmware", "refind.conf on the ESP is not the built one"):
             self.assertIn(left, p.stdout)
         self.assertIn("sudo btrfs subvolume set-default 285 /", p.stdout)
-        self.assertIn("Не сделано: 5.", p.stdout)
+        self.assertIn("Not done: 5.", p.stdout)
 
     def test_a_grub_host_has_none(self):
         self.write_host("grub")
         p = self.check()
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertIn("ручных шагов нет", p.stdout)
+        self.assertIn("no manual steps", p.stdout)
 
 
 if __name__ == "__main__":

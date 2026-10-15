@@ -115,7 +115,7 @@ else
 fi
 # The terminal of the autostart closes with the script: keep it open.
 if [[ "$autostarted" == true ]]; then
-    trap 'echo; read -r -p "Enter — закрыть окно " _ || true' EXIT
+    trap 'echo; read -r -p "Enter: close the window " _ || true' EXIT
 fi
 # One run at a time (the autostart and a terminal); exec keeps the PID.
 # --check only reads.
@@ -143,9 +143,9 @@ setup_ws() {
 }
 
 reboot_now() {
-    say "Перезагрузка: $1"
-    echo "После входа ws setup продолжит сам."
-    read -r -p "Enter — перезагрузить " _ || true
+    say "Reboot: $1"
+    echo "After the login ws setup goes on by itself."
+    read -r -p "Enter: reboot " _ || true
     trap - EXIT
     sudo systemctl reboot
     exit 0
@@ -175,7 +175,7 @@ step_github() {
     [[ "$github_done" == false ]] || return 0
     github_done=true
     if ! gh auth status --hostname github.com >/dev/null 2>&1; then
-        say "GitHub: вход в браузере (одноразовый код)"
+        say "GitHub: login in the browser (one-time code)"
         gh auth login --hostname github.com --git-protocol https --web --scopes user:email
     fi
     if ! git config --global --get-all credential.https://github.com.helper 2>/dev/null | grep -q 'gh auth git-credential'; then
@@ -221,7 +221,7 @@ step_config() {
                 elif [[ -e "$dir" && -n "$(ls -A "$dir" 2>/dev/null)" ]]; then
                     die "$dir exists and is not a clone of $url: move it away first (nothing is overwritten)"
                 else
-                    say "Конфигурация: $url → $dir"
+                    say "Configuration: $url → $dir"
                     git clone -q "$url" "$dir" || die "git clone $url failed (URL, access?)"
                 fi
                 ;;
@@ -265,11 +265,11 @@ own_rev() {
 git_identity() {
     local name email
     if [[ -z "$(git config --global user.name)" ]]; then
-        read -r -p "Имя автора коммитов [$(id -un)]: " name || true
+        read -r -p "Name of the commit author [$(id -un)]: " name || true
         git config --global user.name "${name:-$(id -un)}"
     fi
     if [[ -z "$(git config --global user.email)" ]]; then
-        read -r -p "E-mail автора коммитов [$(id -un)@$(hostname)]: " email || true
+        read -r -p "E-mail of the commit author [$(id -un)@$(hostname)]: " email || true
         git config --global user.email "${email:-$(id -un)@$(hostname)}"
     fi
     [[ -n "$(git config --global init.defaultBranch)" ]] || git config --global init.defaultBranch main
@@ -285,7 +285,7 @@ new_config() {
         die "$dir exists and is not empty: nothing is overwritten (ws setup --new DIR)"
     fi
     rev="$(own_rev)"
-    say "Новая конфигурация: $dir (ядро ${rev:0:12})"
+    say "New configuration: $dir (core ${rev:0:12})"
     nix flake metadata --json "${WS_SETUP_CORE_FLAKE:-github:kkkingqz/wsconfig}/$rev" > "$state/core-metadata.json" \
         || die "nix flake metadata of the core $rev failed (network? the revision pushed?)"
     python3 "$WS_CORE/lib/ws_template.py" new --core "$WS_CORE" --metadata "$state/core-metadata.json" "$dir" >/dev/null \
@@ -313,7 +313,7 @@ step_core() {
     local rev own problem
     rev="$(pinned_core)"
     if [[ ! -e "$WS_CORE/.wsconfig-package" ]]; then
-        echo "Ядро: checkout $WS_CORE (конфигурация закрепляет ${rev:0:12}, не переключаю)"
+        echo "Core: checkout $WS_CORE (the configuration pins ${rev:0:12}, not switching)"
         own="$rev"
     else
         own="$(cat "$state/core" 2>/dev/null || true)"
@@ -323,7 +323,7 @@ step_core() {
         problem="$(python3 "$WS_CORE/lib/ws_common.py" schema 2>&1)" || die "$problem"
         return 0
     fi
-    say "Ядро конфигурации: ${rev:0:12} (сейчас ${own:0:12})"
+    say "Core of the configuration: ${rev:0:12} (now ${own:0:12})"
     nix build --out-link "$state/ws" "git+file:$repo#ws" \
         || die "nix build of the core $rev of the configuration failed"
     [[ -x "$state/ws/libexec/ws-setup" ]] \
@@ -355,8 +355,8 @@ push() {
 publish() {
     local remote=false
     git -C "$repo" remote get-url origin >/dev/null 2>&1 && remote=true
-    if [[ "$remote" == true ]] && ! ask "Опубликовать новый хост и выбор (ws sync)?" y; then
-        echo "Не опубликовано; позже: git -C $repo push (новый хост), ws sync (выбор)."
+    if [[ "$remote" == true ]] && ! ask "Publish the new host and the choices (ws sync)?" y; then
+        echo "Not published; later: git -C $repo push (the new host), ws sync (the choices)."
         return 0
     fi
     if [[ "$remote" == true && -n "$(git -C "$repo" log --format=%h '@{u}..HEAD' -- hosts 2>/dev/null)" ]]; then
@@ -407,18 +407,18 @@ new_host() {
     known="$(manifest_get "$inv" known)"
     guest="$(manifest_get "$inv" guest)"
     kvm="$(manifest_get "$inv" kvm)"
-    say "Новый хост $name"
-    echo "Машина: $(manifest_get "$inv" model)$([[ "$guest" == false ]] || echo ', виртуальная')"
-    echo "  hardware = $hw$([[ "$known" == true ]] || echo ' (не из списка: общий ПК)'), boot = $(manifest_get "$inv" boot), displayScale = $(manifest_get "$inv" displayScale)"
+    say "New host $name"
+    echo "Machine: $(manifest_get "$inv" model)$([[ "$guest" == false ]] || echo ', virtual')"
+    echo "  hardware = $hw$([[ "$known" == true ]] || echo ' (not in the list: a generic PC)'), boot = $(manifest_get "$inv" boot), displayScale = $(manifest_get "$inv" displayScale)"
     if [[ "$known" == false || "$guest" == true ]]; then
-        ask "Так и записать?" y \
+        ask "Write it so?" y \
             || die "hosts/$name/host.toml by hand (ws help setup, lib/host.nix), then ws setup again"
     fi
     if [[ "$known" == true ]]; then
         for h in "$repo"/hosts/*/host.toml; do
             [[ -r "$h" && "$(fact_in "$h" hardware)" == "$hw" ]] || continue
             h="$(basename "$(dirname "$h")")"
-            if ask "Взять за основу hosts/$h (то же железо: параметры ядра, пакеты)?" y; then
+            if ask "Base it on hosts/$h (the same hardware: kernel parameters, packages)?" y; then
                 base="$h"
                 break
             fi
@@ -434,17 +434,17 @@ new_host() {
         vm=yes
     fi
     if [[ "$kvm" == false ]]; then
-        echo "Нет /dev/kvm: без виртуальных машин."
+        echo "No /dev/kvm: no virtual machines."
         vm=no
-    elif ask_layer "Виртуальные машины (libvirt, ws help virt)?" "$vm"; then
+    elif ask_layer "Virtual machines (libvirt, ws help virt)?" "$vm"; then
         vm=yes
     else
         vm=no
     fi
-    ask_layer "Виджеты Quickshell на панели GNOME (ws help widgets)?" "$widgets" && widgets=yes || widgets=no
-    if ask_layer "Steam из apt (вместо Flatpak; ws help plan-legion-go)?" "$steam"; then
+    ask_layer "Quickshell widgets on the GNOME panel (ws help widgets)?" "$widgets" && widgets=yes || widgets=no
+    if ask_layer "Steam from apt (instead of Flatpak; ws help plan-legion-go)?" "$steam"; then
         steam=yes
-        ask_layer "Game Mode (сессия Steam как в SteamOS)?" "$game" && game=yes || game=no
+        ask_layer "Game Mode (a Steam session as in SteamOS)?" "$game" && game=yes || game=no
     else
         steam=no
         game=no
@@ -479,20 +479,20 @@ step_host() {
     else
         current="$(hostname)"
         hosts="$(cd "$repo/hosts" 2>/dev/null && ls -d -- */ 2>/dev/null | tr -d / | tr '\n' ' ' || true)"
-        say "Хост для «$current» не найден"
-        echo "Есть: ${hosts:-нет}"
+        say "No host for \"$current\""
+        echo "Hosts: ${hosts:-none}"
         name="$host_arg"
         while :; do
             if [[ -z "$name" ]]; then
                 if valid_name "$current"; then
-                    read -r -p "Имя хоста (существующий или новый) [$current]: " name || die "no answer"
+                    read -r -p "Host name (existing or new) [$current]: " name || die "no answer"
                     name="${name:-$current}"
                 else
-                    read -r -p "Имя хоста (существующий или новый): " name || die "no answer"
+                    read -r -p "Host name (existing or new): " name || die "no answer"
                 fi
             fi
             valid_name "$name" && break
-            echo "только строчные латинские буквы, цифры, - и _, до 23 знаков"
+            echo "only lowercase latin letters, digits, - and _, up to 23 characters"
             [[ -z "$host_arg" ]] || die "--host $host_arg: not a host name"
             name=
         done
@@ -506,19 +506,19 @@ step_host() {
         host="$(ws host)"
     fi
     check_facts "$host"
-    echo "Хост: $host"
+    echo "Host: $host"
 }
 
 # All questions before the long part: marks, the Steam license, consent.
 step_choices() {
     local changed rc=0
     done_step choices && return 0
-    say "Что будет на $host"
+    say "What goes on $host"
     changed="$(python3 "$WS_CORE/lib/ws_catalog.py" --host "$host" offer --all --setup)" || rc=$?
     ((rc == 0)) || die "lists not answered (ws_catalog exit $rc); ws setup again"
     if [[ -n "$changed" ]]; then
         # shellcheck disable=SC2086 # one line of the names
-        echo "Выбор $host: $(echo $changed)"
+        echo "Choices of $host: $(echo $changed)"
     fi
     publish
     # Licenses apt would ask about in the middle of ws-prepare.
@@ -528,15 +528,15 @@ step_choices() {
         eula+=('Valve Steam (steam-installer)')
         seed+=('steam steam/question select I AGREE' 'steam steam/license note ')
     fi
-    say "Лицензии пакетов"
+    say "Package licenses"
     printf '  %s\n' "${eula[@]}"
-    ask "Принять?" || die "the system preparation installs them: nothing started"
+    ask "Accept?" || die "the system preparation installs them: nothing started"
     printf '%s\n' "${seed[@]}" | sudo debconf-set-selections
-    say "Дальше без вопросов"
-    echo "Раскладка Btrfs (старый корень удаляется после проверки загрузки), подготовка системы,"
-    echo "ws apply (дважды), ws check, Timeshift, ключ backup. Между ними — перезагрузки:"
-    echo "после каждой войти, ws setup продолжит сам. Нужен пароль sudo после каждого входа."
-    ask "Начать?" || die "nothing started; ws setup again"
+    say "No more questions from here"
+    echo "Btrfs layout (the old root is removed once the boot is checked), system preparation,"
+    echo "ws apply (twice), ws check, Timeshift, the backup key. Reboots in between:"
+    echo "log in after each one, ws setup goes on by itself. It asks the sudo password after each login."
+    ask "Start?" || die "nothing started; ws setup again"
     mark_step choices
 }
 
@@ -567,13 +567,13 @@ step_btrfs() {
     case "$(findmnt -no OPTIONS / | tr ',' '\n' | sed -n 's/^subvol=//p')" in
         /)
             install_autostart
-            say "Раскладка Btrfs, шаг 1"
+            say "Btrfs layout, step 1"
             ws btrfs make --yes
-            reboot_now "раскладка Btrfs, шаг 1 сделан"
+            reboot_now "Btrfs layout, step 1 done"
             ;;
         /@)
             if [[ -e /var/lib/ws-btrfs-layout/old-root ]]; then
-                say "Раскладка Btrfs, шаг 2"
+                say "Btrfs layout, step 2"
                 ws btrfs make --yes
             fi
             ;;
@@ -584,21 +584,21 @@ step_btrfs() {
 step_prepare() {
     done_step prepare && return 0
     install_autostart
-    say "Подготовка системы (apt, подвольюмы, группы, fish, ws apply home)"
+    say "System preparation (apt, subvolumes, groups, fish, ws apply home)"
     "$WS_CORE/libexec/ws-prepare"
     mark_step prepare
-    reboot_now "группы, fish, PATH из Nix"
+    reboot_now "groups, fish, PATH of Nix"
 }
 
 step_layers() {
     if ! done_step apply1; then
-        say "ws apply (первый проход)"
+        say "ws apply (first pass)"
         # apt, the system files and the user layer at once. New GNOME
         # extensions activate only in a new session: steps with a failed
         # preflight run again after the reboot.
         ws apply || echo "ws apply: the rest after the reboot"
         mark_step apply1
-        reboot_now "системные файлы и расширения GNOME"
+        reboot_now "system files and GNOME extensions"
     fi
     if ! done_step apply2; then
         say "ws apply"
@@ -621,7 +621,7 @@ t2_line() {
     if [[ "$1" == ok ]]; then
         printf '  OK   %s\n' "$2"
     else
-        printf '  НЕТ  %s\n       → %s\n' "$2" "$3"
+        printf '  NO   %s\n       → %s\n' "$2" "$3"
         t2_left=$((t2_left + 1))
     fi
 }
@@ -641,36 +641,36 @@ t2_pre() {
     local uuid id def esp boot_part kernel
     uuid="$(findmnt -no UUID /)"
     if findmnt -no OPTIONS / | tr ',' '\n' | grep -qx 'subvol=/@'; then
-        t2_line ok "/ на подвольюме @"
+        t2_line ok "/ on the subvolume @"
         id="$(sudo btrfs subvolume show / | awk '/Subvolume ID:/ { print $3 }')"
         def="$(sudo btrfs subvolume get-default / | awk '{ print $2 }')"
         if [[ -n "$id" && "$id" == "$def" ]]; then
-            t2_line ok "@ — подвольюм по умолчанию (rEFInd берёт ядро из него)"
+            t2_line ok "@ is the default subvolume (rEFInd takes the kernel from it)"
         else
-            t2_line no "@ не подвольюм по умолчанию (сейчас ID ${def:-?})" "sudo btrfs subvolume set-default $id /"
+            t2_line no "@ is not the default subvolume (now ID ${def:-?})" "sudo btrfs subvolume set-default $id /"
         fi
     else
-        t2_line no "/ не на @" "раскладка Btrfs: $(setup_ws) btrfs make, перезагрузка через GRUB, ещё раз то же (ws help rebuild, раздел 3)"
+        t2_line no "/ is not on @" "Btrfs layout: $(setup_ws) btrfs make, reboot through GRUB, the same again (ws help rebuild, section 3)"
     fi
     kernel="$(uname -r)"
     if [[ "$kernel" == *t2* ]]; then
-        t2_line ok "ядро T2 ($kernel)"
+        t2_line ok "T2 kernel ($kernel)"
     else
-        t2_line no "ядро не T2 ($kernel)" "образ Ubuntu t2linux или linux-t2 из его репозитория (ws help rebuild, разделы 2 и 4)"
+        t2_line no "not a T2 kernel ($kernel)" "the t2linux Ubuntu image, or linux-t2 from its repository (ws help rebuild, sections 2 and 4)"
     fi
     if [[ "$(t2_fact rootUuid)" == "$uuid" ]]; then
         t2_line ok "rootUuid = UUID / ($uuid)"
     else
-        t2_line no "rootUuid = \"$(t2_fact rootUuid)\", UUID / — $uuid" "rootUuid = \"$uuid\" в hosts/$host/host.toml"
+        t2_line no "rootUuid = \"$(t2_fact rootUuid)\", UUID of / is $uuid" "rootUuid = \"$uuid\" in hosts/$host/host.toml"
     fi
     esp="$(t2_fact refindEspPartuuid)"
     boot_part="$(lsblk -no PARTUUID "$(findmnt -no SOURCE /boot/efi 2>/dev/null)" 2>/dev/null || true)"
     if [[ -n "$esp" && "$esp" != "$boot_part" ]] \
         && lsblk -rno PARTUUID,FSTYPE | grep -qx "$esp vfat"; then
-        t2_line ok "refindEspPartuuid — раздел vfat $esp (не /boot/efi)"
+        t2_line ok "refindEspPartuuid is a vfat partition $esp (not /boot/efi)"
     else
-        t2_line no "refindEspPartuuid = \"$esp\": не отдельный ESP rEFInd" \
-            "PARTUUID ESP rEFInd (lsblk -o NAME,PARTUUID,FSTYPE; не /boot/efi) в refindEspPartuuid hosts/$host/host.toml (ws help rebuild, раздел 2)"
+        t2_line no "refindEspPartuuid = \"$esp\": not a separate rEFInd ESP" \
+            "the PARTUUID of the rEFInd ESP (lsblk -o NAME,PARTUUID,FSTYPE; not /boot/efi) as refindEspPartuuid in hosts/$host/host.toml (ws help rebuild, section 2)"
     fi
 }
 
@@ -679,35 +679,35 @@ t2_post() {
     if compgen -G "$t2_root/lib/firmware/brcm/brcmfmac4364*.bin*" >/dev/null; then
         t2_line ok "firmware Wi-Fi (brcmfmac4364)"
     else
-        t2_line no "нет firmware Wi-Fi" "get-apple-firmware.service (ws apply system) берёт её из macOS; без macOS — из архива (ws help rebuild, раздел 4)"
+        t2_line no "no Wi-Fi firmware" "get-apple-firmware.service (ws apply system) takes it from macOS; without macOS from an archive (ws help rebuild, section 4)"
     fi
     uuid="$(findmnt -no UUID /)"
     if [[ ! -f "$t2_root/swap/swapfile" ]]; then
-        t2_line no "нет /swap/swapfile (гибернация)" "ws suspend swap-setup 32g, его resume= в kernelParams hosts/$host/host.toml"
+        t2_line no "no /swap/swapfile (hibernation)" "ws suspend swap-setup 32g, its resume= in kernelParams of hosts/$host/host.toml"
     else
         offset="$(sudo btrfs inspect-internal map-swapfile -r "$t2_root/swap/swapfile")"
         if [[ "$(t2_param resume)" == "UUID=$uuid" && "$(t2_param resume_offset)" == "$offset" ]]; then
-            t2_line ok "resume= и resume_offset= — /swap/swapfile"
+            t2_line ok "resume= and resume_offset= point at /swap/swapfile"
         else
-            t2_line no "resume=$(t2_param resume) resume_offset=$(t2_param resume_offset), а нужно UUID=$uuid и $offset" \
-                "\"resume=UUID=$uuid\", \"resume_offset=$offset\" в kernelParams hosts/$host/host.toml, ws apply system"
+            t2_line no "resume=$(t2_param resume) resume_offset=$(t2_param resume_offset), needed UUID=$uuid and $offset" \
+                "\"resume=UUID=$uuid\", \"resume_offset=$offset\" in kernelParams of hosts/$host/host.toml, ws apply system"
         fi
     fi
     esp="$(t2_fact refindEspPartuuid)"
     if [[ -z "$esp" ]] || ! tree="$(ws system tree 2>/dev/null)"; then
-        t2_line no "refind.conf не сравнить (нет refindEspPartuuid или сборки системы)" "сначала шаги выше, ws apply"
+        t2_line no "refind.conf not compared (no refindEspPartuuid or no system build)" "the steps above first, ws apply"
         return
     fi
     sudo install -d "$mnt"
     if ! sudo mount -o ro "/dev/disk/by-partuuid/$esp" "$mnt"; then
-        t2_line no "ESP $esp не монтируется" "refindEspPartuuid в hosts/$host/host.toml"
+        t2_line no "ESP $esp does not mount" "refindEspPartuuid in hosts/$host/host.toml"
         sudo rmdir "$mnt" 2>/dev/null || true
         return
     fi
     if sudo cmp -s "$tree/esp/EFI/BOOT/refind.conf" "$mnt/EFI/BOOT/refind.conf"; then
-        t2_line ok "refind.conf на ESP — собранный"
+        t2_line ok "refind.conf on the ESP is the built one"
     else
-        t2_line no "refind.conf на ESP не тот, что собран" \
+        t2_line no "refind.conf on the ESP is not the built one" \
             "sudo mount /dev/disk/by-partuuid/$esp /mnt && sudo cp \"\$(ws system tree)/esp/EFI/BOOT/refind.conf\" /mnt/EFI/BOOT/refind.conf && sudo umount /mnt (ws help workstation, GRAPHICS)"
     fi
     sudo umount "$mnt"
@@ -716,12 +716,12 @@ t2_post() {
 
 # The checks of PART; setup stops when one is not done.
 t2_stop() {
-    say "Ручные шаги T2 и rEFInd (ws help rebuild)"
+    say "Manual steps of T2 and rEFInd (ws help rebuild)"
     t2_left=0
     "t2_$1"
     if ((t2_left)); then
         echo
-        echo "Не сделано: $t2_left. После них — ws setup (продолжит отсюда)."
+        echo "Not done: $t2_left. After them: ws setup (goes on from here)."
         trap - EXIT
         exit 1
     fi
@@ -790,9 +790,9 @@ step_backup() {
         install -d -m 0700 "$HOME/.ssh"
         ssh-keygen -q -t ed25519 -N "" -C "workstation-backup $host" -f "$key"
     fi
-    echo "Локальные копии: /var/lib/workstation-backup (@wsbackup). Ключ: $key.pub"
-    echo "На Unraid: hosts/$host/ с этим ключом (пользователь wsbackup-$host), затем alias и"
-    echo "hosts/$host/backup.toml конфигурации — ws help backup, «Несколько workstation»."
+    echo "Local copies: /var/lib/workstation-backup (@wsbackup). Key: $key.pub"
+    echo "On Unraid: hosts/$host/ with this key (user wsbackup-$host), then the alias and"
+    echo "hosts/$host/backup.toml of the configuration: ws help backup (several workstations)."
     mark_step backup
 }
 
@@ -802,21 +802,21 @@ new_remote() {
     local name
     [[ "$(cat "$state/mode" 2>/dev/null)" == new ]] || return 0
     git -C "$repo" remote get-url origin >/dev/null 2>&1 && return 0
-    if ! ask "Создать закрытый репозиторий GitHub для конфигурации?" n; then
-        echo "Без remote: ws sync коммитит локально. Позже: gh repo create --private ИМЯ --source $repo --push"
+    if ! ask "Create a private GitHub repository for the configuration?" n; then
+        echo "No remote: ws sync commits locally. Later: gh repo create --private NAME --source $repo --push"
         return 0
     fi
     step_github
-    read -r -p "Имя репозитория [$(basename "$repo")]: " name || true
+    read -r -p "Repository name [$(basename "$repo")]: " name || true
     gh repo create --private "${name:-$(basename "$repo")}" --source "$repo" --remote origin --push \
-        || echo "Не создан; позже: gh repo create --private ИМЯ --source $repo --push"
+        || echo "Not created; later: gh repo create --private NAME --source $repo --push"
 }
 
 step_finish() {
     local checkpoint=true
     # Everything of the configuration is data (ws sync); step_choices may
     # have made the host files, so untracked ones count.
-    say "Готово"
+    say "Finish"
     ws apply home
     # A checkpoint needs a live system that matches its tree (ws system check).
     if ! git -C "$repo" rev-parse -q --verify refs/tags/checkpoint/setup >/dev/null; then
@@ -829,31 +829,31 @@ step_finish() {
     fi
     rm -f "$autostart"
     if [[ -s "$state/check-fail.txt" ]]; then
-        echo "Хост $host настроен, но ws check нашёл FAIL ($state/check.txt):"
+        echo "Host $host is set up, but ws check found FAIL ($state/check.txt):"
         cat "$state/check-fail.txt"
-        echo "Снимок Timeshift — «setup, ws check FAIL». После исправления: ws check,"
+        echo "Timeshift snapshot: \"setup, ws check FAIL\". After the fix: ws check,"
         echo "sudo timeshift --create --comments checked, ws checkpoint create setup."
     else
-        echo "Хост $host настроен: ws check без FAIL, снимок Timeshift «setup»."
+        echo "Host $host is set up: ws check without FAIL, Timeshift snapshot \"setup\"."
     fi
-    [[ "$checkpoint" == true ]] || echo "checkpoint setup не создан: ws checkpoint create setup после исправления."
+    [[ "$checkpoint" == true ]] || echo "checkpoint setup not created: ws checkpoint create setup after the fix."
 }
 
 # --check: the manual steps of this host, nothing else (no state, no apt).
 if [[ "$check_only" == true ]]; then
     host="$(ws host)" || die "no host for $(hostname) in $repo (ws host)"
     if ! is_refind; then
-        echo "Хост $host (boot = $(ws fact boot)): ручных шагов нет."
+        echo "Host $host (boot = $(ws fact boot)): no manual steps."
         exit 0
     fi
-    say "Ручные шаги T2 и rEFInd, хост $host (ws help rebuild)"
+    say "Manual steps of T2 and rEFInd, host $host (ws help rebuild)"
     t2_pre
     t2_post
     if ((t2_left)); then
-        printf '\nНе сделано: %s.\n' "$t2_left"
+        printf '\nNot done: %s.\n' "$t2_left"
         exit 1
     fi
-    printf '\nВсе ручные шаги сделаны.\n'
+    printf '\nAll manual steps are done.\n'
     exit 0
 fi
 

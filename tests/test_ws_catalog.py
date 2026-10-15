@@ -75,7 +75,7 @@ class CatalogTests(unittest.TestCase):
         c.set("arch", "no")
         c.save()
         text = self.path(host="new").read_text()
-        self.assertTrue(text.startswith("# new: контейнеры Distrobox"), text)
+        self.assertTrue(text.startswith("# new: Distrobox containers"), text)
         self.assertEqual(self.choice(host="new").no(), ["arch"])
 
     def test_unchanged_file_is_not_written(self):
@@ -135,7 +135,7 @@ class CatalogTests(unittest.TestCase):
         self.assertIn("ws_catalog: invalid state", p.stderr)
 
     def test_cli_offer_without_a_terminal_names_the_offered(self):
-        p = self.cli("boxes", "offer", "--what", "контейнеры", "--",
+        p = self.cli("boxes", "offer", "--what", "containers", "--",
                      "arch\task\t", "new\task\tNew", "t2\tno\t")
         self.assertEqual(p.returncode, ws_select.NO_TERMINAL, p.stderr)
         self.assertEqual(p.stdout.split(), ["new"])

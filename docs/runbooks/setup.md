@@ -7,7 +7,7 @@ volume: User Commands
 # SETUP — НОВЫЙ ПК НА WSCONFIG
 
 `install.sh` и `ws setup` ведут свежую Ubuntu 26.04 до проверенной рабочей
-станции. Все вопросы задаются в начале, дальше от пользователя нужны
+станции. Сообщения и вопросы — на английском. Все вопросы задаются в начале, дальше от пользователя нужны
 только перезагрузки и вход. Хост с GRUB проходит весь путь сам. Хост с
 rEFInd (T2, mbp16) проходит его с проверкой ручных шагов (ниже, «T2 и
 rEFInd»).
@@ -96,7 +96,7 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/install.sh | 
      виджеты, Steam из apt, Game Mode.
 
    Новый хост коммитится. Публикуется он вместе с выбором после вопроса
-   «Опубликовать (ws sync)?». Без remote `ws sync` коммитит локально.
+   «Publish the new host and the choices (ws sync)?». Без remote `ws sync` коммитит локально.
 3. Списки с галочками (`lib/ws_catalog.py offer --all --setup`):
    - что предлагается: приложения каталога Flatpak, контейнеры Distrobox,
      при `widgets = true` виджеты и overrides Flatpak — всё, где у этого
@@ -112,8 +112,8 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/install.sh | 
 4. Лицензии пакетов, которые иначе спросил бы apt посреди подготовки
    системы: Microsoft core fonts (`ubuntu-restricted-extras`) и, при
    `nativeSteam = true`, Steam (debconf).
-5. «Начать?» — дальше без вопросов.
-6. С `--new`, в самом конце: «Создать закрытый репозиторий GitHub?»; по
+5. «Start?» — дальше без вопросов.
+6. С `--new`, в самом конце: «Create a private GitHub repository for the configuration?»; по
    умолчанию «нет». На «да» setup входит в GitHub и делает `gh repo create
    --private ИМЯ --source ~/wsconfig --push`. Позже это можно сделать той
    же командой.

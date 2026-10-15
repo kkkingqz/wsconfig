@@ -76,12 +76,12 @@ else
         | sort -k2 | awk 'END { print $1 }')" || die "git ls-remote $core_git failed (network?)"
     [[ -n "$rev" ]] || die "the core has no branch or tag $ref"
 fi
-echo "Ядро: $ref → $rev"
+echo "Core: $ref → $rev"
 
 # @nix before Nix: the store is a subvolume of its own, out of the
 # snapshots of / (ws help rebuild, section 3). lib/btrfs.bash of the same
 # revision.
-say "/nix на подвольюме @nix"
+say "/nix on the subvolume @nix"
 btrfs_lib="$(mktemp)"
 trap 'rm -f "$btrfs_lib"' EXIT
 wget -qO "$btrfs_lib" "$core_raw/$rev/lib/btrfs.bash" || die "cannot fetch lib/btrfs.bash of $rev"
@@ -91,7 +91,7 @@ subvolume_mount @nix /nix noatime,compress=zstd:1
 
 apt_install nix-bin nix-setup-systemd
 
-say "Nix: демон и группа nix-users"
+say "Nix: the daemon and the group nix-users"
 if systemctl is-enabled --quiet nix-daemon.socket 2>/dev/null; then
     echo "nix-daemon.socket enabled"
 else

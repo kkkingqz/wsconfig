@@ -134,7 +134,7 @@ class SetupTests(unittest.TestCase):
         (self.repo / 'hosts/new/host.toml').write_text('[layers]\nwidgets = true\n')
         (self.repo / 'hosts/new/widgets.toml').write_text('# mine\nno = ["compact"]\n')
         changed = self.run_with([[], [], ['example'], []])
-        self.assertEqual(self.asked[2], ('Виджеты (ws widgets) на new', {'example': True}))
+        self.assertEqual(self.asked[2], ('Widgets (ws widgets) on new', {'example': True}))
         self.assertIn('hosts/new/widgets.toml', changed)
         text = (self.repo / 'hosts/new/widgets.toml').read_text()
         self.assertTrue(text.startswith('# mine\n'), text)
@@ -196,11 +196,11 @@ class ApplyOfferTests(unittest.TestCase):
         with self.choose([['org.example.Asked'], None, ['clock']]):
             written = ws_catalog.apply_offer('new', ['flatpak', 'boxes', 'widgets'], err=err)
         self.assertEqual(self.asked, [
-            ('приложения Flatpak', ['org.example.Asked', 'org.example.Mine'], []),
-            ('контейнеры Distrobox', ['arch'], []),
-            ('виджеты wswidgets', ['clock'], [])])
+            ('Flatpak apps', ['org.example.Asked', 'org.example.Mine'], []),
+            ('Distrobox containers', ['arch'], []),
+            ('wswidgets widgets', ['clock'], [])])
         # The cancel of the boxes left them ask; the rest was written.
-        self.assertIn('выбор отменён, контейнеры Distrobox не тронуты', err.getvalue())
+        self.assertIn('choice cancelled, Distrobox containers left as they are', err.getvalue())
         self.assertEqual([Path(p).name for p in written], ['flatpak.toml', 'widgets.toml'])
         flatpak = ws_catalog.Choice('flatpak', 'new', self.config)
         self.assertEqual((flatpak.yes(), flatpak.no()), (['org.example.Asked'], ['org.example.Mine']))
@@ -215,7 +215,7 @@ class ApplyOfferTests(unittest.TestCase):
     def test_select_offers_the_declined(self):
         with self.choose([[]]):
             ws_catalog.apply_offer('new', ['boxes'], select=True)
-        self.assertEqual(self.asked, [('контейнеры Distrobox', ['arch', 't2'], ['t2'])])
+        self.assertEqual(self.asked, [('Distrobox containers', ['arch', 't2'], ['t2'])])
 
 
 if __name__ == '__main__':

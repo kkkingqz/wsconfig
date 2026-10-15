@@ -247,7 +247,7 @@ class UserRuntimeTests(unittest.TestCase):
         with patch.object(self.g["ws_select"], "choose", return_value=None), \
                 contextlib.redirect_stderr(io.StringIO()) as err:
             self.assertFalse(self.execute(state, "apply"))
-        self.assertIn("выбор отменён", err.getvalue())
+        self.assertIn("choice cancelled", err.getvalue())
         self.assertEqual(state.apps.keys(), {APP_REF})
         self.assertEqual(self.host.read_text(), f'yes = ["{APP}"]\n')
 

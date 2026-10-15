@@ -1,5 +1,5 @@
-# t2-mbp16: контейнеры Distrobox (ws box).
-# yes — есть здесь, no — отказались; чего нет ни там, ни там, — default каталога.
+# t2-mbp16: Distrobox containers (ws box).
+# yes: here, no: declined; what is in neither gets the default of the catalog.
 yes = [
     "arch",
     "wine-wayland",

@@ -210,10 +210,10 @@ cmd_apply() {
         echo "no widgets to offer on $ws_host"
         return 0
     fi
-    choice offer "${select[@]}" --what "виджеты wswidgets" -- "${items[@]}" >/dev/null || rc=$?
+    choice offer "${select[@]}" --what "wswidgets widgets" -- "${items[@]}" >/dev/null || rc=$?
     case "$rc" in
         0) [[ -n "${WS_APPLYING:-}" ]] || echo "then: ws apply widgets (applies the choice)" ;;
-        2) echo "ws widgets: выбор отменён, предложенные виджеты не тронуты (спросит в следующий раз)" >&2 ;;
+        2) echo "ws widgets: choice cancelled, the offered widgets left as they are (asked next time)" >&2 ;;
         3)
             ((${#select[@]} == 0)) || die "ws widgets apply --select: needs a terminal"
             echo "Not offered on $ws_host yet (no terminal to ask): $(echo $offered); run ws widgets apply in a terminal" >&2
