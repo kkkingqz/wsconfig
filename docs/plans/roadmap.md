@@ -37,6 +37,8 @@ volume: User Commands
 
 ## Что осталось
 
+Сводка по всему проекту на 2026-10-15 — ws help status.
+
 1. `ws help plan-t2`
    Hibernate и suspend-then-hibernate сделаны 2026-10-02 (крышка/Suspend →
    24 ч S3, затем hibernate; `ws help suspend`). Touch ID отложен до релиза

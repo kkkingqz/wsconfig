@@ -42,6 +42,7 @@ case "$topic" in
     widgets|widget|wswidgets) open_title ws-widgets ;;
     scripts|script|wsscript) open_title ws-scripts ;;
     clean) open_title ws-clean ;;
+    status|summary) open_title ws-status ;;
     roadmap|plans) open_title ws-roadmap ;;
     plan-t2) open_title ws-plan-t2 ;;
     plan-dgpu|dgpu|t2gmux) open_title ws-plan-dgpu ;;
@@ -98,6 +99,7 @@ Runbooks (docs/runbooks):
   clean            Remove what nothing uses: Nix generations, Podman images, Flatpak runtimes
 
 Plans (docs/plans):
+  status           Project summary: what is done, what is left
   roadmap          What is left
   plan-t2          T2 optional / power / auth
   plan-dgpu        AMD dGPU through t2gmux (power off like macOS)

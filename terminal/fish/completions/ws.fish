@@ -110,7 +110,7 @@ complete -c ws -n __ws_needs_command -a help -d 'Documentation: ws help TOPIC'
 
 # ws help TOPIC: the topics of libexec/helpws (tests/test_helpws.py keeps
 # the list equal to its case).
-set -l ws_help_topics readme layers architecture architecture-v2 arch-v2 checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall setup install new distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton remmina rdp virt vm vms libvirt kvm gaming game gamemode wsgame backup wsbackup recovery restore ws-restore widgets widget wswidgets scripts script wsscript clean roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-final plan-unraid unraid plan-legion-go legion-go legiongo plan-legion-go-agent legion-go-agent plan-wsgnomebox wsgnomebox plan-hyprland hyprland plan-v2 v2 history-gnome plan-gnome history-flatpak plan-flatpak history-distrobox plan-dev history-windows plan-windows history-nix plan-nix history-suspend history-touchbar history-virt plan-virt man help
+set -l ws_help_topics readme layers architecture architecture-v2 arch-v2 checks check workstation system baseline terminal term ghostty fish keyboard keys touchbar touch-bar suspend sleep power gnome desktop rebuild reinstall setup install new distrobox box boxes wsbox flatpak wsflatpak windows wine wswin steam proton remmina rdp virt vm vms libvirt kvm gaming game gamemode wsgame backup wsbackup recovery restore ws-restore widgets widget wswidgets scripts script wsscript clean status summary roadmap plans plan-t2 plan-dgpu dgpu t2gmux plan-final plan-unraid unraid plan-legion-go legion-go legiongo plan-legion-go-agent legion-go-agent plan-wsgnomebox wsgnomebox plan-hyprland hyprland plan-v2 v2 history-gnome plan-gnome history-flatpak plan-flatpak history-distrobox plan-dev history-windows plan-windows history-nix plan-nix history-suspend history-touchbar history-virt plan-virt man help
 
 function __ws_help_topic -a name desc
     complete -c ws -n "__ws_after help; and not __fish_seen_subcommand_from $ws_help_topics" -a $name -d $desc
@@ -139,6 +139,7 @@ __ws_help_topic recovery 'Restore a date from Unraid (ws-restore, Live USB)'
 __ws_help_topic widgets 'Shared widget runtime'
 __ws_help_topic scripts 'Own scripts, run by name'
 __ws_help_topic clean 'ws clean: Nix generations, Podman images, Flatpak runtimes'
+__ws_help_topic status 'Project summary: done and left'
 __ws_help_topic roadmap 'What is left'
 __ws_help_topic plan-t2 'T2 optional / power / auth'
 __ws_help_topic plan-dgpu 'AMD dGPU through t2gmux'
