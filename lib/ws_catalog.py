@@ -259,7 +259,7 @@ def box_catalog(config=None):
 def widget_catalog(config=None):
     """[(id, label)] of the pinned wswidgets as ws apply built it, else
     the widgets some host has in yes (the full catalog needs Nix)."""
-    built = ws_common.load(Path.home() / ".local/share/workstation/widgets/catalog.json")
+    built = ws_common.load(Path.home() / ".local/share/wsconfig/widgets/catalog.json")
     if isinstance(built, list) and config is None:
         return [(w["id"], w.get("label", "")) for w in built]
     return [(name, "") for name in used("widgets", config)]

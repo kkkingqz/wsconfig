@@ -12,7 +12,7 @@ end
 
 # Every widget of the installed wswidgets (written by ws apply).
 function __wswidgets_catalog
-    set -l catalog ~/.local/share/workstation/widgets/catalog.json
+    set -l catalog ~/.local/share/wsconfig/widgets/catalog.json
     test -f $catalog; and python3 -c 'import json, sys
 for w in json.load(open(sys.argv[1])): print(w["id"] + "\t" + w["label"])' $catalog 2>/dev/null
 end

@@ -37,7 +37,7 @@ done < <(ws-widgets check --tsv)
 
 # The manifest the runtime reads against yes of this host in
 # hosts/HOST/widgets.toml (ws widgets enabled), in panel order.
-manifest="${XDG_DATA_HOME:-$HOME/.local/share}/workstation/widgets/manifest.json"
+manifest="${XDG_DATA_HOME:-$HOME/.local/share}/wsconfig/widgets/manifest.json"
 expected="$("$WS_CORE/libexec/wswidgets" enabled | paste -sd ' ')"
 delivered="$(python3 -c 'import json, sys; print(" ".join(w["id"] for w in json.load(open(sys.argv[1]))["widgets"]))' "$manifest" 2>/dev/null)"
 if [[ "$delivered" == "$expected" ]]; then

@@ -35,11 +35,15 @@ def run_main(env, args):
     """wsbackup ARGS in this process (so it talks to the model), with its
     exit code and messages as libexec/wsbackup would give them."""
     import backup
+    import ws_common
     out, err, code = io.StringIO(), io.StringIO(), 0
     handler = signal.getsignal(signal.SIGTERM)
     try:
-        with mock.patch.dict(os.environ, env), contextlib.redirect_stdout(out), \
-                contextlib.redirect_stderr(err):
+        # ws_common.CONFIG is resolved at import, from the environment of the
+        # test run: without this the live configuration (~/wsconfig) is read.
+        with mock.patch.dict(os.environ, env), \
+                mock.patch.object(ws_common, 'CONFIG', ws_common.config_root()), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             backup.main(list(args))
     except (ValueError, OSError, backup.Terminated) as e:
         err.write(f'wsbackup: {e}\n')

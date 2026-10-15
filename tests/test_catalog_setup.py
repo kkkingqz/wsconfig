@@ -172,7 +172,7 @@ class ApplyOfferTests(unittest.TestCase):
         boxes = root / 'distrobox'
         boxes.mkdir()
         (boxes / 'boxes.json').write_text(json.dumps([{'name': 'arch'}, {'name': 't2', 'default': 'no'}]))
-        home = root / 'home/.local/share/workstation/widgets'
+        home = root / 'home/.local/share/wsconfig/widgets'
         home.mkdir(parents=True)
         (home / 'catalog.json').write_text(json.dumps([{'id': 'clock', 'label': 'Clock'}]))
         patches = [mock.patch.object(ws_catalog.ws_common, 'CONFIG', self.config),
