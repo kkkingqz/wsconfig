@@ -4,10 +4,13 @@ set -euo pipefail
 # First setup of a new PC on wsconfig (ws help setup), from a fresh Ubuntu
 # 26.04 to a checked workstation. On the fresh system, in a terminal:
 #
-#   wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash
+#   wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash -s -- CONFIG_URL
 #
 # git, gh, xdg-terminal-exec → GitHub login (gh auth login in the browser)
-# → ~/wsconfig → the host: the one whose host.toml has this hostname, else
+# → the configuration CONFIG_URL (a repository of its own, private is fine;
+# asked without the argument) in ~/wsconfig → the core at the revision its
+# flake.lock pins in ~/.cache/wsconfig/core, whose setup.sh goes on
+# (ws help plan-v2, 8.10) → the host: the one whose host.toml has this hostname, else
 # asked (an existing one gives the PC its hostname, a new one is made from
 # generic-pc and committed) → all questions at once: Flatpak apps,
 # Distrobox boxes, widgets and overrides without a choice of this host
@@ -23,8 +26,14 @@ set -euo pipefail
 # autostart entry runs it again after each login, so after a reboot the
 # user only logs in. GRUB hosts only: rEFInd (mbp16) is ws help rebuild.
 
-repo_url=https://github.com/kkkingqz/wsconfig.git
+core_url="${WS_SETUP_CORE_URL:-https://github.com/kkkingqz/wsconfig.git}"
+# The configuration (the data) and the core (the code: ws, bootstrap.sh,
+# this script) at the revision the configuration pins.
 repo="$HOME/wsconfig"
+core="${XDG_CACHE_HOME:-$HOME/.cache}/wsconfig/core"
+export WSCONFIG="$repo"
+# The terminal of wget | bash (tests: another file).
+tty="${WS_SETUP_TTY:-/dev/tty}"
 state="${XDG_STATE_HOME:-$HOME/.local/state}/wsconfig/setup"
 autostart="$HOME/.config/autostart/ws-setup.desktop"
 
@@ -52,25 +61,84 @@ mark_step() { mkdir -p "$state" && date -Is > "$state/$1.done"; }
 # A fact of a host.toml (lib/ws_facts.py, after the clone); empty when
 # there is none.
 fact_in() {
-    python3 "$repo/lib/ws_facts.py" fact --file "$1" "$2" 2>/dev/null || true
+    python3 "$core/lib/ws_facts.py" fact --file "$1" "$2" 2>/dev/null || true
 }
 
-ws() { "$repo/bin/ws" "$@"; }
+ws() { "$core/bin/ws" "$@"; }
+
+# The revision of the core flake.lock of the configuration pins (its input
+# wsconfig).
+pinned_core() {
+    python3 -c 'import json, sys
+lock = json.load(open(sys.argv[1]))
+print(lock["nodes"][lock["nodes"][lock["root"]]["inputs"]["wsconfig"]]["locked"]["rev"])' "$repo/flake.lock" \
+        || die "$repo/flake.lock pins no core (input wsconfig): not a configuration of wsconfig"
+}
+
+# The core checkout at REV.
+core_at() {
+    [[ -d "$core/.git" ]] || git clone -q "$core_url" "$core" || die "git clone $core_url failed"
+    git -C "$core" fetch -q origin || die "git fetch of the core failed"
+    git -C "$core" checkout -q --detach "$1" || die "the core has no revision $1"
+}
+
+step_tools() {
+    local -a missing=()
+    local c
+    for c in git gh xdg-terminal-exec; do
+        command -v "$c" >/dev/null 2>&1 || missing+=("$c")
+    done
+    # The host choices are edited through tomlkit (lib/ws_catalog.py), the
+    # first time in step_choices.
+    python3 -c 'import tomlkit' 2>/dev/null || missing+=(python3-tomlkit)
+    ((${#missing[@]})) || return 0
+    say "apt: ${missing[*]}"
+    sudo apt-get update
+    sudo apt-get install -y "${missing[@]}"
+}
+
+step_github() {
+    local name email
+    if ! gh auth status --hostname github.com >/dev/null 2>&1; then
+        say "GitHub: вход в браузере (одноразовый код)"
+        gh auth login --hostname github.com --git-protocol https --web --scopes user:email
+    fi
+    if ! git config --global --get-all credential.https://github.com.helper 2>/dev/null | grep -q 'gh auth git-credential'; then
+        gh auth setup-git --hostname github.com
+    fi
+    if [[ -z "$(git config --global user.name)" ]]; then
+        name="$(gh api user --jq '.name // .login')"
+        git config --global user.name "$name"
+    fi
+    if [[ -z "$(git config --global user.email)" ]]; then
+        email="$(gh api user/emails --jq 'map(select(.primary))[0].email' 2>/dev/null || true)"
+        [[ -n "$email" && "$email" != null ]] \
+            || email="$(gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"')"
+        git config --global user.email "$email"
+    fi
+    [[ -n "$(git config --global init.defaultBranch)" ]] || git config --global init.defaultBranch main
+}
 
 [[ $EUID -ne 0 ]] || die "run as the desktop user, not root"
 
-# wget | bash (or a copy elsewhere): the checkout first, then its setup.sh
-# with the terminal as input.
-if [[ "$(readlink -f "${BASH_SOURCE[0]:-}" 2>/dev/null)" != "$repo/setup.sh" ]]; then
+# wget | bash (or a copy elsewhere): the tools and the GitHub login, the
+# configuration, the core it pins; then the setup.sh of that core with the
+# terminal as input.
+self="$(readlink -f "${BASH_SOURCE[0]:-}" 2>/dev/null || true)"
+if [[ -z "$self" || "$self" != "$(readlink -f "$core/setup.sh" 2>/dev/null)" ]]; then
+    config_url=
+    [[ "${1:-}" == --autostart ]] || { config_url="${1:-}"; [[ $# -eq 0 ]] || shift; }
+    step_tools <"$tty"
+    step_github <"$tty"
     if [[ ! -d "$repo/.git" ]]; then
-        if ! command -v git >/dev/null 2>&1; then
-            say "git"
-            sudo apt-get update </dev/tty
-            sudo apt-get install -y git </dev/tty
-        fi
-        git clone "$repo_url" "$repo"
+        [[ -n "$config_url" ]] \
+            || read -r -p "URL репозитория конфигурации (например https://github.com/USER/REPO.git): " config_url <"$tty" \
+            || true
+        [[ -n "$config_url" ]] || die "no configuration repository (ws help setup)"
+        git clone "$config_url" "$repo" || die "git clone $config_url failed (URL, access?)"
     fi
-    exec bash "$repo/setup.sh" "$@" </dev/tty
+    core_at "$(pinned_core)"
+    exec bash "$core/setup.sh" "$@" <"$tty"
 fi
 
 autostarted=false
@@ -117,55 +185,21 @@ publish() {
     ws sync || die "ws sync failed; run setup.sh again or ws sync by hand"
 }
 
-step_tools() {
-    local -a missing=()
-    local c
-    for c in git gh xdg-terminal-exec; do
-        command -v "$c" >/dev/null 2>&1 || missing+=("$c")
-    done
-    # The host choices are edited through tomlkit (lib/ws_catalog.py), the
-    # first time in step_choices.
-    python3 -c 'import tomlkit' 2>/dev/null || missing+=(python3-tomlkit)
-    ((${#missing[@]})) || return 0
-    say "apt: ${missing[*]}"
-    sudo apt-get update
-    sudo apt-get install -y "${missing[@]}"
-}
 
-step_github() {
-    local name email
-    if ! gh auth status --hostname github.com >/dev/null 2>&1; then
-        say "GitHub: вход в браузере (одноразовый код)"
-        gh auth login --hostname github.com --git-protocol https --web --scopes user:email
-    fi
-    if ! git config --global --get-all credential.https://github.com.helper 2>/dev/null | grep -q 'gh auth git-credential'; then
-        gh auth setup-git --hostname github.com
-    fi
-    if [[ -z "$(git config --global user.name)" ]]; then
-        name="$(gh api user --jq '.name // .login')"
-        git config --global user.name "$name"
-    fi
-    if [[ -z "$(git config --global user.email)" ]]; then
-        email="$(gh api user/emails --jq 'map(select(.primary))[0].email' 2>/dev/null || true)"
-        [[ -n "$email" && "$email" != null ]] \
-            || email="$(gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"')"
-        git config --global user.email "$email"
-    fi
-    [[ -n "$(git config --global init.defaultBranch)" ]] || git config --global init.defaultBranch main
-}
-
-# The newest setup.sh of main; a run that pulled starts it anew.
+# The newest configuration of main and the core it pins; a run whose core
+# moved starts the setup.sh of that core anew.
 step_pull() {
-    local before
-    [[ -z "$(git -C "$repo" status --porcelain)" ]] || { echo "$repo has changes: not pulled"; return 0; }
-    [[ "$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null)" == main ]] || return 0
-    before="$(git -C "$repo" rev-parse HEAD)"
-    if ! git -C "$repo" pull -q --ff-only origin main; then
+    local rev
+    if [[ -n "$(git -C "$repo" status --porcelain)" ]]; then
+        echo "$repo has changes: not pulled"
+    elif [[ "$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null)" == main ]] \
+        && ! git -C "$repo" pull -q --ff-only origin main; then
         echo "git pull failed: going on with this version"
-        return 0
     fi
-    if [[ "$(git -C "$repo" rev-parse HEAD)" != "$before" ]]; then
-        exec bash "$repo/setup.sh" "$@"
+    rev="$(pinned_core)"
+    if [[ "$(git -C "$core" rev-parse HEAD)" != "$rev" ]]; then
+        core_at "$rev"
+        exec bash "$core/setup.sh" "$@"
     fi
 }
 
@@ -282,7 +316,7 @@ step_choices() {
     local changed rc=0
     done_step choices && return 0
     say "Что будет на $host"
-    changed="$(python3 "$repo/lib/ws_catalog.py" --host "$host" offer --all --setup)" || rc=$?
+    changed="$(python3 "$core/lib/ws_catalog.py" --host "$host" offer --all --setup)" || rc=$?
     ((rc == 0)) || die "lists not answered (ws_catalog exit $rc); run setup.sh again"
     if [[ -n "$changed" ]]; then
         echo "Выбор $host: $(echo $changed)"
@@ -315,7 +349,7 @@ install_autostart() {
 Type=Application
 Name=wsconfig setup
 Comment=Continues setup.sh after a reboot (ws help setup); removed at its end
-Exec=xdg-terminal-exec $repo/setup.sh --autostart
+Exec=xdg-terminal-exec $core/setup.sh --autostart
 NoDisplay=true
 X-GNOME-Autostart-enabled=true
 EOF
@@ -343,7 +377,7 @@ step_bootstrap() {
     done_step bootstrap && return 0
     install_autostart
     say "bootstrap.sh"
-    "$repo/bootstrap.sh"
+    "$core/bootstrap.sh"
     mark_step bootstrap
     reboot_now "группы, fish, PATH из Nix"
 }
@@ -424,18 +458,14 @@ step_backup() {
     fi
     echo "Локальные копии: /var/lib/workstation-backup (@wsbackup). Ключ: $key.pub"
     echo "На Unraid: hosts/$host/ с этим ключом (пользователь wsbackup-$host), затем alias и"
-    echo "config.json здесь — ws help backup, «Несколько workstation»."
+    echo "hosts/$host/backup.toml конфигурации — ws help backup, «Несколько workstation»."
     mark_step backup
 }
 
 step_finish() {
     local checkpoint=true
-    # The data of ws sync (data_patterns of bin/ws); step_choices may have
-    # made the host files, so untracked ones count.
-    local -a data_files=(flatpak/catalog.toml distrobox/catalog.toml windows/apps.toml
-        gnome/config.toml keyboard/config.toml flake.lock 'hosts/*/flatpak.toml'
-        'hosts/*/boxes.toml' 'hosts/*/widgets.toml' 'hosts/*/gnome.toml'
-        'hosts/*/keyboard.toml')
+    # Everything of the configuration is data (ws sync); step_choices may
+    # have made the host files, so untracked ones count.
     say "Готово"
     ws apply home
     # A checkpoint needs a live system that matches its tree (ws system check).
@@ -443,7 +473,7 @@ step_finish() {
         ws checkpoint create setup || checkpoint=false
     fi
     if [[ -n "$(git -C "$repo" log --oneline '@{u}..HEAD' 2>/dev/null)" \
-        || -n "$(git -C "$repo" status --porcelain --untracked-files=all -- "${data_files[@]}")" ]]; then
+        || -n "$(git -C "$repo" status --porcelain --untracked-files=all)" ]]; then
         publish
     fi
     rm -f "$autostart"

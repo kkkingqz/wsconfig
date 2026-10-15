@@ -13,21 +13,23 @@ set -euo pipefail
 # the Game Mode list with gameMode = true. A container host (boot =
 # "container") skips what its image or the server holds.
 #
-# Runs as the desktop user from the checkout at ~/<wsconfig of
-# hosts/<host>/host.toml> and calls sudo itself. Every step checks
-# the current state first, so a second run changes nothing.
+# Runs as the desktop user and calls sudo itself. The code is that of this
+# checkout of the core; the data that of the configuration at ~/<wsconfig
+# of hosts/<host>/host.toml>: WSCONFIG (setup.sh, a core checkout of its
+# own: ws help plan-v2, 8.10), else this checkout when it holds both. Every
+# step checks the current state first, so a second run changes nothing.
 #
 #   ./bootstrap.sh [--dry-run]
 #
 # Afterwards: reboot, then ws apply → log out and in → ws apply →
 # ws check.
 
-repo="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.bash
-. "$repo/lib/common.bash"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.bash"
+# repo: the configuration (lib/common.bash), WS_CORE: this checkout.
 ws_prog=bootstrap
 # shellcheck source=lib/apt.bash
-. "$repo/lib/apt.bash"
+. "$WS_CORE/lib/apt.bash"
 dry_run=false
 
 
@@ -48,42 +50,42 @@ run() {
 
 [[ $EUID -ne 0 ]] || die "run as the desktop user, not root"
 command -v sudo >/dev/null 2>&1 || die "sudo not found"
-host="$("$repo/bin/ws" host)"
+host="$("$WS_CORE/bin/ws" host)"
 host_list="$repo/hosts/$host/apt.txt"
 toml="hosts/$host/host.toml"
 [[ -r "$repo/$toml" ]] || die "no $toml"
 # The checkout path is a fact of the host: home-manager links point there.
-expected="$HOME/$("$repo/bin/ws" fact wsconfig)" || die "no wsconfig in [host] of $toml"
+expected="$HOME/$("$WS_CORE/bin/ws" fact wsconfig)" || die "no wsconfig in [host] of $toml"
 [[ "$repo" == "$expected" ]] \
-    || die "checkout must be $expected (wsconfig in $toml), not $repo"
+    || die "the configuration must be at $expected (wsconfig in $toml), not $repo"
 # VM layer (ws help virt): packages of virt/apt.txt, @vms and libvirt.
 # The layers are true or false; ws fact prints them as yes and no.
-vm="$("$repo/bin/ws" fact vm)" || die "no vm in [layers] of $toml (true or false)"
+vm="$("$WS_CORE/bin/ws" fact vm)" || die "no vm in [layers] of $toml (true or false)"
 [[ "$vm" == yes || "$vm" == no ]] || die "vm in $toml must be true or false, not \"$vm\""
 # Native Steam and the Game Mode session (ws help plan-legion-go).
-native_steam="$("$repo/bin/ws" fact nativeSteam)" \
+native_steam="$("$WS_CORE/bin/ws" fact nativeSteam)" \
     || die "no nativeSteam in [layers] of $toml (true or false)"
 [[ "$native_steam" == yes || "$native_steam" == no ]] \
     || die "nativeSteam in $toml must be true or false, not \"$native_steam\""
-game_mode="$("$repo/bin/ws" fact gameMode)" \
+game_mode="$("$WS_CORE/bin/ws" fact gameMode)" \
     || die "no gameMode in [layers] of $toml (true or false)"
 [[ "$game_mode" == yes || "$game_mode" == no ]] \
     || die "gameMode in $toml must be true or false, not \"$game_mode\""
 [[ "$game_mode" == no || "$native_steam" == yes ]] \
     || die "gameMode = true needs nativeSteam = true in $toml"
-echo "Host: $host (vm = $vm, widgets = $("$repo/bin/ws" fact widgets 2>/dev/null), nativeSteam = $native_steam, gameMode = $game_mode)"
+echo "Host: $host (vm = $vm, widgets = $("$WS_CORE/bin/ws" fact widgets 2>/dev/null), nativeSteam = $native_steam, gameMode = $game_mode)"
 # A container host (ws help plan-wsgnomebox): the image holds the apt
 # packages, groups and login shell, /nix is a directory of the server; no
 # Btrfs, subvolumes or local backup copies.
 container=false
-[[ "$("$repo/bin/ws" fact boot)" != container ]] || container=true
+[[ "$("$WS_CORE/bin/ws" fact boot)" != container ]] || container=true
 
 if [[ "$container" == true ]]; then
     mountpoint -q /nix || die "/nix is not a mount: the container needs it from the server (ws help plan-wsgnomebox)"
 else
     [[ "$(findmnt -no FSTYPE /)" == btrfs ]] || die "/ is not Btrfs (rebuild.md, section 3)"
     findmnt -no OPTIONS / | tr ',' '\n' | grep -qx 'subvol=/@' \
-        || die "/ is not the subvolume @: first ~/wsconfig/bin/ws btrfs make (ws help rebuild, section 3)"
+        || die "/ is not the subvolume @: first $WS_CORE/bin/ws btrfs make (ws help rebuild, section 3)"
     [[ ! -e /var/lib/ws-btrfs-layout/old-root ]] \
         || echo "The old root is still on the top level of Btrfs: ws btrfs make removes it."
     root_dev="$(findmnt -no SOURCE / | sed 's/\[.*$//')"
@@ -147,7 +149,7 @@ fi
 echo
 echo "== 3. VM state on @vms, libvirt (ws help virt)"
 if [[ "$vm" == yes ]]; then
-    . "$repo/virt/bootstrap.bash"
+    . "$WS_CORE/virt/bootstrap.bash"
 else
     echo "vm = false in $toml: no VM layer"
 fi
@@ -155,7 +157,7 @@ fi
 echo
 echo "== 4. Steam data on @steam (ws help plan-legion-go)"
 if [[ "$native_steam" == yes ]]; then
-    . "$repo/steam/bootstrap.bash"
+    . "$WS_CORE/steam/bootstrap.bash"
 else
     echo "nativeSteam = false in $toml: no apt Steam"
 fi
@@ -175,7 +177,7 @@ else
     else
         run sudo chmod 0700 "$backup_root"
     fi
-    run sudo bash "$repo/backup/wsbackup-source" --uuid "$root_uuid" --root "$backup_root" init
+    run sudo bash "$WS_CORE/backup/wsbackup-source" --uuid "$root_uuid" --root "$backup_root" init
 fi
 
 echo
@@ -224,7 +226,7 @@ echo "== 8. First ws apply home"
 # membership applies only to new logins: sg (util-linux-extra on Ubuntu
 # 26.04) runs it with the group when this session lacks it. Files
 # home-manager would replace are kept as *.pre-hm.
-first="NIX_CONFIG='experimental-features = nix-command flakes' HOME_MANAGER_BACKUP_EXT=pre-hm '$repo/bin/ws' apply home"
+first="NIX_CONFIG='experimental-features = nix-command flakes' HOME_MANAGER_BACKUP_EXT=pre-hm '$WS_CORE/bin/ws' apply home"
 if id -nG | tr ' ' '\n' | grep -qx nix-users; then
     run bash -c "$first"
 elif [[ "$dry_run" == true ]]; then

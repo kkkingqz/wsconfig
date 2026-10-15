@@ -17,12 +17,16 @@ volume: User Commands
 (`ws help rebuild`, разделы 2–3). Затем в терминале:
 
 ```console
-wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash
+wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/setup.sh | bash -s -- URL_КОНФИГУРАЦИИ
 ```
 
-`wget` есть в Ubuntu Desktop сразу, `curl` — нет. Скрипт ставит `git`,
-клонирует `~/wsconfig` и продолжает уже оттуда; повторный запуск —
-`~/wsconfig/setup.sh`.
+`wget` есть в Ubuntu Desktop сразу, `curl` — нет. Скрипт ставит `git` и
+`gh`, входит в GitHub (закрытый репозиторий конфигурации доступен так),
+клонирует конфигурацию в `~/wsconfig` (без URL — спрашивает), ядро той
+ревизии, что закреплена в её `flake.lock`, — в `~/.cache/wsconfig/core`, и
+продолжает setup.sh этого ядра (`ws help plan-v2`, 8.10). Повторный
+запуск — `~/.cache/wsconfig/core/setup.sh`. Создание новой конфигурации
+(`ws setup --new`) — этап 9.
 
 ## Что спрашивает
 
