@@ -89,6 +89,12 @@ complete -c ws -n '__ws_at checkpoint' -a 'create list show diff remove'
 complete -c ws -n '__ws_at checkpoint show; or __ws_at checkpoint diff; or __ws_at checkpoint remove' -a '(__ws_state_names checkpoints)'
 complete -c ws -n '__ws_after checkpoint' -l baseline -d 'diff: capture and compare a baseline'
 
+complete -c ws -n __ws_needs_command -a container -d 'A host in a Docker container on the server'
+complete -c ws -n '__ws_at container' -a build -d 'Image from HEAD and the pinned core'
+complete -c ws -n '__ws_at container' -a run -d 'Replace the container with the latest image'
+complete -c ws -n '__ws_at container' -a status -d 'Container and image commit against HEAD'
+complete -c ws -n '__ws_after container' -l dry-run -d 'Print the docker command'
+
 complete -c ws -n '__ws_after collect' -l no-firmware -d 'Without the Apple firmware'
 complete -c ws -n '__ws_after collect' -F
 
