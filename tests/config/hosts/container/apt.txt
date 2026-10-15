@@ -1,6 +1,6 @@
 # apt packages of the container host (GNOME in a container on a server) on top of
 # system/apt.txt (ws help plan-wsgnomebox). The image installs them
-# (container/Dockerfile), bootstrap.sh then finds them present. rec: lines
+# (container/Dockerfile), ws-prepare then finds them present. rec: lines
 # are described in system/apt.txt.
 
 # What the installer puts on a real machine and ubuntu:26.04 lacks:

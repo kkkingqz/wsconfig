@@ -1,5 +1,5 @@
 # Game Mode session, gamescope + Steam as in SteamOS (hosts with
-# gameMode = "yes" in facts.nix; ws help plan-legion-go). bootstrap.sh
+# gameMode = "yes" in facts.nix; ws help plan-legion-go). ws-prepare
 # installs it, ws check apt compares. sddm is not here: installing it
 # switches the display manager, so it comes with the session files later.
 

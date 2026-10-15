@@ -3,16 +3,16 @@
 # architecture-v2, 4). The packages the user wants on every host are in
 # apt.txt of the configuration, those of one host in hosts/<host>/apt.txt.
 # One package per line; `ppa:OWNER/NAME` adds an Ubuntu PPA first;
-# `purge:NAME` purges a package of the standard install (bootstrap.sh).
+# `purge:NAME` purges a package of the standard install (ws setup).
 # Packages are installed without their recommends; `rec:NAME` installs NAME
 # with them (a metapackage whose content is Recommends). apt takes
 # recommends only when it installs a package: on a host that already has
-# NAME, remove it and run bootstrap.sh again.
+# NAME, remove it and run ws setup again.
 # Host lists also take `source:NAME` (the repository
 # hosts/<host>/apt/NAME.sources with its key NAME.asc, installed as
 # /etc/apt/sources.list.d/ws-NAME.sources and /etc/apt/keyrings/ws-NAME.asc)
 # and `arch:NAME` (dpkg --add-architecture), both before the packages.
-# Installed by bootstrap.sh; `ws check apt` compares with apt-mark showmanual.
+# Installed by ws-prepare; `ws check apt` compares with apt-mark showmanual.
 # The lists by facts (lib/apt.bash): real machines system/apt-machine.txt
 # (boot is not "container"), virtual machines virt/apt.txt (vm = true),
 # native Steam steam/apt.txt (nativeSteam = true), Game Mode session
@@ -58,7 +58,7 @@ flatpak
 # (/etc/apt/preferences.d/ws-no-snapd). Firefox is the Flathub flatpak.
 purge:snapd
 
-# sg: bootstrap.sh runs the first switch with nix-users before a new login
+# sg: ws-prepare runs the first switch with nix-users before a new login
 # (Ubuntu 26.04 moved sg/newgrp from login to util-linux-extra)
 util-linux-extra
 

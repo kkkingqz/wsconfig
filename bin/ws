@@ -21,6 +21,7 @@ Usage:
   ws checkpoint create|list|show|diff|remove ...
   ws collect [--no-firmware] [ARCHIVE]
   ws btrfs make [--dry-run] [--yes]
+  ws setup [--repo URL|PATH | --new [DIR]] [--host NAME]
   ws backup [plan|status|list|check|send|restore-test|recovery-export ...]
   ws container build|run|status HOST [--dry-run]
   ws host [--for-marks]
@@ -111,7 +112,7 @@ check     run the owners' checks with --json and summarize their result
           system/apt-machine.txt (not in a container) and, with
           vm = true, virt/apt.txt, with nativeSteam = true, steam/apt.txt,
           with gameMode = true, gaming/apt.txt (the
-          lists of bootstrap.sh) with the installed packages, report only;
+          lists of ws setup) with the installed packages, report only;
           each takes --json (one result object, what ws check reads)
 system    build the host system file tree (system) and compare it
           with the live system, read-only: diff shows file differences,
@@ -137,9 +138,12 @@ collect   archive of the machine state a rebuild needs and the repository
           does not hold (baseline, boot and disks, apt, Apple firmware,
           ~/.local/state/wsconfig), see ws-collect --help; asks sudo
 btrfs     make: the Btrfs layout of a fresh install (@, @home, @cache, @tmp,
-          @log) from the installed system, before bootstrap.sh: run it,
-          reboot through GRUB, run it again; see ws-btrfs --help and
-          ws help rebuild, section 3
+          @log) from the installed system; ws setup runs it (twice, a
+          reboot through GRUB between); see ws-btrfs --help and ws help
+          rebuild, section 3
+setup     the first setup of this PC (ws help setup): install.sh runs it
+          on a fresh Ubuntu; --repo URL|PATH a configuration that exists,
+          --new [DIR] a new one; after each reboot it goes on by itself
 backup    Timeshift snapshots to Unraid, then retain final local ro parents;
           plan/status work before SSH is configured; list shows the local
           copies (asks sudo);
@@ -357,7 +361,7 @@ stage_data() {
 }
 
 # home-manager switch of this host (stage 6 of ws apply). A file it would
-# replace is kept as *.HOME_MANAGER_BACKUP_EXT when that is set (bootstrap.sh).
+# replace is kept as *.HOME_MANAGER_BACKUP_EXT when that is set (ws setup).
 home_switch() {
     local nix
     nix="$(nix_bin)" || return
@@ -768,7 +772,7 @@ check_steps=(
     "verify ws-workstation-verify"
 )
 
-# The apt lists of bootstrap.sh against the installed system; reports only.
+# The apt lists of ws-prepare against the installed system; reports only.
 # A listed package that is missing or only auto-installed (apt autoremove
 # could take it) is a WARN; manual packages outside the lists are listed.
 cmd_check_apt() {
@@ -793,33 +797,33 @@ cmd_check_apt() {
     mapfile -t want < <(apt_lines | sed -e '/^ppa:/d' -e 's/^rec://' | sort -u)
     for pkg in $(printf '%s\n' "${want[@]}" | sed -n 's/^purge://p'); do
         if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q ' installed$'; then
-            warn "installed, the host list purges it: $pkg (bootstrap.sh)"
+            warn "installed, the host list purges it: $pkg (ws setup)"
         else
             pass "purged: $pkg"
         fi
     done
-    # Repositories and architectures of the host list (bootstrap.sh).
+    # Repositories and architectures of the host list (ws setup).
     for name in $(printf '%s\n' "${want[@]}" | sed -n 's/^source://p'); do
         if cmp -s "$repo/hosts/$h/apt/$name.sources" "/etc/apt/sources.list.d/ws-$name.sources" \
             && cmp -s "$repo/hosts/$h/apt/$name.asc" "/etc/apt/keyrings/ws-$name.asc"; then
             pass "apt source: $name"
         else
-            warn "apt source $name missing or not as hosts/$h/apt/$name.* (bootstrap.sh)"
+            warn "apt source $name missing or not as hosts/$h/apt/$name.* (ws setup)"
         fi
     done
-    # ws-NAME without its source: line: bootstrap.sh removes it.
+    # ws-NAME without its source: line: ws-prepare removes it.
     for f in /etc/apt/sources.list.d/ws-*.sources; do
         [[ -e "$f" ]] || continue
         name="${f##*/ws-}"
         name="${name%.sources}"
         printf '%s\n' "${want[@]}" | grep -qx "source:$name" \
-            || warn "apt source ws-$name is in no apt list: apt still installs from it (bootstrap.sh removes it)"
+            || warn "apt source ws-$name is in no apt list: apt still installs from it (ws setup removes it)"
     done
     for name in $(printf '%s\n' "${want[@]}" | sed -n 's/^arch://p'); do
         if dpkg --print-foreign-architectures | grep -qx "$name"; then
             pass "architecture: $name"
         else
-            warn "architecture missing: $name (bootstrap.sh)"
+            warn "architecture missing: $name (ws setup)"
         fi
     done
     mapfile -t want < <(printf '%s\n' "${want[@]}" | grep -v '^purge:\|^source:\|^arch:')
@@ -951,6 +955,7 @@ case "${1:-}" in
     collect) shift; exec "$WS_CORE/libexec/ws-collect" "$@" ;;
     container) shift; exec "$WS_CORE/libexec/ws-container" "$@" ;;
     btrfs) shift; exec "$WS_CORE/libexec/ws-btrfs" "$@" ;;
+    setup) shift; exec "$WS_CORE/libexec/ws-setup" "$@" ;;
     # Diagnostics of the hardware, run by hand (ws help workstation, plan-dgpu).
     battery) shift; exec "$WS_CORE/libexec/ws-battery" "$@" ;;
     gmux) shift; exec "$WS_CORE/libexec/ws-gmux" "$@" ;;

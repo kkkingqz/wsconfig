@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Host and facts of hosts/HOST/host.toml, read without Nix (ws help
-plan-v2, 2.2 and 4): the only reader. bootstrap.sh and setup.sh need the
+plan-v2, 2.2 and 4): the only reader. ws-prepare and ws setup need the
 facts before Nix exists, the checks read them often. Only Nix checks the
 values (lib/host.nix); this reads what is there.
 
@@ -15,11 +15,11 @@ printed as JSON by `section`.
     ws_facts.py fact [--host HOST] NAME
                                        the fact of HOST (default: this host)
     ws_facts.py fact --file HOST_TOML NAME
-                                       a host.toml outside hosts (setup.sh)
+                                       a host.toml outside hosts (ws setup)
     ws_facts.py section [--host HOST] NAME
                                        a section of host.toml as JSON (ws-container)
     ws_facts.py record                 write host.json in the state: this host
-                                       and the data root (ws apply, setup.sh)
+                                       and the data root (ws apply, ws setup)
 
 The data root is WS_CONFIG (lib/ws_common.py). host.json names the host
 only for the data root it records.

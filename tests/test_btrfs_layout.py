@@ -83,6 +83,18 @@ class StubTests(unittest.TestCase):
             btrfs_layout.prefix(f'search.fs_uuid {UUID} root\nnormal\n', UUID)
 
 
+class NestedTests(unittest.TestCase):
+    def test_only_nix_of_install_sh_stays(self):
+        # install.sh mounts @nix at /nix before the layout (ws help plan-v2, 9.3).
+        self.assertEqual(btrfs_layout.nested('ID 256 gen 9 top level 5 path @nix\n'), [])
+        self.assertEqual(btrfs_layout.nested(''), [])
+        listed = 'ID 256 gen 9 top level 5 path @nix\nID 257 gen 9 top level 5 path var/lib/docker\n'
+        self.assertEqual(btrfs_layout.nested(listed), ['var/lib/docker'])
+        self.assertEqual(cli('nested', stdin=listed).stdout, 'var/lib/docker\n')
+        with self.assertRaises(ValueError):
+            btrfs_layout.nested('ERROR: not a btrfs filesystem\n')
+
+
 class CliTests(unittest.TestCase):
     def test_commands(self):
         result = cli('fstab', UUID, stdin=INSTALLER)

@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # Image of a container host, as root at image build (container/Dockerfile,
-# ws help plan-wsgnomebox): what the installer and bootstrap.sh do on a real
+# ws help plan-wsgnomebox): what the installer and ws-prepare do on a real
 # machine and a container would lose on every recreate.
 #
-# - the apt step of bootstrap.sh (lib/apt.bash) with the lists of the host,
+# - the apt step of ws-prepare (lib/apt.bash) with the lists of the host,
 #   the Microsoft fonts EULA accepted;
-# - the user of host.toml with UID 1000, groups and fish as bootstrap.sh
+# - the user of host.toml with UID 1000, groups and fish as ws-prepare
 #   sets them (steps 6 and 7);
 # - LANG (C.UTF-8, as the Ubuntu installer) and the timezone of host.toml.
 #
@@ -54,7 +54,7 @@ timezone="$(fact timezone)"
 echo "== apt ($host)"
 # The EULA of ttf-mscorefonts-installer (rec:ubuntu-restricted-extras):
 # accepted by the user for the image 2026-10-12; on a machine its installer
-# asks during bootstrap.sh.
+# asks during ws-prepare.
 echo 'ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true' \
     | debconf-set-selections
 apt_install

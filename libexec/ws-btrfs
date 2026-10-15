@@ -2,8 +2,9 @@
 set -euo pipefail
 
 # Btrfs layout of a fresh Ubuntu from the installed system itself, before
-# bootstrap.sh (ws help rebuild, section 3). The installer puts / on the top
-# level of Btrfs (subvolid=5) and makes no subvolumes; ws btrfs make moves
+# ws setup prepares it (ws help rebuild, section 3). The installer puts / on the top
+# level of Btrfs (subvolid=5) and makes no subvolumes (install.sh only @nix,
+# mounted at /nix, which stays on the top level); ws btrfs make moves
 # the system onto @, @home, @cache, @tmp and @log in two runs with a reboot
 # through GRUB between them (mbp16 as well: rEFInd comes later):
 #
@@ -37,10 +38,11 @@ usage() {
 Usage: ws btrfs make [--dry-run] [--yes]
 
 make  the Btrfs layout of a fresh install (@, @home, @cache, @tmp, @log)
-      from the installed system, before bootstrap.sh: run it, reboot
-      through GRUB, run it again (ws help rebuild, section 3);
+      from the installed system, before ws setup prepares it: run it,
+      reboot through GRUB, run it again (ws help rebuild, section 3);
+      @nix of install.sh, mounted at /nix, stays on the top level;
       --dry-run only shows the steps, --yes answers its two questions
-      (start the layout, remove the old root) with yes (setup.sh)
+      (start the layout, remove the old root) with yes (ws setup)
 USAGE
 }
 
@@ -128,7 +130,7 @@ stub_prefix() { sudo cat "$1" | helper prefix "$uuid"; }
 
 # Step 1: / is still the top level of Btrfs.
 step1() {
-    local entry sub dir f new t tmp_tmpfs=false done_before=true
+    local entry sub dir f new t tmp_tmpfs=false done_before=true nix_sub=false
     local -a esp=() existing=() swaps=()
 
     echo "== Step 1 of 2: / is the top level of Btrfs $uuid"
@@ -168,8 +170,16 @@ step1() {
         die "an earlier ws btrfs make stopped halfway (${existing[*]} exist): remove them (sudo btrfs subvolume delete /@ ...), then run it again"
     fi
     # A snapshot of / leaves nested subvolumes behind as empty directories.
-    t="$(sudo btrfs subvolume list / | awk '{ print $NF }' | tr '\n' ' ')"
+    # @nix of install.sh stays on the top level, mounted at /nix; in @ its
+    # empty directory goes.
+    t="$(sudo btrfs subvolume list / | helper nested | tr '\n' ' ')" \
+        || die "cannot list the subvolumes of /"
     [[ -z "$t" ]] || die "subvolumes already exist, a snapshot of / would lose them: $t"
+    if sudo btrfs subvolume show /@nix >/dev/null 2>&1; then
+        findmnt -no OPTIONS /nix | tr ',' '\n' | grep -qx 'subvol=/@nix' \
+            || die "@nix exists, but /nix is not mounted from it (install.sh, ws help setup)"
+        nix_sub=true
+    fi
 
     new="$(helper fstab "$uuid" < /etc/fstab)" || die "/etc/fstab is not the installer's one"
     mapfile -t swaps < <(helper swapfiles < /etc/fstab)
@@ -206,6 +216,7 @@ step1() {
     fi
     run sudo btrfs subvolume snapshot / "$snap"
     run sudo rm -rf "$(dirname "$old_list")"
+    [[ "$nix_sub" == false ]] || run sudo rmdir "$snap/@nix"
 
     for entry in "${layout[@]}"; do
         read -r sub dir <<<"$entry"
@@ -356,7 +367,7 @@ step2() {
     sudo rmdir "$top" 2>/dev/null || true
 
     echo
-    echo "Btrfs layout done; next: ~/wsconfig/bootstrap.sh (ws help rebuild, section 6.0)"
+    echo "Btrfs layout done; next: ws setup (ws help setup)"
 }
 
 case "$(findmnt -no OPTIONS / | tr ',' '\n' | sed -n 's/^subvol=//p')" in

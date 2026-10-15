@@ -204,7 +204,7 @@ cmd_capture() {
                     continue
                 fi
                 if [[ "$pkg" == source:* ]]; then
-                    # The repository and its key, as bootstrap.sh installs them.
+                    # The repository and its key, as ws-prepare installs them.
                     cmp -s "$repo/hosts/$h/apt/${pkg#source:}.sources" \
                         "/etc/apt/sources.list.d/ws-${pkg#source:}.sources" \
                         && cmp -s "$repo/hosts/$h/apt/${pkg#source:}.asc" \

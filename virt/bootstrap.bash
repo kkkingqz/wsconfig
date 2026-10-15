@@ -1,6 +1,6 @@
-# shellcheck shell=bash disable=SC2154 # dry_run, repo, host: bootstrap.sh's
-# Step 3 of bootstrap.sh on hosts with vm = "yes" (ws help virt): VM state on
-# @vms, libvirt pool and network. Sourced by bootstrap.sh: uses its run, die,
+# shellcheck shell=bash disable=SC2154 # dry_run, repo, host: libexec/ws-prepare's
+# Step 3 of libexec/ws-prepare on hosts with vm = "yes" (ws help virt): VM state on
+# @vms, libvirt pool and network. Sourced by libexec/ws-prepare: uses its run, die,
 # subvolume_mount, dry_run, repo, host.
 
 # Everything a VM is made of lives on the subvolume @vms, outside the

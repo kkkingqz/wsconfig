@@ -3,7 +3,7 @@
 # plan-wsgnomebox), whose disk, devices and udev belong to the server. Same
 # syntax as system/apt.txt.
 
-# Btrfs subvolumes (bootstrap.sh, Timeshift hooks)
+# Btrfs subvolumes (ws-prepare, Timeshift hooks)
 btrfs-progs
 # Snapshots of @ and @home, GUI and CLI (Timeshift snapshots in GRUB)
 timeshift

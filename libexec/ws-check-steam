@@ -3,7 +3,7 @@ set -u
 set -o pipefail
 
 # Native Steam (ws help plan-legion-go): its data directory on @steam that
-# bootstrap.sh sets up, outside the snapshots and the backup of @home. The
+# ws-prepare sets up, outside the snapshots and the backup of @home. The
 # packages (steam/apt.txt, i386) are ws check apt.
 # Read-only. ws check steam; ws check runs it with --json (lib/check.bash).
 
@@ -34,20 +34,20 @@ section "1. Steam data on @steam"
 if findmnt -no OPTIONS "$steam_dir" 2>/dev/null | tr ',' '\n' | grep -qx 'subvol=/@steam'; then
     pass "$steam_dir is subvolume @steam"
 else
-    fail "$steam_dir is not mounted from @steam: games go into @home and its snapshots (bootstrap.sh)"
+    fail "$steam_dir is not mounted from @steam: games go into @home and its snapshots (ws setup)"
 fi
 if awk -v t="$steam_dir" '$1 !~ /^#/ && $2 == t' /etc/fstab 2>/dev/null | grep -q .; then
     pass "$steam_dir in /etc/fstab"
 else
-    fail "$steam_dir not in /etc/fstab (bootstrap.sh)"
+    fail "$steam_dir not in /etc/fstab (ws setup)"
 fi
 owner="$(stat -c %U "$steam_dir" 2>/dev/null)"
 if [[ -z "$owner" ]]; then
-    fail "$steam_dir missing (bootstrap.sh)"
+    fail "$steam_dir missing (ws setup)"
 elif [[ "$owner" == "$user" ]]; then
     pass "$steam_dir belongs to $user"
 else
-    fail "$steam_dir belongs to $owner: Steam cannot write it (bootstrap.sh)"
+    fail "$steam_dir belongs to $owner: Steam cannot write it (ws setup)"
 fi
 
 section "2. Client"

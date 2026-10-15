@@ -1,6 +1,6 @@
 # apt packages of the VM layer (ws help virt), for hosts with vm = true in
 # hosts/<name>/host.toml; same format as system/apt.txt. Installed by
-# bootstrap.sh, compared by `ws check apt`.
+# ws-prepare, compared by `ws check apt`.
 
 # KVM/QEMU, libvirt qemu:///system, virt-manager.
 # Recommends are not installed, so the SPICE console parts are listed.

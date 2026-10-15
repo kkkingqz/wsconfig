@@ -1,9 +1,9 @@
-# Step of bootstrap.sh for hosts with nativeSteam = "yes" (ws help
+# Step of libexec/ws-prepare for hosts with nativeSteam = "yes" (ws help
 # plan-legion-go), sourced by it (run, subvolume_mount). The apt Steam keeps
 # its client, libraries, compatdata and shader cache in ~/.local/share/Steam:
 # that directory is the subvolume @steam, so Timeshift snapshots and the
 # backup of @home leave the games out. Before the first start of Steam: an
-# existing, non-empty directory stops bootstrap.sh.
+# existing, non-empty directory stops libexec/ws-prepare.
 
 steam_dir="$HOME/.local/share/Steam"
 # As the user: subvolume_mount would create missing parents as root.

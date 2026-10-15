@@ -1,5 +1,5 @@
 # shellcheck shell=bash disable=SC2154 # repo, host, host_list, container, vm, native_steam, game_mode: the caller's
-# apt step of bootstrap.sh (ws help rebuild): PPAs, source: repositories,
+# apt step of ws-prepare (ws help rebuild): PPAs, source: repositories,
 # arch:, the packages of the apt lists (rec: with their recommends), manual
 # marks, purge:. Also run as root by the image build of a container host
 # (container/apt-install, ws help plan-wsgnomebox).
@@ -34,7 +34,7 @@ apt_lines() {
 }
 
 # The variables of apt_lists from the facts of HOST (lib/ws_facts.py), for
-# the tools that run with the checkout; bootstrap.sh and the image build
+# the tools that run with the checkout; ws-prepare and the image build
 # set them themselves. A layer fact that is not "yes" counts as no.
 apt_host() {
     host="$1"
@@ -87,7 +87,7 @@ apt_install() {
             added=true
         fi
     done
-    # ws-NAME belongs to bootstrap.sh: one whose source: line is gone goes too,
+    # ws-NAME belongs to ws-prepare: one whose source: line is gone goes too,
     # or apt would keep installing from it.
     for f in /etc/apt/sources.list.d/ws-*.sources; do
         [[ -e "$f" ]] || continue

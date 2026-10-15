@@ -118,13 +118,13 @@ if [[ "$rdp" == false ]]; then
     command -v xremap >/dev/null 2>&1 || { echo "xremap not found in PATH" >&2; preflight_failed=true; }
     systemctl --user cat xremap.service >/dev/null 2>&1 || { echo "xremap.service not installed; run ws apply" >&2; preflight_failed=true; }
     if ! id -nG | tr ' ' '\n' | grep -Fxq input; then
-        # A group added by bootstrap.sh reaches GNOME only through a new systemd
+        # A group added by ws-prepare reaches GNOME only through a new systemd
         # user manager: a log out keeps the old one while another session (ssh)
         # of the user is open.
         if id -nG "$(id -un)" | tr ' ' '\n' | grep -Fxq input; then
             echo "user is in group input, this session is not yet: reboot (or end every session of the user)" >&2
         else
-            echo "user is not in input group (bootstrap.sh adds it)" >&2
+            echo "user is not in input group (ws setup adds it)" >&2
         fi
         preflight_failed=true
     fi

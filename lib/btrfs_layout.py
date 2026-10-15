@@ -10,6 +10,9 @@ subvolumes (ws help rebuild, section 3).
     btrfs_layout.py prefix UUID < GRUB.CFG  prefix of a GRUB stub on the ESP
                                             that loads this root
     btrfs_layout.py stub UUID < GRUB.CFG    the stub with its prefix in @
+    btrfs_layout.py nested < LIST           of `btrfs subvolume list /`, the
+                                            subvolumes a snapshot of / would
+                                            lose: all but @nix
 
 The signed GRUB of Ubuntu reads EFI/<dir>/grub.cfg next to it: that stub
 finds the root by UUID and loads $prefix/grub.cfg. Input they do not know
@@ -25,6 +28,9 @@ HEADER = ('# Btrfs layout of ws btrfs make (ws help rebuild, section 3);',
           '# the fstab of the installer: /etc/fstab.pre-btrfs-layout')
 PREFIX = re.compile(r"^set prefix=\(\$root\)'([^']*)'\s*$")
 OLD, NEW = '/boot/grub', '/@/boot/grub'
+# Subvolumes on the top level before the layout that stay there: @nix of
+# install.sh, mounted at /nix (ws help plan-v2, 9.3).
+KEPT = ('@nix',)
 
 
 def same_fs(source, uuid):
@@ -98,6 +104,18 @@ def stub(text, uuid):
                      for line in text.splitlines()) + '\n'
 
 
+def nested(text):
+    paths = []
+    for line in text.splitlines():
+        fields = line.split()
+        if not fields:
+            continue
+        if 'path' not in fields[:-1]:
+            raise ValueError('not a line of btrfs subvolume list: ' + line)
+        paths.append(fields[-1])
+    return [p for p in paths if p not in KEPT]
+
+
 def main(argv):
     text = sys.stdin.read()
     if argv[1:2] == ['fstab'] and len(argv) == 3:
@@ -109,8 +127,11 @@ def main(argv):
         print(prefix(text, argv[2]))
     elif argv[1:2] == ['stub'] and len(argv) == 3:
         sys.stdout.write(stub(text, argv[2]))
+    elif argv[1:] == ['nested']:
+        for path in nested(text):
+            print(path)
     else:
-        sys.stderr.write('usage: btrfs_layout.py fstab UUID | swapfiles | prefix UUID | stub UUID\n')
+        sys.stderr.write('usage: btrfs_layout.py fstab UUID | swapfiles | prefix UUID | stub UUID | nested\n')
         return 64
     return 0
 

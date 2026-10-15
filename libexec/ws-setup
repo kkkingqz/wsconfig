@@ -1,0 +1,619 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# First setup of a PC on wsconfig (ws help setup; ws help plan-v2, stage 9),
+# from a fresh Ubuntu 26.04 to a checked workstation. install.sh (the root
+# of the core) prepares Nix and runs it from the core in the store; it goes
+# on by itself after every reboot until the end:
+#
+#   configuration  --repo URL|PATH: a clone in ~/wsconfig (GitHub login for
+#                  a GitHub URL); --new [DIR]: a new one from template/
+#   core           the revision flake.lock of the configuration pins, built
+#                  from the configuration (nix build CONFIG#ws) into
+#                  WS_STATE/setup/ws; a run of another core execs that one
+#   host           the one whose host.toml has this hostname, else asked (an
+#                  existing one gives the PC its hostname, a new one is made
+#                  and committed)
+#   choices        all questions at once: Flatpak apps, Distrobox boxes,
+#                  widgets and overrides without a choice of this host
+#                  (lib/ws_catalog.py offer --all --setup), package licenses,
+#                  the go; the host and its choices are published after a
+#                  question (ws sync)
+#   btrfs          ws btrfs make → reboot → ws btrfs make
+#   prepare        libexec/ws-prepare: apt, @vms, @steam, @wsbackup, groups,
+#                  fish, the first ws apply home → reboot
+#   layers         ws apply → reboot → ws apply
+#   check          ws check (FAIL does not stop: listed at the end)
+#   timeshift      its configuration and the first snapshot
+#   backup         the backup key
+#   finish         ws apply home, ws checkpoint create setup, ws sync after
+#                  the question
+#
+# Each run starts where the last one stopped: the state of the system and
+# the steps done in WS_STATE/setup. Until the end a GNOME autostart entry
+# runs it again after each login. GRUB hosts only: rEFInd (mbp16) is ws help
+# rebuild.
+
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+ws_prog="ws setup"
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  ws setup --repo URL|PATH [--host NAME]   set up this PC from a configuration
+                                           (cloned to ~/wsconfig)
+  ws setup --new [DIR] [--host NAME]       set up this PC with a new
+                                           configuration in DIR (~/wsconfig)
+  ws setup                                 go on where the last run stopped
+
+install.sh runs it on a fresh Ubuntu (ws help setup); after each reboot the
+autostart runs it again (--autostart). --host NAME answers the question of
+the host when the hostname finds none.
+USAGE
+}
+
+state="$WS_STATE/setup"
+autostart="$HOME/.config/autostart/ws-setup.desktop"
+mode=
+source_arg=
+host_arg=
+autostarted=false
+args=("$@")
+while (($#)); do
+    case "$1" in
+        --repo) (($# >= 2)) || die "--repo needs a URL or PATH"; mode=repo; source_arg="$2"; shift 2 ;;
+        --new)
+            mode=new
+            if [[ -n "${2:-}" && "$2" != --* ]]; then source_arg="$2"; shift; fi
+            shift
+            ;;
+        --host) (($# >= 2)) || die "--host needs a NAME"; host_arg="$2"; shift 2 ;;
+        --autostart) autostarted=true; shift ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage >&2; exit 64 ;;
+    esac
+done
+
+[[ $EUID -ne 0 ]] || die "run as the desktop user, not root"
+
+say() {
+    printf '\n== %s\n' "$*"
+}
+
+# yes/no question; $2 is the answer on Enter (y or n).
+ask() {
+    local a hint='[Y/n]'
+    [[ "${2:-y}" == y ]] || hint='[y/N]'
+    read -r -p "$1 $hint " a || a=
+    [[ -n "$a" ]] || a="${2:-y}"
+    [[ "$a" == [yYдД]* ]]
+}
+
+done_step() { [[ -e "$state/$1.done" ]]; }
+mark_step() { mkdir -p "$state" && date -Is > "$state/$1.done"; }
+
+ws() { "$WS_CORE/bin/ws" "$@"; }
+
+# A fact of a host.toml (lib/ws_facts.py); empty when there is none.
+fact_in() {
+    python3 "$WS_CORE/lib/ws_facts.py" fact --file "$1" "$2" 2>/dev/null || true
+}
+
+# The terminal: install.sh gives it as stdin (wget | bash); WS_SETUP_TTY
+# replaces it (tests).
+if [[ -n "${WS_SETUP_TTY:-}" ]]; then
+    exec <"$WS_SETUP_TTY"
+else
+    [[ -t 0 ]] || die "run it in a terminal: it asks questions"
+fi
+# The terminal of the autostart closes with the script: keep it open.
+if [[ "$autostarted" == true ]]; then
+    trap 'echo; read -r -p "Enter — закрыть окно " _ || true' EXIT
+fi
+mkdir -p "$state"
+# One run at a time (the autostart and a terminal); exec keeps the PID.
+if old="$(cat "$state/pid" 2>/dev/null)" && [[ "$old" != "$$" ]] \
+    && tr '\0' ' ' < "/proc/$old/cmdline" 2>/dev/null | grep -q 'ws-setup'; then
+    die "ws setup is already running (PID $old)"
+fi
+echo "$$" > "$state/pid"
+# The Nix profile, as 00-nix.fish puts it into login shells; Nix of apt
+# knows no flakes until home-manager writes ~/.config/nix/nix.conf.
+[[ ! -d "$HOME/.nix-profile/bin" ]] || PATH="$HOME/.nix-profile/bin:$PATH"
+export NIX_CONFIG="${NIX_CONFIG:-experimental-features = nix-command flakes}"
+
+# The ws to run again: the core of setup in the store (install.sh, the GC
+# root WS_STATE/setup/ws), else this one (a checkout of the core).
+setup_ws() {
+    if [[ -x "$state/ws/bin/ws" ]]; then
+        echo "$state/ws/bin/ws"
+    else
+        echo "$WS_CORE/bin/ws"
+    fi
+}
+
+reboot_now() {
+    say "Перезагрузка: $1"
+    echo "После входа ws setup продолжит сам."
+    read -r -p "Enter — перезагрузить " _ || true
+    trap - EXIT
+    sudo systemctl reboot
+    exit 0
+}
+
+step_tools() {
+    local -a missing=()
+    local c
+    command -v nix >/dev/null 2>&1 || die "no Nix: install.sh first (ws help setup)"
+    for c in git gh xdg-terminal-exec; do
+        command -v "$c" >/dev/null 2>&1 || missing+=("$c")
+    done
+    # The host choices are edited through tomlkit (lib/ws_catalog.py), the
+    # first time in step_choices.
+    python3 -c 'import tomlkit' 2>/dev/null || missing+=(python3-tomlkit)
+    ((${#missing[@]})) || return 0
+    say "apt: ${missing[*]}"
+    sudo apt-get update
+    sudo apt-get install -y "${missing[@]}"
+}
+
+# GitHub: the login in the browser, git over gh, the author of commits;
+# once a run.
+github_done=false
+step_github() {
+    local name email
+    [[ "$github_done" == false ]] || return 0
+    github_done=true
+    if ! gh auth status --hostname github.com >/dev/null 2>&1; then
+        say "GitHub: вход в браузере (одноразовый код)"
+        gh auth login --hostname github.com --git-protocol https --web --scopes user:email
+    fi
+    if ! git config --global --get-all credential.https://github.com.helper 2>/dev/null | grep -q 'gh auth git-credential'; then
+        gh auth setup-git --hostname github.com
+    fi
+    if [[ -z "$(git config --global user.name)" ]]; then
+        name="$(gh api user --jq '.name // .login')"
+        git config --global user.name "$name"
+    fi
+    if [[ -z "$(git config --global user.email)" ]]; then
+        email="$(gh api user/emails --jq 'map(select(.primary))[0].email' 2>/dev/null || true)"
+        [[ -n "$email" && "$email" != null ]] \
+            || email="$(gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"')"
+        git config --global user.email "$email"
+    fi
+    [[ -n "$(git config --global init.defaultBranch)" ]] || git config --global init.defaultBranch main
+}
+
+is_github() { [[ "$1" == https://github.com/* || "$1" == git@github.com:* ]]; }
+
+# A configuration of wsconfig: its schema file and the input wsconfig.
+is_config() {
+    [[ -r "$1/wsconfig.toml" && -r "$1/flake.lock" ]] \
+        && [[ -n "$(manifest_get "$1/flake.lock" nodes root inputs wsconfig 2>/dev/null)" ]]
+}
+
+# The configuration: the path of the last run (WS_STATE/setup/config), else
+# --repo or --new; then WS_CONFIG of every tool.
+step_config() {
+    local dir url
+    dir="$(cat "$state/config" 2>/dev/null || true)"
+    if [[ -z "$dir" ]]; then
+        case "$mode" in
+            repo)
+                dir="$HOME/wsconfig"
+                url="$source_arg"
+                [[ "$url" == */* || "$url" == *:* || -d "$url" ]] || die "--repo $url: not a URL or a path"
+                [[ ! -d "$url" ]] || url="$(cd "$url" && pwd)"
+                ! is_github "$url" || step_github
+                if [[ -d "$dir/.git" ]] \
+                    && [[ "$(git -C "$dir" remote get-url origin 2>/dev/null)" == "$url" ]]; then
+                    echo "$dir: a clone of $url, going on with it"
+                elif [[ -e "$dir" && -n "$(ls -A "$dir" 2>/dev/null)" ]]; then
+                    die "$dir exists and is not a clone of $url: move it away first (nothing is overwritten)"
+                else
+                    say "Конфигурация: $url → $dir"
+                    git clone -q "$url" "$dir" || die "git clone $url failed (URL, access?)"
+                fi
+                ;;
+            new) die "ws setup --new: not there yet (ws help plan-v2, 9.7)" ;;
+            *)
+                is_config "$HOME/wsconfig" \
+                    || die "no configuration: ws setup --repo URL or --new (ws help setup)"
+                dir="$HOME/wsconfig"
+                ;;
+        esac
+        is_config "$dir" || die "$dir is not a configuration of wsconfig (wsconfig.toml, flake input wsconfig)"
+        echo "$dir" > "$state/config"
+    fi
+    is_config "$dir" || die "$dir is not a configuration of wsconfig any more (WS_STATE/setup/config)"
+    WS_CONFIG="$dir"
+    WSCONFIG="$dir"
+    repo="$dir"
+    export WS_CONFIG WSCONFIG
+    # The GitHub login only when the configuration lives there (git push,
+    # ws sync).
+    if url="$(git -C "$repo" remote get-url origin 2>/dev/null)" && is_github "$url"; then
+        step_github
+    fi
+}
+
+# The revision of the core the configuration pins (its input wsconfig).
+pinned_core() {
+    local node
+    node="$(manifest_get "$repo/flake.lock" nodes root inputs wsconfig)"
+    manifest_get "$repo/flake.lock" nodes "$node" locked rev \
+        || die "$repo/flake.lock pins no revision of the core"
+}
+
+# The configuration is run by its own core: when the core of this run is
+# another one, the pinned one is built from the configuration into the GC
+# root WS_STATE/setup/ws and runs this command again. A checkout of the
+# core (not the store) is not replaced: it is the one being tested.
+step_core() {
+    local rev own
+    rev="$(pinned_core)"
+    if [[ ! -e "$WS_CORE/.wsconfig-package" ]]; then
+        echo "Ядро: checkout $WS_CORE (конфигурация закрепляет ${rev:0:12}, не переключаю)"
+        return 0
+    fi
+    own="$(cat "$state/core" 2>/dev/null || true)"
+    [[ "$own" != "$rev" ]] || return 0
+    say "Ядро конфигурации: ${rev:0:12} (сейчас ${own:0:12})"
+    nix build --out-link "$state/ws" "git+file:$repo#ws" \
+        || die "nix build of the core $rev of the configuration failed"
+    [[ -x "$state/ws/libexec/ws-setup" ]] \
+        || die "the configuration pins core $rev, older than ws setup: ws update core first (another machine), then ws setup again"
+    echo "$rev" > "$state/core"
+    exec "$state/ws/bin/ws" setup "${args[@]}"
+}
+
+# The newest configuration of main (a run after a reboot); its core may
+# have moved (step_core).
+step_pull() {
+    [[ "$autostarted" == true || -e "$state/choices.done" ]] || return 0
+    if [[ -n "$(git -C "$repo" status --porcelain)" ]]; then
+        echo "$repo has changes: not pulled"
+    elif [[ "$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null)" == main ]] \
+        && git -C "$repo" rev-parse -q --verify '@{u}' >/dev/null \
+        && ! git -C "$repo" pull -q --ff-only; then
+        echo "git pull failed: going on with this version"
+    fi
+}
+
+push() {
+    git -C "$repo" push -q origin HEAD:main || die "git push failed (network, GitHub login?); ws setup again"
+}
+
+# The new host (a commit of ws setup) and the marks (data files) leave this
+# machine only after the question; ws sync commits the marks and pushes (no
+# remote: the commit stays local).
+publish() {
+    local remote=false
+    git -C "$repo" remote get-url origin >/dev/null 2>&1 && remote=true
+    if [[ "$remote" == true ]] && ! ask "Опубликовать новый хост и выбор (ws sync)?" y; then
+        echo "Не опубликовано; позже: git -C $repo push (новый хост), ws sync (выбор)."
+        return 0
+    fi
+    if [[ "$remote" == true && -n "$(git -C "$repo" log --format=%h '@{u}..HEAD' -- hosts 2>/dev/null)" ]]; then
+        push
+    fi
+    ws sync || die "ws sync failed; ws setup again or ws sync by hand"
+}
+
+# Host name as a directory (hosts/HOST, lib/ws_facts.py) and the receiver user
+# wsbackup-HOST on Unraid (backup/unraid/boot.sh: lowercase, 23 at most) can
+# carry it.
+valid_name() { [[ "$1" =~ ^[a-z0-9][a-z0-9_-]{0,22}$ && "$1" != all ]]; }
+
+set_hostname() {
+    local new="$1" old
+    old="$(hostname)"
+    [[ "$old" != "$new" ]] || return 0
+    say "hostname: $old -> $new"
+    sudo hostnamectl set-hostname "$new"
+    # sudo resolves the hostname through /etc/hosts.
+    sudo sed -i -E "s/^(127\.0\.1\.1[[:space:]]+).*/\1$new/" /etc/hosts
+    grep -Eq "^127\.0\.1\.1[[:space:]]+$new\$" /etc/hosts \
+        || printf '127.0.1.1\t%s\n' "$new" | sudo tee -a /etc/hosts >/dev/null
+}
+
+# The checkout path of the configuration relative to $HOME (wsconfig of
+# host.toml: home-manager links point there).
+config_rel() {
+    [[ "$repo" == "$HOME"/* ]] || die "the configuration must be under $HOME: $repo"
+    echo "${repo#"$HOME"/}"
+}
+
+new_host() {
+    local name="$1" dir="$repo/hosts/$1" vm=false widgets=true steam=false game=false
+    say "Новый хост $name (generic-pc, GRUB)"
+    if ask "Виртуальные машины (libvirt, ws help virt)?" n; then
+        vm=true
+    fi
+    if ! ask "Виджеты Quickshell на панели GNOME (ws help widgets)?" y; then
+        widgets=false
+    fi
+    if ask "Steam из apt (вместо Flatpak; ws help plan-legion-go)?" n; then
+        steam=true
+        if ask "Game Mode (сессия Steam как в SteamOS)?" n; then
+            game=true
+        fi
+    fi
+    mkdir -p "$dir"
+    cat > "$dir/host.toml" <<EOF
+# $name: made by ws setup from generic-pc on $(date +%F) (ws help setup;
+# lib/host.nix checks the file).
+
+[host]
+# \`ws host\` finds the host by it.
+hostname = "$name"
+user = "$(id -un)"
+wsconfig = "$(config_rel)"
+
+[platform]
+hardware = "generic-pc"
+boot = "grub"
+kernelParams = ["quiet", "splash"]
+# Display scale of GNOME; Claude, ChatGPT and Wine DPI follow it.
+displayScale = 1
+
+[layers]
+# Virtual machines (ws help virt).
+vm = $vm
+# Quickshell widgets on the GNOME panel (ws help widgets).
+widgets = $widgets
+# Native Steam (steam/apt.txt, @steam) and the Game Mode session
+# (gaming/apt.txt; ws help plan-legion-go).
+nativeSteam = $steam
+gameMode = $game
+EOF
+    printf '# apt packages of %s on top of system/apt.txt and apt.txt.\n' "$name" > "$dir/apt.txt"
+    git -C "$repo" add "hosts/$name"
+    git -C "$repo" commit -q -m "Hosts: $name from generic-pc (ws setup)" -- "hosts/$name"
+}
+
+# What ws setup needs from the facts of HOST, checked before the PC is renamed.
+check_facts() {
+    local facts="$repo/hosts/$1/host.toml"
+    [[ "$(fact_in "$facts" user)" == "$(id -un)" ]] \
+        || die "hosts/$1/host.toml: user = \"$(fact_in "$facts" user)\", this user is $(id -un)"
+    [[ "$(fact_in "$facts" wsconfig)" == "$(config_rel)" ]] \
+        || die "hosts/$1/host.toml: wsconfig = \"$(fact_in "$facts" wsconfig)\", the configuration is ~/$(config_rel)"
+    [[ "$(fact_in "$facts" boot)" == grub ]] \
+        || die "boot = \"$(fact_in "$facts" boot)\" in hosts/$1/host.toml: ws setup knows only GRUB hosts; rEFInd: ws help rebuild"
+}
+
+step_host() {
+    local name hosts current
+    if host="$(ws host 2>/dev/null)"; then
+        :
+    else
+        current="$(hostname)"
+        hosts="$(cd "$repo/hosts" 2>/dev/null && ls -d -- */ 2>/dev/null | tr -d / | tr '\n' ' ' || true)"
+        say "Хост для «$current» не найден"
+        echo "Есть: ${hosts:-нет}"
+        name="$host_arg"
+        while :; do
+            if [[ -z "$name" ]]; then
+                if valid_name "$current"; then
+                    read -r -p "Имя хоста (существующий или новый) [$current]: " name || die "no answer"
+                    name="${name:-$current}"
+                else
+                    read -r -p "Имя хоста (существующий или новый): " name || die "no answer"
+                fi
+            fi
+            valid_name "$name" && break
+            echo "только строчные латинские буквы, цифры, - и _, до 23 знаков"
+            [[ -z "$host_arg" ]] || die "--host $host_arg: not a host name"
+            name=
+        done
+        if [[ -r "$repo/hosts/$name/host.toml" ]]; then
+            check_facts "$name"
+            set_hostname "$(fact_in "$repo/hosts/$name/host.toml" hostname)"
+        else
+            new_host "$name"
+            set_hostname "$name"
+        fi
+        host="$(ws host)"
+    fi
+    check_facts "$host"
+    echo "Хост: $host"
+}
+
+# All questions before the long part: marks, the Steam license, consent.
+step_choices() {
+    local changed rc=0
+    done_step choices && return 0
+    say "Что будет на $host"
+    changed="$(python3 "$WS_CORE/lib/ws_catalog.py" --host "$host" offer --all --setup)" || rc=$?
+    ((rc == 0)) || die "lists not answered (ws_catalog exit $rc); ws setup again"
+    if [[ -n "$changed" ]]; then
+        # shellcheck disable=SC2086 # one line of the names
+        echo "Выбор $host: $(echo $changed)"
+    fi
+    publish
+    # Licenses apt would ask about in the middle of ws-prepare.
+    local -a eula=('Microsoft core fonts (ubuntu-restricted-extras)')
+    local -a seed=('ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true')
+    if [[ "$(ws fact nativeSteam)" == yes ]]; then
+        eula+=('Valve Steam (steam-installer)')
+        seed+=('steam steam/question select I AGREE' 'steam steam/license note ')
+    fi
+    say "Лицензии пакетов"
+    printf '  %s\n' "${eula[@]}"
+    ask "Принять?" || die "the system preparation installs them: nothing started"
+    printf '%s\n' "${seed[@]}" | sudo debconf-set-selections
+    say "Дальше без вопросов"
+    echo "Раскладка Btrfs (старый корень удаляется после проверки загрузки), подготовка системы,"
+    echo "ws apply (дважды), ws check, Timeshift, ключ backup. Между ними — перезагрузки:"
+    echo "после каждой войти, ws setup продолжит сам. Нужен пароль sudo после каждого входа."
+    ask "Начать?" || die "nothing started; ws setup again"
+    mark_step choices
+}
+
+install_autostart() {
+    local exec
+    exec="$(setup_ws)"
+    if [[ -e "$autostart" ]] && grep -Fqx "Exec=xdg-terminal-exec $exec setup --autostart" "$autostart"; then
+        return 0
+    fi
+    mkdir -p "$(dirname "$autostart")"
+    cat > "$autostart" <<EOF
+[Desktop Entry]
+Type=Application
+Name=wsconfig setup
+Comment=Continues ws setup after a reboot (ws help setup); removed at its end
+Exec=xdg-terminal-exec $exec setup --autostart
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+EOF
+}
+
+step_btrfs() {
+    case "$(findmnt -no OPTIONS / | tr ',' '\n' | sed -n 's/^subvol=//p')" in
+        /)
+            install_autostart
+            say "Раскладка Btrfs, шаг 1"
+            ws btrfs make --yes
+            reboot_now "раскладка Btrfs, шаг 1 сделан"
+            ;;
+        /@)
+            if [[ -e /var/lib/ws-btrfs-layout/old-root ]]; then
+                say "Раскладка Btrfs, шаг 2"
+                ws btrfs make --yes
+            fi
+            ;;
+        *) die "/ is neither the top level of Btrfs nor @ (ws help rebuild, section 3)" ;;
+    esac
+}
+
+step_prepare() {
+    done_step prepare && return 0
+    install_autostart
+    say "Подготовка системы (apt, подвольюмы, группы, fish, ws apply home)"
+    "$WS_CORE/libexec/ws-prepare"
+    mark_step prepare
+    reboot_now "группы, fish, PATH из Nix"
+}
+
+step_layers() {
+    if ! done_step apply1; then
+        say "ws apply (первый проход)"
+        # apt, the system files and the user layer at once. New GNOME
+        # extensions activate only in a new session: steps with a failed
+        # preflight run again after the reboot.
+        ws apply || echo "ws apply: the rest after the reboot"
+        mark_step apply1
+        reboot_now "системные файлы и расширения GNOME"
+    fi
+    if ! done_step apply2; then
+        say "ws apply"
+        ws apply || die "ws apply failed: fix it, then ws setup again"
+        mark_step apply2
+    fi
+}
+
+# FAIL does not stop setup: the snapshot is marked and the end lists them.
+step_check() {
+    done_step check && return 0
+    say "ws check"
+    rm -f "$state/check-fail.txt"
+    if ! ws check | tee "$state/check.txt"; then
+        grep -E '^ *FAIL ' "$state/check.txt" > "$state/check-fail.txt" \
+            || echo "  FAIL  ws check (exit status)" > "$state/check-fail.txt"
+    fi
+    mark_step check
+}
+
+# Timeshift: Btrfs @ and @home; the schedule of mbp16 (ws help rebuild,
+# section 12). Written once: afterwards the file belongs to Timeshift.
+step_timeshift() {
+    local conf=/etc/timeshift/timeshift.json uuid
+    done_step timeshift && return 0
+    say "Timeshift"
+    uuid="$(findmnt -no UUID /)"
+    if [[ ! -e "$conf" ]] || grep -Eq '"do_first_run" *: *"true"' "$conf"; then
+        python3 - "$uuid" <<'PY' | sudo tee "$conf" >/dev/null
+import json, sys
+print(json.dumps({
+    "backup_device_uuid": sys.argv[1], "parent_device_uuid": "",
+    "do_first_run": "false", "btrfs_mode": "true",
+    "include_btrfs_home_for_backup": "true", "include_btrfs_home_for_restore": "false",
+    "stop_cron_emails": "true",
+    "schedule_monthly": "true", "schedule_weekly": "true", "schedule_daily": "false",
+    "schedule_hourly": "false", "schedule_boot": "true",
+    "count_monthly": "1", "count_weekly": "3", "count_daily": "5",
+    "count_hourly": "6", "count_boot": "3",
+    "snapshot_size": "0", "snapshot_count": "0",
+    "date_format": "%Y-%m-%d %H:%M:%S", "exclude": [], "exclude-apps": [],
+}, indent=2))
+PY
+        echo "$conf: Btrfs $uuid, @home included, monthly 1, weekly 3, boot 3"
+    else
+        echo "$conf exists: kept"
+    fi
+    if [[ -s "$state/check-fail.txt" ]]; then
+        sudo timeshift --create --scripted --comments "setup, ws check FAIL"
+    else
+        sudo timeshift --create --scripted --comments "setup"
+    fi
+    mark_step timeshift
+}
+
+# Backup (ws help backup): the local side. @wsbackup is ws-prepare; the
+# key goes to the receiver as hosts/HOST/ on the Unraid flash, by hand.
+step_backup() {
+    local key="$HOME/.ssh/wsbackup_ed25519"
+    done_step backup && return 0
+    say "Backup"
+    if [[ ! -e "$key" ]]; then
+        install -d -m 0700 "$HOME/.ssh"
+        ssh-keygen -q -t ed25519 -N "" -C "workstation-backup $host" -f "$key"
+    fi
+    echo "Локальные копии: /var/lib/workstation-backup (@wsbackup). Ключ: $key.pub"
+    echo "На Unraid: hosts/$host/ с этим ключом (пользователь wsbackup-$host), затем alias и"
+    echo "hosts/$host/backup.toml конфигурации — ws help backup, «Несколько workstation»."
+    mark_step backup
+}
+
+step_finish() {
+    local checkpoint=true
+    # Everything of the configuration is data (ws sync); step_choices may
+    # have made the host files, so untracked ones count.
+    say "Готово"
+    ws apply home
+    # A checkpoint needs a live system that matches its tree (ws system check).
+    if ! git -C "$repo" rev-parse -q --verify refs/tags/checkpoint/setup >/dev/null; then
+        ws checkpoint create setup || checkpoint=false
+    fi
+    if [[ -n "$(git -C "$repo" log --oneline '@{u}..HEAD' 2>/dev/null)" \
+        || -n "$(git -C "$repo" status --porcelain --untracked-files=all)" ]]; then
+        publish
+    fi
+    rm -f "$autostart"
+    if [[ -s "$state/check-fail.txt" ]]; then
+        echo "Хост $host настроен, но ws check нашёл FAIL ($state/check.txt):"
+        cat "$state/check-fail.txt"
+        echo "Снимок Timeshift — «setup, ws check FAIL». После исправления: ws check,"
+        echo "sudo timeshift --create --comments checked, ws checkpoint create setup."
+    else
+        echo "Хост $host настроен: ws check без FAIL, снимок Timeshift «setup»."
+    fi
+    [[ "$checkpoint" == true ]] || echo "checkpoint setup не создан: ws checkpoint create setup после исправления."
+}
+
+sudo -v || die "sudo needed"
+step_tools
+step_config
+step_pull
+step_core
+step_host
+step_choices
+step_btrfs
+step_prepare
+step_layers
+step_check
+step_timeshift
+step_backup
+step_finish

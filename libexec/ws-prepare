@@ -1,43 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# First steps on a fresh Ubuntu (ws help rebuild, ws help history-nix):
-# @nix subvolume at /nix → apt packages (system/apt.txt, apt.txt, hosts/<host>/apt.txt,
-# system/apt-machine.txt,
-# virt/apt.txt, steam/apt.txt, gaming/apt.txt) → VM state on @vms (images,
-# nvram, qemu XML bound into libvirt), pool and network (virt/bootstrap.bash)
-# → Steam data on @steam (steam/bootstrap.bash) → local backup copies on
-# @wsbackup → groups nix-users, libvirt, input → fish as login shell → first
+# The system part of ws setup on a fresh Ubuntu (ws help setup; until
+# plan-v2 stage 9 bootstrap.sh): @nix subvolume at /nix (install.sh made
+# it) → apt packages (system/apt.txt, apt.txt, hosts/<host>/apt.txt,
+# system/apt-machine.txt, virt/apt.txt, steam/apt.txt, gaming/apt.txt) →
+# VM state on @vms (images, nvram, qemu XML bound into libvirt), pool and
+# network (virt/bootstrap.bash) → Steam data on @steam (steam/bootstrap.bash)
+# → local backup copies on @wsbackup → groups nix-users, libvirt, input →
+# fish as login shell → first
 # `ws apply`. The VM parts only with
 # vm = true in host.toml [layers], the Steam parts with nativeSteam = true,
 # the Game Mode list with gameMode = true. A container host (boot =
 # "container") skips what its image or the server holds.
 #
-# Runs as the desktop user and calls sudo itself. The code is that of this
-# checkout of the core; the data that of the configuration at ~/<wsconfig
-# of hosts/<host>/host.toml>: WSCONFIG (setup.sh, a core checkout of its
-# own: ws help plan-v2, 8.10), else this checkout when it holds both. Every
-# step checks the current state first, so a second run changes nothing.
+# Runs as the desktop user and calls sudo itself. The code is that of the
+# core it belongs to; the data that of the configuration at ~/<wsconfig of
+# hosts/<host>/host.toml> (WS_CONFIG of ws setup). Every step checks the
+# current state first, so a second run changes nothing.
 #
-#   ./bootstrap.sh [--dry-run]
+#   ws-prepare [--dry-run]
 #
-# Afterwards: reboot, then ws apply → log out and in → ws apply →
-# ws check.
+# Afterwards (ws setup does it): reboot, then ws apply → log out and in →
+# ws apply → ws check.
 
-# shellcheck source=lib/common.bash
-. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/common.bash"
-# repo: the configuration (lib/common.bash), WS_CORE: this checkout.
-ws_prog=bootstrap
-# shellcheck source=lib/apt.bash
+# shellcheck source=../lib/common.bash
+. "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+# repo: the configuration (lib/common.bash), WS_CORE: this core.
+ws_prog="ws setup"
+# shellcheck source=../lib/apt.bash
 . "$WS_CORE/lib/apt.bash"
+# shellcheck source=../lib/btrfs.bash
+. "$WS_CORE/lib/btrfs.bash"
 dry_run=false
 
 
 case "${1:-}" in
     --dry-run) dry_run=true ;;
     "") ;;
-    *) die "usage: bootstrap.sh [--dry-run]" ;;
+    *) die "usage: ws-prepare [--dry-run]" ;;
 esac
+btrfs_dry_run="$dry_run"
 
 # Commands that change the system; --dry-run only prints them.
 run() {
@@ -88,46 +91,9 @@ else
         || die "/ is not the subvolume @: first $WS_CORE/bin/ws btrfs make (ws help rebuild, section 3)"
     [[ ! -e /var/lib/ws-btrfs-layout/old-root ]] \
         || echo "The old root is still on the top level of Btrfs: ws btrfs make removes it."
-    root_dev="$(findmnt -no SOURCE / | sed 's/\[.*$//')"
     root_uuid="$(findmnt -no UUID /)"
     [[ -n "$root_uuid" ]] || die "cannot determine the UUID of /"
 fi
-
-# Subvolume NAME of the root filesystem mounted at DIR by an fstab line with
-# OPTIONS. DIR must not hold data yet: it would be hidden by the mount.
-subvolume_mount() {
-    local name="$1" dir="$2" options="$3" top=/run/btrfs-top line
-    if findmnt -no OPTIONS "$dir" 2>/dev/null | tr ',' '\n' | grep -qx "subvol=/$name"; then
-        echo "$dir is mounted from $name"
-        return
-    fi
-    if [[ -e "$dir" ]] && [[ -n "$(sudo find "$dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]]; then
-        die "$dir exists, is not empty and is not $name; move its content away first"
-    fi
-    run sudo install -d "$top"
-    run sudo mount -o subvolid=5 "$root_dev" "$top"
-    if [[ "$dry_run" == false ]] && sudo btrfs subvolume show "$top/$name" >/dev/null 2>&1; then
-        echo "$name already exists"
-    else
-        run sudo btrfs subvolume create "$top/$name"
-    fi
-    run sudo umount "$top"
-    run sudo rmdir "$top"
-    if grep -Eq "^[^#]*[[:space:]]${dir}[[:space:]]" /etc/fstab; then
-        echo "$dir already in fstab"
-    else
-        line="UUID=$root_uuid  $dir  btrfs  subvol=$name,$options  0 0"
-        if [[ "$dry_run" == true ]]; then
-            echo "would append to /etc/fstab: $line"
-        else
-            sudo cp -a /etc/fstab "/etc/fstab.before-$name-$(date +%Y%m%d-%H%M%S)"
-            printf '%s\n' "$line" | sudo tee -a /etc/fstab >/dev/null
-        fi
-    fi
-    run sudo install -d -m0755 "$dir"
-    run sudo systemctl daemon-reload
-    run sudo mount "$dir"
-}
 
 echo
 echo "== 1. /nix on subvolume @nix"

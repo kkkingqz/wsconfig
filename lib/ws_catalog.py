@@ -30,7 +30,7 @@ For the bash tools (HOST: ws host --for-marks unless --host):
     ws_catalog.py [--host H] MODULE offer [--select] --what TEXT -- NAME<TAB>DEFAULT<TAB>LABEL...
     ws_catalog.py summary OLD NEW                             changes of a host file (ws sync)
     ws_catalog.py [--host H] offer --all [--select] [MODULE...]  ws apply: every module
-    ws_catalog.py [--host H] offer --all --setup              setup.sh: checklists
+    ws_catalog.py [--host H] offer --all --setup              ws setup: checklists
 
 offer asks about the positions in state ask (with --select also no, those
 unchecked), writes the answer (chosen yes, the rest no) and prints the
@@ -40,7 +40,7 @@ stay ask), 3 without a terminal (it prints the names it would ask about),
 
 offer --all asks about flatpak, boxes and widgets (or the MODULEs) in turn
 and prints the files it wrote; a cancel or no terminal leaves a module ask
-and goes on (setup, apply_offer). With --setup it asks as setup.sh does,
+and goes on (setup, apply_offer). With --setup it asks as ws setup does,
 about everything without a choice of the host: exit 2 when cancelled
 (nothing written), 3 without a terminal.
 """
@@ -234,7 +234,7 @@ def summary(old_text, new_text):
     return ", ".join(out)
 
 
-# All the modules at once: setup.sh before the long part (--setup) and the
+# All the modules at once: ws setup before the long part (--setup) and the
 # start of ws apply.
 STEAM_FLATPAK = "com.valvesoftware.Steam"
 CANCELLED, NO_TERMINAL = ws_select.CANCELLED, ws_select.NO_TERMINAL
@@ -276,7 +276,7 @@ def checklist(term, title, items):
 
 
 def setup(config, host, term):
-    """The choices of setup.sh (ws help setup), as checklists, so ws apply
+    """The choices of ws setup (ws help setup), as checklists, so ws apply
     asks nothing afterwards: the apps of flatpak/catalog.toml and the
     containers of distrobox/catalog.toml without a choice of this host, with
     widgets = true the widgets some host has in yes (ws widgets apply

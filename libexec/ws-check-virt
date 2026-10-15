@@ -3,7 +3,7 @@ set -u
 set -o pipefail
 
 # Virtual machines (ws help virt): KVM, libvirt qemu:///system, the VM state on
-# @vms that bootstrap.sh sets up (disks, UEFI variables, TPM, XML), the NAT
+# @vms that ws-prepare sets up (disks, UEFI variables, TPM, XML), the NAT
 # network, UEFI and TPM for guests.
 # Read-only. ws check virt; ws check runs it with --json (lib/check.bash).
 
@@ -46,7 +46,7 @@ if have virt-host-validate; then
     done < <(virt-host-validate qemu 2>/dev/null)
     pass "virt-host-validate qemu: no FAIL"
 else
-    fail "virt-host-validate missing (libvirt-clients; bootstrap.sh)"
+    fail "virt-host-validate missing (libvirt-clients; ws setup)"
 fi
 
 section "2. Access"
@@ -54,7 +54,7 @@ section "2. Access"
 if getent group libvirt | cut -d: -f4 | tr ',' '\n' | grep -qx "$user"; then
     pass "$user is in group libvirt"
 else
-    fail "$user is not in group libvirt (bootstrap.sh)"
+    fail "$user is not in group libvirt (ws setup)"
 fi
 virsh=(virsh -q -c qemu:///system)
 if ! id -nG | tr ' ' '\n' | grep -qx libvirt; then
@@ -77,14 +77,14 @@ section "3. Storage"
 if findmnt -no OPTIONS /var/lib/vms 2>/dev/null | tr ',' '\n' | grep -qx 'subvol=/@vms'; then
     pass "/var/lib/vms is subvolume @vms"
 else
-    fail "/var/lib/vms is not mounted from @vms (bootstrap.sh)"
+    fail "/var/lib/vms is not mounted from @vms (ws setup)"
 fi
 for b in "images $images" "qemu /var/lib/libvirt/qemu" "swtpm /var/lib/libvirt/swtpm" "xml /etc/libvirt/qemu"; do
     set -- $b
     if [[ "$(findmnt -no SOURCE "$2" 2>/dev/null)" == *"[/@vms/$1]" ]]; then
         pass "$2 is @vms/$1"
     else
-        fail "$2 is not bound from @vms/$1: that VM state is on @ (bootstrap.sh)"
+        fail "$2 is not bound from @vms/$1: that VM state is on @ (ws setup)"
     fi
 done
 lsattr -d "$images" 2>/dev/null | cut -d' ' -f1 | grep -q C \
@@ -92,22 +92,22 @@ lsattr -d "$images" 2>/dev/null | cut -d' ' -f1 | grep -q C \
     || fail "$images has copy-on-write; qcow2 images fragment (sudo chattr +C, then copy images anew)"
 [[ "$(stat -c '%U:%G %a' "$images" 2>/dev/null)" == "root:libvirt 2775" ]] \
     && pass "$images root:libvirt 2775" \
-    || warn "$images is $(stat -c '%U:%G %a' "$images" 2>/dev/null), want root:libvirt 2775 (bootstrap.sh)"
+    || warn "$images is $(stat -c '%U:%G %a' "$images" 2>/dev/null), want root:libvirt 2775 (ws setup)"
 pool="$("${virsh[@]}" pool-dumpxml default 2>/dev/null | sed -n 's|.*<path>\(.*\)</path>.*|\1|p')"
 [[ "$pool" == "$images" ]] \
     && pass "pool default -> $images" \
-    || fail "pool default is ${pool:-missing}, want $images (bootstrap.sh)"
+    || fail "pool default is ${pool:-missing}, want $images (ws setup)"
 pool_info="$("${virsh[@]}" pool-info default 2>/dev/null)"
 grep -Eq '^State:[[:space:]]+running' <<<"$pool_info" \
     && grep -Eq '^Autostart:[[:space:]]+yes' <<<"$pool_info" \
     && pass "pool default running, autostart" \
-    || fail "pool default not running or not autostarted (bootstrap.sh)"
+    || fail "pool default not running or not autostarted (ws setup)"
 # virt-manager defines a pool for each directory picked with "Browse Local";
 # one in HOME (~/VMs/...) hands qemu paths through HOME, which it may only
-# pass through (bootstrap.sh).
+# pass through (ws setup).
 getfacl -p "$HOME" 2>/dev/null | grep -qx 'user:libvirt-qemu:--x' \
     && pass "qemu may pass through $HOME (ACL; pools in ~/VMs)" \
-    || warn "qemu cannot pass through $HOME: pools in ~/VMs fail (setfacl -m u:libvirt-qemu:x $HOME; bootstrap.sh)"
+    || warn "qemu cannot pass through $HOME: pools in ~/VMs fail (setfacl -m u:libvirt-qemu:x $HOME; ws setup)"
 while IFS= read -r p; do
     [[ -n "$p" && "$p" != default ]] || continue
     path="$("${virsh[@]}" pool-dumpxml "$p" 2>/dev/null | sed -n 's|.*<path>\(.*\)</path>.*|\1|p')"
@@ -120,7 +120,7 @@ net_info="$("${virsh[@]}" net-info default 2>/dev/null)"
 grep -Eq '^Active:[[:space:]]+yes' <<<"$net_info" \
     && grep -Eq '^Autostart:[[:space:]]+yes' <<<"$net_info" \
     && pass "network default (NAT) active, autostart" \
-    || fail "network default not active or not autostarted (bootstrap.sh)"
+    || fail "network default not active or not autostarted (ws setup)"
 
 section "5. Guest firmware"
 
@@ -135,11 +135,11 @@ section "5. Guest firmware"
 # template for new VMs.
 vars_qcow2=/var/lib/vms/firmware/OVMF_VARS_4M.ms.qcow2
 if [[ ! -r "$vars_qcow2" ]]; then
-    fail "$vars_qcow2 missing: new UEFI VMs get no qcow2 variables (bootstrap.sh)"
+    fail "$vars_qcow2 missing: new UEFI VMs get no qcow2 variables (ws setup)"
 elif qemu-img compare -q -f raw -F qcow2 /usr/share/OVMF/OVMF_VARS_4M.ms.fd "$vars_qcow2" 2>/dev/null; then
     pass "UEFI variables template in qcow2 matches the ovmf package"
 else
-    warn "$vars_qcow2 differs from the ovmf package template (ovmf updated? bootstrap.sh)"
+    warn "$vars_qcow2 differs from the ovmf package template (ovmf updated? ws-prepare)"
 fi
 have swtpm_setup \
     && pass "swtpm: TPM for guests (Windows 11)" \

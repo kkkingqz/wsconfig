@@ -1,9 +1,10 @@
-"""setup.sh on two repositories (ws help plan-v2, 8.10): the configuration
-is cloned to ~/wsconfig, the core it pins to ~/.cache/wsconfig/core, and the
-setup.sh of that core goes on with WSCONFIG. Stubs for gh, sudo, apt."""
+"""ws setup (libexec/ws-setup, ws help plan-v2, 9.2): the configuration from
+--repo in ~/wsconfig, then the core it pins, built from it into
+WS_STATE/setup/ws, runs the same command again. Stubs for gh, sudo, nix."""
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -12,8 +13,11 @@ import fast_tmp  # noqa: F401  (tmpfs)
 
 ROOT = Path(__file__).resolve().parents[1]
 STUB = "#!/bin/sh\nexit 0\n"
-# The setup.sh of the core: records how it was started.
-CORE_SETUP = '#!/bin/sh\necho "core setup: WSCONFIG=$WSCONFIG args=$*" > "$HOME/started"\n'
+PINNED = "b" * 40
+# nix build --out-link LINK REF: LINK to the core $FAKE_CORE, the call kept.
+NIX = '#!/bin/sh\necho "$*" >> "$HOME/nix-calls"\n[ "$1" = build ] && ln -sfn "$FAKE_CORE" "$3"\n'
+# The ws of the pinned core: records how it was started.
+FAKE_WS = '#!/bin/sh\necho "$*" > "$HOME/pinned-args"\n'
 
 
 class SetupTests(unittest.TestCase):
@@ -27,64 +31,118 @@ class SetupTests(unittest.TestCase):
         stubs.mkdir()
         for name in ("gh", "sudo", "apt-get", "xdg-terminal-exec"):
             (stubs / name).write_text(STUB)
-            (stubs / name).chmod(0o755)
+        (stubs / "nix").write_text(NIX)
+        for f in stubs.iterdir():
+            f.chmod(0o755)
+        # The core of this run in the store: this checkout without tests/.
+        self.core = self.root / "core"
+        shutil.copytree(ROOT, self.core, symlinks=True,
+                        ignore=lambda d, names: [n for n in names if Path(d) == ROOT
+                                                 and n in (".git", "tests")])
+        (self.core / ".wsconfig-package").touch()
+        self.state = self.home / ".local/state/wsconfig/setup"
+        self.state.mkdir(parents=True)
+        (self.state / "core").write_text("a" * 40 + "\n")
+        # The pinned core nix build gives.
+        self.fake = self.root / "pinned"
+        (self.fake / "bin").mkdir(parents=True)
+        (self.fake / "libexec").mkdir()
+        (self.fake / "bin/ws").write_text(FAKE_WS)
+        (self.fake / "bin/ws").chmod(0o755)
+        (self.fake / "libexec/ws-setup").write_text(STUB)
+        (self.fake / "libexec/ws-setup").chmod(0o755)
         gitconfig = self.root / "gitconfig"
-        gitconfig.write_text("[user]\n\tname = t\n\temail = t@t\n[init]\n\tdefaultBranch = main\n"
-                             "[credential \"https://github.com\"]\n\thelper = !gh auth git-credential\n")
-        self.env = {k: v for k, v in os.environ.items() if not k.startswith(("WS", "GIT_", "XDG_"))}
+        gitconfig.write_text("[user]\n\tname = t\n\temail = t@t\n[init]\n\tdefaultBranch = main\n")
+        self.env = {k: v for k, v in os.environ.items()
+                    if not k.startswith(("WS", "GIT_", "XDG_", "NIX_"))}
         self.env.update(HOME=str(self.home), PATH=f"{stubs}:{os.environ['PATH']}",
-                        GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1", WS_SETUP_TTY="/dev/null")
-        self.core = self.root / "core-origin"
-        self.core.mkdir()
-        (self.core / "setup.sh").write_text(CORE_SETUP)
-        self.rev = self.commit(self.core, "core")
+                        GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1",
+                        WS_SETUP_TTY="/dev/null", FAKE_CORE=str(self.fake))
         self.config = self.root / "config-origin"
         self.config.mkdir()
+        (self.config / "wsconfig.toml").write_text("schema = 1\n")
         lock = {"nodes": {"root": {"inputs": {"wsconfig": "wsconfig"}},
-                          "wsconfig": {"locked": {"rev": self.rev}}}, "root": "root", "version": 7}
+                          "wsconfig": {"locked": {"rev": PINNED}}}, "root": "root", "version": 7}
         (self.config / "flake.lock").write_text(json.dumps(lock))
-        self.commit(self.config, "config")
-        self.env["WS_SETUP_CORE_URL"] = str(self.core)
+        self.git(self.config, "init", "-q")
+        self.git(self.config, "add", ".")
+        self.git(self.config, "commit", "-qm", "config")
 
     def git(self, cwd, *args):
         return subprocess.run(["git", "-C", str(cwd), *args], env=self.env, check=True, text=True,
                               capture_output=True).stdout.strip()
 
-    def commit(self, d, msg):
-        self.git(d, "init", "-q")
-        self.git(d, "add", ".")
-        self.git(d, "commit", "-qm", msg)
-        return self.git(d, "rev-parse", "HEAD")
-
-    def setup(self, *args):
-        # As wget | bash -s -- ARGS: the script on stdin, no path of its own.
-        return subprocess.run(["bash", "-s", "--", *args], input=(ROOT / "setup.sh").read_text(),
+    def setup(self, *args, core=None):
+        return subprocess.run([str((core or self.core) / "bin/ws"), "setup", *args],
                               env=self.env, text=True, capture_output=True)
 
-    def test_config_then_the_pinned_core_then_its_setup(self):
-        # The core moved on after the configuration pinned it.
-        (self.core / "later").write_text("x\n")
-        self.git(self.core, "add", "later")
-        self.git(self.core, "commit", "-qm", "later")
-        p = self.setup(str(self.config))
+    def nix_calls(self):
+        f = self.home / "nix-calls"
+        return f.read_text().splitlines() if f.exists() else []
+
+    def test_repo_then_the_pinned_core_runs_setup_again(self):
+        p = self.setup("--repo", str(self.config))
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertEqual(self.git(self.home / "wsconfig", "rev-parse", "HEAD"),
-                         self.git(self.config, "rev-parse", "HEAD"))
-        self.assertEqual(self.git(self.home / ".cache/wsconfig/core", "rev-parse", "HEAD"), self.rev)
-        self.assertEqual((self.home / "started").read_text().strip(),
-                         f"core setup: WSCONFIG={self.home / 'wsconfig'} args=")
+        clone = self.home / "wsconfig"
+        self.assertEqual(self.git(clone, "rev-parse", "HEAD"), self.git(self.config, "rev-parse", "HEAD"))
+        self.assertEqual((self.state / "config").read_text().strip(), str(clone))
+        self.assertEqual(self.nix_calls(), [f"build --out-link {self.state / 'ws'} git+file:{clone}#ws"])
+        self.assertEqual((self.state / "core").read_text().strip(), PINNED)
+        self.assertEqual((self.home / "pinned-args").read_text().strip(), f"setup --repo {self.config}")
 
-    def test_a_configuration_that_pins_no_core(self):
-        (self.config / "flake.lock").write_text('{"nodes": {"root": {"inputs": {}}}, "root": "root"}')
-        self.git(self.config, "commit", "-qam", "no core")
-        p = self.setup(str(self.config))
+    def test_the_pinned_core_goes_on_to_the_host(self):
+        # A second run (after the exec): the same core, no build; the host
+        # question reads the terminal (here empty).
+        (self.state / "core").write_text(PINNED + "\n")
+        p = self.setup("--repo", str(self.config))
         self.assertEqual(p.returncode, 1)
-        self.assertIn("pins no core", p.stderr)
+        self.assertEqual(self.nix_calls(), [])
+        self.assertIn("не найден", p.stdout)
+        self.assertIn("ws setup: no answer", p.stderr)
+        # Without --repo it goes on with the configuration of the state.
+        p = self.setup()
+        self.assertIn("ws setup: no answer", p.stderr)
 
-    def test_no_url(self):
+    def test_a_core_older_than_ws_setup(self):
+        (self.fake / "libexec/ws-setup").unlink()
+        p = self.setup("--repo", str(self.config))
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("older than ws setup", p.stderr)
+        self.assertFalse((self.home / "pinned-args").exists())
+
+    def test_nothing_is_overwritten(self):
+        (self.home / "wsconfig").mkdir()
+        (self.home / "wsconfig/notes").write_text("mine\n")
+        p = self.setup("--repo", str(self.config))
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("is not a clone of", p.stderr)
+        self.assertEqual((self.home / "wsconfig/notes").read_text(), "mine\n")
+        self.assertFalse((self.state / "config").exists())
+
+    def test_not_a_configuration(self):
+        (self.config / "wsconfig.toml").unlink()
+        self.git(self.config, "commit", "-qam", "no schema")
+        p = self.setup("--repo", str(self.config))
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("is not a configuration of wsconfig", p.stderr)
+
+    def test_no_configuration(self):
         p = self.setup()
         self.assertEqual(p.returncode, 1)
-        self.assertIn("no configuration repository", p.stderr)
+        self.assertIn("ws setup --repo URL or --new", p.stderr)
+
+    def test_a_checkout_of_the_core_is_not_replaced(self):
+        (self.core / ".wsconfig-package").unlink()
+        p = self.setup("--repo", str(self.config))
+        self.assertEqual(p.returncode, 1)
+        self.assertIn(f"checkout {self.core}", p.stdout)
+        self.assertEqual(self.nix_calls(), [])
+
+    def test_usage(self):
+        self.assertEqual(self.setup("--bogus").returncode, 64)
+        p = self.setup("--help")
+        self.assertEqual(p.returncode, 0)
+        self.assertIn("ws setup --repo URL|PATH", p.stdout)
 
 
 if __name__ == "__main__":

@@ -75,7 +75,7 @@ class AptListsTests(unittest.TestCase):
         self.assertNotIn("core/virt/apt.txt", self.rel(self.bash("apt_host odd; apt_lists")))
 
     def test_bootstrap_variables_without_facts(self):
-        # bootstrap.sh and the image build set the variables themselves.
+        # ws-prepare and the image build set the variables themselves.
         self.host("pc")
         out = self.bash(f"host_list={self.repo}/hosts/pc/apt.txt container=true vm=yes "
                         "native_steam=no game_mode=no; apt_lists")
