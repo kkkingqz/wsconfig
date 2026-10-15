@@ -384,6 +384,10 @@ while IFS= read -r -d '' path; do
     fi
 done < <(git -C "$repo" ls-files -z -- bin libexec)
 [[ "$bin_bad" == false ]] && pass "bin/, libexec/: every file executable (file and Git mode 100755)"
+# The entry of a fresh machine (ws help setup), fetched by its raw URL.
+[[ -x "$repo/install.sh" ]] && is_tracked install.sh \
+    && pass "install.sh tracked and executable" \
+    || fail "install.sh missing, untracked or not executable"
 
 # Built by Nix, not kept in git: man pages (nix/pkgs/man.nix), Flatpak
 # overrides (flatpak/flatpak.nix).
