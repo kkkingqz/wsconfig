@@ -216,7 +216,11 @@ step_config() {
                     git clone -q "$url" "$dir" || die "git clone $url failed (URL, access?)"
                 fi
                 ;;
-            new) die "ws setup --new: not there yet (ws help plan-v2, 9.7)" ;;
+            new)
+                dir="${source_arg:-$HOME/wsconfig}"
+                [[ "$dir" == /* ]] || dir="$PWD/$dir"
+                new_config "$dir"
+                ;;
             *)
                 is_config "$HOME/wsconfig" \
                     || die "no configuration: ws setup --repo URL or --new (ws help setup)"
@@ -238,6 +242,52 @@ step_config() {
     fi
 }
 
+# The revision of this core: install.sh recorded it, a checkout has it.
+own_rev() {
+    if [[ -s "$state/core" ]]; then
+        cat "$state/core"
+    else
+        git -C "$WS_CORE" rev-parse HEAD 2>/dev/null || die "the revision of the core $WS_CORE is unknown"
+    fi
+}
+
+# The author of the commits ws setup makes, when Git has none yet (no
+# GitHub login with --new).
+git_identity() {
+    local name email
+    if [[ -z "$(git config --global user.name)" ]]; then
+        read -r -p "Имя автора коммитов [$(id -un)]: " name || true
+        git config --global user.name "${name:-$(id -un)}"
+    fi
+    if [[ -z "$(git config --global user.email)" ]]; then
+        read -r -p "E-mail автора коммитов [$(id -un)@$(hostname)]: " email || true
+        git config --global user.email "${email:-$(id -un)@$(hostname)}"
+    fi
+    [[ -n "$(git config --global init.defaultBranch)" ]] || git config --global init.defaultBranch main
+}
+
+# --new DIR: the template of this core (lib/ws_template.py), its flake.lock
+# pins this core and the nixpkgs, home-manager and wswidgets of its own
+# lock; a local commit (nothing leaves the machine: the remote is the
+# question at the end).
+new_config() {
+    local dir="$1" rev
+    if [[ -e "$dir" && -n "$(ls -A "$dir" 2>/dev/null)" ]]; then
+        die "$dir exists and is not empty: nothing is overwritten (ws setup --new DIR)"
+    fi
+    rev="$(own_rev)"
+    say "Новая конфигурация: $dir (ядро ${rev:0:12})"
+    nix flake metadata --json "${WS_SETUP_CORE_FLAKE:-github:kkkingqz/wsconfig}/$rev" > "$state/core-metadata.json" \
+        || die "nix flake metadata of the core $rev failed (network? the revision pushed?)"
+    python3 "$WS_CORE/lib/ws_template.py" new --core "$WS_CORE" --metadata "$state/core-metadata.json" "$dir" >/dev/null \
+        || die "the template was not written"
+    git_identity
+    git -C "$dir" init -q -b main
+    git -C "$dir" add -A
+    git -C "$dir" commit -q -m "Configuration from the template of wsconfig ${rev:0:12} (ws setup --new)"
+    echo new > "$state/mode"
+}
+
 # The revision of the core the configuration pins (its input wsconfig).
 pinned_core() {
     local node
@@ -251,14 +301,19 @@ pinned_core() {
 # root WS_STATE/setup/ws and runs this command again. A checkout of the
 # core (not the store) is not replaced: it is the one being tested.
 step_core() {
-    local rev own
+    local rev own problem
     rev="$(pinned_core)"
     if [[ ! -e "$WS_CORE/.wsconfig-package" ]]; then
         echo "Ядро: checkout $WS_CORE (конфигурация закрепляет ${rev:0:12}, не переключаю)"
+        own="$rev"
+    else
+        own="$(cat "$state/core" 2>/dev/null || true)"
+    fi
+    if [[ "$own" == "$rev" ]]; then
+        # The core that runs the configuration reads its schema.
+        problem="$(python3 "$WS_CORE/lib/ws_common.py" schema 2>&1)" || die "$problem"
         return 0
     fi
-    own="$(cat "$state/core" 2>/dev/null || true)"
-    [[ "$own" != "$rev" ]] || return 0
     say "Ядро конфигурации: ${rev:0:12} (сейчас ${own:0:12})"
     nix build --out-link "$state/ws" "git+file:$repo#ws" \
         || die "nix build of the core $rev of the configuration failed"
@@ -599,6 +654,22 @@ step_backup() {
     mark_step backup
 }
 
+# --new: a private GitHub repository only after the question, no by default
+# (ws help plan-v2, 9.0).
+new_remote() {
+    local name
+    [[ "$(cat "$state/mode" 2>/dev/null)" == new ]] || return 0
+    git -C "$repo" remote get-url origin >/dev/null 2>&1 && return 0
+    if ! ask "Создать закрытый репозиторий GitHub для конфигурации?" n; then
+        echo "Без remote: ws sync коммитит локально. Позже: gh repo create --private ИМЯ --source $repo --push"
+        return 0
+    fi
+    step_github
+    read -r -p "Имя репозитория [$(basename "$repo")]: " name || true
+    gh repo create --private "${name:-$(basename "$repo")}" --source "$repo" --remote origin --push \
+        || echo "Не создан; позже: gh repo create --private ИМЯ --source $repo --push"
+}
+
 step_finish() {
     local checkpoint=true
     # Everything of the configuration is data (ws sync); step_choices may
@@ -609,6 +680,7 @@ step_finish() {
     if ! git -C "$repo" rev-parse -q --verify refs/tags/checkpoint/setup >/dev/null; then
         ws checkpoint create setup || checkpoint=false
     fi
+    new_remote
     if [[ -n "$(git -C "$repo" log --oneline '@{u}..HEAD' 2>/dev/null)" \
         || -n "$(git -C "$repo" status --porcelain --untracked-files=all)" ]]; then
         publish

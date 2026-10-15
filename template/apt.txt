@@ -1,0 +1,27 @@
+# apt packages the user wants on every host, on top of system/apt.txt of the
+# core (what its modules need); those of one host: hosts/<host>/apt.txt.
+# Same syntax as system/apt.txt (ppa:, purge:, rec:). Installed by
+# ws-prepare; `ws check apt` compares with apt-mark showmanual.
+
+# Terminal (home/.config/ghostty)
+ghostty
+
+# Desktop and command-line tools on top of the standard install
+# Space preview in Nautilus (org.gnome.NautilusPreviewer)
+gnome-sushi
+# "This computer" (drives) in Nautilus (PPA of its author)
+ppa:yannmasoch/nautilus-my-computer
+nautilus-my-computer
+btop
+# MPRIS players and PipeWire from the command line (playerctl, pactl)
+playerctl
+pulseaudio-utils
+# GNOME Keyring from the command line (secret-tool)
+libsecret-tools
+# Crash dumps (coredumpctl)
+systemd-coredump
+# Non-free codecs and Microsoft fonts (multiverse); the font installer asks
+# to accept its EULA during ws-prepare. Everything of it and of
+# ubuntu-restricted-addons is Recommends: gstreamer libav/bad/ugly,
+# ttf-mscorefonts-installer, unrar, the localsearch extractors.
+rec:ubuntu-restricted-extras

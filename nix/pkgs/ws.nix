@@ -1,7 +1,8 @@
 # The core of wsconfig in the store (ws help plan-v2, stage 5): bin/ws,
-# libexec/, lib/, the modules with their hooks, extensions and patches, docs.
-# Not in it: tests/ (with the test configuration tests/config). The data
-# is in the configuration repository, read from WS_CONFIG.
+# libexec/, lib/, the modules with their hooks, extensions and patches, docs,
+# template/ (ws setup --new). Not in it: tests/ (with the test configuration
+# tests/config). The data is in the configuration repository, read from
+# WS_CONFIG.
 # .wsconfig-package marks the tree as the core in the store (ws check home).
 # mainProgram: `nix run github:kkkingqz/wsconfig/REV#ws -- ARG...` runs bin/ws
 # of that revision without a checkout (install.sh, ws help plan-v2, 9.1).

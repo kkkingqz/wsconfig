@@ -1,4 +1,1 @@
-# The configuration of wsconfig (ws help architecture-v2, 5): its schema
-# version. The core reads only the versions of its lib/wsconfig-schema.toml;
-# a configuration of another version needs a migration first.
-schema = 1
+../../template/wsconfig.toml

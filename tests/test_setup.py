@@ -1,6 +1,7 @@
-"""ws setup (libexec/ws-setup, ws help plan-v2, 9.2): the configuration from
---repo in ~/wsconfig, then the core it pins, built from it into
-WS_STATE/setup/ws, runs the same command again. Stubs for gh, sudo, nix."""
+"""ws setup (libexec/ws-setup, ws help plan-v2, 9.2, 9.6, 9.7): the
+configuration from --repo in ~/wsconfig, then the core it pins, built from
+it into WS_STATE/setup/ws, runs the same command again; --new DIR from the
+template of this core. Stubs for gh, sudo, nix."""
 import json
 import os
 from pathlib import Path
@@ -15,7 +16,11 @@ ROOT = Path(__file__).resolve().parents[1]
 STUB = "#!/bin/sh\nexit 0\n"
 PINNED = "b" * 40
 # nix build --out-link LINK REF: LINK to the core $FAKE_CORE, the call kept.
-NIX = '#!/bin/sh\necho "$*" >> "$HOME/nix-calls"\n[ "$1" = build ] && ln -sfn "$FAKE_CORE" "$3"\n'
+NIX = ('#!/bin/sh\necho "$*" >> "$HOME/nix-calls"\ncase "$1" in\n'
+       '  build) ln -sfn "$FAKE_CORE" "$3" ;;\n'
+       # nix flake metadata --json github:O/R/REV
+       '  flake) printf \'{"locked": {"type": "github", "owner": "o", "repo": "r", "rev": "%s", '
+       '"narHash": "sha256-x", "lastModified": 1}}\\n\' "${4##*/}" ;;\nesac\n')
 # The ws of the pinned core: records how it was started.
 FAKE_WS = '#!/bin/sh\necho "$*" > "$HOME/pinned-args"\n'
 
@@ -137,6 +142,39 @@ class SetupTests(unittest.TestCase):
         self.assertEqual(p.returncode, 1)
         self.assertIn(f"checkout {self.core}", p.stdout)
         self.assertEqual(self.nix_calls(), [])
+
+    def test_new_from_the_template_of_this_core(self):
+        own = "a" * 40
+        p = self.setup("--new")
+        # It goes on to the host question (the terminal is empty here).
+        self.assertIn("ws setup: no answer", p.stderr)
+        cfg = self.home / "wsconfig"
+        for f in ("flake.nix", "wsconfig.toml", ".gitignore", "apt.txt", "flatpak/catalog.toml"):
+            self.assertTrue((cfg / f).is_file(), f)
+        lock = json.loads((cfg / "flake.lock").read_text())
+        self.assertEqual(lock["nodes"]["wsconfig"]["locked"]["rev"], own)
+        self.assertEqual(self.nix_calls(), [f"flake metadata --json github:kkkingqz/wsconfig/{own}"])
+        self.assertEqual(self.git(cfg, "log", "--format=%s"),
+                         "Configuration from the template of wsconfig aaaaaaaaaaaa (ws setup --new)")
+        self.assertEqual(self.git(cfg, "status", "--porcelain"), "")
+        self.assertEqual((self.state / "mode").read_text().strip(), "new")
+        self.assertEqual((self.state / "config").read_text().strip(), str(cfg))
+
+    def test_new_never_into_a_full_directory(self):
+        (self.root / "mine").mkdir()
+        (self.root / "mine/notes").write_text("x\n")
+        p = self.setup("--new", str(self.root / "mine"))
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("is not empty: nothing is overwritten", p.stderr)
+        self.assertEqual(sorted(x.name for x in (self.root / "mine").iterdir()), ["notes"])
+
+    def test_a_schema_this_core_does_not_read(self):
+        (self.state / "core").write_text(PINNED + "\n")
+        (self.config / "wsconfig.toml").write_text("schema = 99\n")
+        self.git(self.config, "commit", "-qam", "schema 99")
+        p = self.setup("--repo", str(self.config))
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("it needs a migration", p.stderr)
 
     def test_usage(self):
         self.assertEqual(self.setup("--bogus").returncode, 64)
