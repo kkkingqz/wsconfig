@@ -183,5 +183,119 @@ class SetupTests(unittest.TestCase):
         self.assertIn("ws setup --repo URL|PATH", p.stdout)
 
 
+# The machine of T2Tests: the stubs read it from the environment.
+T2_STUBS = {
+    "sudo": '#!/bin/sh\nexec "$@"\n',
+    "btrfs": '#!/bin/sh\ncase "$1 $2" in\n'
+             '  "subvolume show") echo "\tSubvolume ID:\t\t285" ;;\n'
+             '  "subvolume get-default") echo "ID $DEFAULT_ID gen 9 top level 5 path @" ;;\n'
+             '  "inspect-internal map-swapfile") echo 31286754 ;;\nesac\n',
+    "findmnt": '#!/bin/sh\ncase "$*" in\n'
+               '  "-no UUID /") echo root-uuid ;;\n'
+               '  "-no OPTIONS /") echo rw,subvolid=285,subvol=/@ ;;\n'
+               '  "-no SOURCE /boot/efi") echo /dev/nvme0n1p1 ;;\n  *) exit 1 ;;\nesac\n',
+    "uname": '#!/bin/sh\necho 7.2.7-1-t2-resolute\n',
+    "lsblk": '#!/bin/sh\ncase "$*" in\n'
+             '  "-no PARTUUID /dev/nvme0n1p1") echo apple-esp ;;\n'
+             '  "-rno PARTUUID,FSTYPE") printf "apple-esp vfat\\nrefind-esp vfat\\nroot btrfs\\n" ;;\nesac\n',
+    # mount -o ro DEV DIR: the ESP of the fixture.
+    "mount": '#!/bin/sh\ncp -r "$ESP"/. "$4"\n',
+    "umount": '#!/bin/sh\nrm -rf "$1"/*\n',
+    # ws system tree: nix build --no-link --print-out-paths REF
+    "nix": '#!/bin/sh\necho "$TREE"\n',
+}
+T2_HOST = """[host]
+hostname = "mac"
+user = "{user}"
+wsconfig = "wsconfig"
+
+[platform]
+hardware = "t2-mbp16"
+boot = "{boot}"
+kernelParams = ["quiet", "resume=UUID=root-uuid", "resume_offset=31286754"]
+rootUuid = "root-uuid"
+refindEspPartuuid = "refind-esp"
+
+[layers]
+vm = false
+widgets = true
+nativeSteam = false
+gameMode = false
+"""
+
+
+class T2Tests(unittest.TestCase):
+    """ws setup --check: the manual steps of a rEFInd host (9.9)."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.root = Path(tmp.name)
+        self.home = self.root / "home"
+        stubs = self.root / "bin"
+        stubs.mkdir(parents=True)
+        for name, body in T2_STUBS.items():
+            (stubs / name).write_text(body)
+            (stubs / name).chmod(0o755)
+        self.machine = self.root / "machine"
+        (self.machine / "lib/firmware/brcm").mkdir(parents=True)
+        (self.machine / "lib/firmware/brcm/brcmfmac4364b2-pcie.apple,kahana.bin").touch()
+        (self.machine / "swap").mkdir()
+        (self.machine / "swap/swapfile").touch()
+        (self.machine / "run").mkdir()
+        tree, esp = self.root / "tree", self.root / "esp"
+        for d in (tree / "esp/EFI/BOOT", esp / "EFI/BOOT"):
+            d.mkdir(parents=True)
+            (d / "refind.conf").write_text("timeout 5\n")
+        self.esp = esp
+        self.config = self.home / "wsconfig"
+        (self.config / "hosts/mac").mkdir(parents=True)
+        self.user = subprocess.check_output(["id", "-un"], text=True).strip()
+        self.write_host("refind-grub-recovery")
+        subprocess.run(["git", "init", "-q", str(self.config)], check=True)
+        subprocess.run(["git", "-C", str(self.config), "add", "-A"], check=True)
+        self.env = {k: v for k, v in os.environ.items()
+                    if not k.startswith(("WS", "XDG_", "NIX_"))}
+        self.env.update(HOME=str(self.home), PATH=f"{stubs}:{os.environ['PATH']}", WS_HOST="mac",
+                        WSCONFIG=str(self.config), WS_SETUP_TTY="/dev/null", WS_SETUP_ROOT=str(self.machine),
+                        DEFAULT_ID="285", ESP=str(esp), TREE=str(tree))
+
+    def write_host(self, boot, **params):
+        text = T2_HOST.format(user=self.user, boot=boot)
+        for key, value in params.items():
+            text = text.replace(f'{key} = "{"root-uuid" if key == "rootUuid" else "refind-esp"}"',
+                                f'{key} = "{value}"')
+        (self.config / "hosts/mac/host.toml").write_text(text)
+
+    def check(self, **env):
+        return subprocess.run([str(ROOT / "bin/ws"), "setup", "--check"], env=self.env | env,
+                              text=True, capture_output=True)
+
+    def test_all_done(self):
+        p = self.check()
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(p.stdout.count("  OK   "), 8, p.stdout)
+        self.assertIn("Все ручные шаги сделаны.", p.stdout)
+        self.assertFalse((self.home / ".local/state/wsconfig/setup").exists())
+
+    def test_what_is_left(self):
+        self.write_host("refind-grub-recovery", rootUuid="old", refindEspPartuuid="apple-esp")
+        (self.machine / "lib/firmware/brcm/brcmfmac4364b2-pcie.apple,kahana.bin").unlink()
+        (self.esp / "EFI/BOOT/refind.conf").write_text("old\n")
+        p = self.check(DEFAULT_ID="5")
+        self.assertEqual(p.returncode, 1)
+        for left in ("@ не подвольюм по умолчанию", 'rootUuid = "old"', 'refindEspPartuuid = "apple-esp"',
+                     "нет firmware Wi-Fi", "refind.conf на ESP не тот"):
+            self.assertIn(left, p.stdout)
+        self.assertIn("sudo btrfs subvolume set-default 285 /", p.stdout)
+        self.assertIn("Не сделано: 5.", p.stdout)
+
+    def test_a_grub_host_has_none(self):
+        self.write_host("grub")
+        p = self.check()
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("ручных шагов нет", p.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

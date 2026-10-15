@@ -46,10 +46,14 @@ Usage:
   ws setup --new [DIR] [--host NAME]       set up this PC with a new
                                            configuration in DIR (~/wsconfig)
   ws setup                                 go on where the last run stopped
+  ws setup --check                         the manual steps of a rEFInd host
+                                           (T2): done or not; changes nothing
 
 install.sh runs it on a fresh Ubuntu (ws help setup); after each reboot the
 autostart runs it again (--autostart). --host NAME answers the question of
-the host when the hostname finds none.
+the host when the hostname finds none. A host with boot = "refind-..." (T2,
+mbp16) has steps by hand (ws help rebuild, sections 2 to 5): ws setup checks
+them, stops with what is left and goes on when they are done.
 USAGE
 }
 
@@ -59,6 +63,7 @@ mode=
 source_arg=
 host_arg=
 autostarted=false
+check_only=false
 args=("$@")
 while (($#)); do
     case "$1" in
@@ -70,6 +75,7 @@ while (($#)); do
             ;;
         --host) (($# >= 2)) || die "--host needs a NAME"; host_arg="$2"; shift 2 ;;
         --autostart) autostarted=true; shift ;;
+        --check) check_only=true; shift ;;
         -h|--help) usage; exit 0 ;;
         *) usage >&2; exit 64 ;;
     esac
@@ -111,13 +117,16 @@ fi
 if [[ "$autostarted" == true ]]; then
     trap 'echo; read -r -p "Enter — закрыть окно " _ || true' EXIT
 fi
-mkdir -p "$state"
 # One run at a time (the autostart and a terminal); exec keeps the PID.
-if old="$(cat "$state/pid" 2>/dev/null)" && [[ "$old" != "$$" ]] \
-    && tr '\0' ' ' < "/proc/$old/cmdline" 2>/dev/null | grep -q 'ws-setup'; then
-    die "ws setup is already running (PID $old)"
+# --check only reads.
+if [[ "$check_only" == false ]]; then
+    mkdir -p "$state"
+    if old="$(cat "$state/pid" 2>/dev/null)" && [[ "$old" != "$$" ]] \
+        && tr '\0' ' ' < "/proc/$old/cmdline" 2>/dev/null | grep -q 'ws-setup'; then
+        die "ws setup is already running (PID $old)"
+    fi
+    echo "$$" > "$state/pid"
 fi
-echo "$$" > "$state/pid"
 # The Nix profile, as 00-nix.fish puts it into login shells; Nix of apt
 # knows no flakes until home-manager writes ~/.config/nix/nix.conf.
 [[ ! -d "$HOME/.nix-profile/bin" ]] || PATH="$HOME/.nix-profile/bin:$PATH"
@@ -457,8 +466,10 @@ check_facts() {
         || die "hosts/$1/host.toml: user = \"$(fact_in "$facts" user)\", this user is $(id -un)"
     [[ "$(fact_in "$facts" wsconfig)" == "$(config_rel)" ]] \
         || die "hosts/$1/host.toml: wsconfig = \"$(fact_in "$facts" wsconfig)\", the configuration is ~/$(config_rel)"
-    [[ "$(fact_in "$facts" boot)" == grub ]] \
-        || die "boot = \"$(fact_in "$facts" boot)\" in hosts/$1/host.toml: ws setup knows only GRUB hosts; rEFInd: ws help rebuild"
+    case "$(fact_in "$facts" boot)" in
+        grub|refind-grub-recovery) ;;
+        *) die "boot = \"$(fact_in "$facts" boot)\" in hosts/$1/host.toml: ws setup knows grub and refind-grub-recovery" ;;
+    esac
 }
 
 step_host() {
@@ -548,6 +559,11 @@ EOF
 }
 
 step_btrfs() {
+    if is_refind; then
+        # The layout of a T2 host is a step by hand (ws help plan-v2, 9.0).
+        t2_stop pre
+        return 0
+    fi
     case "$(findmnt -no OPTIONS / | tr ',' '\n' | sed -n 's/^subvol=//p')" in
         /)
             install_autostart
@@ -589,6 +605,132 @@ step_layers() {
         ws apply || die "ws apply failed: fix it, then ws setup again"
         mark_step apply2
     fi
+}
+
+# T2 and rEFInd (boot = "refind-...", ws help plan-v2, 9.0 and 9.9): the
+# steps of ws help rebuild done by hand, checked. pre: before the system is
+# prepared (layout, kernel, the values of host.toml); post: after ws apply
+# (firmware, refind.conf, resume). Each prints OK or what to do.
+is_refind() { [[ "$(ws fact boot)" == refind* ]]; }
+
+# The files these checks read; WS_SETUP_ROOT moves them (tests).
+t2_root="${WS_SETUP_ROOT:-}"
+
+t2_left=0
+t2_line() {
+    if [[ "$1" == ok ]]; then
+        printf '  OK   %s\n' "$2"
+    else
+        printf '  НЕТ  %s\n       → %s\n' "$2" "$3"
+        t2_left=$((t2_left + 1))
+    fi
+}
+
+t2_fact() { python3 "$WS_CORE/lib/ws_facts.py" fact "$1" 2>/dev/null || true; }
+
+# A kernel parameter NAME=VALUE of host.toml (a list: not a fact of ws_facts).
+t2_param() {
+    python3 - "$repo/hosts/$host/host.toml" "$1" <<'PY'
+import sys, tomllib
+params = tomllib.load(open(sys.argv[1], "rb"))["platform"].get("kernelParams", [])
+print(next((p.split("=", 1)[1] for p in params if p.startswith(sys.argv[2] + "=")), ""))
+PY
+}
+
+t2_pre() {
+    local uuid id def esp boot_part kernel
+    uuid="$(findmnt -no UUID /)"
+    if findmnt -no OPTIONS / | tr ',' '\n' | grep -qx 'subvol=/@'; then
+        t2_line ok "/ на подвольюме @"
+        id="$(sudo btrfs subvolume show / | awk '/Subvolume ID:/ { print $3 }')"
+        def="$(sudo btrfs subvolume get-default / | awk '{ print $2 }')"
+        if [[ -n "$id" && "$id" == "$def" ]]; then
+            t2_line ok "@ — подвольюм по умолчанию (rEFInd берёт ядро из него)"
+        else
+            t2_line no "@ не подвольюм по умолчанию (сейчас ID ${def:-?})" "sudo btrfs subvolume set-default $id /"
+        fi
+    else
+        t2_line no "/ не на @" "раскладка Btrfs: ws btrfs make, перезагрузка через GRUB, ws btrfs make (ws help rebuild, раздел 3)"
+    fi
+    kernel="$(uname -r)"
+    if [[ "$kernel" == *t2* ]]; then
+        t2_line ok "ядро T2 ($kernel)"
+    else
+        t2_line no "ядро не T2 ($kernel)" "образ Ubuntu t2linux или linux-t2 из его репозитория (ws help rebuild, разделы 2 и 4)"
+    fi
+    if [[ "$(t2_fact rootUuid)" == "$uuid" ]]; then
+        t2_line ok "rootUuid = UUID / ($uuid)"
+    else
+        t2_line no "rootUuid = \"$(t2_fact rootUuid)\", UUID / — $uuid" "rootUuid = \"$uuid\" в hosts/$host/host.toml"
+    fi
+    esp="$(t2_fact refindEspPartuuid)"
+    boot_part="$(lsblk -no PARTUUID "$(findmnt -no SOURCE /boot/efi 2>/dev/null)" 2>/dev/null || true)"
+    if [[ -n "$esp" && "$esp" != "$boot_part" ]] \
+        && lsblk -rno PARTUUID,FSTYPE | grep -qx "$esp vfat"; then
+        t2_line ok "refindEspPartuuid — раздел vfat $esp (не /boot/efi)"
+    else
+        t2_line no "refindEspPartuuid = \"$esp\": не отдельный ESP rEFInd" \
+            "PARTUUID ESP rEFInd (lsblk -o NAME,PARTUUID,FSTYPE; не /boot/efi) в refindEspPartuuid hosts/$host/host.toml (ws help rebuild, раздел 2)"
+    fi
+}
+
+t2_post() {
+    local uuid offset esp tree mnt="$t2_root/run/ws-setup-esp"
+    if compgen -G "$t2_root/lib/firmware/brcm/brcmfmac4364*.bin*" >/dev/null; then
+        t2_line ok "firmware Wi-Fi (brcmfmac4364)"
+    else
+        t2_line no "нет firmware Wi-Fi" "get-apple-firmware.service (ws apply system) берёт её из macOS; без macOS — из архива (ws help rebuild, раздел 4)"
+    fi
+    uuid="$(findmnt -no UUID /)"
+    if [[ ! -f "$t2_root/swap/swapfile" ]]; then
+        t2_line no "нет /swap/swapfile (гибернация)" "ws suspend swap-setup 32g, его resume= в kernelParams hosts/$host/host.toml"
+    else
+        offset="$(sudo btrfs inspect-internal map-swapfile -r "$t2_root/swap/swapfile")"
+        if [[ "$(t2_param resume)" == "UUID=$uuid" && "$(t2_param resume_offset)" == "$offset" ]]; then
+            t2_line ok "resume= и resume_offset= — /swap/swapfile"
+        else
+            t2_line no "resume=$(t2_param resume) resume_offset=$(t2_param resume_offset), а нужно UUID=$uuid и $offset" \
+                "\"resume=UUID=$uuid\", \"resume_offset=$offset\" в kernelParams hosts/$host/host.toml, ws apply system"
+        fi
+    fi
+    esp="$(t2_fact refindEspPartuuid)"
+    if [[ -z "$esp" ]] || ! tree="$(ws system tree 2>/dev/null)"; then
+        t2_line no "refind.conf не сравнить (нет refindEspPartuuid или сборки системы)" "сначала шаги выше, ws apply"
+        return
+    fi
+    sudo install -d "$mnt"
+    if ! sudo mount -o ro "/dev/disk/by-partuuid/$esp" "$mnt"; then
+        t2_line no "ESP $esp не монтируется" "refindEspPartuuid в hosts/$host/host.toml"
+        sudo rmdir "$mnt" 2>/dev/null || true
+        return
+    fi
+    if sudo cmp -s "$tree/esp/EFI/BOOT/refind.conf" "$mnt/EFI/BOOT/refind.conf"; then
+        t2_line ok "refind.conf на ESP — собранный"
+    else
+        t2_line no "refind.conf на ESP не тот, что собран" \
+            "sudo mount /dev/disk/by-partuuid/$esp /mnt && sudo cp \"\$(ws system tree)/esp/EFI/BOOT/refind.conf\" /mnt/EFI/BOOT/refind.conf && sudo umount /mnt (ws help workstation, GRAPHICS)"
+    fi
+    sudo umount "$mnt"
+    sudo rmdir "$mnt" 2>/dev/null || true
+}
+
+# The checks of PART; setup stops when one is not done.
+t2_stop() {
+    say "Ручные шаги T2 и rEFInd (ws help rebuild)"
+    t2_left=0
+    "t2_$1"
+    if ((t2_left)); then
+        echo
+        echo "Не сделано: $t2_left. После них — ws setup (продолжит отсюда)."
+        trap - EXIT
+        exit 1
+    fi
+}
+
+# The manual steps that need the system of ws apply (firmware, refind.conf).
+step_t2() {
+    is_refind || return 0
+    t2_stop post
 }
 
 # FAIL does not stop setup: the snapshot is marked and the end lists them.
@@ -697,6 +839,24 @@ step_finish() {
     [[ "$checkpoint" == true ]] || echo "checkpoint setup не создан: ws checkpoint create setup после исправления."
 }
 
+# --check: the manual steps of this host, nothing else (no state, no apt).
+if [[ "$check_only" == true ]]; then
+    host="$(ws host)" || die "no host for $(hostname) in $repo (ws host)"
+    if ! is_refind; then
+        echo "Хост $host (boot = $(ws fact boot)): ручных шагов нет."
+        exit 0
+    fi
+    say "Ручные шаги T2 и rEFInd, хост $host (ws help rebuild)"
+    t2_pre
+    t2_post
+    if ((t2_left)); then
+        printf '\nНе сделано: %s.\n' "$t2_left"
+        exit 1
+    fi
+    printf '\nВсе ручные шаги сделаны.\n'
+    exit 0
+fi
+
 sudo -v || die "sudo needed"
 step_tools
 step_config
@@ -707,6 +867,7 @@ step_choices
 step_btrfs
 step_prepare
 step_layers
+step_t2
 step_check
 step_timeshift
 step_backup
