@@ -247,6 +247,21 @@ PLANNERS = {"nix": plan_nix, "podman": plan_podman, "flatpak": plan_flatpak}
 EXECUTORS = {"nix": exec_nix, "podman": exec_podman, "flatpak": exec_flatpak}
 
 
+def planned(scope, keep):
+    """The plan of SCOPE; on a terminal a "planning" line while it is made
+    (nix takes seconds: the GC roots and their closures)."""
+    progress = sys.stderr.isatty()
+    if progress:
+        sys.stderr.write(f"== {scope}: planning…")
+        sys.stderr.flush()
+    try:
+        return PLANNERS[scope](keep)
+    finally:
+        if progress:
+            sys.stderr.write("\r\x1b[K")
+            sys.stderr.flush()
+
+
 def parse(argv):
     dry, yes, keep, scopes = False, False, KEEP_DAYS, []
     args = list(argv)
@@ -277,9 +292,11 @@ def main(argv):
     dry, yes, keep, named = parse(argv)
     if yes and not named and not dry:
         die("--yes needs the scopes by name: ws clean --yes nix podman flatpak", 64)
-    plans = [PLANNERS[s](keep) for s in (named or SCOPES)]
-    for plan in plans:
-        plan.show()
+    plans = []
+    for scope in named or SCOPES:
+        plans.append(planned(scope, keep))
+        plans[-1].show()
+        sys.stdout.flush()
     todo = [p for p in plans if p.items]
     if dry or not todo:
         return 0
@@ -303,7 +320,7 @@ def main(argv):
 
     results = []
     for plan in (p for p in todo if p.scope in chosen):
-        again = PLANNERS[plan.scope](keep)
+        again = planned(plan.scope, keep)
         if again.ids() != plan.ids():
             print(f"{plan.scope}: the plan changed")
             again.show()
