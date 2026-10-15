@@ -11,8 +11,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - name: Install fish
-        run: sudo apt-get update && sudo apt-get install -y fish
+      # fish for the completions; tomlkit as on the hosts (system/apt.txt):
+      # the edits of the host choices keep comments (lib/ws_catalog.py).
+      - name: Install fish, python3-tomlkit
+        run: sudo apt-get update && sudo apt-get install -y fish python3-tomlkit
       - name: Unit, help and completion tests
         run: python3 -m unittest discover -s tests -v
       - name: Syntax of scripts by shebang, sourced *.bash, fish
