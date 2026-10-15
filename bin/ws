@@ -30,7 +30,7 @@ Usage:
   ws help [TOPIC]          the docs; without TOPIC the list of topics
   ws battery|gmux|psr|gpu ...   diagnostics of the hardware
   ws MODULE [ARG...]       flatpak box windows widgets game keyboard gnome
-                           suspend backup: the owner of that layer
+                           suspend backup script: the owner of that layer
 
 --core PATH  (apply, diff, news, update, checkpoint, container) build the configuration
           with the core checkout PATH instead of the revision its flake.lock
@@ -40,8 +40,9 @@ sync      publish the configuration (a repository of its own, all of it
           data): one commit of every tracked change, with what changed
           (catalogs, host choices, flake.lock), then git pull --rebase and
           git push when the branch has an upstream (no remote: the commit
-          stays local); files Git does not track are only named (git add
-          FILE); refuses during a Git operation and on a detached HEAD;
+          stays local); a new file of scripts/ is added to Git first, other
+          files Git does not track are only named (git add FILE); refuses
+          during a Git operation and on a detached HEAD;
           --dry-run shows what it would do
 news      home-manager news of this flake (apply does not notify about them)
 diff      build the home generation without activating it and show the
@@ -64,7 +65,9 @@ apply     apply the configuration of this host, in one order:
             flatpak     ws flatpak apply
             distrobox   ws box apply
             widgets     ws widgets apply
-          then what is left: log out and in (a step whose preflight fails,
+            scripts     ws script apply
+          a new file of scripts/ is added to Git before the build (the
+          flake sees only what Git tracks); then what is left: log out and in (a step whose preflight fails,
           exit 69), reboot (initramfs, kernel command line), ws sync;
           ws apply NAME... runs build and home always, of the rest only the
           names (home: nothing else); apt or system pending but not named
@@ -90,7 +93,7 @@ update    bring everything that is not pinned to the latest version, in order:
 check     run the owners' checks with --json and summarize their result
           objects (lib/check.bash): ws check repo, ws check home,
           ws keyboard check, ws gnome check, ws check widgets,
-          ws flatpak check, ws box check,
+          ws script check, ws flatpak check, ws box check,
           ws windows check, ws suspend check, ws system check, ws check apt,
           ws check virt, ws check steam, ws game check, ws check backup and
           ws-workstation-verify (cross-layer invariants);
@@ -170,6 +173,7 @@ MODULE    the owners of the layers, one command for each (ws help plan-v2,
             gnome     GNOME profile, extensions (ws gnome)
             suspend   suspend, hibernate, t2bce (ws suspend)
             backup    Timeshift snapshots to Unraid (ws backup)
+            script    the scripts of the configuration, run by name (ws script)
 USAGE
 }
 
@@ -221,7 +225,8 @@ changed_data_files() {
 
 # Files of the configuration that Git does not track (and does not
 # ignore): neither ws apply nor ws sync adds them (ws help architecture-v2,
-# 7); they are named instead.
+# 7); they are named instead. Those of auto_tracked (scripts/) they add
+# first (add_module_files, lib/common.bash).
 untracked_files() {
     git -C "$repo" ls-files --others --exclude-standard
 }
@@ -229,7 +234,8 @@ untracked_files() {
 # What changed in a data file against HEAD, for the commit message: a host
 # choice NAME=yes, NAME=no, -NAME, overrides APP (lib/ws_catalog.py); the
 # Flatpak catalog +APP, -APP, APP (fields) (lib/flatpak_catalog.py);
-# flake.lock: the inputs with a new revision.
+# a script +NAME (new), -NAME (deleted), edited; flake.lock: the inputs
+# with a new revision.
 data_summary() {
     local f="$1" old
     old="$(mktemp)"
@@ -246,10 +252,19 @@ def revs(path):
 old, new = revs(sys.argv[1]), revs(sys.argv[2])
 print(", ".join(k for k in sorted(set(old) | set(new)) if old.get(k) != new.get(k) and k != "root"))
 PY
-    elif [[ "$f" == hosts/*/flatpak.toml || "$f" == hosts/*/boxes.toml || "$f" == hosts/*/widgets.toml ]]; then
+    elif [[ "$f" == hosts/*/flatpak.toml || "$f" == hosts/*/boxes.toml || "$f" == hosts/*/widgets.toml \
+        || "$f" == hosts/*/scripts.toml ]]; then
         python3 "$WS_CORE/lib/ws_catalog.py" summary "$old" "$repo/$f"
     elif [[ "$f" == flatpak/catalog.toml ]]; then
         python3 "$WS_CORE/lib/flatpak_catalog.py" summary "$old" "$repo/$f"
+    elif [[ "$f" == scripts/* && "$f" != scripts/catalog.toml && "$f" != scripts/lib/* ]]; then
+        if ! git -C "$repo" cat-file -e "HEAD:$f" 2>/dev/null; then
+            echo "+${f#scripts/}"
+        elif [[ ! -e "$repo/$f" ]]; then
+            echo "-${f#scripts/}"
+        else
+            echo "edited"
+        fi
     else
         echo
     fi
@@ -297,8 +312,15 @@ cmd_sync() {
     branch="$(git -C "$repo" symbolic-ref -q --short HEAD)" \
         || die "HEAD is detached: check out a branch first"
     upstream="$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)" || upstream=""
-    # Everything tracked is data; a new file is published only once added.
-    mapfile -t untracked < <(untracked_files)
+    # Everything tracked is data; a new file is published only once added,
+    # one of scripts/ by this (add_module_files).
+    if [[ "$dry_run" == true ]]; then
+        mapfile -t untracked < <(git -C "$repo" ls-files --others --exclude-standard -- "${auto_tracked[@]}")
+        ((${#untracked[@]} == 0)) || echo "would add to Git and commit: ${untracked[*]}"
+    else
+        add_module_files || return 1
+    fi
+    mapfile -t untracked < <(untracked_files | grep -v -e "^scripts/" || true)
     ((${#untracked[@]} == 0)) \
         || echo "not tracked, not published: ${untracked[*]} (git -C $repo add FILE, then ws sync)"
 
@@ -348,10 +370,12 @@ MSG
     fi
 }
 
-# The flake sees only files Git knows: nothing is added (ws help
-# architecture-v2, 7), a file Git does not track is named instead.
+# The flake sees only files Git knows: a new file of scripts/ is added
+# (add_module_files), nothing else (ws help architecture-v2, 7); a file Git
+# does not track is named instead.
 stage_data() {
     local -a untracked=()
+    add_module_files || return 2
     mapfile -t untracked < <(untracked_files)
     ((${#untracked[@]} == 0)) || {
         printf '%s: files the flake does not see (not tracked): %s\n  git -C %s add FILE (or .gitignore it), then ws apply\n' \
@@ -413,6 +437,7 @@ modules=(
     "gnome ws-gnome"
     "suspend ws-suspend"
     "backup wsbackup"
+    "script wsscript"
 )
 
 module_owner() {
@@ -476,6 +501,7 @@ apply_steps=(
     "flatpak wsflatpak apply"
     "distrobox wsbox apply"
     "widgets wswidgets apply"
+    "scripts wsscript apply"
 )
 # The names ws apply NAME... takes: home (only the Nix stages), apt,
 # system and the module steps.
@@ -490,7 +516,8 @@ marks_state() {
 }
 
 # ws apply [NAME...] (ws help architecture-v2, 8): one order for everything.
-#   1. host and roots: data files added to Git, no untracked flake files
+#   1. host and roots: new files of scripts/ added to Git, no other
+#      untracked flake files
 #   2. the new positions of the catalogs, one checklist (of the modules
 #      named; without a terminal they stay ask)
 #   3. build: the home-manager generation and the system tree
@@ -529,7 +556,7 @@ cmd_apply() {
     marks_before="$(marks_state)"
 
     # 2. Every question first.
-    for name in flatpak distrobox widgets; do
+    for name in flatpak distrobox widgets scripts; do
         wanted "$name" || continue
         case "$name" in
             distrobox) modules+=(boxes) ;;
@@ -759,6 +786,7 @@ check_steps=(
     "keyboard ws-keyboard check"
     "gnome ws-gnome check"
     "widgets ws check widgets"
+    "scripts wsscript check"
     "flatpak wsflatpak check"
     "distrobox wsbox check"
     "windows wswin check"

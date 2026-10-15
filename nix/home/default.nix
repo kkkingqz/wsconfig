@@ -17,6 +17,8 @@
     ../../keyboard/keyboard.nix
     ../../distrobox/distrobox.nix
     ../../windows/apps.nix
+    # The scripts of the configuration, run by name (ws help scripts).
+    ../../scripts/scripts.nix
     # Sources of the Game Mode packages: built anywhere, installed only with
     # gameMode = "yes" (wsgame, ws help gaming).
     ../../gaming/sources.nix

@@ -90,6 +90,8 @@ mapfile -t data_files < <("$WS_CORE/bin/ws" data-files 2>/dev/null)
 status_porcelain="$(git -C "$repo" status --porcelain=v1 --untracked-files=all 2>/dev/null \
     | while IFS= read -r line; do
         path="${line:3}"
+        # A new file of scripts/: ws apply or ws sync adds it (below).
+        [[ "$line" != "?? scripts/"* ]] || continue
         printf '%s\n' "${data_files[@]}" | grep -Fxq -- "$path" || printf '%s\n' "$line"
     done || true)"
 unpublished="$("$WS_CORE/bin/ws" unpublished 2>/dev/null || true)"
@@ -111,7 +113,10 @@ if config_checkout; then
     else
         fail "$problem"
     fi
-    mapfile -t untracked < <(git -C "$repo" ls-files --others --exclude-standard)
+    # scripts/: added by ws apply and ws sync (ws help plan-v2, 10.1).
+    mapfile -t untracked < <(git -C "$repo" ls-files --others --exclude-standard -- . ':!scripts')
+    mapfile -t new_scripts < <(git -C "$repo" ls-files --others --exclude-standard -- scripts)
+    ((${#new_scripts[@]} == 0)) || info "new, ws apply or ws sync adds them to Git: ${new_scripts[*]}"
     if ((${#untracked[@]})); then
         fail "not tracked, so not in the build (ws apply refuses): ${untracked[*]}; git add or .gitignore them"
     else

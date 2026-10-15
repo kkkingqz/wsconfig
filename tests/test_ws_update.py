@@ -5,7 +5,7 @@ import unittest
 
 from ws_fixture import Workspace
 
-MODULES = ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsbox", "wswidgets")
+MODULES = ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsbox", "wswidgets", "wsscript")
 
 
 class UpdateTests(unittest.TestCase):

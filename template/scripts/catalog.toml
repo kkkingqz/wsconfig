@@ -1,0 +1,19 @@
+# Scripts: every file of scripts/ is a command of that name (ws help
+# scripts). Any language, with a shebang; the first comment line after it
+# is the description of ws script list and the checklists. scripts/lib/ is
+# kept for libraries (no command): a script finds it next to its real path,
+# $(dirname "$(readlink -f "$0")")/lib.
+#
+# Add: put the file here (or ws script add NAME), then ws apply: it adds a
+# new file to Git, asks which hosts get it and links ~/.local/bin/NAME into
+# this checkout, so an edit takes effect at once. ws sync publishes it; on
+# another host ws apply offers it. Which host has which:
+# hosts/HOST/scripts.toml (yes, no; ws script enable/disable).
+#
+# A script needs no entry here. One is only for another default or
+# description:
+#
+#   [[scripts]]
+#   name = "photos-import"
+#   default = "yes"          # ask (the default: offered), no or yes
+#   description = "Import photos from the camera card"

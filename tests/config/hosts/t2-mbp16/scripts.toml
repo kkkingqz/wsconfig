@@ -1,0 +1,4 @@
+# t2-mbp16: scripts (ws script), run by name from ~/.local/bin.
+# yes: here, no: declined; what is in neither gets the default of the catalog.
+yes = ["hello"]
+no = ["disk-report.py"]

@@ -1,0 +1,3 @@
+[[scripts]]
+name = "b.py"
+default = "yes"

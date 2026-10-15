@@ -11,7 +11,7 @@ from ws_fixture import Workspace
 ROOT = Path(__file__).resolve().parents[1]
 
 APPLY = {"ws-gnome": 0, "ws-tiling-apply": 69, "ws-keyboard-apply": 3,
-         "wsflatpak": 0, "wsbox": 0, "wswidgets": 0}
+         "wsflatpak": 0, "wsbox": 0, "wswidgets": 0, "wsscript": 0}
 CHECK = ["ws-check-repo", "ws-check-home", "ws-keyboard", "ws-gnome", "wsflatpak", "wsbox", "wswin",
          "ws-suspend", "wsgame", "ws-workstation-verify"]
 RESULT = json.dumps({"status": "warn", "passes": 1, "warnings": 1, "failures": 0,
@@ -40,18 +40,19 @@ class StepsTests(unittest.TestCase):
         rc, out, _ = self.ws("apply")
         self.assertEqual(rc, 1)
         self.assertEqual(self.headers(out), [
-            "=== choices: ws_catalog offer --all flatpak boxes widgets",
+            "=== choices: ws_catalog offer --all flatpak boxes widgets scripts",
             "=== build: home-manager generation, system tree",
             "=== home: home-manager switch",
             "=== extensions: ws-gnome extensions", "=== tiling: ws-tiling-apply",
             "=== keyboard: ws-keyboard-apply", "=== flatpak: wsflatpak apply",
-            "=== distrobox: wsbox apply", "=== widgets: wswidgets apply", "=== ws apply"])
+            "=== distrobox: wsbox apply", "=== widgets: wswidgets apply",
+            "=== scripts: wsscript apply", "=== ws apply"])
         summary = out[out.index("=== ws apply"):].splitlines()
-        self.assertEqual(summary[1:12], [
+        self.assertEqual(summary[1:13], [
             "  OK        choices", "  OK        build", "  OK        apt (nothing to do)",
             "  OK        system (nothing to do)", "  OK        home", "  OK        extensions",
             "  PREFLIGHT tiling", "  FAIL      keyboard (exit 3)", "  OK        flatpak",
-            "  OK        distrobox", "  OK        widgets"])
+            "  OK        distrobox", "  OK        widgets", "  OK        scripts"])
         self.assertIn("    log out and in, then: ws apply tiling", summary)
         # The module steps run inside ws apply and ask nothing.
         self.assertIn("wsflatpak apply applying=1 offered=1", out)
@@ -143,7 +144,7 @@ class StepsTests(unittest.TestCase):
     def test_steps_lists(self):
         self.assertEqual(self.ws("steps", "apply")[1].split(),
                          ["home", "apt", "system", "extensions", "tiling", "keyboard", "flatpak",
-                          "distrobox", "widgets"])
+                          "distrobox", "widgets", "scripts"])
 
 
 class IdempotenceTests(unittest.TestCase):
@@ -154,7 +155,8 @@ class IdempotenceTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         modules = {name: f'echo "{name} $*" >> "$CALLS"\n' for name in
-                   ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsbox", "wswidgets")}
+                   ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsbox", "wswidgets",
+                    "wsscript")}
         self.w = Workspace(tmp.name, modules=modules)
         (self.w.repo / "hosts/test/apt.txt").write_text("pkg-a\npurge:old-b\n")
         (self.w.state / "installed").write_text("old-b\n")

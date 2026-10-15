@@ -42,6 +42,7 @@ system/         системные файлы в /etc, /boot, /usr/local, ядр
 keyboard/       macOS-клавиатура: xremap, сочетания GNOME и Tiling Assistant
 gnome/          профиль GNOME, расширения (свои — gnome/extensions/)
 widgets/        слой виджетов: wswidgets из flake.lock; выбор — hosts/*/widgets.toml
+scripts/        scripts.nix: скрипты scripts/ конфигурации → ~/.local/bin/NAME; выбор — hosts/*/scripts.toml
 terminal/       Ghostty, fish, micro, xdg-terminal-exec
 flatpak/        каталог приложений, remotes и overrides (catalog.toml, ws flatpak)
 distrobox/      контейнеры Distrobox и их hooks (ws box)
@@ -70,6 +71,7 @@ docs/runbooks/       setup, rebuild, keyboard, gnome, terminal, suspend,
                      touchbar, flatpak, distrobox, windows, remmina, virt,
                      gaming, backup, recovery
                      widgets (слой wswidgets: факт widgets, widgets.toml, ws widgets)
+                     scripts (свои скрипты: scripts/, scripts.toml, ws script)
 docs/plans/          roadmap и незавершённые планы
 docs/history/        как строились завершённые слои
 docs/superpowers/    specs/ и plans/: проекты и планы реализации backup и

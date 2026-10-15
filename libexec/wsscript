@@ -1,0 +1,409 @@
+#!/usr/bin/env python3
+"""ws script: the scripts of the configuration (ws help scripts).
+
+Every file of scripts/ in the configuration is a command of that name, in
+any language (a shebang). Which host has which: hosts/HOST/scripts.toml
+(yes, no; lib/ws_catalog.py), the default ask, or that of
+scripts/catalog.toml. ws apply adds a new file of scripts/ to Git, asks
+about the scripts in state ask, links ~/.local/bin/NAME into the checkout
+for those in yes (scripts/scripts.nix) and runs `ws script apply`; ws sync
+publishes the files and the choice. A script runs by its name, there is no
+`ws script run`.
+"""
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
+import ws_catalog  # noqa: E402
+import ws_check  # noqa: E402
+import ws_common  # noqa: E402
+import ws_select  # noqa: E402
+
+PROG = "ws script"
+REPO = ws_common.CONFIG
+SCRIPTS = REPO / "scripts"
+BIN = Path.home() / ".local/bin"
+MANIFEST = Path.home() / ".local/share/wsconfig/scripts/scripts.json"
+TEMPLATE = '''#!/usr/bin/env bash
+# What {name} does (this first comment is its description in ws script list).
+set -euo pipefail
+
+'''
+
+USAGE = """Usage:
+  ws script list                 the scripts of scripts/: choice here, linked, description
+  ws script add [-n] NAME [FILE] a new script: FILE, else a bash stub; yes on this
+                                 host, git add, then ws apply scripts
+  ws script edit NAME            $VISUAL / $EDITOR on the file of the checkout
+  ws script enable [-n] NAME...  yes on this host, then ws apply scripts
+  ws script disable [-n] NAME... no on this host (the file stays), then ws apply scripts
+  ws script delete [-n] NAME     git rm the file, drop it from the choice of every
+                                 host and scripts/catalog.toml, then ws apply scripts
+  ws script apply [--select]     the scripts not offered here yet, the execute bit
+                                 of those here (ws apply scripts runs it)
+  ws script check [--json]       links, files and names against the choice
+
+A script runs by its name (~/.local/bin/NAME links into the checkout: an
+edit takes effect at once). A new file put into scripts/ by hand is added
+to Git and offered by ws apply. -n (--no-apply): only edit; ws apply later.
+"""
+
+
+def die(message):
+    ws_common.die(PROG, message)
+
+
+def host():
+    try:
+        return ws_catalog.current_host(REPO)
+    except ValueError as e:
+        die(str(e))
+
+
+def choice(name=None):
+    try:
+        return ws_catalog.Choice("scripts", name or host(), REPO)
+    except ValueError as e:
+        die(str(e))
+
+
+def catalog():
+    """{name: (default, description)} of the scripts."""
+    return {n: (d, desc) for n, d, desc in ws_catalog.script_catalog(REPO)}
+
+
+def manifest():
+    """The scripts of the last build here, None without a manifest."""
+    data = ws_common.load(MANIFEST)
+    return data if isinstance(data, dict) else None
+
+
+def linked(name):
+    """~/.local/bin/NAME leads to scripts/NAME of the checkout."""
+    link, target = BIN / name, SCRIPTS / name
+    return link.is_symlink() and target.exists() and link.resolve() == target.resolve()
+
+
+def reserved(name):
+    """What else installs ~/.local/bin/NAME (scripts/scripts.nix), or None."""
+    if (ws_common.CORE / "bin" / name).exists():
+        return f"the {name} of the core"
+    if name == "xremap":
+        return "xremap of the core (keyboard/xremap.nix)"
+    if (REPO / "home/.local/bin" / name).exists():
+        return f"home/.local/bin/{name} of the configuration"
+    return None
+
+
+def shadowed(name):
+    """The command of the system NAME would hide (~/.local/bin comes first
+    in PATH), or None. WSSCRIPT_PATH replaces PATH (tests)."""
+    path = os.environ.get("WSSCRIPT_PATH", os.environ.get("PATH", ""))
+    own = {str(BIN), str(BIN.resolve()) if BIN.exists() else str(BIN)}
+    dirs = [d for d in path.split(os.pathsep) if d and d not in own]
+    return shutil.which(name, path=os.pathsep.join(dirs))
+
+
+def git(*args, check=True):
+    p = subprocess.run(["git", "-C", str(REPO), *args], text=True, capture_output=True)
+    if check and p.returncode:
+        die(f"git {' '.join(args)}: {p.stderr.strip()}")
+    return p
+
+
+def in_git():
+    return git("rev-parse", "--is-inside-work-tree", check=False).returncode == 0
+
+
+def apply(no_apply, hint="ws apply scripts"):
+    if os.environ.get("WS_APPLYING"):
+        return
+    if no_apply:
+        print(f"then: {hint} (applies it), ws sync (publishes it)")
+    else:
+        ws_common.apply_module("scripts")
+
+
+def flag_no_apply(args):
+    if args[:1] and args[0] in ("-n", "--no-apply"):
+        return True, args[1:]
+    return False, args
+
+
+def known(names):
+    have = catalog()
+    for name in names:
+        if name not in have:
+            die(f"no script {name} in {SCRIPTS} (ws script list)")
+
+
+def cmd_list(args):
+    if args:
+        die("usage: ws script list")
+    h = host()
+    c = choice(h)
+    print(f"scripts of {SCRIPTS}, {h}:")
+    items = ws_catalog.script_catalog(REPO)
+    if not items:
+        print("  (none: put a file into scripts/ or ws script add NAME)")
+    for name, default, description in items:
+        mark = "linked" if linked(name) else "-"
+        print(f"  {name:<20} {c.state(name, default):<4} {mark:<7} {description}")
+    for name in c.yes() + c.no():
+        if name not in dict((n, d) for n, d, _ in items):
+            print(f"  {name:<20} {c.state(name):<4} {'-':<7} (no file in scripts/)")
+    return 0
+
+
+def cmd_names(args):
+    """The names for the fish completion: NAME<TAB>DESCRIPTION."""
+    for name, _, description in ws_catalog.script_catalog(REPO):
+        print(f"{name}\t{description}")
+    return 0
+
+
+def cmd_add(args):
+    no_apply, args = flag_no_apply(args)
+    if len(args) not in (1, 2):
+        die("usage: ws script add [-n] NAME [FILE]")
+    name = args[0]
+    if not ws_catalog.SCRIPT_NAME.fullmatch(name) or name in ws_catalog.SCRIPT_DIRS \
+            or name == ws_catalog.SCRIPT_CATALOG:
+        die(f"{name}: not a command name (letters, digits and . _ + -, a letter or digit first)")
+    path = SCRIPTS / name
+    if path.exists() or path.is_symlink():
+        die(f"scripts/{name} exists (ws script edit {name})")
+    owner = reserved(name)
+    if owner:
+        die(f"~/.local/bin/{name} is {owner}; choose another name")
+    system = shadowed(name)
+    if system:
+        die(f"{name} would hide {system} (~/.local/bin comes first in PATH); choose another name")
+    SCRIPTS.mkdir(parents=True, exist_ok=True)
+    if len(args) == 2:
+        source = Path(args[1])
+        if not source.is_file():
+            die(f"{source}: no such file")
+        shutil.copyfile(source, path)
+    else:
+        path.write_text(TEMPLATE.format(name=name))
+    path.chmod(0o755)
+    if in_git():
+        git("add", "--", f"scripts/{name}")
+    c = choice()
+    c.set(name, "yes")
+    c.save()
+    print(f"added: {path} (yes on {c.host})")
+    if len(args) == 1:
+        print(f"edit it: ws script edit {name}")
+    apply(no_apply)
+    return 0
+
+
+def cmd_edit(args):
+    if len(args) != 1:
+        die("usage: ws script edit NAME")
+    known(args)
+    editor = os.environ.get("VISUAL") or os.environ.get("EDITOR") \
+        or next((e for e in ("micro", "nano", "vi") if shutil.which(e)), None)
+    if not editor:
+        die("no editor: set EDITOR")
+    import shlex
+    return subprocess.run([*shlex.split(editor), str(SCRIPTS / args[0])]).returncode
+
+
+def set_state(args, state):
+    no_apply, names = flag_no_apply(args)
+    if not names:
+        die(f"usage: ws script {'enable' if state == 'yes' else 'disable'} [-n] NAME...")
+    known(names)
+    c = choice()
+    for name in names:
+        c.set(name, state)
+    c.save()
+    for name in names:
+        word = "enabled" if state == "yes" else "disabled"
+        print(f"{word} on {c.host}: {name}" + ("" if state == "yes" else " (the file stays)"))
+    apply(no_apply)
+    return 0
+
+
+def drop_entry(name):
+    """The entry of NAME in scripts/catalog.toml, if any; True when removed."""
+    path = SCRIPTS / ws_catalog.SCRIPT_CATALOG
+    if name not in ws_catalog.script_entries(REPO):
+        return False
+    kit = ws_catalog.tomlkit()
+    doc = kit.parse(path.read_text())
+    entries = doc["scripts"]
+    for i in reversed(range(len(entries))):
+        if entries[i].get("name") == name:
+            del entries[i]
+    path.write_text(kit.dumps(doc))
+    return True
+
+
+def cmd_delete(args):
+    no_apply, args = flag_no_apply(args)
+    if len(args) != 1:
+        die("usage: ws script delete [-n] NAME")
+    name = args[0]
+    known(args)
+    rel = f"scripts/{name}"
+    if in_git() and git("ls-files", "--error-unmatch", "--", rel, check=False).returncode == 0:
+        git("rm", "-q", "-f", "--", rel)
+    else:
+        (SCRIPTS / name).unlink()
+    print(f"deleted: {rel}")
+    for path in sorted(ws_catalog.hosts_dir(REPO).glob("*/scripts.toml")):
+        c = choice(path.parent.name)
+        if c.set(name, "ask") and c.save():
+            print(f"  dropped from {path.relative_to(REPO)}")
+    if drop_entry(name):
+        print(f"  dropped from scripts/{ws_catalog.SCRIPT_CATALOG}")
+    apply(no_apply)
+    return 0
+
+
+def cmd_apply(args):
+    select = args == ["--select"]
+    if args and not select:
+        die("usage: ws script apply [--select]")
+    c = choice()
+    items = ws_catalog.script_catalog(REPO)
+    before = c.text
+    offered = [] if os.environ.get("WS_OFFERED") and not select else items
+    try:
+        chosen = ws_catalog.offer(c, offered, select, "scripts")
+    except ws_select.NoTerminal:
+        if select:
+            die("ws script apply --select: needs a terminal")
+        names = [n for n, d, _ in items if c.state(n, d) == "ask"]
+        print(f"Not offered on {c.host} yet (no terminal to ask): {' '.join(names)}; "
+              "run ws script apply in a terminal", file=sys.stderr)
+        chosen = []
+    except KeyboardInterrupt:
+        sys.stderr.write("\n")
+        return ws_select.INTERRUPTED
+    if chosen is None:
+        print("ws script: choice cancelled, the offered scripts left as they are "
+              "(asked next time)", file=sys.stderr)
+    # A script needs the execute bit to run by name; Git keeps it, ws sync
+    # publishes it.
+    for name, default, _ in items:
+        path = SCRIPTS / name
+        if c.state(name, default) == "yes" and path.is_file() and not os.access(path, os.X_OK):
+            path.chmod(path.stat().st_mode | 0o111)
+            print(f"executable: scripts/{name}")
+    if c.text != before and not os.environ.get("WS_APPLYING"):
+        ws_common.apply_module("scripts")
+    elif not os.environ.get("WS_APPLYING") and not offered_any(c, items, select):
+        print(f"no scripts to offer on {c.host}")
+    return 0
+
+
+def offered_any(c, items, select):
+    return any(c.state(n, d) == "ask" or (select and c.state(n, d) == "no") for n, d, _ in items)
+
+
+def cmd_check(args):
+    json_mode = args == ["--json"]
+    if args and not json_mode:
+        die("usage: ws script check [--json]")
+    ck = ws_check.Check(json_mode)
+    try:
+        h = host()
+        c = ws_catalog.Choice("scripts", h, REPO)
+        items = ws_catalog.script_catalog(REPO)
+        entries = ws_catalog.script_entries(REPO)
+    except (ValueError, SystemExit) as e:
+        ck.fail(f"scripts and the choice: {e}")
+        return ck.finish()
+    names = {n for n, _, _ in items}
+
+    ck.section("1. scripts/ of the configuration")
+    problems = ws_catalog.script_problems(REPO)
+    for problem in problems:
+        ck.fail(f"{problem} (the build refuses it)")
+    if not problems:
+        ck.passed(f"{len(items)} scripts in {SCRIPTS}")
+    for name in entries:
+        if name not in names:
+            ck.warn(f"scripts/{ws_catalog.SCRIPT_CATALOG}: {name} has no file in scripts/")
+    for path in sorted(ws_catalog.hosts_dir(REPO).glob("*/scripts.toml")):
+        other = ws_catalog.Choice("scripts", path.parent.name, REPO)
+        for name in other.yes() + other.no():
+            if name not in names:
+                ck.warn(f"{path.relative_to(REPO)}: {name} has no file in scripts/ (ws script delete or edit the file)")
+
+    ck.section(f"2. Scripts of {h}")
+    wanted = [n for n, d, _ in items if c.state(n, d) == "yes"]
+    built = manifest()
+    if built is None:
+        ck.fail(f"no {MANIFEST} (ws apply scripts)")
+        return ck.finish()
+    have = built.get("scripts", [])
+    for name in sorted(set(wanted) - set(have)):
+        ck.warn(f"{name}: yes on {h}, not in the build (ws apply scripts)")
+    for name in sorted(set(have) - set(wanted)):
+        ck.warn(f"{name}: in the build, no longer yes on {h} (ws apply scripts)")
+    for name in have:
+        path = SCRIPTS / name
+        if not path.exists():
+            ck.fail(f"{name}: scripts/{name} is missing (ws apply scripts)")
+            continue
+        if not linked(name):
+            ck.fail(f"{name}: ~/.local/bin/{name} does not lead to {path} (ws apply scripts)")
+            continue
+        if not os.access(path, os.X_OK):
+            ck.fail(f"{name}: not executable (ws apply scripts sets it)")
+            continue
+        try:
+            shebang = path.open("rb").read(2) == b"#!"
+        except OSError:
+            shebang = False
+        if not shebang:
+            ck.warn(f"{name}: no #! line: what runs it is up to the caller")
+        system = shadowed(name)
+        if system:
+            ck.warn(f"{name}: hides {system} (~/.local/bin comes first in PATH); rename the script")
+        elif shebang:
+            ck.passed(f"{name}: ~/.local/bin/{name}")
+    if not have:
+        ck.info(f"no scripts on {h}")
+    return ck.finish()
+
+
+COMMANDS = {
+    "list": cmd_list,
+    "add": cmd_add,
+    "edit": cmd_edit,
+    "enable": lambda a: set_state(a, "yes"),
+    "disable": lambda a: set_state(a, "no"),
+    "delete": cmd_delete,
+    "apply": cmd_apply,
+    "check": cmd_check,
+    "names": cmd_names,
+}
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help", "help"):
+        sys.stdout.write(USAGE) if argv else sys.stderr.write(USAGE)
+        return 0 if argv else 64
+    command = COMMANDS.get(argv[0])
+    if command is None:
+        sys.stderr.write(USAGE)
+        return 64
+    try:
+        return command(argv[1:])
+    except ValueError as e:
+        die(str(e))
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Greet the user (an example script of the test configuration).
+set -euo pipefail
+echo "hello, ${1:-$USER}"

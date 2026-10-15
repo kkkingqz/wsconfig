@@ -121,6 +121,34 @@ class SyncTests(unittest.TestCase):
         self.assertIn("widgets.toml: a=no", self.git("log", "-1", "--format=%b"))
         self.assertEqual(self.git("status", "--porcelain"), "")
 
+    def test_new_scripts_are_added_and_committed(self):
+        # scripts/: added without git add (ws help plan-v2, 10.1); other
+        # untracked files and ignored ones stay out.
+        (self.repo / "scripts").mkdir()
+        (self.repo / "scripts/hello").write_text("#!/bin/sh\n")
+        (self.repo / "scripts/old.bak").write_text("")
+        (self.repo / ".gitignore").write_text("*.bak\n")
+        self.git("add", ".gitignore")
+        (self.repo / "notes.txt").write_text("")
+        p = self.ws("--dry-run")
+        self.assertIn("would add to Git and commit: scripts/hello", p.stdout)
+        self.assertEqual(self.git("ls-files", "scripts"), "")
+        p = self.ws()
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("not tracked, not published: notes.txt", p.stdout)
+        self.assertIn("not tracked, not published: notes.txt (", p.stdout)
+        self.assertEqual(self.git("ls-files", "scripts"), "scripts/hello")
+        self.assertIn("scripts/hello: +hello", self.git("log", "-1", "--format=%b"))
+        (self.repo / "scripts/hello").write_text("#!/bin/sh\necho\n")
+        self.assertEqual(self.ws().returncode, 0)
+        self.assertIn("scripts/hello: edited", self.git("log", "-1", "--format=%b"))
+        # Deleted by hand: the deletion is the next commit.
+        (self.repo / "scripts/hello").unlink()
+        p = self.ws()
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("scripts/hello: -hello", self.git("log", "-1", "--format=%b"))
+        self.assertEqual(self.git("ls-files", "scripts"), "")
+
     def test_every_tracked_change_is_data(self):
         # No code in a configuration: an unpushed commit of any file is
         # published too.

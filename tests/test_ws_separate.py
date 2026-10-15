@@ -12,7 +12,7 @@ import fast_tmp  # noqa: F401  (tmpfs)
 from ws_fixture import Workspace
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULES = ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsbox", "wswidgets")
+MODULES = ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsbox", "wswidgets", "wsscript")
 # flake.lock of a configuration repository: it pins the core as wsconfig.
 LOCK = {"nodes": {"root": {"inputs": {"wsconfig": "wsconfig", "nixpkgs": "nixpkgs"}},
                   "wsconfig": {"locked": {"rev": "a" * 40}}, "nixpkgs": {"locked": {"rev": "b" * 40}}},

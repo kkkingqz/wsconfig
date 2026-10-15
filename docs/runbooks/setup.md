@@ -99,8 +99,8 @@ wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/install.sh | 
    «Publish the new host and the choices (ws sync)?». Без remote `ws sync` коммитит локально.
 3. Списки с галочками (`lib/ws_catalog.py offer --all --setup`):
    - что предлагается: приложения каталога Flatpak, контейнеры Distrobox,
-     при `widgets = true` виджеты и overrides Flatpak — всё, где у этого
-     хоста нет выбора;
+     при `widgets = true` виджеты, скрипты `scripts/` (ws help scripts) и
+     overrides Flatpak — всё, где у этого хоста нет выбора;
    - что отмечено: `default` ask и yes отмечены, no — нет; overrides — общие
      значения каталога у приложений, которые на хосте будут;
    - куда записывается: `yes`/`no` в `hosts/HOST/*.toml` (снятый override —

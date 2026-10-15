@@ -80,10 +80,42 @@ ws_run() {
     fi
 }
 
+# The directories of the configuration whose files are the positions of a
+# catalog (ws help plan-v2, 10.0, 3): a new file there is added to Git by
+# ws apply, ws sync and the commands that evaluate the flake. Anywhere else
+# nothing is added, an untracked file is named (ws help architecture-v2, 7).
+auto_tracked=(scripts)
+
+# git add of the new files of auto_tracked (not those .gitignore ignores),
+# each named. A symbolic link out of its directory is refused: the flake
+# could not read it. Nothing outside a Git checkout.
+add_module_files() {
+    local f dir real target
+    local -a added=()
+    git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+    mapfile -t -d '' added < <(git -C "$repo" ls-files -z --others --exclude-standard -- "${auto_tracked[@]}")
+    ((${#added[@]})) || return 0
+    real="$(cd "$repo" && pwd -P)"
+    for f in "${added[@]}"; do
+        if [[ -L "$repo/$f" ]]; then
+            dir="${f%%/*}"
+            target="$(readlink -f -- "$repo/$f")" || target=""
+            if [[ "$target" != "$real/$dir/"* ]]; then
+                printf '%s: %s is a symbolic link out of %s/: not added to Git (copy the file into %s/ instead)\n' \
+                    "$ws_prog" "$f" "$dir" "$dir" >&2
+                return 1
+            fi
+        fi
+    done
+    git -C "$repo" add -- "${added[@]}" || return
+    printf 'added to Git: %s (ws sync publishes it)\n' "${added[*]}" >&2
+}
+
 # The flake sees only files known to git; a new .nix file that is not added
 # would silently be missing from the build.
 check_untracked() {
     local untracked
+    add_module_files || exit 1
     # Every file of the configuration is the flake's.
     untracked="$(git -C "$repo" ls-files --others --exclude-standard)"
     [[ -z "$untracked" ]] || die "untracked files of the configuration (git add them first):

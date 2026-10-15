@@ -21,7 +21,7 @@ ws-prepare         шаг ws setup: apt-списки, @vms и libvirt, @steam, @
 ws apply           всё по порядку: выбор новых позиций, сборка, apt и
                    системные файлы (sudo — только когда есть что делать),
                    home-manager, затем владельцы: расширения, tiling,
-                   клавиатура, Flatpak, Distrobox, виджеты; в конце — что
+                   клавиатура, Flatpak, Distrobox, виджеты, скрипты; в конце — что
                    осталось (вход, перезагрузка, ws sync)
 ws check           проверки всех владельцев и связей между слоями
 ```
@@ -62,6 +62,7 @@ apt              hosts/*apt.txt                    ws setup, apt       ws check 
 клавиатура       keyboard/*.nix, xremap.yml            ws apply, ws keyboard apply   ws keyboard check
 GNOME            gnome/gnome.nix, gnome-extensions.nix ws apply, ws apply extensions ws gnome check
 виджеты          widgets/*.txt, flake input wswidgets  wswidgets, ws apply ws check widgets
+скрипты          scripts/ конфигурации, scripts.nix    ws apply, ws script  ws script check
 Flatpak          flatpak/*.txt, flatpak.nix            ws flatpak apply      ws flatpak check
 Distrobox        distrobox/catalog.toml, distrobox.nix ws box apply          ws box check
 Windows          windows/apps.toml (+ боксы Distrobox)  ws apply, ws windows     ws windows check
@@ -85,7 +86,8 @@ Distrobox ↔ NTSync) проверяет `ws-workstation-verify`. Формат �
   (`xremap.yml`, ghostty, fish, udev/modprobe, `*.gschema.xml`,
   `containers.ini`); простой текст — `hosts/*apt.txt` (его читает
   подготовка `ws setup` до первой сборки); TOML — каталог `flatpak/catalog.toml` и выбор машин
-  `hosts/*/*.toml` (их правят `ws flatpak`, `ws box`, `ws widgets`).
+  `hosts/*/*.toml` (их правят `ws flatpak`, `ws box`, `ws widgets`,
+  `ws script`).
 - **Владелец выдаёт список.** Системный слой — `ws system manifest`,
   пользовательский — активное поколение home-manager, Distrobox —
   `containers.ini`, расширения — собранный список. Проверки, baseline и

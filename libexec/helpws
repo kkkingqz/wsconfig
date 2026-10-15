@@ -40,6 +40,7 @@ case "$topic" in
     backup|wsbackup) open_title ws-backup ;;
     recovery|restore|ws-restore) open_title ws-recovery ;;
     widgets|widget|wswidgets) open_title ws-widgets ;;
+    scripts|script|wsscript) open_title ws-scripts ;;
     roadmap|plans) open_title ws-roadmap ;;
     plan-t2) open_title ws-plan-t2 ;;
     plan-dgpu|dgpu|t2gmux) open_title ws-plan-dgpu ;;
@@ -92,6 +93,7 @@ Runbooks (docs/runbooks):
   backup           Backup to Unraid: Timeshift snapshots, Btrfs send (ws backup)
   recovery         Restore a date from Unraid with ws-restore (Live USB)
   widgets          Shared widget runtime (Quickshell, GNOME panel)
+  scripts          Own scripts of the configuration, run by name (ws script)
 
 Plans (docs/plans):
   roadmap          What is left

@@ -2,8 +2,9 @@
 """Catalogs and the choice of each host (ws help plan-v2, stage 3).
 
 A module's catalog is all it can install: the Flatpak apps, the containers
-of distrobox/catalog.toml, the widgets of the pinned wswidgets. Each position has a
-default, what a host without its own choice gets:
+of distrobox/catalog.toml, the widgets of the pinned wswidgets, the files of
+scripts/. Each position has a default, what a host without its own choice
+gets:
 
     ask  offered (apply asks: "Install all? [Y/n]", then a checklist)
     no   not offered (apply --select still asks)
@@ -29,6 +30,8 @@ For the bash tools (HOST: ws host --for-marks unless --host):
     ws_catalog.py MODULE used                                 names in yes on any host
     ws_catalog.py [--host H] MODULE offer [--select] --what TEXT -- NAME<TAB>DEFAULT<TAB>LABEL...
     ws_catalog.py summary OLD NEW                             changes of a host file (ws sync)
+    ws_catalog.py scripts catalog                             NAME<TAB>DEFAULT<TAB>DESCRIPTION
+    ws_catalog.py scripts problems                            what makes scripts/ fail to build
     ws_catalog.py [--host H] offer --all [--select] [MODULE...]  ws apply: every module
     ws_catalog.py [--host H] offer --all --setup              ws setup: checklists
 
@@ -38,7 +41,7 @@ names it set yes; exit 2 when cancelled (nothing written: the positions
 stay ask), 3 without a terminal (it prints the names it would ask about),
 130 on Ctrl+C.
 
-offer --all asks about flatpak, boxes and widgets (or the MODULEs) in turn
+offer --all asks about flatpak, boxes, widgets and scripts (or the MODULEs) in turn
 and prints the files it wrote; a cancel or no terminal leaves a module ask
 and goes on (setup, apply_offer). With --setup it asks as ws setup does,
 about everything without a choice of the host: exit 2 when cancelled
@@ -46,6 +49,7 @@ about everything without a choice of the host: exit 2 when cancelled
 """
 import os
 from pathlib import Path
+import re
 import sys
 import tomllib
 
@@ -62,6 +66,7 @@ MODULES = {
     "flatpak": "Flatpak (ws flatpak)",
     "boxes": "Distrobox containers (ws box)",
     "widgets": "widgets (ws widgets); the order of yes is the order of the panel buttons",
+    "scripts": "scripts (ws script), run by name from ~/.local/bin",
 }
 
 
@@ -265,6 +270,111 @@ def widget_catalog(config=None):
     return [(name, "") for name in used("widgets", config)]
 
 
+# The scripts of a configuration (ws help scripts): every file of scripts/
+# is one, its name the command; scripts/scripts.nix reads the same.
+SCRIPT_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")
+SCRIPT_DIRS = ("lib",)
+SCRIPT_CATALOG = "catalog.toml"
+
+
+def script_description(path):
+    """The first comment line after the shebang ("" without one)."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(4096).decode("utf-8")
+    except (OSError, UnicodeDecodeError):
+        return ""
+    lines = head.splitlines()
+    if lines[:1] and lines[0].startswith("#!"):
+        lines = lines[1:]
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith(("# shellcheck", "# -*-")):
+            continue
+        return line.lstrip("#").strip() if line.startswith("#") else ""
+    return ""
+
+
+def script_entries(config=None):
+    """{name: entry} of scripts/catalog.toml ([[scripts]] name, default,
+    description); {} without the file."""
+    path = Path(config or ws_common.CONFIG) / "scripts" / SCRIPT_CATALOG
+    try:
+        data = tomllib.loads(path.read_text())
+    except OSError:
+        return {}
+    except tomllib.TOMLDecodeError as e:
+        raise ValueError(f"scripts/{SCRIPT_CATALOG}: {e}") from None
+    entries = data.get("scripts", [])
+    if not isinstance(entries, list):
+        raise ValueError(f"scripts/{SCRIPT_CATALOG}: scripts must be a list of tables ([[scripts]])")
+    return {e["name"]: e for e in entries if isinstance(e, dict) and isinstance(e.get("name"), str)}
+
+
+def script_files(config=None):
+    """(names, problems): the scripts of scripts/ (regular files and links,
+    not hidden, not catalog.toml) with a valid name, by name, and what the
+    build of scripts/scripts.nix refuses."""
+    root = Path(config or ws_common.CONFIG) / "scripts"
+    names, problems = [], []
+    try:
+        children = sorted(root.iterdir())
+    except OSError:
+        return [], []
+    for p in children:
+        if p.name.startswith(".") or p.name == SCRIPT_CATALOG:
+            continue
+        if p.is_dir() and not p.is_symlink():
+            if p.name not in SCRIPT_DIRS:
+                problems.append(f"scripts/{p.name}/: no directories in scripts/ but lib/")
+            continue
+        if not SCRIPT_NAME.fullmatch(p.name):
+            problems.append(f"scripts/{p.name}: not a command name "
+                            "(letters, digits and . _ + -, a letter or digit first)")
+            continue
+        names.append(p.name)
+    return names, problems
+
+
+def script_problems(config=None):
+    """What makes scripts/ fail to build: bad names, directories, catalog
+    entries of a wrong form."""
+    _, problems = script_files(config)
+    try:
+        entries = script_entries(config)
+    except ValueError as e:
+        return problems + [str(e)]
+    for name, entry in entries.items():
+        for key in entry:
+            if key not in ("name", "default", "description"):
+                problems.append(f"scripts/{SCRIPT_CATALOG}: {name}: unknown key {key}")
+        if entry.get("default", "ask") not in DEFAULTS:
+            problems.append(f"scripts/{SCRIPT_CATALOG}: {name}: default must be ask, no or yes")
+    return problems
+
+
+def script_catalog(config=None):
+    """[(name, default, description)] of the scripts: the files of
+    scripts/ themselves (no Nix: ws setup asks before it), default and
+    description from scripts/catalog.toml, else ask and the first comment
+    of the file."""
+    root = Path(config or ws_common.CONFIG) / "scripts"
+    names, _ = script_files(config)
+    try:
+        entries = script_entries(config)
+    except ValueError:
+        entries = {}
+    out = []
+    for name in names:
+        entry = entries.get(name, {})
+        default = entry.get("default", "ask")
+        out.append((name, default if default in DEFAULTS else "ask",
+                    entry.get("description") or script_description(root / name)))
+    return out
+
+
 def checklist(term, title, items):
     """items: [(name, label, checked)]; the checked names, None when
     cancelled."""
@@ -280,7 +390,7 @@ def setup(config, host, term):
     asks nothing afterwards: the apps of flatpak/catalog.toml and the
     containers of distrobox/catalog.toml without a choice of this host, with
     widgets = true the widgets some host has in yes (ws widgets apply
-    offers the rest later), and the catalog overrides of the apps the host
+    offers the rest later), the scripts of scripts/, and the catalog overrides of the apps the host
     gets. Default ask and yes start checked, no unchecked; an unchecked
     override becomes a skip of the host. Nothing is written until all the
     lists are answered (None: cancelled). With nativeSteam = true the
@@ -292,6 +402,7 @@ def setup(config, host, term):
     apps = Choice("flatpak", host, config)
     boxes = Choice("boxes", host, config)
     widgets = Choice("widgets", host, config)
+    scripts = Choice("scripts", host, config)
 
     if (ws_facts.fact(host, "nativeSteam", config) == "yes" and catalog.app(STEAM_FLATPAK) is not None
             and STEAM_FLATPAK not in apps.yes() + apps.no()):
@@ -306,6 +417,9 @@ def setup(config, host, term):
     if ws_facts.fact(host, "widgets", config) == "yes":
         lists.append((widgets, f"Widgets (ws widgets) on {host}",
                       [(n, "ask") for n, _ in widget_catalog(config)], lambda n: ""))
+    descriptions = {n: d for n, _, d in script_catalog(config)}
+    lists.append((scripts, f"Scripts on {host}",
+                  [(n, d) for n, d, _ in script_catalog(config)], lambda n: descriptions.get(n, "")))
     for choice, title, positions, label in lists:
         items = [(name, label(name), default != "no") for name, default in positions
                  if name not in choice.yes() + choice.no()]
@@ -332,11 +446,11 @@ def setup(config, host, term):
         if name not in chosen:
             flatpak_catalog.set_skip(apps, *keys[name], True)
 
-    return [str(c.path.relative_to(config)) for c in (apps, boxes, widgets) if c.save()]
+    return [str(c.path.relative_to(config)) for c in (apps, boxes, widgets, scripts) if c.save()]
 
 
 def apply_offer(host, modules, select=False, tty=None, err=sys.stderr):
-    """The start of ws apply: for each of MODULES (flatpak, boxes, widgets)
+    """The start of ws apply: for each of MODULES (flatpak, boxes, widgets, scripts)
     the positions in state ask (with SELECT also no), as each module's
     apply asks: "Install all? [Y/n]", then a checklist. A cancel or a
     missing terminal leaves that module's positions ask and goes on.
@@ -357,6 +471,9 @@ def apply_offer(host, modules, select=False, tty=None, err=sys.stderr):
                 continue
             items = [(n, "ask", label) for n, label in widget_catalog()]
             what = "wswidgets widgets"
+        elif module == "scripts":
+            items = script_catalog()
+            what = "scripts"
         else:
             raise ValueError(f"unknown module {module!r}")
         before = choice.text
@@ -378,7 +495,7 @@ def apply_offer(host, modules, select=False, tty=None, err=sys.stderr):
 def cli_offer_all(host, args):
     setup_mode = "--setup" in args
     select = "--select" in args
-    modules = [a for a in args if not a.startswith("--")] or ["flatpak", "boxes", "widgets"]
+    modules = [a for a in args if not a.startswith("--")] or ["flatpak", "boxes", "widgets", "scripts"]
     host = ws_facts.check_host(host) if host else current_host()
     if not setup_mode:
         for path in apply_offer(host, modules, select):
@@ -418,6 +535,15 @@ def main(argv):
             print(summary(read(argv[1]), read(argv[2])))
             return 0
         module, action, args = argv[0], argv[1], argv[2:]
+        if module == "scripts" and action in ("catalog", "problems") and not args:
+            if action == "catalog":
+                for name, default, description in script_catalog():
+                    print(f"{name}\t{default}\t{description}")
+                return 0
+            problems = script_problems()
+            for problem in problems:
+                print(problem)
+            return 1 if problems else 0
         if action == "used" and not args:
             for name in used(module):
                 print(name)
