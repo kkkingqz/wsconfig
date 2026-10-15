@@ -298,7 +298,7 @@ class RealHelpersContract(TransferFixture, unittest.TestCase):
         state = self.b.root / 'state/wsconfig/backup'
         state.mkdir(parents=True)
         (state / 'config.json').write_text(json.dumps(self.c))
-        env = dict(self.env, WSCONFIG=str(ROOT), XDG_STATE_HOME=str(self.b.root / 'state'))
+        env = dict(self.env, WSCONFIG=str(ROOT / 'tests/config'), XDG_STATE_HOME=str(self.b.root / 'state'))
         p = subprocess.run([str(ROOT / 'bin/ws'), 'backup'], env=env, text=True, capture_output=True)
         self.assertEqual(p.returncode, 0, p.stderr)
         result = json.loads(p.stdout)

@@ -1,0 +1,29 @@
+# Foreground colors of the terminal sessions in Ghostty (ws help terminal):
+# a session in a Distrobox container or over SSH gets its color while it
+# runs, the previous one comes back after it. A host adds or replaces in
+# hosts/HOST/terminal.toml. Change: edit, then ws apply; ws sync
+# publishes the file.
+#
+#   [distrobox]  default: a box without its own color;
+#                [distrobox.boxes] NAME = "#RRGGBB"
+#   [ssh]        default: a host without its own color;
+#                [[ssh.hosts]] names = [ HOSTNAME, ... ] (as ssh -G resolves
+#                them: lower case, no trailing dot), color = "#RRGGBB"
+
+[distrobox]
+default = "#FFB3B3"
+
+[distrobox.boxes]
+arch = "#8BE9FD"
+wine-wayland = "#C4A7E7"
+wine = "#FFB86C"
+proton = "#A6E3A1"
+t2bce-build = "#89B4FA"
+touchbar-build = "#F5C2E7"
+
+[ssh]
+default = "#FFB3B3"
+
+[[ssh.hosts]]
+names = ["server.example", "192.0.2.10"]
+color = "#FFE066"

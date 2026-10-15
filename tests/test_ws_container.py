@@ -30,9 +30,6 @@ class ContainerTests(unittest.TestCase):
         for name in ('common.bash', 'ws_common.py', 'ws_facts.py'):
             shutil.copyfile(ROOT / 'lib' / name, self.repo / 'lib' / name)
         (self.repo / 'libexec/ws-container').chmod(0o755)
-        # A checkout of core and data together (until ws help plan-v2, 8.11).
-        (self.repo / 'bin').mkdir()
-        (self.repo / 'bin/ws').write_text('')
         shutil.copyfile(ROOT / '.gitignore', self.repo / '.gitignore')
         self.host('box', 'container')
         self.host('pc', 'grub')
@@ -114,21 +111,8 @@ exit 0
         self.assertEqual(p.returncode, 1)
         self.assertIn('the checkout has changes', p.stderr)
 
-    def test_build_sends_commit(self):
-        commit = self.git('rev-parse', '--short', 'HEAD')
-        p = self.ws('build', 'box')
-        self.assertEqual(p.returncode, 0, p.stderr)
-        call, size = self.calls.read_text().splitlines()[-2:]
-        self.assertIn(f"'local/box:{commit}'", call)
-        self.assertIn("'HOST=box'", call)
-        self.assertIn("-f container/Dockerfile -", call.replace("'", ''))
-        self.assertGreater(int(size), 0)
-
-
     def separate(self):
-        """The checkout as a configuration of its own, a core checkout
-        beside it."""
-        self.git('rm', '-q', 'bin/ws')
+        """The configuration pins a core; a core checkout beside it."""
         (self.repo / 'flake.lock').write_text(json.dumps(
             {'nodes': {'root': {'inputs': {'wsconfig': 'wsconfig'}},
                        'wsconfig': {'locked': {'rev': 'c' * 40}}}, 'root': 'root', 'version': 7}))

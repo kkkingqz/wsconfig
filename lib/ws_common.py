@@ -8,12 +8,9 @@ lib/ on sys.path by its own location:
 CORE is where the running code is, CONFIG the data (hosts, the lists
 and catalogs), STATE this machine only. WSCONFIG (tests, another checkout)
 sets CONFIG; WS_CONFIG and WS_STATE from ws are kept. Otherwise CONFIG is
-(ws help plan-v2, stage 5):
-- CORE itself when it is a checkout holding a configuration (SCHEMA_FILE):
-  until stage 8.11 code and data are one repository, and ~/wsconfig/bin/ws
-  works on its own checkout;
-- for the core in the store (marked by PACKAGE_MARK) or a checkout of the
-  core alone, the config of host.json in STATE, else ~/wsconfig.
+the config of host.json in STATE, else ~/wsconfig: the core in the store
+(PACKAGE_MARK) and a checkout of the core hold no data (ws help plan-v2,
+8.11).
 """
 import os
 from pathlib import Path
@@ -58,8 +55,6 @@ def config_root(core=CORE):
     env = os.environ.get("WSCONFIG") or os.environ.get("WS_CONFIG")
     if env:
         return Path(env)
-    if not (core / PACKAGE_MARK).exists() and (core / SCHEMA_FILE).exists():
-        return core
     recorded = host_record().get("config")
     if isinstance(recorded, str) and recorded:
         return Path(recorded)

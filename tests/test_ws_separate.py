@@ -23,7 +23,7 @@ class SeparateTests(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        self.w = Workspace(tmp.name, split=True, modules={m: "exit 0\n" for m in MODULES})
+        self.w = Workspace(tmp.name, modules={m: "exit 0\n" for m in MODULES})
         self.w.stub("gdbus", "exit 0\n", where="bin")
 
     def pin_core(self):

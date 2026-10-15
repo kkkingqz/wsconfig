@@ -9,12 +9,10 @@ MODULES = ("ws-gnome", "ws-tiling-apply", "ws-keyboard-apply", "wsflatpak", "wsb
 
 
 class UpdateTests(unittest.TestCase):
-    SPLIT = False
-
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        self.w = Workspace(tmp.name, split=self.SPLIT, modules={m: "exit 0\n" for m in MODULES})
+        self.w = Workspace(tmp.name, modules={m: "exit 0\n" for m in MODULES})
         self.initial = self.w.git("rev-parse", "HEAD")
         (self.w.repo / "flatpak/catalog.toml").write_text('[remotes]\nflathub = "u"\n')
         self.w.stub("gdbus", 'exit "${DBUS_STATUS:-0}"\n', where="bin")
@@ -52,14 +50,6 @@ class UpdateTests(unittest.TestCase):
         rc, out, _ = self.update("extensions", DBUS_STATUS="42")
         self.assertNotEqual(rc, 0, out)
         self.assertIn("FAIL  extensions (exit 42)", out)
-
-
-class SplitUpdateTests(UpdateTests):
-    """The tests that read paths, with the configuration apart from the
-    core (ws help plan-v2, 8.1); the rest does not depend on it."""
-    SPLIT = True
-    test_failed_activation_keeps_the_new_lock = None
-    test_failed_extension_update_is_reported = None
 
 
 if __name__ == "__main__":

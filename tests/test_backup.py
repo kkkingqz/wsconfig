@@ -78,7 +78,7 @@ class SendFixture:
             'schema_version': 1, 'ssh_host': 'backup-nas', 'remote_host_id': 'mbp16',
             'source_fs_uuid': U, 'receiver_fs_uuid': U,
             'source_snapshot_root': str(self.snapshots), 'remote_root': str(self.remote)}))
-        self.env = dict(self.b.env, WSCONFIG=str(ROOT),
+        self.env = dict(self.b.env, WSCONFIG=str(ROOT / "tests/config"),
                         XDG_CONFIG_HOME=str(self.b.root / 'config'),
                         XDG_STATE_HOME=str(self.b.root / 'state'))
 
@@ -336,8 +336,8 @@ os.execvp(a[1], a[1:])
 class BackupCLI(unittest.TestCase):
     def run_cli(self, *args):
         with tempfile.TemporaryDirectory() as d:
-            env = dict(os.environ, WSCONFIG=str(ROOT), XDG_CONFIG_HOME=d,
-                       XDG_STATE_HOME=d, WS_HOST='mbp16')
+            env = dict(os.environ, WSCONFIG=str(ROOT / "tests/config"), XDG_CONFIG_HOME=d,
+                       XDG_STATE_HOME=d, WS_HOST='t2-mbp16')
             return subprocess.run([str(ROOT / 'bin/ws'), 'backup', *args],
                                   env=env, text=True, capture_output=True)
 

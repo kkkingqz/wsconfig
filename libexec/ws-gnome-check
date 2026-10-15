@@ -41,10 +41,6 @@ done
 
 q() { printf '%q' "$1"; }
 
-is_tracked() {
-    git -C "$repo" ls-files --error-unmatch -- "$1" >/dev/null 2>&1
-}
-
 # The extension list is built from gnome/config.toml.
 # All in order, or those of one source.
 ext_list_file="$HOME/.local/share/wsconfig/gnome/extensions.json"
@@ -219,13 +215,8 @@ for uuid in $(ext_list local); do
             fail "$uuid has no *.gschema.xml source"
         fi
 
-        if is_tracked "gnome/extensions/$uuid/schemas/gschemas.compiled"; then
-            fail "$uuid generated gschemas.compiled is tracked"
-        elif git -C "$repo" check-ignore -q -- "gnome/extensions/$uuid/schemas/gschemas.compiled"; then
-            pass "$uuid generated gschemas.compiled is ignored"
-        else
-            warn "$uuid generated gschemas.compiled is not ignored"
-        fi
+        # That gschemas.compiled is not tracked: ws check repo of the core
+        # checkout (the configuration has no extensions).
 
         if have glib-compile-schemas; then
             schema_tmp="$(mktemp -d)"

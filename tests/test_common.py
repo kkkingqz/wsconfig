@@ -35,17 +35,13 @@ class CommonTests(unittest.TestCase):
         base.update(env or {})
         return subprocess.run([str(self.tool)], text=True, capture_output=True, env=base)
 
-    def test_roots_default_to_the_tool_checkout(self):
-        # A checkout holding a configuration (wsconfig.toml): code and data
-        # in one repository (until ws help plan-v2, 8.11).
-        (self.tmp / "core/wsconfig.toml").write_text("schema = 1\n")
+    def test_checkout_of_the_core_reads_host_json(self):
+        # A checkout of the core holds no data: the configuration is that
+        # of host.json, else ~/wsconfig.
         p = self.run_tool('echo "$WS_CORE|$WS_CONFIG|$WS_STATE|$repo"\n')
-        core = str(self.tmp / "core")
-        self.assertEqual(p.stdout.strip(), f"{core}|{core}|{self.tmp}/home/.local/state/wsconfig|{core}")
-
-    def test_checkout_of_the_core_alone_reads_host_json(self):
-        p = self.run_tool('echo "$WS_CONFIG"\n')
-        self.assertEqual(p.stdout.strip(), str(self.tmp / "home/wsconfig"))
+        core, home = str(self.tmp / "core"), self.tmp / "home"
+        self.assertEqual(p.stdout.strip(),
+                         f"{core}|{home}/wsconfig|{home}/.local/state/wsconfig|{home}/wsconfig")
 
     def test_wsconfig_sets_config_only(self):
         p = self.run_tool('echo "$WS_CORE|$WS_CONFIG|$repo"\n', {"WSCONFIG": "/data"})

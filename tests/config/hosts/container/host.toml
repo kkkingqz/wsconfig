@@ -1,0 +1,51 @@
+# GNOME desktop in a Docker container on a server, RDP login
+# (ws help plan-wsgnomebox). No hardware, kernel or boot loader of its own:
+# the image is built from this checkout (container/), the system tree goes
+# into the image, /nix and the home are directories of the server.
+
+[host]
+# `ws host` finds the host by it (docker --hostname).
+hostname = "container"
+user = "user"
+wsconfig = "wsconfig"
+
+[platform]
+# The NVIDIA GPU of the server through the NVIDIA container runtime.
+hardware = "container-nvidia"
+# No boot loader, kernel or initramfs: the container starts systemd.
+boot = "container"
+kernelParams = []
+# The RDP client sets the size; GNOME scales on its own.
+displayScale = 1
+# Set by the installer on a real machine; container/image-setup here.
+timezone = "Europe/Kyiv"
+
+[layers]
+# No VMs, no native Steam, no Game Mode in the container.
+vm = false
+nativeSteam = false
+gameMode = false
+# Quickshell widgets on the GNOME panel (ws help widgets).
+widgets = true
+
+# The container on the server (ws container build|run|status); ~ in a
+# mount target is the home of user. Data are directories of the server,
+# on NVMe pools: nothing under /mnt/user, so no array disk wakes up
+# (projects is cache only on nvmtwo).
+[container]
+server = "root@server.example"
+image = "local/container"
+# RDP of gnomebox-desktop is 3389.
+port = 3390
+mounts = [
+  "/srv/container/home:~",
+  "/srv/container/nix:/nix",
+  "/srv/container/grd:/var/lib/gnome-remote-desktop",
+  # password, rdp-user, rdp-password (ws-container-init, ws-rdp-init)
+  "/srv/container/config:/config:ro",
+  "/srv/projects:~/Projects",
+  "/srv/data:~/Data",
+]
+# The render node mutter and Vulkan use, FUSE for fuse-overlayfs and
+# Flatpak, tun for rootless podman networking (passt).
+devices = ["/dev/dri/renderD128", "/dev/fuse", "/dev/net/tun"]

@@ -35,15 +35,13 @@ Usage:
           with the core checkout PATH instead of the revision its flake.lock
           pins (--override-input wsconfig; flake.lock stays); only for a
           configuration of its own, which has the input wsconfig
-sync      publish the data files (flatpak/catalog.toml,
-          hosts/*/{flatpak,boxes,widgets}.toml, flake.lock, …): one commit
-          with what changed, then git pull --rebase and git push when the
-          branch has an upstream (no remote: the commit stays local);
-          refuses during a Git operation, on a detached HEAD, with changes
-          outside the data files and with unpushed commits of code;
-          in a configuration of its own (no bin/ws at its root) every
-          tracked change is data, files Git does not track are only named
-          (git add FILE); --dry-run shows what it would do
+sync      publish the configuration (a repository of its own, all of it
+          data): one commit of every tracked change, with what changed
+          (catalogs, host choices, flake.lock), then git pull --rebase and
+          git push when the branch has an upstream (no remote: the commit
+          stays local); files Git does not track are only named (git add
+          FILE); refuses during a Git operation and on a detached HEAD;
+          --dry-run shows what it would do
 news      home-manager news of this flake (apply does not notify about them)
 diff      build the home generation without activating it and show the
           package difference against the current one (nvd)
@@ -96,7 +94,8 @@ check     run the owners' checks with --json and summarize their result
           ws check virt, ws check steam, ws game check, ws check backup and
           ws-workstation-verify (cross-layer invariants);
           shows WARN/FAIL messages, -v all;
-          check repo: the checkout (Git, hygiene, syntax, executables);
+          check repo: the configuration (Git, schema, untracked files;
+          with WSCONFIG=CORE_CHECKOUT the core: hygiene, syntax, executables);
           check home: home-manager generation, Nix, man pages, session;
           check widgets: the wswidgets runtime, adapter and IPC (ws-widgets
           check) and its manifest against hosts/HOST/widgets.toml (hosts with
@@ -193,50 +192,15 @@ current_generation() {
     done
 }
 
-# Data files: what ws, the tools and the user write, published only by ws
-# sync (ws help plan-v2, 2.7 and 7): the Flatpak catalog (ws flatpak install/
-# manage/unmanage, filesystem/env/talk and un…), the host choices
-# (lib/ws_catalog.py: ws flatpak, ws box, ws widgets), flake.lock and the
-# module files the user edits (distrobox/catalog.toml, windows/apps.toml,
-# gnome/config.toml, keyboard/config.toml, terminal/config.toml and their
-# host files, an own keyboard/xremap.yml) and the personal settings home/
-# (nix/home/links.nix). Everything else in the checkout is code, committed
-# by the developer. Patterns as Git pathspecs: * matches / too. apply adds
-# them before the build; sync and ws check repo read them (ws data-files).
-data_patterns=(flatpak/catalog.toml distrobox/catalog.toml windows/apps.toml gnome/config.toml
-    keyboard/config.toml keyboard/xremap.yml terminal/config.toml flake.lock
-    'hosts/*/flatpak.toml' 'hosts/*/boxes.toml' 'hosts/*/widgets.toml'
-    'hosts/*/gnome.toml' 'hosts/*/keyboard.toml' 'hosts/*/terminal.toml' 'home/*')
-
-is_data_file() {
-    local f
-    separate_config && return 0
-    for f in "${data_patterns[@]}"; do
-        # shellcheck disable=SC2053 # the pattern is a glob
-        [[ "$1" == $f ]] && return 0
-    done
-    return 1
-}
-
-# The data files as paths, in the order of the patterns: in the checkout
-# (new ones too) or in HEAD.
+# Data files: everything of the configuration (a repository of its own, ws
+# help plan-v2, 8.6 and 8.11), published only by ws sync: what it tracks
+# (staged new files too) and what HEAD has. ws check repo reads them
+# (ws data-files).
 data_files() {
-    local p
-    # A configuration of its own: what it tracks (staged new files too) and
-    # what HEAD has.
-    if separate_config; then
-        {
-            git -C "$repo" ls-files --cached
-            git -C "$repo" ls-tree -r --name-only HEAD 2>/dev/null
-        } | awk '!seen[$0]++'
-        return
-    fi
-    for p in "${data_patterns[@]}"; do
-        {
-            git -C "$repo" ls-files --cached --others --exclude-standard -- "$p"
-            git -C "$repo" ls-tree -r --name-only HEAD -- "$p" 2>/dev/null
-        } | sort -u
-    done | awk '!seen[$0]++'
+    {
+        git -C "$repo" ls-files --cached
+        git -C "$repo" ls-tree -r --name-only HEAD 2>/dev/null
+    } | awk '!seen[$0]++'
 }
 
 # Data files that differ from HEAD (staged or not, new or deleted).
@@ -251,7 +215,7 @@ changed_data_files() {
     done < <(data_files)
 }
 
-# Files of a configuration of its own that Git does not track (and does not
+# Files of the configuration that Git does not track (and does not
 # ignore): neither ws apply nor ws sync adds them (ws help architecture-v2,
 # 7); they are named instead.
 untracked_files() {
@@ -297,11 +261,7 @@ unpublished_notice() {
     mapfile -t pending < <({
         changed_data_files
         if git -C "$repo" rev-parse --verify -q '@{u}' >/dev/null 2>&1; then
-            if separate_config; then
-                git -C "$repo" log --format= --name-only '@{u}..HEAD'
-            else
-                git -C "$repo" log --format= --name-only '@{u}..HEAD' -- "${data_patterns[@]}"
-            fi
+            git -C "$repo" log --format= --name-only '@{u}..HEAD'
         fi
     } | sort -u | sed '/^$/d')
     ((${#pending[@]})) || return 0
@@ -319,7 +279,7 @@ git_operation() {
 
 cmd_sync() {
     local dry_run=false op f subject remote upstream branch
-    local -a to_commit=() code=() body=()
+    local -a to_commit=() untracked=() body=()
     case "${1:-}" in
         --dry-run|-n) dry_run=true ;;
         "") ;;
@@ -332,26 +292,11 @@ cmd_sync() {
     fi
     branch="$(git -C "$repo" symbolic-ref -q --short HEAD)" \
         || die "HEAD is detached: check out a branch first"
-    # In a checkout of core and data together (until ws help plan-v2, 8.11)
-    # code changes and commits are the developer's: sync touches neither. In
-    # a configuration of its own everything tracked is data.
-    mapfile -t code < <(git -C "$repo" status --porcelain --untracked-files=no \
-        | cut -c4- | sed 's/.* -> //' | while IFS= read -r f; do is_data_file "$f" || echo "$f"; done)
-    ((${#code[@]} == 0)) \
-        || die "changes outside the data files: ${code[*]}; commit or restore them first (ws sync publishes data only)"
     upstream="$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)" || upstream=""
-    if [[ -n "$upstream" ]]; then
-        mapfile -t code < <(git -C "$repo" log --format= --name-only '@{u}..HEAD' \
-            | sed '/^$/d' | sort -u | while IFS= read -r f; do is_data_file "$f" || echo "$f"; done)
-        ((${#code[@]} == 0)) \
-            || die "local commits not on $upstream change code: ${code[*]}; push them yourself first (git push)"
-    fi
-
-    if separate_config; then
-        mapfile -t code < <(untracked_files)
-        ((${#code[@]} == 0)) \
-            || echo "not tracked, not published: ${code[*]} (git -C $repo add FILE, then ws sync)"
-    fi
+    # Everything tracked is data; a new file is published only once added.
+    mapfile -t untracked < <(untracked_files)
+    ((${#untracked[@]} == 0)) \
+        || echo "not tracked, not published: ${untracked[*]} (git -C $repo add FILE, then ws sync)"
 
     mapfile -t to_commit < <(changed_data_files)
     if ((${#to_commit[@]})); then
@@ -399,25 +344,16 @@ MSG
     fi
 }
 
-# The flake sees only files Git knows: git add the data files (nothing is
-# committed here, ws sync does that), then no untracked flake files.
+# The flake sees only files Git knows: nothing is added (ws help
+# architecture-v2, 7), a file Git does not track is named instead.
 stage_data() {
-    local f
     local -a untracked=()
-    # A configuration of its own: nothing is added, a new file is named.
-    if separate_config; then
-        mapfile -t untracked < <(untracked_files)
-        ((${#untracked[@]} == 0)) || {
-            printf '%s: files the flake does not see (not tracked): %s\n  git -C %s add FILE (or .gitignore it), then ws apply\n' \
-                "$ws_prog" "${untracked[*]}" "$repo" >&2
-            return 2
-        }
-        return 0
-    fi
-    while IFS= read -r f; do
-        [[ ! -e "$repo/$f" ]] || git -C "$repo" add -- "$f" || return
-    done < <(data_files)
-    check_untracked
+    mapfile -t untracked < <(untracked_files)
+    ((${#untracked[@]} == 0)) || {
+        printf '%s: files the flake does not see (not tracked): %s\n  git -C %s add FILE (or .gitignore it), then ws apply\n' \
+            "$ws_prog" "${untracked[*]}" "$repo" >&2
+        return 2
+    }
 }
 
 # home-manager switch of this host (stage 6 of ws apply). A file it would

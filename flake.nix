@@ -15,16 +15,17 @@
     };
   };
 
-  # The outputs of the configuration in this checkout (lib/mkconfig.nix,
-  # the same as a configuration repository gets), plus the checks of the
-  # core libraries and lib.mkConfig for a configuration repository.
+  # The outputs of the test configuration tests/config (lib/mkconfig.nix,
+  # what a configuration repository gets: its hosts are the checks of the
+  # core), the checks of the core libraries and lib.mkConfig for a
+  # configuration repository. The data of a real workstation is not here.
   outputs = inputs@{ nixpkgs, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
       inherit (nixpkgs) lib;
       mkConfig = import ./lib/mkconfig.nix;
-      own = mkConfig { root = ./.; inherit inputs; };
+      own = mkConfig { root = ./tests/config; inherit inputs; };
     in
     own // {
       lib = { inherit mkConfig; };

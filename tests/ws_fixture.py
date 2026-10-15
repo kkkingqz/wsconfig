@@ -2,9 +2,8 @@
 libexec/ copied or stubbed, nix and sudo stubbed in PATH, every call
 recorded in CALLS (ws help plan-v2, stage 6).
 
-One checkout (core and data in `repo`, as until stage 8) or split=True:
-the core in `core` without data, the configuration in `repo` with only the
-data files, WSCONFIG naming it (ws help plan-v2, 8.1)."""
+The core in `core` without data, the configuration in `repo` with only the
+data files, WSCONFIG naming it (ws help plan-v2, 8.1 and 8.11)."""
 import os
 from pathlib import Path
 import shutil
@@ -72,11 +71,10 @@ esac
 
 
 class Workspace:
-    def __init__(self, root, modules=None, real=("ws_run",), split=False):
+    def __init__(self, root, modules=None, real=("ws_run",)):
         self.root = Path(root)
-        self.split = split
-        self.repo = self.root / ("config" if split else "repo")
-        self.core = self.root / "core" if split else self.repo
+        self.repo = self.root / "config"
+        self.core = self.root / "core"
         self.state = self.root / "state"
         self.bin = self.root / "bin"
         self.calls = self.root / "calls"
@@ -110,8 +108,7 @@ class Workspace:
                         PATH=f"{self.bin}:{os.environ['PATH']}",
                         GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
                         GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
-        if split:
-            self.env["WSCONFIG"] = str(self.repo)
+        self.env["WSCONFIG"] = str(self.repo)
         self.git("init", "-q")
         self.git("add", ".")
         self.git("commit", "-qm", "init")

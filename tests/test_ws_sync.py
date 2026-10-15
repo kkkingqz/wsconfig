@@ -1,4 +1,5 @@
-"""ws sync: the only commit and push of the data files (ws help plan-v2, 2.7)."""
+"""ws sync: the only commit and push of the data files (ws help plan-v2, 2.7),
+in a configuration of its own (8.11)."""
 import os
 from pathlib import Path
 import shutil
@@ -24,12 +25,14 @@ class SyncTests(unittest.TestCase):
         self.env.update(IDENTITY, HOME=str(self.root), GIT_CONFIG_GLOBAL=str(self.root / "gitconfig"),
                         GIT_CONFIG_NOSYSTEM="1")
         (self.root / "gitconfig").write_text("[init]\n\tdefaultBranch = main\n[pull]\n\trebase = true\n")
+        # The core apart, the configuration a repository of its own.
+        self.core = self.root / "core"
+        (self.core / "bin").mkdir(parents=True)
+        shutil.copy(ROOT / "bin/ws", self.core / "bin/ws")
+        shutil.copytree(ROOT / "lib", self.core / "lib", ignore=shutil.ignore_patterns("__pycache__"))
         self.repo = self.root / "repo"
-        (self.repo / "bin").mkdir(parents=True)
-        (self.repo / "flatpak").mkdir()
-        shutil.copy(ROOT / "bin/ws", self.repo / "bin/ws")
-        shutil.copytree(ROOT / "lib", self.repo / "lib", ignore=shutil.ignore_patterns("__pycache__"))
-        shutil.copyfile(ROOT / ".gitignore", self.repo / ".gitignore")
+        (self.repo / "flatpak").mkdir(parents=True)
+        self.env["WSCONFIG"] = str(self.repo)
         (self.repo / "flatpak/catalog.toml").write_text(CATALOG)
         (self.repo / "wsconfig.toml").write_text("schema = 1\n")
         (self.repo / "flake.lock").write_text('{"nodes": {"nixpkgs": {"locked": {"rev": "a"}}, "root": {}}}\n')
@@ -42,7 +45,7 @@ class SyncTests(unittest.TestCase):
                               text=True, capture_output=True).stdout.strip()
 
     def ws(self, *args):
-        return subprocess.run([str(self.repo / "bin/ws"), "sync", *args], env=self.env, text=True,
+        return subprocess.run([str(self.core / "bin/ws"), "sync", *args], env=self.env, text=True,
                               capture_output=True, stdin=subprocess.DEVNULL)
 
     def with_upstream(self):
@@ -79,7 +82,7 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn("pushed to origin/main", p.stdout)
         log = self.git("log", "--format=%s", "origin/main")
-        self.assertEqual(log.splitlines()[:2], ["ws sync: flatpak/catalog.toml flake.lock", "other"])
+        self.assertEqual(log.splitlines()[:2], ["ws sync: flake.lock flatpak/catalog.toml", "other"])
         self.assertIn("flake.lock: nixpkgs", self.git("log", "-1", "--format=%b"))
 
     def test_remote_without_upstream_commits_locally(self):
@@ -106,6 +109,8 @@ class SyncTests(unittest.TestCase):
         host = self.repo / "hosts/mbp16"
         host.mkdir(parents=True)
         (host / "widgets.toml").write_text('yes = ["a"]\n')
+        # A new choice file is added by lib/ws_catalog.py that writes it.
+        self.git("add", "hosts/mbp16/widgets.toml")
         p = self.ws()
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertEqual(self.git("log", "-1", "--format=%s"), "ws sync: hosts/mbp16/widgets.toml")
@@ -116,21 +121,17 @@ class SyncTests(unittest.TestCase):
         self.assertIn("widgets.toml: a=no", self.git("log", "-1", "--format=%b"))
         self.assertEqual(self.git("status", "--porcelain"), "")
 
-    def test_refuses_code_changes(self):
-        (self.repo / "bin/ws").write_text((self.repo / "bin/ws").read_text() + "\n")
+    def test_every_tracked_change_is_data(self):
+        # No code in a configuration: an unpushed commit of any file is
+        # published too.
+        origin = self.with_upstream()
+        (self.repo / "README").write_text("notes\n")
+        self.git("add", "README")
+        self.git("commit", "-qm", "notes")
         self.edit_apps()
         p = self.ws()
-        self.assertEqual(p.returncode, 1)
-        self.assertIn("changes outside the data files: bin/ws", p.stderr)
-
-    def test_refuses_unpushed_code_commits(self):
-        self.with_upstream()
-        (self.repo / "README").write_text("code\n")
-        self.git("add", "README")
-        self.git("commit", "-qm", "code")
-        p = self.ws()
-        self.assertEqual(p.returncode, 1)
-        self.assertIn("local commits not on origin/main change code: README", p.stderr)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(self.git("rev-parse", "HEAD"), self.git("rev-parse", "main", cwd=origin))
 
     def test_refuses_detached_head_and_git_operations(self):
         self.git("checkout", "-q", "--detach")

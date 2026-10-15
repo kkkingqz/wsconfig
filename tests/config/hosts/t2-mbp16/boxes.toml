@@ -1,0 +1,11 @@
+# t2-mbp16: контейнеры Distrobox (ws box).
+# yes — есть здесь, no — отказались; чего нет ни там, ни там, — default каталога.
+yes = [
+    "arch",
+    "wine-wayland",
+    "wine",
+    "proton",
+    "t2bce-build",
+    "touchbar-build",
+]
+no = []

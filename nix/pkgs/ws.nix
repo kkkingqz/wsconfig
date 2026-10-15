@@ -1,19 +1,13 @@
 # The core of wsconfig in the store (ws help plan-v2, stage 5): bin/ws,
 # libexec/, lib/, the modules with their hooks, extensions and patches, docs.
-# Not in it: the data of the configuration (hosts, the catalogs and
-# TOML, home/, flake.lock; the data patterns of bin/ws) and tests. A tool that would
-# read data from WS_CORE finds nothing instead of a stale copy; data is
-# read from WS_CONFIG.
-# .wsconfig-package marks the tree: lib/common.bash then takes WS_CONFIG from
-# host.json in the state, not the core itself (a checkout).
+# Not in it: tests/ (with the test configuration tests/config). The data
+# is in the configuration repository, read from WS_CONFIG.
+# .wsconfig-package marks the tree as the core in the store (ws check home).
 { lib, runCommand }:
 let
   root = ../..;
-  data = map (p: lib.fileset.maybeMissing (root + p))
-    [ "/hosts" "/apt.txt" "/wsconfig.toml" "/flatpak/catalog.toml" "/distrobox/catalog.toml"
-      "/windows/apps.toml"
-      "/gnome/config.toml" "/keyboard/config.toml" "/keyboard/xremap.yml" "/terminal/config.toml"
-      "/home" "/flake.lock" "/tests" ];
+  # The test configuration and the tests are no part of the core.
+  data = [ (root + "/tests") ];
   src = lib.fileset.toSource {
     inherit root;
     fileset = lib.fileset.difference root (lib.fileset.unions data);

@@ -12,7 +12,7 @@ class BatchCLI(TransferFixture, unittest.TestCase):
         self.config_file = self.config_dir / 'config.json'
         self.config_file.write_text(json.dumps(self.c))
         self.state = self.b.root / 'state/wsconfig/backup'
-        self.cli_env = dict(self.env, WSCONFIG=str(ROOT),
+        self.cli_env = dict(self.env, WSCONFIG=str(ROOT / "tests/config"),
                             XDG_CONFIG_HOME=str(self.b.root / 'config'),
                             XDG_STATE_HOME=str(self.b.root / 'state'))
 
@@ -100,8 +100,8 @@ class BatchCLI(TransferFixture, unittest.TestCase):
         self.assertTrue((self.managed / 'vms' / r['id']).exists())
 
     def test_host_without_vm_layer_has_no_vms_scope(self):
-        # wsvm: vm = false in its host.toml.
-        self.cli_env['WS_HOST'] = 'wsvm'
+        # generic-pc: vm = false in its host.toml (tests/config).
+        self.cli_env['WS_HOST'] = 'generic-pc'
         p = self.cli('send', 'vms')
         self.assertNotEqual(p.returncode, 0)
         self.assertIn('no VM layer', p.stderr)

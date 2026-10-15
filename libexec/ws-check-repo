@@ -35,6 +35,11 @@ ext_list() {
     fi
 }
 
+# The checkout is the configuration (no bin/ws at its root), or a checkout
+# of the core: WSCONFIG=~/Projects/wsconfig ws check repo, its hygiene,
+# syntax and executables.
+config_checkout() { [[ ! -e "$repo/bin/ws" ]]; }
+
 section "1. Repository identity / Git integrity"
 
 if ! git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
@@ -48,7 +53,7 @@ branch="$(git -C "$repo" branch --show-current 2>/dev/null || true)"
 [[ "$branch" == "main" ]] && pass "branch: main" || warn "branch: ${branch:-detached}"
 
 origin="$(git -C "$repo" remote get-url origin 2>/dev/null || true)"
-if separate_config; then
+if config_checkout; then
     # A configuration of its own: any repository of the user.
     [[ -n "$origin" ]] && pass "origin: $origin" \
         || warn "no origin: ws sync commits locally only (git remote add origin URL)"
@@ -99,7 +104,7 @@ fi
 # A configuration of its own (ws help plan-v2, 8.6): its schema and what
 # the flake would not see; the checks of code below are those of the core
 # checkout.
-if separate_config; then
+if config_checkout; then
     section "2. Configuration"
     if problem="$(python3 "$WS_CORE/lib/ws_common.py" schema 2>&1)"; then
         pass "wsconfig.toml: a schema this core reads"

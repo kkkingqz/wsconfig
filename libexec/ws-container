@@ -18,11 +18,10 @@ Usage:
   ws container run HOST [--dry-run]
   ws container status HOST
 
-build     docker build on the server from `git archive HEAD` (clean checkout
-          only): image IMAGE:COMMIT and IMAGE:latest (host.toml [container]);
-          a configuration of its own sends its HEAD and the core flake.lock
-          pins (or the clean checkout of ws container --core PATH):
-          IMAGE:COMMIT-CORE
+build     docker build on the server from the HEAD of the configuration
+          (clean checkout only) and the core its flake.lock pins (or the
+          clean checkout of ws container --core PATH): image
+          IMAGE:COMMIT-CORE and IMAGE:latest (host.toml [container])
 run       replace the container HOST on the server with one from
           IMAGE:latest: mounts, devices and port of host.toml [container]; the
           directories of the mounts must exist (shares of the server)
@@ -74,20 +73,8 @@ cmd_build() {
     [[ -z "$(git -C "$repo" status --porcelain)" ]] \
         || die "the checkout has changes: the image is built from a commit (commit first)"
     commit="$(git -C "$repo" rev-parse --short HEAD)"
-    if ! separate_config; then
-        local -a build=(docker build --build-arg "HOST=$host"
-            --label "org.opencontainers.image.revision=$commit"
-            -t "$image:$commit" -t "$image:latest" -f container/Dockerfile -)
-        if [[ "$dry_run" == true ]]; then
-            echo "would run: git archive HEAD | ssh $server ${build[*]}"
-            return
-        fi
-        git -C "$repo" archive --format=tar HEAD | remote "${build[*]@Q}"
-        echo "built $image:$commit on $server"
-        return
-    fi
-    # A configuration of its own (ws help plan-v2, 8.7): the context holds
-    # config/ (its HEAD) and core/; the tag both revisions.
+    # The context holds config/ (its HEAD) and core/ (ws help plan-v2,
+    # 8.7); the tag both revisions.
     ctx="$(mktemp -d)"
     # shellcheck disable=SC2064 # the path now
     trap "rm -rf '$ctx'" EXIT

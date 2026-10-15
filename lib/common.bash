@@ -8,13 +8,11 @@
 #   WS_CORE    code: bin/ws, libexec/, lib/, gnome/extensions, hooks; where this file is
 #   WS_CONFIG  data: hosts, the lists and catalogs, host choices
 #   WS_STATE   this machine only
-# WS_CORE is always where the running code is: a checkout (~/wsconfig/bin/ws)
-# or the core in the store (nix/pkgs/ws.nix, ~/.local/bin/ws). WSCONFIG
-# (tests, another checkout) sets WS_CONFIG; WS_CONFIG and WS_STATE are
-# exported and kept by the tools ws runs. Otherwise WS_CONFIG is the
-# checkout itself when it holds a configuration (wsconfig.toml: code and
-# data in one repository until stage 8.11), and for the core in the store
-# or a checkout of the core alone the config of WS_STATE/host.json, else
+# WS_CORE is always where the running code is: the core in the store
+# (nix/pkgs/ws.nix, ~/.local/bin/ws) or a checkout of the core
+# (~/Projects/wsconfig/bin/ws). WSCONFIG (tests, another configuration)
+# sets WS_CONFIG; WS_CONFIG and WS_STATE are exported and kept by the tools
+# ws runs. Otherwise WS_CONFIG is the config of WS_STATE/host.json, else
 # ~/wsconfig (config_root of lib/ws_common.py). `repo`, what the tools use for the
 # data, is WS_CONFIG.
 #
@@ -26,8 +24,6 @@ WS_CORE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WS_STATE="${WS_STATE:-${XDG_STATE_HOME:-$HOME/.local/state}/wsconfig}"
 if [[ -n "${WSCONFIG:-${WS_CONFIG:-}}" ]]; then
     WS_CONFIG="${WSCONFIG:-$WS_CONFIG}"
-elif [[ ! -e "$WS_CORE/.wsconfig-package" && -e "$WS_CORE/wsconfig.toml" ]]; then
-    WS_CONFIG="$WS_CORE"
 else
     WS_CONFIG="$(WS_STATE="$WS_STATE" python3 "$WS_CORE/lib/ws_common.py" config)"
 fi
@@ -71,12 +67,6 @@ use_core() {
 }
 [[ -z "${WS_CORE_PATH:-}" ]] || use_core "$WS_CORE_PATH"
 
-# A configuration of its own (ws help plan-v2, 8.6): its root has no bin/ws.
-# Every file it tracks is then data; a checkout of core and data together
-# (until 8.11) tells them apart by the data patterns of bin/ws.
-separate_config() {
-    [[ ! -e "$WS_CONFIG/bin/ws" ]]
-}
 
 # Runs a tool of the core by name: ws (bin/) or an internal executor
 # (libexec/), as the step tables of ws name them.
@@ -94,14 +84,9 @@ ws_run() {
 # would silently be missing from the build.
 check_untracked() {
     local untracked
-    if separate_config; then
-        # A configuration of its own: every file is the flake's.
-        untracked="$(git -C "$repo" ls-files --others --exclude-standard)"
-    else
-        untracked="$(git -C "$repo" ls-files --others --exclude-standard -- \
-            '*.nix' flake.lock)"
-    fi
-    [[ -z "$untracked" ]] || die "untracked flake files (git add them first):
+    # Every file of the configuration is the flake's.
+    untracked="$(git -C "$repo" ls-files --others --exclude-standard)"
+    [[ -z "$untracked" ]] || die "untracked files of the configuration (git add them first):
 $untracked"
 }
 

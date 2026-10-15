@@ -141,7 +141,7 @@ class SetupTests(unittest.TestCase):
         self.assertIn('yes = ["example"]', text)
 
     def test_box_catalog_of_the_repository(self):
-        self.assertEqual(ws_catalog.box_catalog(ROOT), [
+        self.assertEqual(ws_catalog.box_catalog(ROOT / "tests/config"), [
             ('arch', 'ask'), ('wine-wayland', 'ask'), ('wine', 'ask'), ('proton', 'ask'),
             ('t2bce-build', 'no'), ('touchbar-build', 'no')])
 

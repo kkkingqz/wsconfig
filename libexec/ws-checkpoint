@@ -72,14 +72,10 @@ home_built() {
         "$repo#homeConfigurations.\"$(id -un)@$("$WS_CORE/bin/ws" host)\".activationPackage"
 }
 
-# The core this state is built with, for meta: nothing for a checkout of
-# core and data together (the commit is both); the commit of --core PATH,
+# The core this state is built with, for meta: the commit of --core PATH,
 # refused when that checkout has changes; else the revision of the input
 # wsconfig in flake.lock.
 core_revision() {
-    if ! separate_config; then
-        return 0
-    fi
     if [[ -n "${WS_CORE_PATH:-}" ]]; then
         [[ -z "$(git -C "$WS_CORE_PATH" status --porcelain 2>/dev/null)" ]] \
             || die "--core $WS_CORE_PATH has uncommitted or untracked files: a checkpoint names a commit"
@@ -105,7 +101,7 @@ cmd_create() {
         || die "checkout has uncommitted or untracked files; commit them first"
     echo "clean: $(git -C "$repo" log -1 --format='%h %s')"
     core="$(core_revision)" || exit
-    [[ -z "$core" ]] || echo "core: $core${WS_CORE_PATH:+ ($WS_CORE_PATH)}"
+    echo "core: $core${WS_CORE_PATH:+ ($WS_CORE_PATH)}"
 
     echo "== home-manager"
     profile="$(hm_profile)"
@@ -129,9 +125,9 @@ cmd_create() {
         echo "name: $name"
         echo "date: $(date --iso-8601=seconds)"
         echo "host: $(hostname)"
-        ! separate_config || echo "config: $repo"
+        echo "config: $repo"
         echo "commit: $(git -C "$repo" rev-parse HEAD)"
-        [[ -z "$core" ]] || echo "core: $core"
+        echo "core: $core"
         [[ -z "${WS_CORE_PATH:-}" ]] || echo "core-path: $WS_CORE_PATH"
         echo "subject: $(git -C "$repo" log -1 --format=%s)"
         echo "home-generation: ${gen_link%-link}"
@@ -176,8 +172,6 @@ cmd_show() {
     cat "$dir/meta.txt"
     config="$(meta "$dir" config)"
     core_path="$(meta "$dir" core-path)"
-    # Without config: a checkout of core and data, this one until the split.
-    [[ -n "$config" ]] || separate_config || config="$repo"
     if [[ -z "$config" ]]; then
         cat <<EOF
 

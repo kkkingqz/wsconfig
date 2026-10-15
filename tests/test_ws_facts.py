@@ -130,10 +130,10 @@ class FactsTests(unittest.TestCase):
                            capture_output=True, env={**os.environ, "WSCONFIG": str(self.config)})
         self.assertEqual(p.stdout, "king\n")
 
-    def test_hosts_of_the_repository(self):
+    def test_hosts_of_the_test_configuration(self):
         # Every host has the facts the bash tools read (lib/host.nix checks
         # the rest with Nix).
-        for path in sorted((ROOT / "hosts").glob("*/host.toml")):
+        for path in sorted((ROOT / "tests/config/hosts").glob("*/host.toml")):
             with self.subTest(host=path.parent.name):
                 for name in ("hostname", "user", "wsconfig", "hardware", "boot"):
                     self.assertTrue(ws_facts.fact_in(path, name), name)
