@@ -194,6 +194,23 @@ def podman_json(*args):
     return json.loads(p.stdout or "[]")
 
 
+def image_label(image):
+    """Its names, else <none> with what it was built from (the OCI title
+    and version its base left in the labels); the date it was made (none
+    for a reproducible image: Created 1970)."""
+    names = ", ".join(image.get("Names") or [])
+    labels = image.get("Labels") or {}
+    created = image.get("Created") or 0
+    about = [time.strftime("%Y-%m-%d", time.localtime(created))] if created > 86400 else []
+    if not names:
+        base = " ".join(v for v in (labels.get("org.opencontainers.image.title"),
+                                    labels.get("org.opencontainers.image.version")) if v)
+        if base:
+            about.append(f"from {base}")
+    label = names or "<none>"
+    return f"{label} ({', '.join(about)})" if about else label
+
+
 def plan_podman(_keep_days):
     if not shutil.which("podman"):
         return Plan("podman", unavailable="no podman")
@@ -203,8 +220,7 @@ def plan_podman(_keep_days):
         iid = image["Id"]
         if image.get("Containers") or any(u and iid.startswith(u) for u in used):
             continue
-        names = ", ".join(image.get("Names") or []) or "<none>"
-        items.append((iid, f"{iid[:12]}  {names}", image.get("Size")))
+        items.append((iid, f"{iid[:12]}  {image_label(image)}", image.get("Size")))
     return Plan("podman", items, note="sizes include shared layers" if len(items) > 1 else None)
 
 

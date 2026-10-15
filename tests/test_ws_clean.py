@@ -51,8 +51,9 @@ class CleanTests(unittest.TestCase):
                         "/nix/store/gen-3": ["/nix/store/gen-3", "/nix/store/lib"]},
             "sizes": {"/nix/store/dead-a": 1000, "/nix/store/gen-1": 2000, "/nix/store/old-lib": 4000},
             "images": [{"Id": "a" * 64, "Names": ["docker.io/library/archlinux:latest"], "Size": 300, "Containers": 2},
-                       {"Id": "b" * 64, "Names": None, "Size": 100, "Containers": 0},
-                       {"Id": "c" * 64, "Names": ["localhost/sp-test:latest"], "Size": 200, "Containers": 0}],
+                       {"Id": "b" * 64, "Names": None, "Size": 100, "Containers": 0, "Created": NOW,
+                        "Labels": {"org.opencontainers.image.title": "Nix", "org.opencontainers.image.version": "2.35.2"}},
+                       {"Id": "c" * 64, "Names": ["localhost/sp-test:latest"], "Size": 200, "Containers": 0, "Created": 1}],
             "containers": [{"Names": ["arch"], "ImageID": "a" * 12}],
             "flatpak": FLATPAK,
         }
@@ -83,8 +84,9 @@ class CleanTests(unittest.TestCase):
         self.assertIn("home-manager generation 1 (2026-09-01)", p.stdout)
         self.assertNotIn("generation 2 ", p.stdout)
         self.assertIn("== podman: 2, 300 B", p.stdout)
-        self.assertIn("bbbbbbbbbbbb  <none>  100 B", p.stdout)
-        self.assertIn("cccccccccccc  localhost/sp-test:latest", p.stdout)
+        self.assertIn("bbbbbbbbbbbb  <none> (2026-10-15, from Nix 2.35.2)  100 B", p.stdout)
+        # Created 1 (a reproducible image): no date.
+        self.assertIn("cccccccccccc  localhost/sp-test:latest  200 B", p.stdout)
         self.assertNotIn("archlinux", p.stdout)
         self.assertIn("org.gnome.Platform//45", p.stdout)
         self.assertEqual(self.removals(), [])
