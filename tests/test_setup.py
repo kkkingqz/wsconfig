@@ -82,6 +82,13 @@ class SetupTests(unittest.TestCase):
         return subprocess.run([str((core or self.core) / "bin/ws"), "setup", *args],
                               env=self.env, text=True, capture_output=True)
 
+    def esc(self, n=1):
+        """The next N dialogs are cancelled (Esc): the host question does not
+        take the default, the hostname of the machine running the tests."""
+        answers = self.root / "gum-answers"
+        answers.write_text('"esc"\n' * n)
+        self.env["WS_GUM_ANSWERS"] = str(answers)
+
     def nix_calls(self):
         f = self.home / "nix-calls"
         return f.read_text().splitlines() if f.exists() else []
@@ -98,8 +105,9 @@ class SetupTests(unittest.TestCase):
 
     def test_the_pinned_core_goes_on_to_the_host(self):
         # A second run (after the exec): the same core, no build; the host
-        # question reads the terminal (here empty).
+        # question is cancelled.
         (self.state / "core").write_text(PINNED + "\n")
+        self.esc(2)
         p = self.setup("--repo", str(self.config))
         self.assertEqual(p.returncode, 1)
         self.assertEqual(self.nix_calls(), [])
@@ -146,8 +154,9 @@ class SetupTests(unittest.TestCase):
 
     def test_new_from_the_template_of_this_core(self):
         own = "a" * 40
+        self.esc()
         p = self.setup("--new")
-        # It goes on to the host question (the terminal is empty here).
+        # It goes on to the host question (cancelled).
         self.assertIn("ws setup: no answer", p.stderr)
         cfg = self.home / "wsconfig"
         for f in ("flake.nix", "wsconfig.toml", ".gitignore", "apt.txt", "flatpak/catalog.toml"):
