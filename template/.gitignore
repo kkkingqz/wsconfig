@@ -1,2 +1,4 @@
 result
 result-*
+# The link to the docs of the core (ws apply, nix/home/links.nix).
+/docs

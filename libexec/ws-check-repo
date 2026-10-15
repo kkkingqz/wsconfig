@@ -113,6 +113,12 @@ if config_checkout; then
     else
         fail "$problem"
     fi
+    # ~/<wsconfig>/docs: the link to the docs of the core (nix/home/links.nix).
+    if git -C "$repo" check-ignore -q docs; then
+        pass ".gitignore covers docs (the link to the docs of the core)"
+    else
+        warn ".gitignore does not cover docs: ws apply puts the link to the docs of the core there; add /docs"
+    fi
     # scripts/: added by ws apply and ws sync (ws help plan-v2, 10.1).
     mapfile -t untracked < <(git -C "$repo" ls-files --others --exclude-standard -- . ':!scripts')
     mapfile -t new_scripts < <(git -C "$repo" ls-files --others --exclude-standard -- scripts)

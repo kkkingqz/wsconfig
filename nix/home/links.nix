@@ -10,7 +10,9 @@
 # replaced on ws apply: ~/.local/bin/ws, the fish completions, conf.d/
 # 00-nix.fish and user-bin.fish, ~/.config/nix/nix.conf, the micro config
 # that `ws help` reads and ~/.local/share/wsconfig/libexec (for callers that need a
-# fixed path: the input-source extension runs ws-caps-led). A file of home/
+# fixed path: the input-source extension runs ws-caps-led), and
+# ~/<facts.wsconfig>/docs: the docs of this core next to the data, as ws
+# help opens them (ignored by the .gitignore of the configuration). A file of home/
 # at one of these paths, or at a path another module writes (home.file,
 # xdg.configFile, xdg.dataFile: ssh.fish of terminal/ssh-colors.nix, …), is
 # a build error naming it: nothing overwrites anything silently.
@@ -37,6 +39,7 @@ let
       ".config/fish/conf.d/00-nix.fish".source = "${core}/terminal/fish/conf.d/00-nix.fish";
       ".config/fish/conf.d/user-bin.fish".source = "${core}/terminal/fish/conf.d/user-bin.fish";
       ".config/nix/nix.conf".source = "${core}/nix/nix.conf";
+      "${facts.wsconfig}/docs".source = "${core}/docs";
     };
   # Under $HOME too, through xdg.dataFile.
   coreData = {
@@ -67,7 +70,11 @@ let
   ofOthers = p: lib.any (o: p == o || lib.hasPrefix "${o}/" p) others;
 in
 {
-  assertions = map (p: {
+  assertions = lib.optional (builtins.pathExists (wsConfig + "/docs")) {
+    assertion = false;
+    message = "docs/ of the configuration: ~/${facts.wsconfig}/docs is the link to the docs of the core (nix/home/links.nix); move it elsewhere";
+  }
+  ++ map (p: {
     assertion = false;
     message = "home/${p}: ~/${p} is installed by the core (nix/home/links.nix); remove it from home/";
   }) conflicts

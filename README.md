@@ -64,6 +64,8 @@ docs/           документация, из неё собираются man-�
 ## Документация
 
 `ws help TOPIC` открывает документ, `man ws-…` — ту же страницу.
+Те же файлы — в `~/wsconfig/docs`: `ws apply` ставит туда ссылку на `docs/`
+закреплённого ядра (в Git конфигурации её нет, `.gitignore`).
 
 ```text
 docs/architecture/   layers (слои и правила), checks, workstation (подробно)
