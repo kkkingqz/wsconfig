@@ -87,6 +87,7 @@ ws check                        проверки всех владельцев �
 ws checkpoint create NAME       какой коммит соответствует рабочему состоянию
 ws baseline capture NAME        функциональный снимок для сравнения
 ws collect                      архив машины перед переустановкой (sudo)
+ws clean --dry-run              что удалил бы ws clean: Nix, Podman, Flatpak
 ws backup                       снимки Timeshift на Unraid и очистка старых ro-копий
 ws backup plan                  план Timeshift backup, без SSH и изменений
 ws backup recovery-export PATH  автономный ws-restore для Live USB

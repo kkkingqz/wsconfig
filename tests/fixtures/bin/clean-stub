@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""nix-env, nix-store, nix, podman and flatpak for tests/test_ws_clean.py:
+answers from the JSON of CLEAN_FIXTURE, every call a JSON line in CLEAN_LOG.
+A key KEY@2 answers instead of KEY from the second call of that kind on (a
+plan that changed)."""
+import json
+import os
+from pathlib import Path
+import sys
+
+name, args = Path(sys.argv[0]).name, sys.argv[1:]
+with open(os.environ["CLEAN_LOG"], "a") as f:
+    f.write(json.dumps([name, *args]) + "\n")
+fixture = json.loads(Path(os.environ["CLEAN_FIXTURE"]).read_text())
+counts = Path(os.environ["CLEAN_LOG"] + ".counts")
+seen = json.loads(counts.read_text()) if counts.exists() else {}
+
+
+def get(key, default=None):
+    seen[key] = seen.get(key, 0) + 1
+    counts.write_text(json.dumps(seen))
+    if seen[key] >= 2 and f"{key}@2" in fixture:
+        return fixture[f"{key}@2"]
+    return fixture.get(key, default)
+
+
+if name == "nix-env":
+    if "--list-generations" in args:
+        print(get("generations", ""), end="")
+elif name == "nix-store":
+    if args[:2] == ["--gc", "--print-dead"]:
+        print("\n".join(get("dead", [])))
+    elif args[:2] == ["--gc", "--print-roots"]:
+        print("\n".join(f"{k} -> {v}" for k, v in get("roots", {}).items()))
+    elif args[0] == "-qR":
+        closure = fixture.get("closure", {})
+        print("\n".join(sorted({q for p in args[1:] for q in closure.get(p, [p])})))
+    elif args == ["--gc"]:
+        print("3 store paths deleted, 1.00 MiB freed")
+elif name == "nix":
+    sizes = fixture.get("sizes", {})
+    for line in sys.stdin.read().split():
+        print(f"{line}\t{sizes.get(line, 1024)}")
+elif name == "podman":
+    if args[:2] == ["ps", "-a"]:
+        print(json.dumps(get("containers", [])))
+    elif args[0] == "images":
+        print(json.dumps(get("images", [])))
+elif name == "flatpak":
+    if "-y" not in args:
+        print(get("flatpak", "Nothing unused to uninstall"))

@@ -1,0 +1,333 @@
+#!/usr/bin/env python3
+"""ws clean: remove what nothing uses, after a plan and a confirmation
+(ws help clean, ws help plan-v2, 11.5).
+
+Scopes:
+  nix      generations of home-manager older than --keep-days (30) but the
+           current one, then nix-store --gc; checkpoints keep their own GC
+           roots (ws checkpoint), so their generations stay in the store
+  podman   images no container uses (podman rmi by id); containers,
+           volumes and the root file systems of the boxes are never touched
+  flatpak  runtimes no installed app uses (flatpak uninstall --user --unused,
+           as ws flatpak cleanup)
+
+Never: checkpoints, Btrfs snapshots, backups, VMs, Steam, Wine prefixes,
+containers, volumes, ~/.cache.
+"""
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import time
+
+sys.path.insert(0, str(Path(os.path.realpath(__file__)).parent.parent / "lib"))
+import ws_ui  # noqa: E402
+
+PROG = "ws clean"
+SCOPES = ("nix", "podman", "flatpak")
+KEEP_DAYS = 30
+
+USAGE = """Usage:
+  ws clean [--dry-run] [--keep-days N] [--yes] [SCOPE...]
+
+SCOPE: nix, podman, flatpak (default: all of them that this machine has).
+Without --dry-run: the plan, then a choice of the scopes and a
+confirmation. Before each scope its plan is made again: a changed plan is
+shown and asked about again (with --yes: that scope is skipped).
+
+--dry-run       only the plan
+--keep-days N   nix: keep the generations younger than N days (30); 0
+                keeps only the current one
+--yes           no questions; needs the scopes by name (no terminal: the
+                only way)
+"""
+
+
+def die(message, code=1):
+    print(f"{PROG}: {message}", file=sys.stderr)
+    sys.exit(code)
+
+
+def run(args, **kw):
+    return subprocess.run(args, text=True, capture_output=True, **kw)
+
+
+def size(n):
+    if n is None:
+        return "?"
+    for unit in ("B", "KiB", "MiB", "GiB"):
+        if n < 1024 or unit == "GiB":
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1024
+
+
+class Plan:
+    """What a scope would remove: items (id, text, bytes or None), the
+    reason when the scope is not available here."""
+
+    def __init__(self, scope, items=(), unavailable=None, note=None, total=None):
+        self.scope, self.items, self.unavailable, self.note = scope, list(items), unavailable, note
+        self.total = total if total is not None else (
+            sum(b for _, _, b in self.items) if all(b is not None for _, _, b in self.items) else None)
+
+    def ids(self):
+        return [i for i, _, _ in self.items]
+
+    def show(self, out=sys.stdout):
+        if self.unavailable:
+            out.write(f"== {self.scope}: not here ({self.unavailable})\n")
+            return
+        if not self.items:
+            out.write(f"== {self.scope}: nothing to remove\n")
+            return
+        out.write(f"== {self.scope}: {len(self.items)}, {size(self.total)}\n")
+        for _, text, b in self.items:
+            out.write(f"  {text}" + (f"  {size(b)}" if b is not None else "") + "\n")
+        if self.note:
+            out.write(f"  {self.note}\n")
+
+
+# nix ------------------------------------------------------------------------
+
+def hm_profile():
+    for p in (Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "nix/profiles/home-manager",
+              Path("/nix/var/nix/profiles/per-user") / os.environ.get("USER", "") / "home-manager"):
+        if p.is_symlink():
+            return p
+    return None
+
+
+def generations(profile):
+    """[(number, epoch, current)] of nix-env --list-generations."""
+    p = run(["nix-env", "--profile", str(profile), "--list-generations"])
+    if p.returncode != 0:
+        die(f"nix-env --list-generations: {p.stderr.strip()}")
+    out = []
+    for line in p.stdout.splitlines():
+        m = re.match(r"\s*(\d+)\s+(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)\s*(\(current\))?", line)
+        if m:
+            when = time.mktime(time.strptime(m.group(2), "%Y-%m-%d %H:%M:%S"))
+            out.append((int(m.group(1)), when, bool(m.group(3))))
+    return out
+
+
+def store_sizes(paths):
+    """NAR sizes of store PATHS (a set), summed; None when unknown. The
+    lock files --print-dead names too are no store paths: left out, as is
+    a path path-info calls not valid (gone meanwhile)."""
+    paths = {p for p in paths if not p.endswith(".lock")}
+    for _ in range(10):
+        if not paths:
+            return 0
+        p = run(["nix", "path-info", "-s", "--stdin"], input="\n".join(sorted(paths)) + "\n")
+        if p.returncode == 0:
+            return sum(int(line.split()[-1]) for line in p.stdout.splitlines() if line.strip())
+        invalid = set(re.findall(r"path '([^']+)' is not valid", p.stderr))
+        if not invalid & paths:
+            return None
+        paths -= invalid
+    return None
+
+
+def closure(paths):
+    if not paths:
+        return set()
+    p = run(["nix-store", "-qR", *paths])
+    return set(p.stdout.split()) if p.returncode == 0 else None
+
+
+def plan_nix(keep_days):
+    if not shutil.which("nix-env") or not shutil.which("nix-store"):
+        return Plan("nix", unavailable="no Nix")
+    profile = hm_profile()
+    if profile is None:
+        return Plan("nix", unavailable="no home-manager profile")
+    now = float(os.environ.get("WS_CLEAN_NOW") or time.time())
+    old = [(n, w) for n, w, current in generations(profile)
+           if not current and now - w >= keep_days * 86400]
+    links = {n: str(profile.parent / f"{profile.name}-{n}-link") for n, _ in old}
+    # What the GC would free: the dead paths now and what only the removed
+    # generations keep (their closure without that of every other root).
+    dead = set(run(["nix-store", "--gc", "--print-dead"]).stdout.split())
+    roots = [line.split(" -> ", 1) for line in run(["nix-store", "--gc", "--print-roots"]).stdout.splitlines()
+             if " -> " in line]
+    removed = {target for link, target in roots if link in links.values()}
+    kept = {target for link, target in roots if link not in links.values()}
+    kept_closure, gone_closure = closure(sorted(kept)), closure(sorted(removed))
+    total = None
+    if kept_closure is not None and gone_closure is not None:
+        freed = store_sizes(dead | (gone_closure - kept_closure))
+        total = freed
+    items = [(f"generation {n}", f"home-manager generation {n} ({time.strftime('%Y-%m-%d', time.localtime(w))})", None)
+             for n, w in old]
+    note = f"then nix-store --gc (store paths no root keeps: {size(total)}, NAR)"
+    if not items and not dead:
+        return Plan("nix", total=0)
+    if not items:
+        items = [("gc", "store paths no root keeps", None)]
+    return Plan("nix", items, note=note, total=total)
+
+
+def exec_nix(plan):
+    profile = hm_profile()
+    numbers = [i.split()[1] for i in plan.ids() if i.startswith("generation ")]
+    if numbers:
+        p = run(["nix-env", "--profile", str(profile), "--delete-generations", *numbers])
+        if p.returncode != 0:
+            return "FAIL", f"nix-env --delete-generations: {p.stderr.strip()}"
+    p = run(["nix-store", "--gc"])
+    if p.returncode != 0:
+        return "FAIL", f"nix-store --gc: {p.stderr.strip()}"
+    last = (p.stdout.strip().splitlines() or p.stderr.strip().splitlines() or [""])[-1]
+    return "OK", f"{len(numbers)} generations removed; {last}".rstrip("; ")
+
+
+# podman ---------------------------------------------------------------------
+
+def podman_json(*args):
+    p = run(["podman", *args, "--format", "json"])
+    if p.returncode != 0:
+        die(f"podman {' '.join(args)}: {p.stderr.strip()}")
+    return json.loads(p.stdout or "[]")
+
+
+def plan_podman(_keep_days):
+    if not shutil.which("podman"):
+        return Plan("podman", unavailable="no podman")
+    used = {c.get("ImageID", "") for c in podman_json("ps", "-a")}
+    items = []
+    for image in podman_json("images"):
+        iid = image["Id"]
+        if image.get("Containers") or any(u and iid.startswith(u) for u in used):
+            continue
+        names = ", ".join(image.get("Names") or []) or "<none>"
+        items.append((iid, f"{iid[:12]}  {names}", image.get("Size")))
+    return Plan("podman", items, note="sizes include shared layers" if len(items) > 1 else None)
+
+
+def exec_podman(plan):
+    failed = []
+    for iid in plan.ids():
+        p = run(["podman", "rmi", iid])
+        if p.returncode != 0:
+            failed.append(f"{iid[:12]}: {p.stderr.strip().splitlines()[-1] if p.stderr.strip() else 'failed'}")
+    if failed:
+        return "FAIL", "; ".join(failed)
+    return "OK", f"{len(plan.ids())} images removed"
+
+
+# flatpak --------------------------------------------------------------------
+
+def plan_flatpak(_keep_days):
+    if not shutil.which("flatpak"):
+        return Plan("flatpak", unavailable="no flatpak")
+    # flatpak has no dry run: the list it would remove, answered no.
+    p = run(["flatpak", "uninstall", "--user", "--unused"], input="n\n",
+            env=os.environ | {"LC_ALL": "C.UTF-8"})
+    items = []
+    for line in p.stdout.splitlines():
+        m = re.match(r"\s*\d+\.\s+(\S+)\s+(\S+)", line)
+        if m:
+            ref = f"{m.group(1)}//{m.group(2)}"
+            items.append((ref, ref, None))
+    return Plan("flatpak", items)
+
+
+def exec_flatpak(plan):
+    p = run(["flatpak", "uninstall", "--user", "--unused", "--noninteractive", "-y"])
+    if p.returncode != 0:
+        return "FAIL", f"flatpak uninstall --unused: {p.stderr.strip()}"
+    return "OK", f"{len(plan.ids())} runtimes removed"
+
+
+PLANNERS = {"nix": plan_nix, "podman": plan_podman, "flatpak": plan_flatpak}
+EXECUTORS = {"nix": exec_nix, "podman": exec_podman, "flatpak": exec_flatpak}
+
+
+def parse(argv):
+    dry, yes, keep, scopes = False, False, KEEP_DAYS, []
+    args = list(argv)
+    while args:
+        a = args.pop(0)
+        if a in ("-h", "--help", "help"):
+            sys.stdout.write(USAGE)
+            sys.exit(0)
+        elif a == "--dry-run":
+            dry = True
+        elif a == "--yes":
+            yes = True
+        elif a == "--keep-days" or a.startswith("--keep-days="):
+            value = a.split("=", 1)[1] if "=" in a else (args.pop(0) if args else "")
+            if not value.isdigit():
+                die("--keep-days needs a number of days", 64)
+            keep = int(value)
+        elif a in SCOPES:
+            if a not in scopes:
+                scopes.append(a)
+        else:
+            sys.stderr.write(USAGE)
+            die(f"unknown argument: {a}", 64)
+    return dry, yes, keep, scopes
+
+
+def main(argv):
+    dry, yes, keep, named = parse(argv)
+    if yes and not named and not dry:
+        die("--yes needs the scopes by name: ws clean --yes nix podman flatpak", 64)
+    plans = [PLANNERS[s](keep) for s in (named or SCOPES)]
+    for plan in plans:
+        plan.show()
+    todo = [p for p in plans if p.items]
+    if dry or not todo:
+        return 0
+
+    if yes:
+        chosen = [p.scope for p in todo]
+    else:
+        try:
+            chosen = ws_ui.choose("What to clean", [(p.scope, f"{len(p.items)}, {size(p.total)}") for p in todo],
+                                  [p.scope for p in todo])
+            if chosen and not ws_ui.confirm(f"Remove it ({', '.join(chosen)})?", default=False):
+                chosen = None
+        except ws_ui.NoTerminal:
+            die("no terminal to ask: ws clean --yes SCOPE... (after ws clean --dry-run)")
+        except KeyboardInterrupt:
+            sys.stderr.write("\n")
+            return ws_ui.INTERRUPTED
+        if not chosen:
+            print("nothing removed")
+            return 0
+
+    results = []
+    for plan in (p for p in todo if p.scope in chosen):
+        again = PLANNERS[plan.scope](keep)
+        if again.ids() != plan.ids():
+            print(f"{plan.scope}: the plan changed")
+            again.show()
+            if not again.items:
+                results.append((plan.scope, "SKIP", "nothing to remove now"))
+                continue
+            if yes:
+                results.append((plan.scope, "SKIP", "the plan changed; ws clean again"))
+                continue
+            try:
+                if not ws_ui.confirm(f"Remove it ({plan.scope})?", default=False):
+                    results.append((plan.scope, "SKIP", "not confirmed"))
+                    continue
+            except (ws_ui.NoTerminal, KeyboardInterrupt):
+                results.append((plan.scope, "SKIP", "not confirmed"))
+                continue
+        print(f"== {plan.scope}: removing")
+        results.append((plan.scope, *EXECUTORS[plan.scope](again)))
+
+    print("== result")
+    for scope, status, text in results:
+        print(f"{status:<4}  {scope}: {text}")
+    return 1 if any(s == "FAIL" for _, s, _ in results) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

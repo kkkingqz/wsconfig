@@ -21,6 +21,7 @@ Usage:
   ws checkpoint create|list|show|diff|remove ...
   ws collect [--no-firmware] [ARCHIVE]
   ws btrfs make [--dry-run] [--yes]
+  ws clean [--dry-run] [--keep-days N] [--yes] [nix|podman|flatpak...]
   ws setup [--repo URL|PATH | --new [DIR]] [--host NAME]
   ws backup [plan|status|list|check|send|restore-test|recovery-export ...]
   ws container build|run|status HOST [--dry-run]
@@ -144,6 +145,11 @@ btrfs     make: the Btrfs layout of a fresh install (@, @home, @cache, @tmp,
           @log) from the installed system; ws setup runs it (twice, a
           reboot through GRUB between); see ws-btrfs --help and ws help
           rebuild, section 3
+clean     remove what nothing uses (ws help clean): old home-manager
+          generations (--keep-days, 30) and the Nix GC, Podman images
+          without a container, unused Flatpak runtimes; the plan first,
+          then a choice and a confirmation; --dry-run only the plan, --yes
+          with the scopes by name asks nothing
 setup     the first setup of this PC (ws help setup): install.sh runs it
           on a fresh Ubuntu; --repo URL|PATH a configuration that exists,
           --new [DIR] a new one; after each reboot it goes on by itself
@@ -992,6 +998,7 @@ case "${1:-}" in
     container) shift; exec "$WS_CORE/libexec/ws-container" "$@" ;;
     btrfs) shift; exec "$WS_CORE/libexec/ws-btrfs" "$@" ;;
     setup) shift; exec "$WS_CORE/libexec/ws-setup" "$@" ;;
+    clean) shift; exec "$WS_CORE/libexec/ws-clean" "$@" ;;
     # Diagnostics of the hardware, run by hand (ws help workstation, plan-dgpu).
     battery) shift; exec "$WS_CORE/libexec/ws-battery" "$@" ;;
     gmux) shift; exec "$WS_CORE/libexec/ws-gmux" "$@" ;;
