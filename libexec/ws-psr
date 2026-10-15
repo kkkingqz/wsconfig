@@ -16,16 +16,15 @@ t2_sources="$HOME/.local/share/wsconfig/t2bce/sources.json"
 # Build results per kernel: generated, not edited.
 cache="$HOME/.local/share/wsconfig/i915-psr"
 # The host release: built with the compiler of the kernel, as t2bce.
-build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")"
+build_image="docker.io/library/ubuntu:$( (. /etc/os-release && echo "$VERSION_ID") 2>/dev/null || true)"
 
 usage() {
     cat <<'USAGE'
-Usage: ws psr <command> [KERNEL]
-
-  status             patched i915 built / installed / loaded
-  build [KERNEL]     build i915.ko with apple-psr.patch into ~/.local/share/wsconfig/i915-psr/KERNEL
-  install [KERNEL]   install it into /lib/modules/KERNEL/updates/i915-psr + initramfs (sudo)
-  rollback [KERNEL]  remove it again; the stock i915 (no PSR) takes over (sudo)
+Usage:
+  ws psr status             patched i915 built / installed / loaded
+  ws psr build [KERNEL]     build i915.ko with apple-psr.patch into ~/.local/share/wsconfig/i915-psr/KERNEL
+  ws psr install [KERNEL]   install it into /lib/modules/KERNEL/updates/i915-psr + initramfs (sudo)
+  ws psr rollback [KERNEL]  remove it again; the stock i915 (no PSR) takes over (sudo)
 
 KERNEL defaults to the running kernel (uname -r). Off for one boot without
 rollback: i915.t2_apple_psr=0 on the kernel command line (rEFInd F2).

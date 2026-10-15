@@ -2,4 +2,5 @@
 set -euo pipefail
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
+# completion: lib/backup.py
 exec python3 "$WS_CORE/lib/backup.py" "$@"

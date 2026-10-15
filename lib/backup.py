@@ -521,30 +521,35 @@ def restore_test(c, scope, id, target, paths, state):
     return result
 
 
+def build_parser():
+    parser = argparse.ArgumentParser(prog='ws backup', description=__doc__)
+    sub = parser.add_subparsers(dest='command')
+    p = sub.add_parser('plan', help='what a send would do (works before SSH is configured)')
+    p.add_argument('scope', choices=[*SOURCES, 'all'], nargs='?')
+    p = sub.add_parser('recovery-export', help='export autonomous Live USB restore script')
+    p.add_argument('output', type=Path, metavar='OUTPUT')
+    p.add_argument('--force', action='store_true', help='replace existing export')
+    sub.add_parser('status', help='configuration, records, last success')
+    p = sub.add_parser('list', help='local copies in source_snapshot_root (asks sudo)')
+    p.add_argument('--json', action='store_true', help='machine-readable list')
+    p = sub.add_parser('check', help='the configuration; --remote also the receiver')
+    p.add_argument('--remote', action='store_true', help='check configured receiver over SSH')
+    p = sub.add_parser('send', help='send a scope to the receiver')
+    p.add_argument('scope', choices=[*SOURCES, 'all'])
+    p = sub.add_parser('restore-test', help='restore a copy into TARGET and verify files')
+    p.add_argument('scope', choices=['system', *SOURCES])
+    p.add_argument('id', metavar='ID')
+    p.add_argument('target', type=Path, metavar='DIR')
+    p.add_argument('--verify', action='append', required=True, metavar='FILE',
+                   help='a file relative to the copy that must match')
+    return parser
+
+
 def main(argv=None):
     def terminated(signum, frame):
         raise Terminated('terminated; see operation record')
     signal.signal(signal.SIGTERM, terminated)
-    parser = argparse.ArgumentParser(description=__doc__)
-    sub = parser.add_subparsers(dest='command')
-    p = sub.add_parser('plan')
-    p.add_argument('scope', choices=[*SOURCES, 'all'], nargs='?')
-    p = sub.add_parser('recovery-export', help='export autonomous Live USB restore script')
-    p.add_argument('output', type=Path)
-    p.add_argument('--force', action='store_true', help='replace existing export')
-    sub.add_parser('status')
-    p = sub.add_parser('list', help='local copies in source_snapshot_root (asks sudo)')
-    p.add_argument('--json', action='store_true')
-    p = sub.add_parser('check')
-    p.add_argument('--remote', action='store_true')
-    p = sub.add_parser('send')
-    p.add_argument('scope', choices=[*SOURCES, 'all'])
-    p = sub.add_parser('restore-test')
-    p.add_argument('scope', choices=['system', *SOURCES])
-    p.add_argument('id')
-    p.add_argument('target', type=Path)
-    p.add_argument('--verify', action='append', required=True, metavar='RELATIVE_FILE')
-    args = parser.parse_args(argv)
+    args = build_parser().parse_args(argv)
     if args.command == 'recovery-export':
         from recovery_bundle import export_bundle
         print(json.dumps(export_bundle(args.output, overwrite=args.force), indent=2))

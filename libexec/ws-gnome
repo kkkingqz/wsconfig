@@ -13,13 +13,15 @@ case "$cmd" in
     extensions) exec "$WS_CORE/libexec/ws-gnome-extensions" "$@" ;;
     -h|--help|help)
         cat <<'USAGE'
-Usage: ws gnome [status|check|test|extensions]
+Usage:
+  ws gnome status               read-only GNOME inventory (the default)
+  ws gnome check [--json]       compare appearance/Dock state with gnome/config.toml
+  ws gnome test [--strict]      final read-only GNOME host smoke-test
+  ws gnome extensions           install the EGO extensions without pin and the local
+                                ones of gnome/config.toml (ws apply extensions)
 
-  status     read-only GNOME inventory
-  check      compare appearance/Dock state with gnome/config.toml
-  test       final read-only GNOME host smoke-test
-  extensions install the EGO extensions without pin and the local ones of
-             gnome/config.toml (ws apply extensions)
+  --json    one result object (ws check)
+  --strict  warnings make the smoke-test exit 2
 
 The profile is applied by `ws apply` (gnome/config.toml).
 USAGE

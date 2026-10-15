@@ -1,14 +1,14 @@
 """libexec/helpws (ws help): every page has a topic, every `ws help TOPIC`
 in the repository opens one (and `helpws TOPIC` of docs/history, written
-before helpws plan-v2, 5.6), the fish completion of ws knows the same
-topics."""
+before helpws plan-v2, 5.6), the completion of ws offers every page
+(lib/ws_complete.py)."""
 from pathlib import Path
 import re
 import subprocess
+import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-COMPLETION = ROOT / "terminal/fish/completions/ws.fish"
 
 
 def case_labels():
@@ -70,20 +70,19 @@ class HelpwsTests(unittest.TestCase):
     def test_no_topic_is_the_list(self):
         p = subprocess.run([str(ROOT / "bin/ws"), "help"], capture_output=True, text=True)
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertTrue(p.stdout.startswith("Usage: ws help [TOPIC]"), p.stdout[:80])
+        self.assertTrue(p.stdout.startswith("Usage:\n  ws help [TOPIC]"), p.stdout[:80])
         p = subprocess.run([str(ROOT / "bin/ws"), "help", "nosuch"], capture_output=True, text=True)
         self.assertEqual((p.returncode, p.stderr), (2, "Unknown topic: nosuch\nRun: ws help\n"))
 
-    def test_fish_completion_has_the_same_topics(self):
-        text = COMPLETION.read_text()
-        listed = set(re.search(r"^set -l ws_help_topics (.*)$", text, re.M)[1].split())
-        labels = {n for n in case_labels() if not n.startswith("-")}
-        self.assertEqual(sorted(labels ^ listed), [])
-        offered = set(re.findall(r"^__ws_help_topic (\S+) ", text, re.M))
-        self.assertEqual(sorted(offered - labels), [])
-        # Every page is offered under one of its names.
-        pages = {t for n, t in case_labels().items() if n in offered and t}
-        self.assertEqual(sorted({t for t in case_labels().values() if t} - pages), [])
+    def test_completion_offers_every_page(self):
+        sys.path.insert(0, str(ROOT / "lib"))
+        import ws_complete
+        spec = ws_complete.build(ROOT)
+        offered = {n for n, _ in spec["topics"]}
+        labels = case_labels()
+        self.assertEqual(sorted(offered - set(labels)), [])
+        pages = {labels[n] for n in offered if labels[n]}
+        self.assertEqual(sorted({t for t in labels.values() if t} - pages), [])
 
 
 if __name__ == "__main__":

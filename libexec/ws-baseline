@@ -12,9 +12,9 @@ root="$WS_STATE/baseline"
 usage() {
     cat <<'USAGE'
 Usage:
-  ws baseline capture NAME [--no-boxes] [--with-sudo]
-  ws baseline diff A B
-  ws baseline list
+  ws baseline capture NAME [--no-boxes] [--with-sudo]   snapshot of checks and state
+  ws baseline diff A B                                  compare two baselines
+  ws baseline list                                      the baselines
 
 capture   snapshot of owner checks, GNOME, Flatpak, Distrobox, user links,
           system files and tools into ~/.local/state/wsconfig/baseline/NAME;

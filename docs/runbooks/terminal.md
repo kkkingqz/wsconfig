@@ -544,15 +544,51 @@ man ws-workstation
 ~/.config/fish/config.fish
 ~/.config/fish/conf.d/        00-nix, eza, fzf-options, git-prompt, user-bin
 ~/.config/fish/functions/     prompt, title, fzf_cd_browser
-~/.config/fish/completions/   ws (с темами ws help), wsbox, wsflatpak, wswin, ws-gnome
+~/.config/fish/completions/   ws: команды, их аргументы, темы ws help
 ```
+
+### Дополнения ws
+
+Дополнения `ws` не пишутся руками: их строит `lib/ws_complete.py` из
+`--help` каждой команды. `ws.fish` только зовёт его. Спецификация
+собирается вместе с ядром (`share/ws/complete.json` в store, нечитаемый
+usage — ошибка сборки). Checkout ядра строит её при первом Tab после
+правки (кэш в `~/.cache/ws`).
+
+- Команды и описания — строки usage `bin/ws`. Аргументы команды, которую
+  `bin/ws` отдаёт утилите (`CMD) shift; exec "$WS_CORE/libexec/TOOL"`, и
+  модули `ws modules`), — её usage; у Python-утилиты с `build_parser()` —
+  её argparse.
+- Новая подкоманда или флаг появляется в дополнении, как только он есть в
+  usage. Отдельно описываются только значения заглушек (`APP`, `BOX`,
+  `NAME` checkpoint…) — словарь `VALUES` в `lib/ws_complete.py`; заглушка
+  без значений должна быть там, в `FILES` или `FREE`, иначе тест падает.
+
+Формат usage:
+
+```text
+Usage:
+  ws CMD SUB [-n] [--opt VALUE] [a|b|NAME...]   описание
+
+  -n, --no-apply  описание флага
+```
+
+- строка начинается с `ws`, описание — после двух пробелов;
+- слово в нижнем регистре — буквальное (`a|b` — любое), с прописной
+  буквой — заглушка (`NAME`, `FILE.exe`), `NAME...` повторяется;
+- `[ ]` — необязательно, `[A | B]` — одно из двух, `--opt VALUE` берёт
+  значение;
+- флаг описывается своей строкой где угодно в справке.
+
+`tests/test_ws_complete.py` проверяет, что у каждой команды `bin/ws` есть
+строки usage, и запускает настоящий fish только с `ws.fish`.
 
 Личные настройки — каталог `home/` конфигурации, он повторяет `$HOME`:
 `home/.config/fish/…`, `home/.config/ghostty/*.ghostty`, списки
 xdg-terminals. Каждый отслеживаемый файл `home/P` — ссылка home-manager
 `~/P` в checkout (`nix/home/links.nix`), правка действует сразу; новый файл
 — `git add`, затем `ws apply`. Из ядра в store ставятся `~/.local/bin/ws`,
-дополнения fish, `conf.d/00-nix.fish` и `user-bin.fish`,
+дополнение fish `ws.fish`, `conf.d/00-nix.fish` и `user-bin.fish`,
 `~/.config/nix/nix.conf`; файл `home/` на их месте или на месте файла,
 который пишет модуль ядра (`functions/ssh.fish` и т. п.), — ошибка сборки. Man pages — из сборки Nix
 (`nix/home/man.nix`). fzf, zoxide, eza, micro — из Nix

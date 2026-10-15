@@ -11,28 +11,50 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  ws diff [--core PATH]
-  ws apply [--core PATH] [home|apt|system|STEP...]
-  ws sync [--dry-run]
-  ws update [--core PATH] [STEP...]
-  ws check [-v] | ws check apt|repo|home|virt|steam|gaming [--json]
-  ws system diff|check [--json]|manifest|tree
-  ws baseline capture|diff|list ...
-  ws checkpoint create|list|show|diff|remove ...
-  ws collect [--no-firmware] [ARCHIVE]
-  ws btrfs make [--dry-run] [--yes]
-  ws clean [--dry-run] [--keep-days N] [--yes] [nix|podman|flatpak...]
-  ws setup [--repo URL|PATH | --new [DIR]] [--host NAME]
-  ws backup [plan|status|list|check|send|restore-test|recovery-export ...]
-  ws container build|run|status HOST [--dry-run]
-  ws host [--for-marks]
-  ws fact [--host HOST] NAME
-  ws news
-  ws help [TOPIC]          the docs; without TOPIC the list of topics
-  ws battery|gmux|psr|gpu ...   diagnostics of the hardware
-  ws MODULE [ARG...]       flatpak box windows widgets game keyboard gnome
-                           suspend backup script: the owner of that layer
+  ws apply [--core PATH] [home|apt|system|STEP...]   apply the configuration of this host
+  ws diff [--core PATH]            package difference of the next home generation
+  ws sync [--dry-run]              publish the configuration: commit, pull, push
+  ws update [--core PATH] [STEP...]   update everything that is not pinned
+  ws check [-v]                    all owner checks and the cross-layer invariants
+  ws check apt|repo|home|virt|steam|gaming|backup [--json]   one check
+  ws system diff|check|manifest|tree   the system file tree against the live system
+  ws baseline ...                  functional baseline: capture, diff, list
+  ws checkpoint ...                which commit matched which working state
+  ws collect ...                   archive of the machine state for a rebuild
+  ws btrfs ...                     Btrfs layout of a fresh install
+  ws clean ...                     remove what nothing uses, after a plan
+  ws setup ...                     first setup of this PC (install.sh runs it)
+  ws container ...                 a host in a container on its server
+  ws host [--for-marks]            the flake host of this machine
+  ws fact [--host HOST] NAME       a fact of this host (hosts/HOST/host.toml)
+  ws news                          home-manager news of this flake
+  ws help [TOPIC]                  the docs; without TOPIC the list of topics
+  ws help man [PAGE]               a generated man page in Micro
+  ws battery ...                   power measurements of the hardware
+  ws gmux ...                      the GPU multiplexer: t2gmux, boot GPU
+  ws psr ...                       panel self refresh: the patched i915
+  ws gpu ...                       which GPU a program runs on
+  ws flatpak ...                   Flatpak apps, remotes, overrides
+  ws box ...                       Distrobox containers
+  ws windows ...                   Windows programs in the Windows boxes
+  ws widgets ...                   Quickshell widgets
+  ws game ...                      Game Mode from Bazzite parts
+  ws keyboard ...                  xremap and the GNOME shortcuts
+  ws gnome ...                     GNOME profile, extensions
+  ws suspend ...                   suspend, hibernate, t2bce
+  ws backup ...                    Timeshift snapshots to Unraid
+  ws script ...                    the scripts of the configuration, run by name
 
+  -v, --verbose  check: all messages
+  --json         check: one result object
+  --dry-run      sync: only show what it would do
+  --core PATH    build with the core checkout PATH
+  --for-marks    host: fail unless the name can stand in a list mark
+  --host HOST    fact: of another host
+
+ws battery, gmux, psr and gpu are diagnostics of the hardware; flatpak to
+script are the owners of the layers (ws MODULE ARG..., ws help plan-v2,
+2.8): see ws MODULE --help.
 --core PATH  (apply, diff, news, update, checkpoint, container) build the configuration
           with the core checkout PATH instead of the revision its flake.lock
           pins (--override-input wsconfig; flake.lock stays); only for a
@@ -168,18 +190,6 @@ host      print the flake host name used for this machine: WS_HOST, else
 fact      print a fact of this host, or of --host HOST (hardware, boot,
           user, vm, ...) from hosts/<host>/host.toml, without Nix
           (lib/ws_facts.py); true and false print as yes and no
-MODULE    the owners of the layers, one command for each (ws help plan-v2,
-          2.8); ARG... as the owner takes them, see ws MODULE --help:
-            flatpak   Flatpak apps, remotes, overrides (ws flatpak)
-            box       Distrobox containers (ws box)
-            windows   Windows programs in the Windows boxes (ws windows)
-            widgets   Quickshell widgets (ws widgets)
-            game      Game Mode from Bazzite parts (ws game)
-            keyboard  xremap and the GNOME shortcuts (ws keyboard)
-            gnome     GNOME profile, extensions (ws gnome)
-            suspend   suspend, hibernate, t2bce (ws suspend)
-            backup    Timeshift snapshots to Unraid (ws backup)
-            script    the scripts of the configuration, run by name (ws script)
 USAGE
 }
 

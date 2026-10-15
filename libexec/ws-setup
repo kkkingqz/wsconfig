@@ -49,6 +49,11 @@ Usage:
   ws setup --check                         the manual steps of a rEFInd host
                                            (T2): done or not; changes nothing
 
+  --repo URL|PATH  a configuration that exists
+  --new [DIR]      a new configuration in DIR (~/wsconfig)
+  --host NAME      the host when the hostname finds none
+  --check          only check the manual steps
+
 install.sh runs it on a fresh Ubuntu (ws help setup); after each reboot the
 autostart runs it again (--autostart). --host NAME answers the question of
 the host when the hostname finds none. A host with boot = "refind-..." (T2,

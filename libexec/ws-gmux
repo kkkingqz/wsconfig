@@ -12,21 +12,19 @@ source_file="$HOME/.local/share/wsconfig/t2gmux/source.json"
 # Build results per kernel: generated, not edited.
 cache="$HOME/.local/share/wsconfig/t2gmux"
 # The host release: built with the compiler of the kernel, as t2bce.
-build_image="docker.io/library/ubuntu:$(. /etc/os-release && echo "$VERSION_ID")"
+build_image="docker.io/library/ubuntu:$( (. /etc/os-release && echo "$VERSION_ID") 2>/dev/null || true)"
 # Boot GPU of the firmware: 5th byte 1 = integrated, 0 = discrete.
 efi_var=/sys/firmware/efi/efivars/gpu-power-prefs-fa4ce28d-b62f-4c99-9cc3-6815686e30f9
 
 usage() {
     cat <<'USAGE'
-Usage: ws gmux <command> [KERNEL]
-
-  status                     driver bound to the gmux, built/installed t2gmux, boot GPU
-  build [KERNEL]             build t2gmux into ~/.local/share/wsconfig/t2gmux/KERNEL
-  install [KERNEL]           install it into /lib/modules/KERNEL/updates/t2gmux (sudo)
-  rollback [KERNEL]          remove it again (sudo)
-  boot-gpu [integrated|discrete]
-                             show or set the GPU the firmware gives the panel at boot
-                             (EFI gpu-power-prefs; sudo to set)
+Usage:
+  ws gmux status                     driver bound to the gmux, built/installed t2gmux, boot GPU
+  ws gmux build [KERNEL]             build t2gmux into ~/.local/share/wsconfig/t2gmux/KERNEL
+  ws gmux install [KERNEL]           install it into /lib/modules/KERNEL/updates/t2gmux (sudo)
+  ws gmux rollback [KERNEL]          remove it again (sudo)
+  ws gmux boot-gpu [integrated|discrete]   show or set the GPU the firmware gives the
+                                     panel at boot (EFI gpu-power-prefs; sudo to set)
 
 KERNEL defaults to the running kernel (uname -r).
 USAGE

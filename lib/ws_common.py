@@ -17,7 +17,7 @@ from pathlib import Path
 import sys
 
 # The state directory name; lib/common.bash, lib/mkconfig.nix (wsState) and
-# terminal/fish/completions/ws.fish have it too (tests/test_common.py).
+# lib/ws_complete.py have it too (tests/test_common.py).
 STATE_NAME = "wsconfig"
 
 # A file at the root of the core in the store (nix/pkgs/ws.nix).

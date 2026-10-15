@@ -5,20 +5,20 @@ set -euo pipefail
 
 usage() {
     cat <<'USAGE'
-Usage: ws keyboard COMMAND
+Usage:
+  ws keyboard apply             Apply GNOME shortcuts, symlinks and start xremap if ready
+  ws keyboard restore           Restore backed-up GNOME shortcuts and disable xremap
+  ws keyboard status            Show keyboard/xremap/GNOME status (the default)
+  ws keyboard check [--json]    Compare xremap, GNOME and Tiling Assistant shortcuts and
+                                the input sources with keyboard/config.toml
+  ws keyboard start             Start xremap user service (clears the restore flag)
+  ws keyboard stop              Stop xremap user service
+  ws keyboard restart           Restart xremap user service
+  ws keyboard logs              Follow xremap user-service log
+  ws keyboard devices           List xremap input devices
+  ws keyboard gnome-apps        Query GNOME xremap application bridge
 
-Commands:
-  apply       Apply GNOME shortcuts, symlinks and start xremap if ready
-  restore     Restore backed-up GNOME shortcuts and disable xremap
-  status      Show keyboard/xremap/GNOME status
-  check       Compare xremap, GNOME and Tiling Assistant shortcuts and the
-              input sources with keyboard/*.nix (--json: for ws check)
-  start       Start xremap user service (clears the restore flag)
-  stop        Stop xremap user service
-  restart     Restart xremap user service
-  logs        Follow xremap user-service log
-  devices     List xremap input devices
-  gnome-apps  Query GNOME xremap application bridge
+  --json  one result object (ws check)
 USAGE
 }
 

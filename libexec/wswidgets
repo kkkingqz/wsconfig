@@ -33,7 +33,9 @@ Usage:
   ws widgets status               ws-widgets status (the running runtime)
   ws widgets check [--json]       ws check widgets
 
--n (--no-apply): only edit the list or flake.lock; ws apply applies it later.
+  -n, --no-apply  only edit the list or flake.lock; ws apply applies it later
+  --select        offer the declined widgets again
+  --json          one result object (ws check)
 USAGE
 }
 

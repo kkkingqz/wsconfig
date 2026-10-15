@@ -15,8 +15,12 @@ set -euo pipefail
 # (GL and, through the device-select layer, Vulkan) takes DRI_PRIME.
 
 usage() {
-    echo "usage: ws gpu status|env|run COMMAND [ARG...]" >&2
-    exit 2
+    cat <<'USAGE'
+Usage:
+  ws gpu status                 which GPU a DRI_PRIME caller gets
+  ws gpu env                    DRI_PRIME=pci-... for the AMD card, or nothing
+  ws gpu run COMMAND [ARG...]   COMMAND with DRI_PRIME set when the AMD card is there
+USAGE
 }
 
 # pci-0000_03_00_0 of the first render node driven by amdgpu.
@@ -49,13 +53,15 @@ case "${1:-}" in
         ;;
     run)
         shift
-        (($#)) || usage
+        (($#)) || { usage >&2; exit 2; }
         if prime="$(amd_prime)"; then
             export DRI_PRIME="$prime"
         fi
         exec "$@"
         ;;
+    -h|--help|help) usage ;;
     *)
-        usage
+        usage >&2
+        exit 2
         ;;
 esac

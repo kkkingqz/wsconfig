@@ -134,8 +134,7 @@ manifest_rows {manifest} key nothing; echo end
         name = ws_common.STATE_NAME
         self.assertIn('/.local/state}/%s}"' % name, (ROOT / "lib/common.bash").read_text())
         self.assertIn('wsState = ".local/state/%s";' % name, (ROOT / "lib/mkconfig.nix").read_text())
-        self.assertIn("~/.local/state/%s/$dir" % name,
-                      (ROOT / "terminal/fish/completions/ws.fish").read_text())
+        self.assertIn('".local/state/%s"' % name, (ROOT / "lib/ws_complete.py").read_text())
 
     def test_tools_find_their_checkout_only_through_common(self):
         # ws-doc-build runs as a lone store file in nix/pkgs/man.nix.

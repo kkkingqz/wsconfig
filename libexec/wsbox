@@ -26,21 +26,24 @@ select_hint="ws box apply --select"
 usage() {
     cat <<'USAGE'
 Usage:
-  ws box list
-  ws box status [NAME]
-  ws box check [--json]
-  ws box dry-run [NAME]
-  ws box apply [--select | NAME]
-  ws box update [NAME...]
-  ws box create NAME
-  ws box enter NAME
-  ws box run NAME COMMAND [ARG...]
-  ws box stop NAME
-  ws box remove NAME
-  ws box recreate NAME
-  ws box apps [NAME]
-  ws box export NAME APP
-  ws box unexport NAME APP
+  ws box list                       List Distrobox containers
+  ws box status [NAME]              Show managed container state
+  ws box check [--json]             Check managed Distrobox policy
+  ws box dry-run [NAME]             Show generated create commands
+  ws box apply [--select | NAME]    Create missing containers and apply managed exports
+  ws box update [NAME...]           Upgrade packages inside managed containers
+  ws box create NAME                Create one managed container
+  ws box enter NAME                 Enter managed container
+  ws box run NAME COMMAND [ARG...]  Run command inside managed container
+  ws box stop NAME                  Stop managed container
+  ws box remove NAME                Remove runtime container
+  ws box recreate NAME              Recreate container from manifest
+  ws box apps [NAME]                Show managed exports and available desktop files
+  ws box export NAME APP            Export one managed desktop application
+  ws box unexport NAME APP          Remove one managed desktop export
+
+  --json    one result object (ws check)
+  --select  ask about containers marked no for this workstation too
 USAGE
 }
 
@@ -998,6 +1001,9 @@ cmd_unexport() {
 }
 
 main() {
+    case "${1:-}" in
+        -h|--help|help) usage; return 0 ;;
+    esac
     ensure_base
 
     local cmd="${1:-}"

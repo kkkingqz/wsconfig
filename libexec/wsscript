@@ -35,21 +35,25 @@ set -euo pipefail
 '''
 
 USAGE = """Usage:
-  ws script list                 the scripts of scripts/: choice here, linked, description
-  ws script add [-n] NAME [FILE] a new script: FILE, else a bash stub; yes on this
-                                 host, git add, then ws apply scripts
-  ws script edit NAME            $VISUAL / $EDITOR on the file of the checkout
-  ws script enable [-n] NAME...  yes on this host, then ws apply scripts
-  ws script disable [-n] NAME... no on this host (the file stays), then ws apply scripts
-  ws script delete [-n] NAME     git rm the file, drop it from the choice of every
-                                 host and scripts/catalog.toml, then ws apply scripts
-  ws script apply [--select]     the scripts not offered here yet, the execute bit
-                                 of those here (ws apply scripts runs it)
-  ws script check [--json]       links, files and names against the choice
+  ws script list                  the scripts of scripts/: choice here, linked, description
+  ws script add [-n] NAME [FILE]  a new script: FILE, else a bash stub; yes on this
+                                  host, git add, then ws apply scripts
+  ws script edit NAME             $VISUAL / $EDITOR on the file of the checkout
+  ws script enable [-n] NAME...   yes on this host, then ws apply scripts
+  ws script disable [-n] NAME...  no on this host (the file stays), then ws apply scripts
+  ws script delete [-n] NAME      git rm the file, drop it from the choice of every
+                                  host and scripts/catalog.toml, then ws apply scripts
+  ws script apply [--select]      the scripts not offered here yet, the execute bit
+                                  of those here (ws apply scripts runs it)
+  ws script check [--json]        links, files and names against the choice
+
+  -n, --no-apply  only edit; ws apply later
+  --select        offer the declined scripts again
+  --json          one result object (ws check)
 
 A script runs by its name (~/.local/bin/NAME links into the checkout: an
 edit takes effect at once). A new file put into scripts/ by hand is added
-to Git and offered by ws apply. -n (--no-apply): only edit; ws apply later.
+to Git and offered by ws apply.
 """
 
 

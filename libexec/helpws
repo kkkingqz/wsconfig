@@ -69,7 +69,9 @@ case "$topic" in
         ;;
     -h|--help|help)
         cat <<'USAGE'
-Usage: ws help [TOPIC]
+Usage:
+  ws help [TOPIC]     the page of TOPIC in Micro; without TOPIC this list
+  ws help man [PAGE]  a generated man page in Micro (ws-terminal)
 
 Architecture (docs/architecture):
   readme           README: entry point

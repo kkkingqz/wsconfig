@@ -25,20 +25,30 @@ ws_prog="ws windows"
 usage() {
     cat <<'USAGE'
 Usage:
-  ws windows list
-  ws windows check [--json]
+  ws windows list                    programs and prefixes
+  ws windows check [--json]          check the Windows layer
   ws windows install [--box BOX] [--prefix NAME] [--desktop[=WxH]] SETUP.exe|.msi [ARG...]
+                                     run an installer in a box/prefix
   ws windows portable [--box BOX] [--prefix NAME] FILE.exe|DIR|FILE.zip [APPNAME]
-  ws windows run APP [ARG...]
+                                     copy a portable program into a prefix
+  ws windows run APP [ARG...]        start a program of windows/apps.toml
   ws windows exec [--box BOX] [--prefix NAME] [--desktop[=WxH]] PROGRAM [ARG...]
-  ws windows prefix [--box BOX] NAME init [--dpi N]
+                                     run any program in a box/prefix
+  ws windows prefix [--box BOX] NAME init [--dpi N]   a prefix: init, winecfg, ...
   ws windows prefix [--box BOX] NAME winecfg|regedit|kill|path
   ws windows prefix [--box BOX] NAME winetricks [ARG...]
   ws windows prefix [--box BOX] NAME remove
-  ws windows shell [--box BOX] [--prefix NAME]
+  ws windows shell [--box BOX] [--prefix NAME]   shell in a box with WINEPREFIX
   ws windows menu [--box BOX] [--prefix NAME] add [PROGRAM.exe [TITLE]]
+                                     host menu entries: add, list, sync, remove
   ws windows menu list|sync
   ws windows menu remove ID
+
+  --box BOX          Windows box (default: default_box of apps.toml)
+  --prefix NAME      prefix name (default: the standard one)
+  --desktop[=WxH]    in a Wine virtual desktop
+  --dpi N            DPI of a new prefix
+  --json             one result object (ws check)
 
 BOX defaults to the default_box of apps.json, NAME to "default" (the
 standard prefix $HOME/.wine of the box). --desktop runs the program in a

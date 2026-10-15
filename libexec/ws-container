@@ -14,9 +14,11 @@ ws_prog="ws container"
 usage() {
     cat <<'USAGE'
 Usage:
-  ws container build HOST [--dry-run]
-  ws container run HOST [--dry-run]
-  ws container status HOST
+  ws container build HOST [--dry-run]   image from HEAD and the pinned core
+  ws container run HOST [--dry-run]     replace the container with the latest image
+  ws container status HOST              container and image commit against HEAD
+
+  --dry-run  print the docker command
 
 build     docker build on the server from the HEAD of the configuration
           (clean checkout only) and the core its flake.lock pins (or the

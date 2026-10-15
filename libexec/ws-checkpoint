@@ -20,11 +20,13 @@ root="$state/checkpoints"
 usage() {
     cat <<'USAGE'
 Usage:
-  ws checkpoint create NAME
-  ws checkpoint list
-  ws checkpoint show NAME
-  ws checkpoint diff NAME [--baseline]
-  ws checkpoint remove NAME
+  ws checkpoint create NAME             record the working state of the current commit
+  ws checkpoint list                    checkpoints: date, commit, generation, kernel
+  ws checkpoint show NAME               what NAME recorded and how to return to it
+  ws checkpoint diff NAME [--baseline]  what changed since NAME
+  ws checkpoint remove NAME             delete the tag, the record, its GC roots
+
+  --baseline  diff: also capture a baseline now and compare it
 
 create    record the working state of the current commit: needs a clean
           checkout, the active home-manager generation built from it (ws

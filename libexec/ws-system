@@ -472,7 +472,22 @@ PY
     return "$rc"
 }
 
+usage() {
+    cat <<'USAGE'
+Usage:
+  ws system diff                file differences of the built tree against the live system
+  ws system check [--json]      also unit states: OK/DIFFERS/MISSING per entry
+  ws system manifest            what the system layer owns
+  ws system tree                the built tree (files/, esp/, manifest)
+
+  --json  one result object (ws check)
+
+Read-only; ws apply system installs the tree (sudo).
+USAGE
+}
+
 case "${1:-}" in
+    -h|--help|help) usage ;;
     apply) shift; cmd_system_apply "$@" ;;
     pending) shift; system_pending "$@" ;;
     *) cmd_system "$@" ;;

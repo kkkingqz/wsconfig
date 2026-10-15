@@ -306,16 +306,26 @@ def cmd_mode(mode):
     return run(["steamosctl", "switch-to-desktop-mode", DESKTOP], check=False).returncode
 
 
-def main(argv=None):
+def build_parser():
     p = argparse.ArgumentParser(prog="ws game", description=__doc__.split("\n\n")[0],
                                 formatter_class=argparse.RawDescriptionHelpFormatter,
                                 epilog=__doc__.split("\n\n", 1)[1])
     sp = p.add_subparsers(dest="cmd", required=True)
-    for name in ("fetch", "build", "test", "install", "status"):
-        sp.add_parser(name)
-    sp.add_parser("check").add_argument("--json", action="store_true")
-    sp.add_parser("mode").add_argument("mode", choices=("game", "desktop"))
-    ns = p.parse_args(argv)
+    for name, about in (("fetch", "download the sources, check sha256"),
+                        ("build", "build the .debs in a podman container"),
+                        ("test", "install and purge in a clean container"),
+                        ("install", "install the packages (gameMode hosts)"),
+                        ("status", "pinned, built and installed versions")):
+        sp.add_parser(name, help=about)
+    sp.add_parser("check", help="packages, services, display manager").add_argument(
+        "--json", action="store_true", help="one result object (ws check)")
+    sp.add_parser("mode", help="switch the session now").add_argument(
+        "mode", choices=("game", "desktop"))
+    return p
+
+
+def main(argv=None):
+    ns = build_parser().parse_args(argv)
     if ns.cmd == "fetch":
         return cmd_fetch()
     if ns.cmd == "build":
