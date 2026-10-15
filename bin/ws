@@ -298,7 +298,7 @@ git_operation() {
 
 cmd_sync() {
     local dry_run=false op f subject remote upstream branch
-    local -a to_commit=() untracked=() body=()
+    local -a to_commit=() to_add=() untracked=() body=()
     case "${1:-}" in
         --dry-run|-n) dry_run=true ;;
         "") ;;
@@ -334,7 +334,14 @@ cmd_sync() {
         if [[ "$dry_run" == true ]]; then
             echo "would commit: $subject"
         else
-            git -C "$repo" add -- "${to_commit[@]}"
+            # Not one git rm already took out of the index: git add refuses
+            # a path it does not know; the commit takes it all the same.
+            mapfile -t to_add < <(for f in "${to_commit[@]}"; do
+                if [[ -e "$repo/$f" ]] || git -C "$repo" ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
+                    echo "$f"
+                fi
+            done)
+            ((${#to_add[@]} == 0)) || git -C "$repo" add -- "${to_add[@]}"
             git -C "$repo" commit -q -m "$subject" -m "$(printf '%s\n' "${body[@]}")" -- "${to_commit[@]}" \
                 || die "git commit failed"
             echo "committed: $subject"
@@ -511,7 +518,8 @@ apply_names=(home apt system "${apply_steps[@]%% *}")
 marks_state() {
     local f
     while IFS= read -r f; do
-        [[ "$f" == flake.lock ]] || { echo "$f"; cat "$repo/$f" 2>/dev/null; }
+        # A deleted file (ws script delete) has no content.
+        [[ "$f" == flake.lock ]] || { echo "$f"; cat "$repo/$f" 2>/dev/null || true; }
     done < <(data_files) | cksum
 }
 

@@ -308,6 +308,16 @@ class AutoAddTests(unittest.TestCase):
         self.assertIn("added to Git: scripts/hello", err)
         self.assertEqual(self.w.git("ls-files", "scripts"), "scripts/hello")
 
+    def test_apply_after_a_script_is_deleted(self):
+        # The deleted file is the last data file: marks_state must not fail.
+        write(self.w.repo / "zz/script", "#!/bin/sh\n")
+        self.w.git("add", ".")
+        self.w.git("commit", "-qm", "zz")
+        self.w.git("rm", "-q", "zz/script")
+        rc, out, err = self.w.ws("apply", "scripts")
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("OK        scripts", out)
+
     def test_other_files_are_named_not_added(self):
         write(self.w.repo / "scripts/hello", "#!/bin/sh\n")
         write(self.w.repo / "stray.txt", "")

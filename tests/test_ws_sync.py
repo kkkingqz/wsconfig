@@ -148,6 +148,14 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertIn("scripts/hello: -hello", self.git("log", "-1", "--format=%b"))
         self.assertEqual(self.git("ls-files", "scripts"), "")
+        # Deleted with git rm (ws script delete): out of the index already.
+        (self.repo / "scripts/b").write_text("#!/bin/sh\n")
+        self.assertEqual(self.ws().returncode, 0)
+        self.git("rm", "-q", "scripts/b")
+        p = self.ws()
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("scripts/b: -b", self.git("log", "-1", "--format=%b"))
+        self.assertEqual(self.git("status", "--porcelain"), "?? notes.txt")
 
     def test_every_tracked_change_is_data(self):
         # No code in a configuration: an unpushed commit of any file is
