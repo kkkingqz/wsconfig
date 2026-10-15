@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -146,6 +147,29 @@ manifest_rows {manifest} key nothing; echo end
                 if 'readlink -f "$0"' in line and line.strip() != SOURCE:
                     offenders.append(f"{path.name}: {line.strip()}")
         self.assertEqual(offenders, [])
+
+
+class PackageTests(unittest.TestCase):
+    """The core as nix/pkgs/ws.nix builds it: no tests/, no checkout, no
+    configuration yet (nix run ...#ws on a new machine, ws help plan-v2, 9.1)."""
+
+    def test_ws_runs_from_the_package_alone(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        core, home = Path(tmp.name) / "core", Path(tmp.name) / "home"
+        shutil.copytree(ROOT, core, symlinks=True,
+                        ignore=lambda d, names: [n for n in names if Path(d) == ROOT
+                                                 and n in (".git", "tests")])
+        (core / ".wsconfig-package").touch()
+        home.mkdir()
+        env = {k: v for k, v in os.environ.items()
+               if k not in ("WSCONFIG", "WS_CONFIG", "WS_STATE", "WS_CORE", "XDG_STATE_HOME")}
+        env["HOME"] = str(home)
+        for args in (["--help"], ["help"]):
+            p = subprocess.run([str(core / "bin/ws"), *args], text=True, capture_output=True, env=env)
+            self.assertEqual(p.returncode, 0, (args, p.stderr))
+            self.assertTrue(p.stdout.strip(), args)
+        self.assertEqual(sorted(p.name for p in home.iterdir()), [])
 
 
 if __name__ == "__main__":

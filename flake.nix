@@ -39,6 +39,9 @@
           pkgs.writeText "config" "lib/config.nix merges and checks module TOML";
         catalog = assert import ./lib/test-catalog.nix { inherit lib; };
           pkgs.writeText "catalog" "lib/catalog.nix reads the host choices";
+        # nix run github:kkkingqz/wsconfig/REV#ws (install.sh) runs bin/ws.
+        run = assert own.packages.${system}.ws.meta.mainProgram == "ws";
+          pkgs.writeText "run" "nix run .#ws runs bin/ws";
       };
     };
 }
