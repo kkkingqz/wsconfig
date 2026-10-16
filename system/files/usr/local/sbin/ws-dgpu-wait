@@ -1,0 +1,44 @@
+#!/bin/sh
+# Holds the display manager back until amdgpu has registered the AMD dGPU
+# (boots with the card on: rEFInd "Ubuntu (AMD)", GRUB).
+#
+# amdgpu needs ~9 s to initialise on this Mac (4.5 s of it AUX retries on
+# its eDP connector, muxed to i915), so its card appears ~19 s into the boot,
+# after GDM and often after the session's gnome-shell. With a Thunderbolt
+# monitor plugged in at power-on the firmware also boots on the AMD
+# (simpledrm sits on 03:00.0 until amdgpu takes it over). gnome-shell then
+# adds card2 but loses it ("Failed to hotplug secondary gpu ... ENODEV") and
+# ignores its hotplug events: the monitor stays connected and dark until
+# the next login (2026-10-16). A gnome-shell started after the card is
+# registered drives it.
+#
+# Never fails: without the card after the timeout GDM starts anyway.
+set -eu
+
+timeout="${WS_DGPU_WAIT_TIMEOUT:-30}"
+
+if grep -Eq '(^| )modprobe\.blacklist=([^ ]*,)?amdgpu(,| |$)' /proc/cmdline; then
+    echo "amdgpu blacklisted: nothing to wait for"
+    exit 0
+fi
+
+gpu=""
+for dev in /sys/bus/pci/devices/*; do
+    [ "$(cat "$dev/vendor" 2>/dev/null)" = 0x1002 ] || continue
+    case "$(cat "$dev/class" 2>/dev/null)" in
+        0x03*) gpu="${dev##*/}"; break ;;
+    esac
+done
+if [ -z "$gpu" ]; then
+    echo "no AMD GPU on the PCI bus: nothing to wait for"
+    exit 0
+fi
+
+start="$(date +%s%N)"
+if udevadm wait --initialized=yes --timeout="$timeout" \
+    "/dev/dri/by-path/pci-$gpu-card" "/dev/dri/by-path/pci-$gpu-render"; then
+    echo "AMD $gpu ready after $(( ($(date +%s%N) - start) / 1000000 )) ms"
+else
+    echo "AMD $gpu not ready after ${timeout} s; the display manager starts without it" >&2
+fi
+exit 0

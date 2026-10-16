@@ -1,0 +1,16 @@
+[Unit]
+Description=Wait for the AMD dGPU before the display manager (boots without ws.dgpu=off)
+Documentation=file:///usr/local/sbin/ws-dgpu-wait
+ConditionKernelCommandLine=!ws.dgpu=off
+After=systemd-udev-trigger.service systemd-modules-load.service
+# gnome-shell started before amdgpu registers the card loses it.
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/ws-dgpu-wait
+TimeoutStartSec=45
+
+[Install]
+WantedBy=multi-user.target

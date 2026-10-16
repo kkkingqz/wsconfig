@@ -45,6 +45,9 @@
     # AMD dGPU off and off the PCI bus when booted with ws.dgpu=off (rEFInd "Ubuntu")
     (file "/usr/local/sbin/ws-dgpu-off" "system/files/usr/local/sbin/ws-dgpu-off" "0755")
     (file "/etc/systemd/system/ws-dgpu-off.service" "system/files/systemd/system/ws-dgpu-off.service" "0644")
+    # Without ws.dgpu=off (rEFInd "Ubuntu (AMD)"): GDM only after amdgpu's card
+    (file "/usr/local/sbin/ws-dgpu-wait" "system/files/usr/local/sbin/ws-dgpu-wait" "0755")
+    (file "/etc/systemd/system/ws-dgpu-wait.service" "system/files/systemd/system/ws-dgpu-wait.service" "0644")
     # The AMD's CPU port parked like macOS does, at boot and after resume.
     (file "/usr/local/sbin/ws-dgpu-park" "system/files/usr/local/sbin/ws-dgpu-park" "0755")
     (file "/usr/lib/systemd/system-sleep/70-ws-dgpu-park" "system/files/usr/lib/systemd/system-sleep/70-ws-dgpu-park" "0755")
@@ -66,6 +69,7 @@
     "ws-touchbar-fn.service" = "enabled";
     "get-apple-firmware.service" = "enabled";
     "ws-dgpu-off.service" = "enabled";
+    "ws-dgpu-wait.service" = "enabled";
     "broadcom-aspm-restore.service" = "static";
     "ws-tb-acpi-seed.service" = "enabled";
   };

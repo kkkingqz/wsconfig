@@ -171,6 +171,9 @@ elif grep -Eq '(^| )ws\.dgpu=off( |$)' /proc/cmdline; then
 else
     dgpu_state="$(cat /sys/bus/pci/devices/0000:03:00.0/power_state 2>/dev/null || echo absent)"
     pass "booted with the AMD dGPU on (rEFInd Ubuntu (AMD) or GRUB): $dgpu_state"
+    systemctl is-active --quiet ws-dgpu-wait.service 2>/dev/null \
+        && pass "GDM waited for the AMD dGPU (ws-dgpu-wait.service)" \
+        || fail "ws-dgpu-wait.service is not active: an external monitor may stay dark until re-login (journalctl -b -u ws-dgpu-wait)"
 fi
 
 newest_kernel="$(ls /boot/vmlinuz-* 2>/dev/null | sort -V | tail -n1)"
