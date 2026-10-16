@@ -1,3 +1,4 @@
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
@@ -62,6 +63,16 @@ export default class WorkstationInputSourceExtension extends Extension {
             () => this._onOverviewHidden()
         );
 
+        // A keyboard that appears (t2bce re-creates the internal one on
+        // every resume) starts with the LED off, and GNOME sets its LEDs
+        // from the xkb state (CapsLock off): light it again for RU/UA.
+        this._ledTimeoutId = 0;
+        this._seat = Clutter.get_default_backend().get_default_seat();
+        this._deviceAddedId = this._seat.connect('device-added', (_seat, device) => {
+            if (device.get_device_type() === Clutter.InputDeviceType.KEYBOARD_DEVICE)
+                this._refreshLedLater();
+        });
+
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUS_XML, this);
         this._dbus.export(
             Gio.DBus.session,
@@ -96,6 +107,17 @@ export default class WorkstationInputSourceExtension extends Extension {
         if (this._overviewHiddenId) {
             Main.overview.disconnect(this._overviewHiddenId);
             this._overviewHiddenId = 0;
+        }
+
+        if (this._deviceAddedId) {
+            this._seat.disconnect(this._deviceAddedId);
+            this._deviceAddedId = 0;
+        }
+        this._seat = null;
+
+        if (this._ledTimeoutId) {
+            GLib.source_remove(this._ledTimeoutId);
+            this._ledTimeoutId = 0;
         }
 
         this._overviewRestore = null;
@@ -177,6 +199,29 @@ export default class WorkstationInputSourceExtension extends Extension {
         // and LED from the input source GNOME restored (unless it is the
         // temporary overview EN).
         this._onCurrentSourceChanged();
+        // GNOME restores the source and resets the LEDs of the devices
+        // after this signal too: the LED once more when that is done.
+        this._refreshLedLater();
+    }
+
+    // The LED of the current source again, without touching the
+    // remembered EN/RU state.
+    _refreshLedLater() {
+        if (this._ledTimeoutId)
+            GLib.source_remove(this._ledTimeoutId);
+
+        this._ledTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 700, () => {
+            this._ledTimeoutId = 0;
+
+            if (this._isUnlockDialog() || this._overviewRestore) {
+                this._setLed('en');
+            } else {
+                const current = this._token(this._manager?.currentSource);
+                this._setLed(current === 'ru' || current === 'ua' ? 'ru' : 'en');
+            }
+
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     _onCurrentSourceChanged() {

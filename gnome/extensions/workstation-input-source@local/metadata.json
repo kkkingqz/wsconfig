@@ -6,7 +6,7 @@
     "50"
   ],
   "settings-schema": "org.gnome.shell.extensions.workstation-input-source",
-  "version": 6,
+  "version": 7,
   "session-modes": [
     "user",
     "unlock-dialog"
