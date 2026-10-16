@@ -32,19 +32,33 @@ in
   home.file = {
     ".config/fish/functions/distrobox.fish".text = wrapper "distrobox" true;
     ".config/fish/functions/distrobox-enter.fish".text = wrapper "distrobox-enter" false;
-    ".config/fish/functions/wsbox.fish".text = wrapper "wsbox" true;
+    # ws box enter NAME: wsbox is no command in PATH since the core moved
+    # into the store (ws help plan-v2, stage 5), so the wrapper is on ws.
+    ".config/fish/functions/ws.fish".text = ''
+      if not status is-interactive
+          return
+      end
+      function ws --wraps ws --description 'ws; ws box enter in the color of the box'
+          if test "$argv[1]" = box; and test "$argv[2]" = enter
+              __ws_distrobox_color ws $argv
+          else
+              command ws $argv
+          end
+      end
+    '';
     ".config/fish/functions/__ws_distrobox_color.fish".text = ''
       function __ws_distrobox_color
           set -l program "$argv[1]"
           set -l args $argv[2..-1]
           set -l enter_args $args
-          if contains -- "$program" distrobox wsbox
+          if test "$program" = distrobox
               set enter_args $args[2..-1]
           end
 
           set -l box "$DBX_CONTAINER_NAME"
-          if test "$program" = wsbox
-              set box "$enter_args[1]"
+          if test "$program" = ws
+              # ws box enter NAME
+              set box "$args[3]"
           else
               set -l i 1
               while test $i -le (count $enter_args)
