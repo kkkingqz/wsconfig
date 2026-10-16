@@ -23,6 +23,16 @@ case "${0##*/}" in
         case "$1 ${2:-}" in
             "container exists") [[ -e "$state/$3" ]] ;;
             "info "*) echo true ;;
+            # A test sets the state (.NAME.state) and the logs (.NAME.logs);
+            # a test of the setup wait turns the logs done after N reads.
+            "inspect "*) [[ -e "$state/.${!#}.state" ]] && cat "$state/.${!#}.state" || exit 1 ;;
+            "logs "*)
+                n="$state/.$2.reads"; echo x >> "$n"
+                if [[ -e "$state/.$2.done-after" ]] && (($(wc -l < "$n") > $(cat "$state/.$2.done-after"))); then
+                    echo container_setup_done
+                else
+                    cat "$state/.$2.logs" 2>/dev/null
+                fi ;;
             *) exit 1 ;;
         esac ;;
     distrobox)
@@ -30,6 +40,7 @@ case "${0##*/}" in
             assemble)
                 while (($#)); do [[ "$1" == --name ]] && touch "$state/$2"; shift; done ;;
             rm) rm -f "$state/${!#}" ;;
+            enter) [[ "${!#}" != fail ]] ;;
             *) exit 1 ;;
         esac ;;
 esac
@@ -62,7 +73,7 @@ class WsboxTests(unittest.TestCase):
         self.env = dict(os.environ, PATH=f"{stubs}:{os.environ['PATH']}",
                         WSBOX_CONFIG=str(cfg), WSCONFIG=str(config),
                         WSBOX_TEST_STATE=str(self.state), XDG_RUNTIME_DIR=str(root / "run"),
-                        WS_HOST="test")
+                        WS_HOST="test", WSBOX_SETUP_POLL="0")
         # ws apply after a change of the choice: recorded, not run.
         self.applied = root / "applied"
         apply = stubs / "ws-apply"
@@ -172,6 +183,63 @@ class WsboxTests(unittest.TestCase):
         self.assertEqual(self.wsbox("create", "b").returncode, 0)
         self.assertEqual(self.containers(), {"b", "c"})
         self.assertEqual(ws_catalog_yes(self.hosts), ["c", "b"])
+
+    def calls(self):
+        path = self.state / ".calls"
+        return path.read_text().splitlines() if path.exists() else []
+
+    def test_a_new_container_is_set_up_by_the_command_that_made_it(self):
+        self.marks('yes = ["a"]\n')
+        self.exists("b")
+        self.assertEqual(self.wsbox("apply").returncode, 0)
+        self.assertEqual(self.wsbox("create", "c").returncode, 0)
+        p = self.wsbox("recreate", "b")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("first start of b", p.stdout)
+        # b existed at apply: no first start there.
+        self.assertEqual([c for c in self.calls() if c.startswith("distrobox enter")],
+                         [f"distrobox enter --name {n} -- true" for n in "acb"])
+        # apply NAME of an existing container starts nothing.
+        self.assertEqual(self.wsbox("apply", "a").returncode, 0)
+        self.assertEqual(sum(c.startswith("distrobox enter") for c in self.calls()), 3)
+
+    def test_run_waits_for_the_setup_of_a_running_container(self):
+        self.exists("a")
+        (self.state / ".a.state").write_text("running\n")
+        (self.state / ".a.logs").write_text(
+            "container_setup_done\n+ x\ndistrobox: Executing init hooks...\ninstalling wine\n")
+        (self.state / ".a.done-after").write_text("2\n")
+        p = self.wsbox("run", "a", "wine", "x.exe")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("a is still setting up", p.stderr)
+        self.assertEqual(self.calls()[-1], "distrobox enter --name a -- wine x.exe")
+        self.assertEqual(len((self.state / ".a.reads").read_text().split()), 3)
+
+    def test_run_does_not_wait_when_set_up_stopped_or_without_marks(self):
+        self.exists("a", "b", "c")
+        (self.state / ".a.state").write_text("running\n")
+        (self.state / ".a.logs").write_text("distrobox: Setting up...\ncontainer_setup_done\n+ set +x\n")
+        (self.state / ".b.state").write_text("exited\n")
+        (self.state / ".c.state").write_text("running\n")
+        for name in "abc":
+            p = self.wsbox("run", name, "true")
+            self.assertEqual(p.returncode, 0, p.stderr)
+            self.assertNotIn("setting up", p.stderr)
+        self.assertFalse((self.state / ".b.reads").exists())
+
+    def test_a_container_that_stops_during_setup_fails_the_run(self):
+        self.exists("a")
+        (self.state / ".a.state").write_text("running\n")
+        (self.state / ".a.logs").write_text("distrobox: Installing basic packages...\n")
+        env = self.env
+        # Stopped after the first look at the logs.
+        stub = self.root / "bin/podman"
+        stub.write_text(STUB.replace('"logs "*)', '"logs "*) echo exited > "$state/.$2.state";', 1))
+        p = subprocess.run([str(WSBOX), "run", "a", "true"], env=env, text=True,
+                           capture_output=True, stdin=subprocess.DEVNULL)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("a stopped during its setup", p.stderr)
+        self.assertNotIn("distrobox enter --name a -- true", self.calls())
 
     def test_remove_puts_it_in_no(self):
         self.marks('yes = ["a", "b"]\n')

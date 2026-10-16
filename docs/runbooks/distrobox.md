@@ -82,6 +82,14 @@ ws box export NAME APP | unexport NAME APP
 `apply` не трогает существующий контейнер. `recreate` и `remove` меняют
 только rootfs; описание в `distrobox/catalog.toml` и HOME остаются.
 
+Новый контейнер настраивается при первом старте (пакеты distrobox, потом
+init-хуки; Wine и Proton — минуты загрузки). `apply`, `create` и `recreate`
+сразу делают этот первый старт сами (`first start of NAME`), а не оставляют
+его первой программе из меню. `enter` и `run` для контейнера, который
+запустил кто-то другой и он ещё настраивается, ждут конца настройки
+(`NAME is still setting up`) — раньше `ws windows run` в этот момент падал с
+`wine: not found` (2026-10-16, после пересоздания на этапе 8.12).
+
 `distrobox/catalog.toml` — каталог: все контейнеры, которые можно создать. Какие
 есть на машине — её `hosts/HOST/boxes.toml` (`lib/ws_catalog.py`,
 `ws help plan-v2`, этап 3):

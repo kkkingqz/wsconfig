@@ -32,12 +32,12 @@ Usage:
   ws box dry-run [NAME]             Show generated create commands
   ws box apply [--select | NAME]    Create missing containers and apply managed exports
   ws box update [NAME...]           Upgrade packages inside managed containers
-  ws box create NAME                Create one managed container
+  ws box create NAME                Create one managed container and run its setup
   ws box enter NAME                 Enter managed container
   ws box run NAME COMMAND [ARG...]  Run command inside managed container
   ws box stop NAME                  Stop managed container
   ws box remove NAME                Remove runtime container
-  ws box recreate NAME              Recreate container from manifest
+  ws box recreate NAME              Recreate container from manifest and run its setup
   ws box apps [NAME]                Show managed exports and available desktop files
   ws box export NAME APP            Export one managed desktop application
   ws box unexport NAME APP          Remove one managed desktop export
@@ -222,6 +222,44 @@ image_matches() {
 # distrobox enter flags of a box: gpu=amd passes DRI_PRIME for the AMD card
 # when this boot has it (ws-gpu), per call, so the container itself stays
 # the same in both boots.
+# A new container sets itself up on its first start (distrobox-init: base
+# packages, then the init hooks: Wine and Proton take minutes). Started once
+# here, by the command that created it, rather than by the first program run
+# from a launcher.
+first_start() {
+    local name="$1"
+
+    printf 'first start of %s: setup, may take minutes\n' "$name"
+    distrobox enter --name "$name" -- true \
+        || die "setup of $name failed (podman logs $name)"
+}
+
+# distrobox enter waits for the setup only of a container it starts itself:
+# one that another command started may still be in it (no wine yet). The
+# last distrobox mark in the logs is container_setup_done once the setup of
+# the current start is finished; logs without marks (rotated) count as done.
+setup_done() {
+    local last
+
+    last="$(podman logs "$1" 2>&1 | grep -E '^(distrobox: |container_setup_done)' | tail -n 1)" || true
+    [[ -z "$last" || "$last" == container_setup_done* ]]
+}
+
+wait_setup() {
+    local name="$1" said=""
+
+    [[ "$(container_state "$name")" == running ]] || return 0
+    until setup_done "$name"; do
+        [[ "$(container_state "$name")" == running ]] \
+            || die "$name stopped during its setup (podman logs $name)"
+        if [[ -z "$said" ]]; then
+            printf '%s is still setting up (first start); waiting\n' "$name" >&2
+            said=1
+        fi
+        sleep "${WSBOX_SETUP_POLL:-2}"
+    done
+}
+
 enter_flags() {
     local name="$1" prime
 
@@ -692,7 +730,10 @@ cmd_apply() {
 
     if [[ -n "$name" ]]; then
         require_managed "$name"
+        local existed=""
+        container_exists "$name" && existed=1
         distrobox assemble create --file "$manifest" --name "$name"
+        [[ -n "$existed" ]] || first_start "$name"
         apply_exports_for "$name"
         mark_box "$name" yes
         return
@@ -751,6 +792,7 @@ cmd_apply() {
     while IFS= read -r box; do
         if [[ -n "$box" && -n "${wanted[$box]:-}" ]]; then
             distrobox assemble create --file "$manifest" --name "$box"
+            first_start "$box"
         fi
     done < <(managed_boxes)
 
@@ -808,6 +850,7 @@ cmd_create() {
     distrobox assemble create \
         --file "$manifest" \
         --name "$name"
+    first_start "$name"
 
     mark_box "$name" yes
 }
@@ -819,6 +862,8 @@ cmd_enter() {
 
     container_exists "$name" \
         || die "container does not exist: $name"
+
+    wait_setup "$name"
 
     local -a flags
     mapfile -t flags < <(enter_flags "$name")
@@ -843,6 +888,8 @@ cmd_run() {
 
     (($# > 0)) \
         || die "command required"
+
+    wait_setup "$name"
 
     local -a flags
     mapfile -t flags < <(enter_flags "$name")
@@ -928,6 +975,7 @@ cmd_recreate() {
         --replace \
         --file "$manifest" \
         --name "$name"
+    first_start "$name"
 
     apply_exports_for "$name"
 }
