@@ -13,6 +13,12 @@
       url = "github:kkkingqz/wswidgets";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # Desktop contract (gnome/wsdbus.nix, ws help keyboard): wsdbus-ctl and
+    # the GNOME provider of ~/Projects/wsdbus.
+    wsdbus = {
+      url = "github:kkkingqz/wsdbus";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   # The outputs of the test configuration tests/config (lib/mkconfig.nix,

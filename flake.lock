@@ -41,7 +41,28 @@
       "inputs": {
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs",
+        "wsdbus": "wsdbus",
         "wswidgets": "wswidgets"
+      }
+    },
+    "wsdbus": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792261883,
+        "narHash": "sha256-KXPWiMLPfgNCNVkgeqyw7A8Q1DqunOpfHfBP+GY16i8=",
+        "owner": "kkkingqz",
+        "repo": "wsdbus",
+        "rev": "2c89da4a3fbf75e47cdecda7d71600513964c1c3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kkkingqz",
+        "repo": "wsdbus",
+        "type": "github"
       }
     },
     "wswidgets": {
@@ -51,11 +72,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791884010,
-        "narHash": "sha256-ye2QTJxxe4kHTJCkuET5Z7Fz/Xqz8prhEv67qjTFBuY=",
+        "lastModified": 1792262107,
+        "narHash": "sha256-rr0ROxxZoA59CUDKPGqiVLPfgx7+wixy870wX8H+MRU=",
         "owner": "kkkingqz",
         "repo": "wswidgets",
-        "rev": "07e737718fc815d21132935baeeb0ce7367479d2",
+        "rev": "827fc4c88a93df3cdaf82e6134e98df1c6c0e26e",
         "type": "github"
       },
       "original": {

@@ -45,8 +45,8 @@ physical keyboard
       ├── workstation-smart-popup@local
       │     Smart Tiling Popup
       │
-      ├── Window Control
-      │     application/window actions
+      ├── wsdbus@kkkingqz.github.io
+      │     окна и фокус для ws-window (контракт wsdbus)
       │
       ├── Tiling Assistant
       │     tiling backend and private accelerators
@@ -385,13 +385,16 @@ Shift+Command/Win+U       Utilities
 
 ## Application/window actions
 
-Используется GNOME extension:
-
-```text
-window-control@carlo9890.github.io
-```
-
-через helper `ws-window`.
+Helper `ws-window` работает через контракт рабочего стола
+[wsdbus](https://github.com/kkkingqz/wsdbus): `wsdbus-ctl --json windows` и
+`wsdbus-ctl window ID minimize|close`. В GNOME поставщик — расширение
+`wsdbus@kkkingqz.github.io` (`gnome/wsdbus.nix`, источник `nix`); его и
+`wsdbus-ctl` ставит `ws apply home`, новое расширение работает после нового
+входа. `ws-window` берёт `libexec/wsdbus-ctl` ядра, поэтому ему не нужен
+профиль Nix в `PATH` (запуск из xremap). «Приложение» — `app` окна (id
+desktop-файла или `wmclass:<class>`). `ws-window check` — есть ли
+поставщик с `windows` и `WindowAction`; это же проверяет `ws keyboard apply`
+перед сменой сочетаний.
 
 ```text
 Option+Command/Win+Esc       GNOME System Monitor
@@ -731,7 +734,7 @@ ws keyboard restore
 ставит флаг `xremap.disabled` (см. «Runtime installation»): xremap не
 стартует до `ws keyboard apply` или `ws keyboard start`.
 
-Он не удаляет Tiling Assistant, Window Control, `ws-touchbar-fn` или локальные
+Он не удаляет Tiling Assistant, wsdbus, `ws-touchbar-fn` или локальные
 GNOME extensions. Их lifecycle управляется отдельно.
 
 ## Проверка
@@ -755,7 +758,8 @@ systemctl --user status xremap.service
 journalctl --user -u xremap.service
 
 gnome-extensions info xremap@k0kubun.com
-gnome-extensions info window-control@carlo9890.github.io
+gnome-extensions info wsdbus@kkkingqz.github.io
+~/.local/share/wsconfig/libexec/ws-window check
 gnome-extensions info workstation-smart-popup@local
 gnome-extensions info workstation-input-source@local
 
@@ -772,7 +776,7 @@ GNOME system shortcuts               OK
 GUI application mappings             OK
 Ghostty terminal-safe layer           OK
 Nautilus / Finder layer               OK
-Window Control actions                OK
+ws-window actions (wsdbus)            ожидает проверки
 Tiling Assistant mappings             OK
 Tile Editing Mode / spatial focus     OK
 Always on Top                         OK

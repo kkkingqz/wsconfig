@@ -12,6 +12,7 @@
     ../../terminal/distrobox-colors.nix
     ./man.nix
     ../../gnome/gnome-extensions.nix
+    ../../gnome/wsdbus.nix
     ../../flatpak/flatpak.nix
     ../../gnome/gnome.nix
     ../../keyboard/keyboard.nix

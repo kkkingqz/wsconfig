@@ -11,12 +11,17 @@
       url = "github:kkkingqz/wswidgets";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    wsdbus = {
+      url = "github:kkkingqz/wsdbus";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     # The core: ws, its modules and tools; pinned here, ws update core.
     wsconfig = {
       url = "github:kkkingqz/wsconfig";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
       inputs.wswidgets.follows = "wswidgets";
+      inputs.wsdbus.follows = "wsdbus";
     };
   };
 

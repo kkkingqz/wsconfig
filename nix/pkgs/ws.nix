@@ -8,9 +8,11 @@
 # of that revision without a checkout (install.sh, ws help plan-v2, 9.1).
 # libexec/gum: the dialogs of ws (lib/ws_ui.py) use the gum of this nixpkgs,
 # also under nix run before the first ws apply (ws help plan-v2, 11.0).
+# libexec/wsdbus-ctl: the client of the desktop contract for ws-window
+# (gnome/wsdbus.nix), also where the profile is not in PATH (xremap launch).
 # share/ws/complete.json: the completion of ws, from the usage of its
 # commands (lib/ws_complete.py); a usage it cannot read fails the build.
-{ lib, runCommand, gum, python3 }:
+{ lib, runCommand, gum, python3, wsdbusCtl }:
 let
   root = ../..;
   # The test configuration and the tests are no part of the core.
@@ -26,6 +28,7 @@ runCommand "wsconfig-core" { meta.mainProgram = "ws"; nativeBuildInputs = [ pyth
   touch $out/.wsconfig-package
   chmod u+w $out/libexec
   ln -s ${gum}/bin/gum $out/libexec/gum
+  ln -s ${lib.getExe wsdbusCtl} $out/libexec/wsdbus-ctl
   mkdir -p $out/share/ws
   python3 $out/lib/ws_complete.py build $out > $out/share/ws/complete.json
 ''

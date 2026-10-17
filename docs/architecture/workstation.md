@@ -86,7 +86,7 @@ Extensions, являющиеся частью текущего workstation basel
 
 ```text
 xremap@k0kubun.com
-window-control@carlo9890.github.io
+wsdbus@kkkingqz.github.io       (контракт wsdbus: ws-window, виджеты)
 Tiling Assistant
 workstation-smart-popup@local
 workstation-dock-spring@local
@@ -94,8 +94,8 @@ workstation-input-source@local
 workstation-hibernate@local     (хосты с resume= в kernelParams)
 ```
 
-`Window Monitor Pro` используется и входит в baseline расширений; keyboard/Touch Bar
-baseline от него не зависит.
+Window Monitor Pro и Window Control заменены контрактом wsdbus (2026-10-17):
+фокус и окна отдаёт поставщик wsdbus, им пользуются `ws-window` и виджеты.
 
 ---
 
@@ -214,7 +214,7 @@ GNOME/Mutter                    system shortcuts
 xremap                          application/Fn/Nautilus mappings
 workstation-input-source@local  EN/RU/UA + Caps + unlock-dialog/overview EN
 workstation-smart-popup@local   Smart Tiling Popup
-Window Control                  application/window actions
+wsdbus@kkkingqz.github.io       окна для ws-window (wsdbus-ctl)
 Tiling Assistant                tiling backend
 Ghostty                         terminal-safe Super layer
 ```
@@ -1007,7 +1007,7 @@ Ubuntu 26.04.1 LTS
     │   ├── GDM/login EN
     │   ├── unlock-dialog EN
     │   ├── Tiling Assistant / Tile Editing Mode
-    │   └── Smart Popup / Window Control
+    │   └── Smart Popup / ws-window (wsdbus)
     └── terminal environment
         ├── Ghostty
         ├── Fish

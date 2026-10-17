@@ -22,7 +22,8 @@
 # next apply; add or remove it here instead. New extensions load after a
 # log out and in on Wayland. gnome-extensions.nix adds those that depend on
 # the host: workstation-hibernate (resume= in kernelParams) and the panel
-# adapter of the widgets (layers.widgets). source:
+# adapter of the widgets (layers.widgets); always the wsdbus provider of the
+# desktop contract (gnome/wsdbus.nix: windows for ws-window). source:
 #   ubuntu  gnome-shell-ubuntu-extensions (apt); enabled by the Ubuntu
 #           session mode (/usr/share/gnome-shell/modes/ubuntu.json), not
 #           written to enabled-extensions
@@ -87,19 +88,9 @@ source = "ubuntu"
 uuid = "web-search-provider@ubuntu.com"
 source = "ubuntu"
 
-# Used; enabled since before the repository.
-[[extensions]]
-uuid = "window-monitor-pro@muhammed.hussien2030.gmail.com"
-source = "ego"
-
 # WM_CLASS bridge for xremap application filters (ws-xremap waits for it).
 [[extensions]]
 uuid = "xremap@k0kubun.com"
-source = "ego"
-
-# D-Bus window control for ws-window (ws help keyboard).
-[[extensions]]
-uuid = "window-control@carlo9890.github.io"
 source = "ego"
 
 [[extensions]]

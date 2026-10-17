@@ -547,7 +547,7 @@ ws suspend check      # USB configuration 1, без appletbdrm, ws-touchbar-fn a
 
 ```text
 xremap@k0kubun.com
-window-control@carlo9890.github.io
+wsdbus@kkkingqz.github.io (окна для ws-window; ставит ws apply home)
 Tiling Assistant (Ubuntu UUID либо upstream fallback)
 workstation-smart-popup@local
 workstation-dock-spring@local
@@ -568,9 +568,7 @@ ws gnome extensions
 (шаг `extensions` в `ws apply`). После изменения `extension.js` на Wayland
 выполнить logout/login.
 
-Расширения с extensions.gnome.org (`xremap@k0kubun.com`,
-`window-control@carlo9890.github.io`,
-`window-monitor-pro@muhammed.hussien2030.gmail.com`) ставит тот же шаг
+Расширения с extensions.gnome.org (`xremap@k0kubun.com`) ставит тот же шаг
 `extensions`, если их нет: последнюю версию для текущего GNOME Shell
 (`gnome-extensions install`). Дальше их обновляет Extension Manager (или
 `ws update extensions`). Включает их `ws apply` (`enabled-extensions`); на
@@ -581,8 +579,8 @@ ws gnome extensions
 Manager нельзя: `ws gnome check` покажет FAIL «files not from Nix», `ws update
 extensions` при закреплённых расширениях отказывается.
 
-`Window Monitor Pro` обязателен в списке расширений; клавиатура от него не
-зависит.
+Поставщик wsdbus (`wsdbus@kkkingqz.github.io`) в список добавляет
+`gnome/gnome-extensions.nix`; без него не работают сочетания `ws-window`.
 
 После logout/login проверить:
 
@@ -644,7 +642,7 @@ ws baseline diff before-reinstall after-reinstall
 - Touch Bar F1…F12 / hold-Fn media (родной режим);
 - GNOME Overview / Dock / Quick Settings / Nautilus;
 - keyboard profile: Caps/UA/GDM/lock behavior;
-- Smart Popup / tiling / Window Control.
+- Smart Popup / tiling / ws-window (wsdbus).
 - Dock Spring: running app activates after ~1.3 s hover;
 - Dock Spring: closed app remains closed on hover.
 

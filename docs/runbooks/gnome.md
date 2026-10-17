@@ -184,19 +184,22 @@ keyboard, Tiling Assistant или extension baseline.
 Единственный список расширений — `[[extensions]]` в `gnome/config.toml`
 (с 2026-09-27 один список; раньше свои копии были в verify,
 `ws-gnome-test`, `ws-gnome-status`, installer и здесь). Для каждого
-расширения — uuid и источник; расширения, зависящие от хоста
-(гибернация, адаптер виджетов), добавляет `gnome/gnome-extensions.nix`:
+расширения — uuid и источник; поставщика контракта wsdbus (всегда) и
+расширения, зависящие от хоста (гибернация, адаптер виджетов), добавляет
+`gnome/gnome-extensions.nix`:
 
 ```text
 ubuntu  gnome-shell-ubuntu-extensions (apt), включает режим сессии Ubuntu
 ego     extensions.gnome.org: ставит ws apply extensions, обновляет
         Extension Manager; с pin — версия через Nix (nix/pkgs/gnome-extensions.nix)
 local   gnome/extensions/<uuid>, копирует ws gnome extensions
+nix     файлы из модуля Home Manager входа flake (wsdbus, wswidgets),
+        ставит ws apply home
 ```
 
 Из списка собираются:
 
-- `enabled-extensions` (ego + local, `dconf.settings`) и пустой
+- `enabled-extensions` (ego + local + nix, `dconf.settings`) и пустой
   `disabled-extensions` — пишет `ws apply`. Расширение, включённое или
   выключенное вручную (Extension Manager, `gnome-extensions`), следующий
   `ws apply` вернёт к списку; добавлять и убирать — в `gnome/config.toml`.
@@ -211,10 +214,15 @@ local   gnome/extensions/<uuid>, копирует ws gnome extensions
 python3 -m json.tool ~/.local/share/wsconfig/gnome/extensions.json
 ```
 
-`window-monitor-pro@muhammed.hussien2030.gmail.com` используется и входит в
-baseline (2026-09-27, решение пользователя; раньше ошибочно числился legacy).
-Его, как `window-control` и `xremap`, ставит `ws apply extensions` с
-extensions.gnome.org, обновляет Extension Manager.
+`wsdbus@kkkingqz.github.io` — поставщик контракта рабочего стола
+[wsdbus](https://github.com/kkkingqz/wsdbus) (`gnome/wsdbus.nix`): фокус,
+окна и команды для `ws-window`, блокировка и схема для виджетов. Он заменил
+`window-monitor-pro@muhammed.hussien2030.gmail.com` и
+`window-control@carlo9890.github.io` (2026-10-17, wsdbus W14, W15). После их
+удаления из `gnome/config.toml` файлы остаются в
+`~/.local/share/gnome-shell/extensions`, выключенными; убрать их —
+`gnome-extensions uninstall UUID`. `xremap` по-прежнему ставит
+`ws apply extensions` с extensions.gnome.org.
 
 Неизвестные дополнительные extensions автоматически не отключаются; verifier
 только выдаёт WARN.

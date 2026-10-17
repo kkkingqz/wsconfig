@@ -9,8 +9,8 @@
 # repo and ws update extensions.
 #
 # Source nix: files delivered by a Home Manager module of a flake input
-# (the wswidgets adapter, widgets/widgets.nix) on ws apply; only enabled
-# here.
+# (the wsdbus provider, gnome/wsdbus.nix; the wswidgets adapter,
+# widgets/widgets.nix) on ws apply; only enabled here.
 { config, lib, pkgs, facts, wsHost, wsConfig, ... }:
 let
   gnome = import ./config.nix { inherit lib wsHost wsConfig; };
@@ -23,6 +23,9 @@ let
   extensions = (gnome.extensions or [ ])
   # Hibernate in the power menu where logind allows it (ws help suspend).
   ++ lib.optional hibernate { uuid = "workstation-hibernate@local"; source = "local"; }
+  # The desktop contract (gnome/wsdbus.nix): windows and focus for ws-window,
+  # lock and scheme for the widgets.
+  ++ [ { uuid = config.programs.wsdbus.extensionUuid; source = "nix"; } ]
   # The panel adapter of the widget layer (ws help widgets): its files come
   # from the wswidgets module (source "nix"), here it is only enabled.
   ++ lib.optional facts.widgets

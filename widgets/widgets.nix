@@ -4,7 +4,7 @@
 # repository chooses the widgets per host (hosts/HOST/widgets.toml,
 # ws widgets enable|disable; lib/ws_catalog.py) and enables the adapter
 # (gnome/gnome-extensions.nix).
-{ lib, wswidgets, wsHost, wsConfig, ... }:
+{ config, lib, wswidgets, wsHost, wsConfig, ... }:
 let
   catalog = import ../lib/catalog.nix { inherit lib; hosts = wsConfig + "/hosts"; };
 in
@@ -16,5 +16,8 @@ in
     # yes of this host, in order: the panel order. Every widget of the
     # catalog defaults to ask, so only yes enables one.
     widgets = (catalog.choice wsHost "widgets").yes;
+    # The lock screen hides the popups, the scheme reaches the widgets
+    # (wsdbus, gnome/wsdbus.nix).
+    desktopCtl = config.programs.wsdbus.ctl;
   };
 }

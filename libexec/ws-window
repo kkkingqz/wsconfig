@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
+"""Window shortcuts (ws help keyboard): hide, minimize or close the windows
+of the focused application through the desktop contract of wsdbus
+(wsdbus-ctl windows, wsdbus-ctl window ID ACTION; GNOME: the wsdbus
+extension), the task manager and logout. check: the provider offers windows
+and WindowAction (ws keyboard apply preflight).
 
-import ast
+wsdbus-ctl: WSDBUS_CTL (tests), libexec/wsdbus-ctl of the core
+(nix/pkgs/ws.nix), else PATH."""
+
 import json
 import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
-DEST = "org.gnome.Shell"
-PATH = "/org/gnome/Shell/Extensions/WindowControl"
-IFACE = "org.gnome.Shell.Extensions.WindowControl"
+# Exit codes of wsdbus-ctl (wsdbus spec/README.md).
+NO_PROVIDER = 3
+STALE = 5
+LOCKED = 6
 
 
 def fail(message, code=1):
@@ -17,114 +26,96 @@ def fail(message, code=1):
     raise SystemExit(code)
 
 
-def dbus(method, *args):
-    cmd = [
-        "gdbus", "call",
-        "--session",
-        "--dest", DEST,
-        "--object-path", PATH,
-        "--method", f"{IFACE}.{method}",
-        *[str(arg) for arg in args],
-    ]
+def ctl_path():
+    path = os.environ.get("WSDBUS_CTL")
+    if path:
+        return path
+    own = Path(__file__).resolve().parent / "wsdbus-ctl"
+    if os.access(own, os.X_OK):
+        return str(own)
+    found = shutil.which("wsdbus-ctl")
+    if found:
+        return found
+    fail("wsdbus-ctl not found (ws apply home)")
 
+
+def ctl(*args):
+    """Runs wsdbus-ctl; returns (status, stdout)."""
     try:
-        return subprocess.check_output(
-            cmd,
-            text=True,
-            stderr=subprocess.PIPE,
-        ).strip()
-    except FileNotFoundError:
-        fail("gdbus is not installed")
-    except subprocess.CalledProcessError as exc:
-        detail = (exc.stderr or "").strip()
-        fail(
-            "Window Control D-Bus call failed"
-            + (f": {detail}" if detail else "")
-        )
+        done = subprocess.run([ctl_path(), *args], text=True, capture_output=True)
+    except OSError as exc:
+        fail(f"cannot run wsdbus-ctl: {exc}")
+    if done.returncode == NO_PROVIDER:
+        fail("no wsdbus provider on the session bus "
+             "(GNOME: the wsdbus extension, active after a new login)")
+    if done.returncode == LOCKED:
+        fail("the screen is locked")
+    if done.returncode not in (0, STALE):
+        detail = done.stderr.strip()
+        fail(f"wsdbus-ctl {' '.join(args)} failed" + (f": {detail}" if detail else ""))
+    return done.returncode, done.stdout
 
 
 def windows():
-    raw = dbus("ListDetailed")
-
+    _status, out = ctl("--json", "windows")
     try:
-        value = ast.literal_eval(raw)
-        payload = value[0]
-        data = json.loads(payload)
-    except (ValueError, SyntaxError, IndexError, TypeError, json.JSONDecodeError) as exc:
-        fail(f"cannot parse Window Control ListDetailed reply: {exc}")
-
-    if not isinstance(data, list):
-        fail("Window Control ListDetailed did not return a JSON array")
-
-    return data
+        items = json.loads(out)["windows"]
+    except (ValueError, KeyError, TypeError) as exc:
+        fail(f"cannot read wsdbus-ctl windows: {exc}")
+    if not isinstance(items, list):
+        fail("wsdbus-ctl windows gave no list")
+    return items
 
 
 def focused_window(items):
     for item in items:
-        if item.get("has_focus"):
+        if item.get("focused"):
             return item
-
-    for item in items:
-        if item.get("appears_focused"):
-            return item
-
-    fail("no focused normal window")
+    fail("no focused window")
 
 
-def app_key(item):
-    for field in ("sandboxed_app_id", "gtk_application_id", "wm_class"):
-        value = item.get(field)
-        if isinstance(value, str) and value:
-            return (field, value)
-
-    pid = item.get("pid")
-    if isinstance(pid, int) and pid > 0:
-        return ("pid", pid)
-
-    return ("window", item.get("id"))
-
-
-def call_window(method, window_id):
-    if not isinstance(window_id, int):
-        fail(f"invalid window id: {window_id!r}")
-
-    dbus(method, window_id)
-
-
-def current_app_windows(items):
-    focused = focused_window(items)
-    key = app_key(focused)
-    return focused, [item for item in items if app_key(item) == key]
+def act(item, action):
+    # A window that closed meanwhile (stale) needs nothing more.
+    ctl("window", str(item["id"]), action)
 
 
 def minimize_current():
     items = windows()
-    _focused, targets = current_app_windows(items)
-
-    for item in targets:
-        if not item.get("is_minimized"):
-            call_window("Minimize", item["id"])
+    app = focused_window(items)["app"]
+    for item in items:
+        if item.get("app") == app and not item.get("minimized"):
+            act(item, "minimize")
 
 
 def minimize_others():
     items = windows()
-    focused = focused_window(items)
-    keep = app_key(focused)
-
+    app = focused_window(items)["app"]
     for item in items:
-        if app_key(item) != keep and not item.get("is_minimized"):
-            call_window("Minimize", item["id"])
+        if item.get("app") != app and not item.get("minimized"):
+            act(item, "minimize")
 
 
 def close_current():
     items = windows()
-    focused, targets = current_app_windows(items)
-
-    focused_id = focused.get("id")
-    targets.sort(key=lambda item: item.get("id") == focused_id)
-
+    focused = focused_window(items)
+    targets = [item for item in items if item.get("app") == focused["app"]]
+    # The focused window last: closing it first would move the focus.
+    targets.sort(key=lambda item: item["id"] == focused["id"])
     for item in targets:
-        call_window("Close", item["id"])
+        act(item, "close")
+
+
+def check():
+    """The provider offers what the window actions need."""
+    _status, out = ctl("--json", "info")
+    try:
+        capabilities = json.loads(out)["capabilities"]
+    except (ValueError, KeyError, TypeError) as exc:
+        fail(f"cannot read wsdbus-ctl info: {exc}")
+    missing = [c for c in ("windows", "WindowAction") if c not in capabilities]
+    if missing:
+        fail(f"the wsdbus provider lacks {', '.join(missing)}")
+    print("wsdbus provider: windows, WindowAction")
 
 
 def task_manager():
@@ -177,7 +168,7 @@ def main():
         fail(
             "usage: ws-window "
             "{task-manager|hide-current|hide-others|"
-            "minimize-current|close-current|logout|logout-now}",
+            "minimize-current|close-current|logout|logout-now|check}",
             2,
         )
 
@@ -195,6 +186,8 @@ def main():
         logout(False)
     elif action == "logout-now":
         logout(True)
+    elif action == "check":
+        check()
     else:
         fail(f"unknown action: {action}", 2)
 

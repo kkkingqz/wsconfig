@@ -135,7 +135,7 @@ if [[ "$rdp" == false ]]; then
     }
 fi
 # Final profile depends on the repository-owned input-source/Smart Popup
-# extensions plus Window Control and Tiling Assistant. On a fresh install the
+# extensions plus the wsdbus provider (ws-window) and Tiling Assistant. On a fresh install the
 # local extensions may require one logout/login before this preflight can pass.
 command -v gdbus >/dev/null 2>&1 || {
     echo "gdbus not found" >&2
@@ -162,8 +162,9 @@ if command -v gnome-extensions >/dev/null 2>&1; then
         echo "workstation-smart-popup extension is not active; log out/in and rerun" >&2
         preflight_failed=true
     }
-    extension_is_active window-control@carlo9890.github.io || {
-        echo "Window Control extension is not active" >&2
+    # ws-window acts on windows through the wsdbus provider (gnome/wsdbus.nix).
+    "$WS_CORE/libexec/ws-window" check >/dev/null 2>&1 || {
+        echo "wsdbus provider is not on the session bus (wsdbus extension); log out/in and rerun" >&2
         preflight_failed=true
     }
 

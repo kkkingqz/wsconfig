@@ -8,13 +8,15 @@
 # ROOT holds the data only (hosts, the catalogs and TOML of the
 # modules); the code is always that of this file. The modules read the data
 # from ROOT through the specialArg wsConfig, never relative to themselves.
-# INPUTS: nixpkgs, home-manager and wswidgets of the configuration (its
-# flake.lock pins them).
+# INPUTS: nixpkgs, home-manager, wswidgets and wsdbus of the configuration
+# (its flake.lock pins them); a configuration without its own wsdbus input
+# gets the one of the core.
 # The schema of ROOT/wsconfig.toml must be one of lib/wsconfig-schema.toml,
 # as ws apply checks before Nix (ws help plan-v2, 8.5).
 { root, inputs }:
 let
   inherit (inputs) nixpkgs home-manager wswidgets;
+  wsdbus = inputs.wsdbus or inputs.wsconfig.inputs.wsdbus;
   supported = (builtins.fromTOML (builtins.readFile ./wsconfig-schema.toml)).supported;
   schemaFile = root + "/wsconfig.toml";
   schema =
@@ -37,7 +39,7 @@ let
   mkHome = host: home-manager.lib.homeManagerConfiguration {
     inherit pkgs;
     extraSpecialArgs = {
-      inherit man wswidgets core;
+      inherit man wswidgets wsdbus core;
       facts = factsOf host;
       # The root of the data: the modules read their catalogs and TOML and
       # the host choices hosts/HOST/*.toml from it (lib/catalog.nix).
@@ -52,7 +54,10 @@ let
   };
 
   # The core in the store: ws and its tools (nix/pkgs/ws.nix).
-  core = pkgs.callPackage ../nix/pkgs/ws.nix { };
+  # libexec/wsdbus-ctl is the wsdbus-ctl of gnome/wsdbus.nix (one build).
+  core = pkgs.callPackage ../nix/pkgs/ws.nix {
+    wsdbusCtl = (import (wsdbus + "/nix/packages.nix") { inherit pkgs; }).ctl;
+  };
   # Man pages from docs/ with lowdown from nixpkgs.
   man = pkgs.callPackage ../nix/pkgs/man.nix { };
   xremap = pkgs.callPackage ../nix/pkgs/xremap.nix { };
