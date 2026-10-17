@@ -62,7 +62,7 @@ volume: User Commands
 |---|---|
 | wstouchbar (новая реализация Touch Bar на Rust) | этапы 1–2 в main; план этапа 3 (сессия, отрисовка) написан, реализация не начата |
 | wswidgets (виджеты) | вынесены в свой репозиторий, wsconfig подключает их как вход flake; следят за блокировкой и схемой через wsdbus |
-| wsdbus (контракт рабочего стола) | план 1: контракт и поставщик GNOME готовы; этап 3 — wsconfig: `ws-window` на `wsdbus-ctl`, Window Control и Window Monitor Pro убраны из шаблона; живая проверка на mbp16 впереди |
+| wsdbus (контракт рабочего стола) | план 1: контракт и поставщик GNOME готовы; этап 3 — wsconfig: `ws-window` на `wsdbus-ctl`, Window Control и Window Monitor Pro убраны; на mbp16 проверено 2026-10-17 |
 | storage.policy (плагин Unraid) | версия 2026.10.09.1 стоит на tower |
 
 # 2. Осталось

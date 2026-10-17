@@ -776,7 +776,7 @@ GNOME system shortcuts               OK
 GUI application mappings             OK
 Ghostty terminal-safe layer           OK
 Nautilus / Finder layer               OK
-ws-window actions (wsdbus)            ожидает проверки
+ws-window actions (wsdbus)            OK
 Tiling Assistant mappings             OK
 Tile Editing Mode / spatial focus     OK
 Always on Top                         OK
