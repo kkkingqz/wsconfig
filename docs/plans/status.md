@@ -73,7 +73,7 @@ volume: User Commands
 | Живая проверка `ws setup` на чистой VM | plan-v2, 9.10 | отложено | новая VM wsvm, с подтверждения |
 | Backup на tower | plan-final, plan-unraid | частично | приёмник на Unraid, первый перенос, тест восстановления; HOME и VM — позже |
 | Финальная общая проверка | plan-final, 5 | не начато | прогон по всей системе |
-| Legion Go (`legiongo`) | plan-legion-go | не начато | хост в конфигурации есть; системная часть и Game Mode на устройстве |
+| Legion Go (`legiongo`) | plan-legion-go | подготовлено | хост, системные части и пакеты Game Mode готовы (этапы 1–2, 2026-10-26); дальше — установка на устройство |
 | wsgnomebox (хост в контейнере на tower) | plan-wsgnomebox | частично | этап 1 проверен локально; на tower не начат, картинка RDP без GPU чёрная |
 | wstouchbar, этап 3 | план в репозитории wstouchbar | не начато | реализация по плану |
 

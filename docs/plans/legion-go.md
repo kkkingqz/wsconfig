@@ -1,6 +1,6 @@
 title: ws-plan-legion-go
 section: 1
-date: 2026-10-10
+date: 2026-10-26
 source: Workstation
 volume: User Commands
 
@@ -13,11 +13,19 @@ home-manager поверх неё. Устройство загружается в
 стороны идёт без экрана входа. Компоненты Game Mode взяты из Bazzite
 (`ublue-os/bazzite` `7f903b9`, изучен 2026-10-10) и перенесены на Ubuntu.
 
-Состояние: план. На устройстве ничего не делалось. В репозитории готово:
-хост `legiongo` (4.1), `source:`/`arch:` и факты (4.2), пометки и
-`.desktop` по пометкам (4.5), раскладка Btrfs `ws btrfs make` и первичная
-настройка `setup.sh` (`ws help setup`). Не начаты: системные части (4.3) и
-игровой слой (4.4).
+Состояние на 2026-10-26: план. На устройстве ничего не делалось. Этап 1
+сделан: хост `legiongo` в конфигурации (4.1), `source:`/`arch:`/`rec:`
+(4.2), обе системные части (4.3), игровой слой и `ws game` (4.4), выбор
+хоста в каталогах (4.5), раскладка Btrfs `ws btrfs make` и первичная
+настройка `install.sh` + `ws setup` (`ws help setup`). Этап 2 сделан
+2026-10-26: пакеты Game Mode собраны и проверены на mbp16. Дальше —
+устройство (этап 0).
+
+С 2026-10-15 wsconfig — два репозитория (`ws help architecture-v2`): ядро
+`kkkingqz/wsconfig` (код, `system/`, `gaming/`, этот план) приходит входом
+flake, конфигурация `kkkingqz/wsbodya` в `~/wsconfig` — данные машин
+(`hosts/legiongo/`, каталоги). Ниже «ядро» и «конфигурация» — в этом
+смысле.
 
 # 1. Устройство
 
@@ -61,8 +69,8 @@ backup      отдельного backup сохранений игр нет
 ```text
 ядро        пакет linux-xanmod-x64v3 (MAIN); generic-ядро Ubuntu — запасной
             пункт GRUB
-факты       nativeSteam = "yes", gameMode = "yes" (как vm: "yes"/"no" в
-            facts.nix; пользователь)
+слои        nativeSteam = true, gameMode = true в [layers] host.toml
+            (как vm; пользователь)
 параметры   bluetooth.disable_ertm=1 cpufreq.default_governor=powersave
             zswap.enabled=1 zswap.compressor=zstd
 питание     steamos-manager без TDP и профиля
@@ -72,8 +80,9 @@ swap        swapfile 16 ГБ в @swap
 ```
 
 Набор слоёв хоста задаётся механизмами, которые уже есть (4.5):
-Flatpak и Distrobox — пометками машины в `flatpak/apps.txt` и
-`distrobox/hosts.txt`, VM — фактом `vm` (`"no"`, решение пользователя).
+Flatpak и Distrobox — выбором хоста в `hosts/legiongo/flatpak.toml` и
+`boxes.toml` конфигурации, VM — `vm = false` в `[layers]` (решение
+пользователя).
 
 # 3. Компоненты
 
@@ -99,8 +108,8 @@ Flatpak и Distrobox — пометками машины в `flatpak/apps.txt` �
 
 Generic-ядро Ubuntu (7.0) остаётся установленным: им проверяем, если
 что-то сломается на XanMod. Параметры ядра общие для обоих
-(`GRUB_CMDLINE_LINUX_DEFAULT` из `facts.nix`). В generic-ядре zstd — модуль,
-zswap там может стартовать с lzo; AppArmor там активен.
+(`GRUB_CMDLINE_LINUX_DEFAULT` из `kernelParams` в `host.toml`). В
+generic-ядре zstd — модуль, zswap там может стартовать с lzo; AppArmor там активен.
 
 ## 3.2 Питание: power-profiles-daemon
 
@@ -154,7 +163,7 @@ sysctl     swappiness и page-cluster — умолчания ядра, подб�
 | powerbuttond | кнопка питания в Game Mode: коротко — сон через Steam, долго — меню | Valve `holo/powerbuttond` 4.2 + debounce после сна (Terra, 2026-09-25), сборка → `.deb` |
 | mangoapp | оверлей производительности Steam (`STEAM_USE_MANGOAPP`) | apt (`mangoapp` 0.8.2 в 26.04, `gaming/apt.txt`) |
 | extest | `libextest.so`: Steam Input на Wayland-рабочем столе | релиз `ublue-os/extest` → `.deb` |
-| SDDM | autologin в `ubuntu.desktop`, `Relogin=true`; steamos-manager пишет `zz-holo-autologin.conf` и `zzt-holo-temp-login.conf` | apt, ставит `wsgame install` на этапе 6: при установке Ubuntu спрашивает display manager, до этого работает GDM; конфиги — системный слой |
+| SDDM | autologin в `ubuntu.desktop`, `Relogin=true`; steamos-manager пишет `zz-holo-autologin.conf` и `zzt-holo-temp-login.conf` | apt, ставит `ws game install` на этапе 6: при установке Ubuntu спрашивает display manager, до этого работает GDM; конфиги — системный слой |
 | обвязка сессии | `os-session-select` (Steam → `steamosctl`), «Return to Game Mode», autologin SDDM, `HandlePowerKey=ignore` — системный слой (`system/gaming.nix`, сделано 2026-10-10); `platform.toml` (`[session]`: `desktop = "ubuntu.desktop"`, `gamescope-session-steam.desktop`, `gamescope-session-plus@steam.service`) и device-файл 83E1 — в пакете steamos-manager | по образцу Bazzite, под `gnome-session --session=ubuntu`; polkit не нужен: `steamosctl` идёт через DBus steamos-manager, его policy — в пакете |
 
 Mesa — из Ubuntu (26.0.8). Сессия выставляет
@@ -207,39 +216,48 @@ udev-правило на появление светодиода пережив�
 
 # 4. Как это ложится на wsconfig
 
-## 4.1 Хост `nix/hosts/legiongo/`
+## 4.1 Хост `hosts/legiongo/` (конфигурация)
 
-Сделано 2026-10-10: `facts.nix`, `apt.txt`, `apt/xanmod.sources`, ключ
-`apt/xanmod.asc`, пустой `system/hardware/legion-go.nix`. Ключ —
-«XanMod Kernel <kernel@xanmod.org>», rsa2048 от 2017-01-07, отпечаток
+Сделано 2026-10-10, в формат v2 перенесено 2026-10-14…15: `host.toml`,
+`apt.txt`, `apt/xanmod.sources`, ключ `apt/xanmod.asc`, `flatpak.toml`; в
+ядре — `system/hardware/legion-go.nix`. Ключ — «XanMod Kernel
+<kernel@xanmod.org>», rsa2048 от 2017-01-07, отпечаток
 `D38D 7D1D A134 9567 ADED 882D 86F7 D09E E734 E623` (с
 `dl.xanmod.org/archive.key` → `gitlab.com/afrd.gpg`); им подписан
 `InRelease` репозитория `resolute` (проверено 2026-10-10).
 
 ```text
-facts.nix  hostname = "legiongo", user king, wsconfig,
-           hardware = "legion-go", boot = "grub", vm = "no",
-           nativeSteam = "yes", gameMode = "yes",
+host.toml  [host] hostname = "legiongo", user king, wsconfig;
+           [platform] hardware = "legion-go", boot = "grub",
            kernelParams = quiet splash bluetooth.disable_ertm=1
                           cpufreq.default_governor=powersave
-                          zswap.enabled=1 zswap.compressor=zstd
+                          zswap.enabled=1 zswap.compressor=zstd,
+           displayScale = 2, xremapIgnore;
+           [layers] vm = false, widgets = true, nativeSteam = true,
+           gameMode = true
 apt.txt    source:xanmod, linux-xanmod-x64v3; linux-generic (запасное
            ядро на серии 7.0) и purge: метапакетов HWE; openssh-server,
            amd64-microcode, lm-sensors, evtest
-факты      nativeSteam = "yes" → steam/apt.txt (arch:i386,
+слои       nativeSteam = true → steam/apt.txt (arch:i386,
            steam-installer, 32-битные Vulkan, EGL и GBM) и @steam
-           (steam/bootstrap.bash);
-           gameMode = "yes" → gaming/apt.txt (gamescope) и
-           system/gaming.nix (sddm ставит wsgame, 4.4)
+           (steam/bootstrap.bash из ws-prepare);
+           gameMode = true → gaming/apt.txt (gamescope, mangoapp) и
+           system/gaming.nix (sddm ставит ws game install, 4.4)
 ```
 
-## 4.2 `bootstrap.sh`
+Сборка проверяется из конфигурации: `nix flake check` в `~/wsconfig`
+(`home-legiongo`, `system-legiongo`; 2026-10-26 вычисляются).
 
+## 4.2 `ws setup` и `ws-prepare`
+
+`ws setup` (`ws help setup`) ведёт свежую Ubuntu по шагам `choices`,
+`btrfs`, `prepare`, `layers`, `check`, `timeshift`, `backup`, `finish`;
+системную часть делает `libexec/ws-prepare` (до v2 — `bootstrap.sh`).
 `source:` и `arch:` сделаны 2026-10-10 (их понимают и `ws check apt`,
 `ws-baseline`).
 
-- `source:NAME` — ставит `nix/hosts/<host>/apt/NAME.sources` и ключ из
-  репозитория до установки пакетов, как `ppa:` (XanMod).
+- `source:NAME` — ставит `hosts/<host>/apt/NAME.sources` и ключ из
+  конфигурации до установки пакетов, как `ppa:` (XanMod).
 - `arch:i386` — `dpkg --add-architecture i386` до `apt-get update` (Steam).
 - `rec:NAME` (2026-10-11) — пакет с его Recommends, остальное без них.
   Симуляция на 26.04: со всеми Recommends набор legiongo — +315 пакетов,
@@ -250,9 +268,9 @@ apt.txt    source:xanmod, linux-xanmod-x64v3; linux-generic (запасное
   `ubuntu-restricted-extras` (без Recommends он пустой: ни кодеков, ни
   шрифтов MS) и `steam-installer` (32-битные библиотеки Steam).
 - Subvolume `@steam` в `~/.local/share/Steam` (строка fstab, как `@vms`) —
-  при `nativeSteam = "yes"`, шаг 4 (`steam/bootstrap.bash`), до первого
-  запуска Steam; проверяет `ws check steam`. Сделано 2026-10-10.
-- Пакеты из локальных `.deb` `ws check apt` получает от `wsgame`, а не из
+  при `nativeSteam = true`, шаг 4 `ws-prepare` (`steam/bootstrap.bash`),
+  до первого запуска Steam; проверяет `ws check steam`. Сделано 2026-10-10.
+- Пакеты из локальных `.deb` `ws check apt` получает от `ws game`, а не из
   списка.
 
 ## 4.3 Системный слой
@@ -260,12 +278,12 @@ apt.txt    source:xanmod, linux-xanmod-x64v3; linux-generic (запасное
 Две части, чтобы GDM работал, пока Game Mode не готов:
 
 ```text
-system/hardware/legion-go.nix   сделано 2026-10-10 (ставит ws system
-                                apply в setup.sh): sysctl.d, udev (I/O),
+system/hardware/legion-go.nix   сделано 2026-10-10 (ставит ws apply
+                                system в ws setup): sysctl.d, udev (I/O),
                                 limits.d (nice), modprobe.d (sp5100_tco),
                                 PipeWire (свёртка) и WirePlumber 83E1; на
                                 этапе 5 — RGB, ICC, ASPM Wi-Fi по замеру
-system/gaming.nix               сделано 2026-10-10, при gameMode = "yes":
+system/gaming.nix               сделано 2026-10-10, при gameMode = true:
                                 sddm.conf.d (autologin в ubuntu.desktop,
                                 Relogin, Wayland-greeter), os-session-select,
                                 return-to-gamemode и его .desktop
@@ -278,87 +296,101 @@ system/gaming.nix               сделано 2026-10-10, при gameMode = "ye
                                 пакеты
 ```
 
-## 4.4 Игровой слой `gaming/`, владелец `wsgame`
+## 4.4 Игровой слой `gaming/`, владелец `ws game`
 
-Сделано 2026-10-10 (`ws help gaming`). Источники и версии — в
-`gaming/sources.nix` (url, sha256, версия пакета), собирает и ставит
-владелец («Nix доставляет, владельцы остаются»):
+Сделано 2026-10-10 (`ws help gaming`; до v2 команда называлась
+`wsgame`). Источники и версии — в `gaming/sources.nix` (url, sha256,
+версия пакета), собирает и ставит владелец («Nix доставляет, владельцы
+остаются»):
 
 ```text
-wsgame fetch     источники по sha256 в ~/.local/share/workstation/gaming/src
-wsgame build     fetch, затем gaming/build.sh в одноразовом контейнере
+ws game fetch    источники по sha256 в ~/.local/share/wsconfig/gaming/src
+ws game build    fetch, затем gaming/build.sh в одноразовом контейнере
                  podman Ubuntu релиза host (как ws-suspend t2bce-build;
                  бокса gaming-build нет): steamos-manager (Rust;
                  platform.toml [session], device-файл 83E1 без TDP и
                  профиля), powerbuttond (C) → .deb; gamescope-session-plus,
                  gamescope-session-steam, extest — в .deb как есть;
                  InputPlumber — .deb upstream
-wsgame install   apt install ./*.deb + sddm и weston (display manager —
+ws game test     поставить и снять .deb в чистом контейнере Ubuntu
+ws game status   закреплённая, собранная и установленная версия
+ws game install  apt install ./*.deb + sddm и weston (display manager —
                  sddm без вопроса debconf), inputplumber.service, режим
                  входа по умолчанию desktop
-wsgame check     пакеты и версии, сервисы, display manager, имена сессий,
+ws game check    пакеты и версии, сервисы, display manager, имена сессий,
                  PPD — единственный владелец platform_profile, режим входа
-wsgame mode game|desktop   steamosctl (терминал, ssh)
+ws game mode game|desktop  steamosctl (терминал, ssh)
 ```
 
-Переход на новую версию — правка `sources.nix`. Toolchains на host не
-ставятся.
+Переход на новую версию — правка `sources.nix` в ядре. Toolchains на
+host не ставятся.
 
 ## 4.5 Зависящее от хоста в других слоях
 
 - **xremap** (сделано 2026-10-10). В gamescope-сессии не работает: его
   тянет `graphical-session.target`, а её поднимает и
   `gamescope-session-plus`, поэтому `ws-xremap` вне GNOME выходит с кодом 0.
-  `--ignore` из `xremapIgnore` в `facts.nix`: `InputPlumber Keyboard`
+  `--ignore` из `xremapIgnore` в `host.toml`: `InputPlumber Keyboard`
   (исходные устройства контроллера InputPlumber скрывает). Клавиатуру
-  FPS-режима и виртуальные устройства Steam — сверить на этапе 7 (`ws-keyboard
-  devices`) и дописать.
+  FPS-режима и виртуальные устройства Steam — сверить на этапе 7 (`ws
+  keyboard devices`) и дописать.
 - **Клавиатура.** Шаги для GDM (EN на экране входа) после перехода на SDDM
-  не применять.
+  не применять. `ws keyboard apply` перед изменениями проверяет, что
+  расширения GNOME и поставщик wsdbus (`ws-window check`) на шине сессии:
+  до первого перезахода после установки расширений он останавливается с
+  «log out/in and rerun» — второй `ws apply` из `ws setup` (после
+  reboot) это снимает.
+- **wsdbus и виджеты** (с 2026-10-17, репозиторий `kkkingqz/wsdbus`).
+  Расширение `wsdbus@kkkingqz.github.io` ставится на каждом хосте GNOME; `ws-window`
+  работает через `wsdbus-ctl`. Виджеты следят за блокировкой и схемой
+  через `wsdbus-ctl --json watch` и перезапускают его через 2 с, если тот
+  вышел. В Game Mode поставщика нет — сервис виджетов там не должен
+  работать вовсе (этап 6).
 - **GNOME.** Масштаб 2.0, экранная клавиатура, ярлык «Return to Game Mode»;
   режимы питания — штатный переключатель (PPD).
 - **Steam в GNOME** — со своим launcher и extest
   (`LD_PRELOAD=/usr/lib/extest/libextest.so`, пакет `extest`): этап 7.
-- **Flatpak — пометки в `flatpak/apps.txt`.** Заранее (сделано
-  2026-10-10): `com.valvesoftware.Steam legiongo=no` (Steam нативный).
-  Остальное — с `all=ask`: `setup.sh` в начале показывает список с
-  галочками (всё без пометки `legiongo`; `all=ask` отмечены), ответы
-  становятся пометками `legiongo=yes|no` и пушатся; `ws apply` потом не
-  спрашивает. Пересмотреть — `wsflatpak apply --select`.
-- **Свои `.desktop`** (25ff6a1): `ws switch` ставит файлы
-  `flatpak/desktop/` только для приложений с `yes` на этой машине, а
-  launchers `ws-win-NAME` — только где бокс помечен `yes`. На `legiongo`
-  пункта flatpak-Steam нет (`legiongo=no`).
-- **Overrides Flatpak** (306e244): у строк `flatpak/overrides.txt` свои
-  пометки; нынешние — `mbp16=yes all=yes`. Overrides выбранных приложений
-  идут в тот же список `setup.sh` (отмечены); позже — `wsflatpak un…` на
-  устройстве.
-- **Distrobox — пометки в `distrobox/hosts.txt`.** `t2bce-build` и
-  `touchbar-build` нужны только на mbp16 — `all=no` (сделано 2026-10-10).
-  `arch`, `wine-wayland`, `wine`, `proton` — в списке `setup.sh`. Пакеты
+- **Flatpak и Distrobox — выбор хоста** в `hosts/legiongo/flatpak.toml` и
+  `boxes.toml` конфигурации (`yes = […]`, `no = […]`; чего нет ни там, ни
+  там — `default` каталога). Заранее (2026-10-10): `no =
+  ["com.valvesoftware.Steam"]` (Steam нативный). Остальное спрашивает шаг
+  `choices` `ws setup` одним списком с галочками — приложения, боксы,
+  виджеты и overrides Flatpak без выбора этого хоста; ответы пишутся в
+  файлы хоста и публикуются `ws sync`; `ws apply` потом не спрашивает.
+  Пересмотреть — `ws box apply --select`, `ws flatpak manage|unmanage`.
+  `t2bce-build` и `touchbar-build` в каталоге — только для mbp16. Пакеты
   Game Mode собираются без бокса (4.4).
-- **VM** — факт `vm` в `facts.nix`: при `"no"` `bootstrap.sh` не ставит
-  `virt/apt.txt`, `@vms`, libvirt и группу `libvirt`, `ws check virt` молчит.
-- **Масштаб** (сделано 2026-10-10) — факт `displayScale` в `facts.nix`
-  (legiongo `"2"`, mbp16 `"1.5"`), из него `lib/scale.nix`:
+- **Свои `.desktop`** (25ff6a1): `ws apply home` ставит файлы
+  `flatpak/desktop/` только для приложений с `yes` на этой машине, а
+  launchers `ws-win-NAME` — только где бокс выбран. На `legiongo`
+  пункта flatpak-Steam нет.
+- **VM** — `vm = false` в `[layers]`: `ws-prepare` не ставит
+  `virt/apt.txt`, `@vms`, libvirt и группу `libvirt`, `ws check virt`
+  молчит.
+- **Масштаб** (сделано 2026-10-10) — `displayScale` в `host.toml`
+  (legiongo `2`, mbp16 `1.5`), из него `lib/scale.nix`:
   `--force-device-scale-factor` Claude (2.25/scale) и ChatGPT (2/scale) в
   своих `.desktop`, DPI префиксов `wine-wayland` и `proton` (96×scale) и
-  `wine` (128×scale). На mbp16 значения прежние; на legiongo — 1.125, 1,
-  192, 256. `GDK_SCALE=2` AnyDesk (override) при 200% подходит.
-- **git на устройстве.** `setup.sh` входит в GitHub (`gh auth login` в
-  браузере, код вводит пользователь) и сам пушит хост и пометки. Позже
-  `ws switch` коммитит пометки локально: перед ним на любой машине —
-  `git pull`, после — `git push`.
-- **Проверки.** `ws check gaming` (`wsgame check`, сделано); verify —
+  `wine` (128×scale). На legiongo — 1.125, 1, 192, 256. `GDK_SCALE=2`
+  AnyDesk (override) при 200% подходит.
+- **git на устройстве.** `install.sh … --repo URL` клонирует конфигурацию
+  в `~/wsconfig` (вход в GitHub — `gh auth login` в браузере, код вводит
+  пользователь). Изменения конфигурации публикует `ws sync` (commit,
+  `git pull --rebase`, push) — на обеих машинах.
+- **Правки ядра с устройства** (`system/hardware/legion-go.nix`,
+  `system/gaming.nix`, `gaming/`): клон ядра (`~/Projects/wsconfig`) →
+  `ws apply --core ~/Projects/wsconfig` → commit и push ядра →
+  `ws update core` в конфигурации → `ws sync`.
+- **Проверки.** `ws check gaming` (`ws game check`, сделано); verify —
   связи InputPlumber ↔ steamos-manager ↔ SDDM ↔ xremap — после этапа 6.
 
 ## 4.6 Диск
 
 Btrfs по `ws help rebuild`: `@`, `@home`, `@cache`, `@tmp`, `@log` делает
-`ws btrfs make` (из `setup.sh`), `@nix`, `@steam` и `@wsbackup` —
-`bootstrap.sh`, `@swap` — этап 5 (3.3). `@steam` — клиент, библиотека,
-compatdata и shadercache вне Timeshift и backup. Сохранения, которых нет в Steam Cloud, живут только на
-устройстве. microSD — вторая библиотека Steam.
+`ws btrfs make` (шаг `btrfs` `ws setup`), `@nix` — `install.sh`, `@steam`
+и `@wsbackup` — `ws-prepare`, `@swap` — этап 5 (3.3). `@steam` — клиент,
+библиотека, compatdata и shadercache вне Timeshift и backup. Сохранения,
+которых нет в Steam Cloud, живут только на устройстве. microSD — вторая библиотека Steam.
 
 # 5. Этапы
 
@@ -376,30 +408,39 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
      бывает мерцание); загрузка с USB разрешена.
    - Прошивка контроллеров остаётся как есть.
    - USB-C хаб, клавиатура, флешка с Ubuntu 26.04.
-1. **Репозиторий на mbp16.** Хост `legiongo` (4.1), `bootstrap.sh` (4.2),
-   обе системные части (4.3), каркас `gaming/`, `wsgame` и контейнер
-   `gaming-build` (4.4), xremap и прочее из 4.5, `ws help gaming`. Хост,
-   `source:`/`arch:`, факты `nativeSteam`/`gameMode`, пометки и `.desktop`
-   по пометкам уже сделаны (2026-10-10). На mbp16 ничего не меняется: те же пути store для
-   home, system и man, `ws check` без FAIL, CI зелёный.
-2. **Пакеты на mbp16.** `wsgame build`; пакеты ставятся и снимаются в
-   чистом контейнере Ubuntu 26.04.
+1. **Репозиторий на mbp16.** Сделано 2026-10-10, перенесено в v2
+   2026-10-14…15: хост `legiongo` (4.1), `ws-prepare` (4.2), обе
+   системные части (4.3), `gaming/` и `ws game` без бокса сборки (4.4),
+   xremap и прочее из 4.5, `ws help gaming`. На mbp16 ничего не меняется:
+   те же пути store для home, system и man, `ws check` без FAIL, CI
+   зелёный.
+2. **Пакеты на mbp16.** `ws game build` (podman, контейнер Ubuntu
+   26.04), затем `ws game test`: пакеты ставятся и снимаются в чистом
+   контейнере. `ws game status` — собранные версии.
+   Сделано 2026-10-26: все шесть пакетов по `gaming/sources.nix` собраны
+   (steamos-manager — с предупреждениями компилятора о неиспользуемом
+   коде Wi-Fi, без ошибок), в `ubuntu:26.04` ставятся (`ii`),
+   `steamosctl` запускается, всё снимается. На устройстве `ws game build`
+   повторяется: `.deb` лежат в `~/.local/share/wsconfig/gaming` машины.
 3. **Ubuntu.** Установка 26.04 с USB на весь диск, hostname `legiongo`,
    пользователь `king`. Разметка вручную: ESP FAT32 около 1 ГБ
    (`/boot/efi`) и Btrfs на остальное (`/`), без swap-раздела и отдельного
-   `/boot`. Затем
-   `setup.sh` (`ws help setup`): хост `legiongo` по имени, списки с
-   галочками для того, что не помечено `legiongo`, дальше сам — раскладка
-   Btrfs, этап 4, Timeshift. Инвентарь — после setup.sh, `ws collect`
+   `/boot`. Затем `install.sh` с `--repo` конфигурации (`ws help setup`,
+   команда `wget … | bash -s -- --repo URL`): хост `legiongo` по имени,
+   шаг `choices` — один список с галочками для того, что у хоста не
+   выбрано, дальше `ws setup` сам — раскладка Btrfs, этап 4, Timeshift.
+   Инвентарь — после `ws setup`, `ws collect`
    (раздел `hardware/`: DMI и BIOS, `lspci -nnk`, `lsusb`, `libinput`,
    firmware-attributes `lenovo-wmi-other-0`, `platform_profile_choices`,
    hwmon, iio, `aplay -l`, `pw-cli ls Node` — PCI-адрес аудио для 3.5,
    `fwupdmgr get-devices` — видит ли fwupd BIOS), выжимка — в
    `docs/history/`.
-4. **База wsconfig** — внутри `setup.sh`: `bootstrap.sh` (ставит XanMod,
-   Steam и `@steam`) → reboot в XanMod → `ws system apply` → `ws apply` →
-   reboot → `ws apply` → `ws check`; пометки `legiongo` setup.sh записал и
-   запушил в начале. GDM ещё работает. Проверить:
+4. **База wsconfig** — внутри `ws setup`: шаг `prepare` (`ws-prepare`
+   ставит XanMod, Steam и `@steam`, первый `ws apply home`) → reboot в
+   XanMod → `layers`: `ws apply` → reboot → `ws apply` → `check` (`ws
+   check`, вывод в `~/.local/state/wsconfig/setup/check.txt`); выбор
+   хоста шаг `choices` записал и опубликовал в начале. GDM ещё работает.
+   Проверить:
    `uname -r`, параметры ядра, AppArmor не активен, governor `powersave` до
    PPD, поворот, касания, Wi-Fi, Bluetooth; `ws check steam` — `@steam`
    смонтирован.
@@ -422,7 +463,7 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
      обход фильтра для порта наушников;
    - sysctl (`sysctl kernel.split_lock_mitigate`), планировщики
      (`cat /sys/block/nvme0n1/queue/scheduler` — kyber).
-6. **Game Mode.** `wsgame install` (пакеты, sddm и compositor для его
+6. **Game Mode.** `ws game install` (пакеты, sddm и compositor для его
    Wayland-greeter — weston, по умолчанию SDDM) → reboot (SDDM вместо GDM)
    → первый запуск
    Steam в GNOME (`@steam` уже есть с этапа 4). Проверить:
@@ -434,18 +475,20 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
    - сон и кнопка питания в Game Mode;
    - в Game Mode не работают xremap и `workstation-widgets` (`systemctl
      --user status xremap workstation-widgets`): оба выходят без ошибки и
-     вне GNOME, и при запущенном gamescope;
+     вне GNOME, и при запущенном gamescope; нет `wsdbus-ctl watch`,
+     который перезапускается каждые 2 с (`pgrep -af wsdbus-ctl`);
    - контроллеры снятые и пристёгнутые: гироскоп, задние кнопки, Legion
      L/R; экран 60/144 Гц; внешний монитор по USB-C.
 7. **Рабочий стол на портативном.** GNOME 200%, экранная клавиатура,
    контроллер как мышь (InputPlumber или Steam с extest), xremap только в
    GNOME и без виртуальных устройств, RGB стиков выключен (3.7); Flatpak и
-   Distrobox — по пометкам `legiongo` (этап 4).
-8. **Recovery и backup.** Timeshift настроил `setup.sh` (снимок «setup»);
+   Distrobox — по выбору хоста (шаг `choices`, этап 4).
+8. **Recovery и backup.** Timeshift настроил `ws setup` (шаг
+   `timeshift`);
    здесь — откат и пункты GRUB (XanMod и generic). Backup на Unraid:
    приёмник умеет несколько машин (`hosts/legiongo/` на flash, пользователь
    `wsbackup-legiongo`; `ws help backup`), на tower его надо обновить — с
-   подтверждением; ключ `~/.ssh/wsbackup_ed25519` сделал `setup.sh`, alias и
+   подтверждением; ключ `~/.ssh/wsbackup_ed25519` сделал `ws setup`, alias и
    `config.json` — вручную; `@steam` в backup не входит. `ws-restore` с
    Live USB умеет только rEFInd: дату с Unraid на legiongo — вручную
    (`ws help recovery`, «Хосты с GRUB»).
@@ -457,7 +500,8 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
 
 # 6. Риски
 
-- BIOS N3CN42WW — не ставить; BIOS обновляется только через fwupd (если
+- BIOS N3CN42WW — не ставить (на 2026-10-26 последняя на сайте Lenovo —
+  N3CN40WW); BIOS обновляется только через fwupd (если
   Lenovo публикует капсулы в LVFS) или с Windows на USB.
 - Прошивку контроллеров Go 1 через fwupd не обновлять: для них предлагалась
   прошивка Go 2 (fwupd #9734).
@@ -466,7 +510,8 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
   `purge:`), XanMod MAIN всегда новее; переход generic на HWE — только
   осознанно, правкой `apt.txt`.
 - XanMod — один основной автор; DKMS-модули потребуют clang на host.
-- `setup.sh` и `ws btrfs make` целиком не прогонялись: первый запуск —
+- `ws setup` и `ws btrfs make` на железе с GRUB не прогонялись (живая
+  проверка на VM wsvm, `ws help plan-v2` 9.10, отложена): первый запуск —
   на устройстве. Если `@` после шага 1 не загрузится — в GRUB `c`, затем
   `configfile /boot/grub/grub.cfg` (старый корень); для этого нужна
   USB-клавиатура, меню GRUB на портретной панели повёрнуто.
@@ -480,16 +525,19 @@ compatdata и shadercache вне Timeshift и backup. Сохранения, ко
   контроллера, и его udev-правило прячет акселерометр от iio-sensor-proxy:
   автоповорот в GNOME пропадёт. Поэтому стоит 0.81.0 (решение
   пользователя 2026-10-12); переход — после этапа 6, с проверкой
-  автоповорота, гироскопа и кнопок. Остальные источники: powerbuttond
+  автоповорота, гироскопа и кнопок. Кандидат — 0.83.0 (2026-10-21):
+  драйвер IIO IMU в нём отвязан от Capability; исправляет ли это
+  `accel_3d`, не проверено. Остальные источники: powerbuttond
   v4.2 и extest 1.0.4 — последние релизы; steamos-manager и сессии OGC —
   коммиты (у сессий релизов нет, настраиваемые сессии steamos-manager есть
   только в dev, не в v26.0.1).
 - `hid-lenovo-go` вместе с InputPlumber: проверить гироскоп и кнопки (в
   Bazzite Deck 44 у Go 1 не работает гироскоп).
 - xremap может захватить виртуальные устройства InputPlumber (4.5).
-- Пометки двух машин в одних файлах: если `ws switch` на mbp16 и на
-  `legiongo` закоммитит `apps.txt` или `hosts.txt` без `git pull`, при
-  слиянии будет конфликт.
+- Конфигурацию меняют две машины: `ws sync` делает `git pull --rebase`
+  перед push, но правка одного каталога (`flatpak/catalog.toml`,
+  `distrobox/catalog.toml`) на обеих до sync даст конфликт. Файлы хоста
+  у каждой машины свои.
 - На generic-ядре AppArmor ограничивает user namespaces: при загрузке в
   него Steam (pressure-vessel) может не стартовать.
 - Звук после сна и автояркость — известные недочёты Go 1 на Linux.
