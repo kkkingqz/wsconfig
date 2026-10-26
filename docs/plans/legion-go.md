@@ -254,7 +254,7 @@ apt.txt    source:xanmod, linux-xanmod-x64v3; linux-generic (запасное
 `btrfs`, `prepare`, `layers`, `check`, `timeshift`, `backup`, `finish`;
 системную часть делает `libexec/ws-prepare` (до v2 — `bootstrap.sh`).
 `source:` и `arch:` сделаны 2026-10-10 (их понимают и `ws check apt`,
-`ws-baseline`).
+`ws baseline`).
 
 - `source:NAME` — ставит `hosts/<host>/apt/NAME.sources` и ключ из
   конфигурации до установки пакетов, как `ppa:` (XanMod).
