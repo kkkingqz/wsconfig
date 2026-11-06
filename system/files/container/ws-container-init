@@ -38,6 +38,9 @@ fi
 for dev in /dev/dri/card* /dev/dri/renderD* /dev/fuse; do
     [[ -e "$dev" ]] || continue
     gid="$(stat -c %g "$dev")"
+    # root (gid 0, /dev/fuse of tower) is no group to join: such a node is
+    # open to all (0666) or not meant for the user.
+    [[ "$gid" != 0 ]] || continue
     group="$(getent group "$gid" | cut -d: -f1 || true)"
     if [[ -z "$group" ]]; then
         group="hostdev$gid"

@@ -133,7 +133,8 @@ cmd_run() {
             '~' | '~/'* | '~:'*) rest="/home/$user${rest#\~}" ;;
         esac
         m="$src:$rest"
-        [[ "$dry_run" == true ]] || remote test -d "$src" || die "$src does not exist on $server (create the share first)"
+        # </dev/null: ssh would read the rest of the mounts of this loop.
+        [[ "$dry_run" == true ]] || remote test -d "$src" </dev/null || die "$src does not exist on $server (create the share first)"
         args+=(-v "$m")
     done < <(field mounts)
     while IFS= read -r d; do

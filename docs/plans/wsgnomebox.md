@@ -98,11 +98,18 @@ tmpfs       /run, /run/lock, /tmp; shm 16 ГБ; pids 16384
 перенос     ничего из gnomebox-desktop
 корень      пакеты apt — в образе; пересоздание контейнера = пересборка
             образа, состояние воспроизводится
-данные      /mnt/nvm/wsgnomebox — шару создаёт пользователь
-ue5         /mnt/nvm/ue5 → ~/UE5 — шару создаёт пользователь
+данные      /mnt/nvm/wsgnomebox — шару создаёт пользователь (2026-11-06:
+            nvmtwo, см. ниже)
+ue5         /mnt/nvm/ue5 → ~/UE5 — шару создаёт пользователь (2026-11-06:
+            nvmtwo)
 projects    как у gnomebox → ~/Projects
 RDP         порт 3390
 ```
+
+Решение пользователя 2026-11-06: диск — nvmtwo, разворачивать и тестировать
+сразу на tower. Шары `wsgnomebox` и `ue5` (только nvmtwo, как `projects`) и
+каталоги создал Claude по этому решению; пароль в `config/` сгенерирован на
+tower.
 
 Тоже приняты пользователем 2026-10-12 (были предложениями Claude):
 
@@ -115,7 +122,7 @@ projects    /mnt/nvmtwo/projects напрямую, без shfs /mnt/user
 Предложения Claude (ждут ответа):
 
 ```text
-данные      внутри /mnt/nvm/wsgnomebox: home, nix, grd, config
+данные      внутри /mnt/nvmtwo/wsgnomebox: home, nix, grd, config
 сеть        bridge по умолчанию; своя сеть и guacamole не нужны
 память      memory = "16g" в [container] (2026-11-06): у gnomebox-desktop
             20 ГБ после OOM 2026-11-04, на tower 31 ГБ; вписать в
@@ -240,9 +247,9 @@ libexec/ws-container       ws container build|run|status HOST [--dry-run]
   вместо oneshot с `ws system apply` на каждом старте: тот требовал бы
   sudo без пароля. Изменение `system/` без пересборки — `ws system apply`
   внутри до следующего образа.
-- **Постоянные каталоги** (`/mnt/nvm/wsgnomebox`): `home`, `nix`, `grd`,
+- **Постоянные каталоги** (`/mnt/nvmtwo/wsgnomebox`): `home`, `nix`, `grd`,
   `config` (ro) и `~/Projects`, `~/UE5`.
-- **Пароли**: в `/mnt/nvm/wsgnomebox/config` (`password`, `rdp-user`,
+- **Пароли**: в `/mnt/nvmtwo/wsgnomebox/config` (`password`, `rdp-user`,
   `rdp-password`), не в репозитории; создаёт пользователь.
 
 ## 3.4 Клавиатура через RDP
@@ -294,8 +301,9 @@ input-remapper) его не видят. GNOME-сочетания и xkb (`caps:n
    репозиториев и `ws setup` внутри (контекст как у `ws container build`).
    Перед этапом 4: `ws update core` в конфигурации, `memory = "16g"` в
    `[container]`.
-2. **Шары `wsgnomebox` и `ue5` на nvm** — пользователь создаёт сам.
-3. **tower: каталоги и `/config`** в `/mnt/nvm/wsgnomebox` (подтверждение).
+2. **Шары `wsgnomebox` и `ue5` на nvmtwo** — сделано 2026-11-06.
+3. **tower: каталоги и `/config`** в `/mnt/nvmtwo/wsgnomebox` — сделано
+   2026-11-06.
 4. **tower: сборка образа** `ws container build` (подтверждение; место
    Docker на ssdintel — 38 ГБ свободно на 2026-10-12, образ ~8–10 ГБ).
 5. **tower: запуск** `ws container run wsgnomebox` (подтверждение). Проверки:

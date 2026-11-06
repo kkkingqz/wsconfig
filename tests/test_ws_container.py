@@ -41,11 +41,12 @@ class ContainerTests(unittest.TestCase):
         self.bin = self.root / 'bin'
         self.bin.mkdir()
         # ssh: log the remote command and its stdin size; `test -d` of a
-        # mount source fails for the paths in $MISSING.
+        # mount source fails for the paths in $MISSING and, as ssh does,
+        # reads stdin.
         self.stub('ssh', '''shift 3
 printf '%s\\n' "$*" >> "$CALLS"
 case "$1" in
-    test) case " $MISSING " in *" $3 "*) exit 1 ;; esac ;;
+    test) cat >/dev/null; case " $MISSING " in *" $3 "*) exit 1 ;; esac ;;
     *docker*build*) wc -c >> "$CALLS" ;;
 esac
 exit 0
@@ -112,6 +113,9 @@ exit 0
         last = self.calls.read_text().splitlines()[-1]
         self.assertTrue(last.startswith("docker rm -f 'box'"), last)
         self.assertIn("'/srv/box/home:/home/tester'", last)
+        # Every mount, not only the first: ssh of `test -d` reads stdin.
+        for m in ("'/srv/box/nix:/nix'", "'/srv/projects:/home/tester/Projects'", "'/srv/box/config:/config:ro'"):
+            self.assertIn(m, last)
 
     def test_build_needs_clean_checkout(self):
         (self.repo / 'new').write_text('x')
