@@ -85,7 +85,15 @@ exit 0
         self.assertIn('-p 3390:3389', p.stdout)
         self.assertIn('--device /dev/fuse', p.stdout)
         self.assertTrue(p.stdout.rstrip().endswith('local/box:latest'))
+        self.assertNotIn('--memory', p.stdout)
         self.assertFalse(self.calls.exists())
+
+    def test_run_with_a_memory_limit(self):
+        toml = self.repo / 'hosts/box/host.toml'
+        toml.write_text(toml.read_text() + 'memory = "16g"\n')
+        p = self.ws('run', 'box', '--dry-run')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn('--memory 16g --memory-swap 16g ', p.stdout)
 
     def test_not_a_container_host(self):
         p = self.ws('status', 'pc')

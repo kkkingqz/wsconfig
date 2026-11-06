@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import tempfile
 import unittest
@@ -185,6 +186,44 @@ class SetupTests(unittest.TestCase):
         p = self.setup("--repo", str(self.config))
         self.assertEqual(p.returncode, 1)
         self.assertIn("it needs a migration", p.stderr)
+
+    def container_host(self):
+        """hosts/box (boot = "container") named as this machine; this core
+        is the pinned one. systemd-detect-virt says container with $CONTAINER."""
+        user = subprocess.check_output(["id", "-un"], text=True).strip()
+        (self.config / "hosts/box").mkdir(parents=True)
+        (self.config / "hosts/box/host.toml").write_text(
+            f'[host]\nhostname = "{socket.gethostname()}"\nuser = "{user}"\nwsconfig = "wsconfig"\n\n'
+            '[platform]\nhardware = "container-nvidia"\nboot = "container"\nkernelParams = []\n\n'
+            '[layers]\nvm = false\nnativeSteam = false\ngameMode = false\nwidgets = true\n')
+        self.git(self.config, "add", ".")
+        self.git(self.config, "commit", "-qm", "box")
+        (self.state / "core").write_text(PINNED + "\n")
+        stub = Path(self.env["PATH"].split(":")[0]) / "systemd-detect-virt"
+        stub.write_text('#!/bin/sh\n[ -n "$CONTAINER" ]\n')
+        stub.chmod(0o755)
+
+    def test_a_container_host_only_inside_its_container(self):
+        self.container_host()
+        p = self.setup("--repo", str(self.config))
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("hosts/box is a container host: ws container build box", p.stderr)
+        # Inside it the host is taken; the catalog question is cancelled.
+        self.esc(5)
+        p = subprocess.run([str(self.core / "bin/ws"), "setup"], env=self.env | {"CONTAINER": "1"},
+                           text=True, capture_output=True)
+        self.assertIn("Host: box", p.stdout)
+
+    def test_a_container_without_its_host(self):
+        self.container_host()
+        (self.config / "hosts/box/host.toml").write_text(
+            (self.config / "hosts/box/host.toml").read_text().replace(socket.gethostname(), "other"))
+        self.git(self.config, "commit", "-qam", "other name")
+        p = subprocess.run([str(self.core / "bin/ws"), "setup", "--repo", str(self.config)],
+                           env=self.env | {"CONTAINER": "1"}, text=True, capture_output=True)
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("a container gets the hostname of its host.toml from ws container run", p.stderr)
+        self.assertNotIn("Host of this PC", p.stdout)
 
     def test_usage(self):
         self.assertEqual(self.setup("--bogus").returncode, 64)

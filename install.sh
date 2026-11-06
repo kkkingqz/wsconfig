@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # The first command on a fresh Ubuntu 26.04 with / on Btrfs (ws help setup),
+# or in a new container host (boot = "container", ws help plan-wsgnomebox),
 # in a terminal:
 #
 #   wget -qO- https://raw.githubusercontent.com/kkkingqz/wsconfig/main/install.sh \
@@ -9,7 +10,8 @@ set -euo pipefail
 #
 # What ws needs before it runs: git, gh, python3-tomlkit, xdg-terminal-exec,
 # sg (util-linux-extra); the subvolume @nix at /nix, then Nix of apt and
-# its daemon, the group nix-users. Then ws setup of the core in the store
+# its daemon, the group nix-users (a container: /nix is a directory of the
+# server and its image has the packages, no Btrfs). Then ws setup of the core in the store
 # at one revision, which stays until the end of setup (ws help plan-v2,
 # 9.0 and 9.4): REV of --core (a branch, a tag or a commit; main without
 # it) is resolved once to its commit, built into the GC root
@@ -45,8 +47,17 @@ done
 # shellcheck disable=SC1090 # the file of the system
 version="$(. "$os_release" && echo "${ID:-}-${VERSION_ID:-}")"
 [[ "$version" == ubuntu-26.04 ]] || die "Ubuntu 26.04 only (this is $version)"
-[[ "$(findmnt -no FSTYPE /)" == btrfs ]] \
-    || die "/ is not Btrfs: install Ubuntu with Btrfs for / (ws help rebuild, section 2)"
+# A container host (ws help plan-wsgnomebox): / is the overlay of the image,
+# the store a directory of the server.
+container=false
+! systemd-detect-virt --container --quiet 2>/dev/null || container=true
+if [[ "$container" == true ]]; then
+    mountpoint -q /nix \
+        || die "/nix is not a mount: the container needs it from the server (ws container run, ws help plan-wsgnomebox)"
+else
+    [[ "$(findmnt -no FSTYPE /)" == btrfs ]] \
+        || die "/ is not Btrfs: install Ubuntu with Btrfs for / (ws help rebuild, section 2)"
+fi
 command -v sudo >/dev/null 2>&1 || die "sudo not found"
 sudo -v || die "sudo needed"
 
@@ -81,13 +92,18 @@ echo "Core: $ref → $rev"
 # @nix before Nix: the store is a subvolume of its own, out of the
 # snapshots of / (ws help rebuild, section 3). lib/btrfs.bash of the same
 # revision.
-say "/nix on the subvolume @nix"
-btrfs_lib="$(mktemp)"
-trap 'rm -f "$btrfs_lib"' EXIT
-wget -qO "$btrfs_lib" "$core_raw/$rev/lib/btrfs.bash" || die "cannot fetch lib/btrfs.bash of $rev"
-# shellcheck source=lib/btrfs.bash
-. "$btrfs_lib"
-subvolume_mount @nix /nix noatime,compress=zstd:1
+btrfs_lib=
+if [[ "$container" == true ]]; then
+    say "/nix is a directory of the server"
+else
+    say "/nix on the subvolume @nix"
+    btrfs_lib="$(mktemp)"
+    trap 'rm -f "$btrfs_lib"' EXIT
+    wget -qO "$btrfs_lib" "$core_raw/$rev/lib/btrfs.bash" || die "cannot fetch lib/btrfs.bash of $rev"
+    # shellcheck source=lib/btrfs.bash
+    . "$btrfs_lib"
+    subvolume_mount @nix /nix noatime,compress=zstd:1
+fi
 
 apt_install nix-bin nix-setup-systemd
 
@@ -134,7 +150,7 @@ echo "$rev" > "$state/core"
 # The terminal of wget | bash; WS_SETUP_TTY replaces it (tests), ws setup
 # reads it then.
 [[ -n "${WS_SETUP_TTY:-}" ]] || exec </dev/tty
-rm -f "$btrfs_lib"
+[[ -z "$btrfs_lib" ]] || rm -f "$btrfs_lib"
 trap - EXIT
 if id -nG | tr ' ' '\n' | grep -qx nix-users; then
     exec "$state/ws/bin/ws" setup "${args[@]}"

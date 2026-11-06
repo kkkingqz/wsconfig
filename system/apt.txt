@@ -35,6 +35,9 @@ python3-gi
 gir1.2-atspi-2.0
 # Edits of the host choices keep comments (lib/ws_catalog.py)
 python3-tomlkit
+# The terminal of the ws setup autostart (install.sh installs it first;
+# listed so that a container image has it)
+xdg-terminal-exec
 
 # Qt applications under GNOME (rebuild.md 6.2; ws gnome check)
 qgnomeplatform-qt5

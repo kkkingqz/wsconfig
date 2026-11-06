@@ -25,7 +25,7 @@ build     docker build on the server from the HEAD of the configuration
           clean checkout of ws container --core PATH): image
           IMAGE:COMMIT-CORE and IMAGE:latest (host.toml [container])
 run       replace the container HOST on the server with one from
-          IMAGE:latest: mounts, devices and port of host.toml [container]; the
+          IMAGE:latest: mounts, devices, port and memory of host.toml [container]; the
           directories of the mounts must exist (shares of the server)
 status    the container and its image commit against HEAD
 
@@ -41,8 +41,9 @@ spec() {
     python3 "$WS_CORE/lib/ws_facts.py" section --host "$1" container
 }
 
+# A key of [container]; empty when it has none (memory).
 field() {
-    python3 -c 'import json,sys; v=json.load(sys.stdin)[sys.argv[1]]; print("\n".join(v) if isinstance(v, list) else v)' "$1" <<<"$spec_json"
+    python3 -c 'import json,sys; v=json.load(sys.stdin).get(sys.argv[1], ""); print("\n".join(v) if isinstance(v, list) else v)' "$1" <<<"$spec_json"
 }
 
 remote() {
@@ -118,6 +119,10 @@ cmd_run() {
         --shm-size 16g --pids-limit 16384
         --log-opt max-size=50m --log-opt max-file=1
         -p "$port:3389")
+    # The limit of [container] memory: a leak inside (Firefox, 2026-11-04 in
+    # gnomebox-desktop) ends in an OOM of the container, not of the server.
+    # --memory-swap the same: swap of the server is no extra room.
+    [[ -z "$memory" ]] || args+=(--memory "$memory" --memory-swap "$memory")
     while IFS= read -r m; do
         [[ -n "$m" ]] || continue
         src="${m%%:*}"
@@ -178,6 +183,7 @@ user="$(python3 "$WS_CORE/lib/ws_facts.py" fact --host "$host" user 2>/dev/null 
 server="$(field server)"
 image="$(field image)"
 port="$(field port)"
+memory="$(field memory)"
 
 case "$command" in
     build) cmd_build ;;

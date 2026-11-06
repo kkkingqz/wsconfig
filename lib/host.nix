@@ -33,6 +33,9 @@ let
       inherit port;
       mounts = strings;
       devices = strings;
+      # docker run --memory (and --memory-swap, the same: no swap beyond
+      # it), e.g. "16g"; no limit without it.
+      memory = string;
     };
   };
   required = {

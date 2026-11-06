@@ -31,8 +31,14 @@ set -euo pipefail
 #
 # Each run starts where the last one stopped: the state of the system and
 # the steps done in WS_STATE/setup. Until the end a GNOME autostart entry
-# runs it again after each login. GRUB hosts only: rEFInd (mbp16) is ws help
-# rebuild.
+# runs it again after each login. GRUB hosts; a rEFInd host (mbp16) has
+# steps by hand (ws help rebuild), checked here.
+#
+# A container host (boot = "container", ws help plan-wsgnomebox) started by
+# ws container run: its hostname is given by docker, the image holds apt,
+# the user, groups and fish, /nix and the home are directories of the
+# server. No btrfs, timeshift or backup step, no reboot: a new login over
+# RDP instead (the autostart goes on there).
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
@@ -58,7 +64,9 @@ install.sh runs it on a fresh Ubuntu (ws help setup); after each reboot the
 autostart runs it again (--autostart). --host NAME answers the question of
 the host when the hostname finds none. A host with boot = "refind-..." (T2,
 mbp16) has steps by hand (ws help rebuild, sections 2 to 5): ws setup checks
-them, stops with what is left and goes on when they are done.
+them, stops with what is left and goes on when they are done. A container
+host (boot = "container", ws help plan-wsgnomebox) logs out and in instead
+of a reboot and has no Btrfs, Timeshift or backup step.
 USAGE
 }
 
@@ -171,7 +179,21 @@ setup_ws() {
     fi
 }
 
+# A container host (boot of host.toml; the host is known from step_host on).
+is_container() { [[ "$(ws fact boot)" == container ]]; }
+
+# A new session for what only reaches a new one: a reboot, in a container a
+# new login (its systemd is that of the container: a reboot would stop it).
 reboot_now() {
+    if is_container; then
+        say "Log out and in: $1"
+        echo "Connect over RDP again and log in: ws setup goes on by itself."
+        pause "Enter: log out"
+        trap - EXIT
+        gnome-session-quit --logout --no-prompt \
+            || echo "Log out by hand (the user menu), then log in again."
+        exit 0
+    fi
     say "Reboot: $1"
     echo "After the login ws setup goes on by itself."
     pause "Enter: reboot"
@@ -497,7 +519,11 @@ check_facts() {
         || die "hosts/$1/host.toml: wsconfig = \"$(fact_in "$facts" wsconfig)\", the configuration is ~/$(config_rel)"
     case "$(fact_in "$facts" boot)" in
         grub|refind-grub-recovery) ;;
-        *) die "boot = \"$(fact_in "$facts" boot)\" in hosts/$1/host.toml: ws setup knows grub and refind-grub-recovery" ;;
+        container)
+            systemd-detect-virt --container --quiet 2>/dev/null \
+                || die "hosts/$1 is a container host: ws container build $1, ws container run $1, then ws setup inside (ws help plan-wsgnomebox)"
+            ;;
+        *) die "boot = \"$(fact_in "$facts" boot)\" in hosts/$1/host.toml: ws setup knows grub, refind-grub-recovery and container" ;;
     esac
 }
 
@@ -524,6 +550,11 @@ step_host() {
         :
     else
         current="$(hostname)"
+        # The hostname of a container is docker --hostname of ws container
+        # run: hostnamectl cannot change it, a host is not made here.
+        if systemd-detect-virt --container --quiet 2>/dev/null; then
+            die "no host for \"$current\" in $repo: a container gets the hostname of its host.toml from ws container run (ws help plan-wsgnomebox)"
+        fi
         hosts="$(cd "$repo/hosts" 2>/dev/null && ls -d -- */ 2>/dev/null | tr -d / | tr '\n' ' ' || true)"
         say "No host for \"$current\""
         echo "Hosts: ${hosts:-none}"
@@ -561,6 +592,15 @@ step_choices() {
         echo "Choices of $host: $(echo $changed)"
     fi
     publish
+    if is_container; then
+        # The licenses were answered at the image build (image-setup).
+        say "No more questions from here"
+        echo "System preparation, ws apply (twice), ws check. Log out and in between:"
+        echo "connect over RDP again after each one, ws setup goes on by itself."
+        ask "Start?" || die "nothing started; ws setup again"
+        mark_step choices
+        return 0
+    fi
     # Licenses apt would ask about in the middle of ws-prepare.
     local -a eula=('Microsoft core fonts (ubuntu-restricted-extras)')
     local -a seed=('ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true')
@@ -599,6 +639,8 @@ EOF
 }
 
 step_btrfs() {
+    # / of a container is the image: no layout.
+    is_container && return 0
     if is_refind; then
         # The layout of a T2 host is a step by hand (ws help plan-v2, 9.0).
         t2_stop pre
@@ -790,6 +832,8 @@ step_check() {
 step_timeshift() {
     local conf=/etc/timeshift/timeshift.json uuid
     done_step timeshift && return 0
+    # A container is made again from its image; its data are on the server.
+    is_container && return 0
     say "Timeshift"
     uuid="$(findmnt -no UUID /)"
     if [[ ! -e "$conf" ]] || grep -Eq '"do_first_run" *: *"true"' "$conf"; then
@@ -825,6 +869,7 @@ PY
 step_backup() {
     local key="$HOME/.ssh/wsbackup_ed25519"
     done_step backup && return 0
+    is_container && return 0
     say "Backup"
     if [[ ! -e "$key" ]]; then
         install -d -m 0700 "$HOME/.ssh"
@@ -868,7 +913,15 @@ step_finish() {
         publish
     fi
     rm -f "$autostart"
-    if [[ -s "$state/check-fail.txt" ]]; then
+    if is_container; then
+        if [[ -s "$state/check-fail.txt" ]]; then
+            echo "Host $host is set up, but ws check found FAIL ($state/check.txt):"
+            cat "$state/check-fail.txt"
+            echo "After the fix: ws check, ws checkpoint create setup."
+        else
+            echo "Host $host is set up: ws check without FAIL."
+        fi
+    elif [[ -s "$state/check-fail.txt" ]]; then
         echo "Host $host is set up, but ws check found FAIL ($state/check.txt):"
         cat "$state/check-fail.txt"
         echo "Timeshift snapshot: \"setup, ws check FAIL\". After the fix: ws check,"

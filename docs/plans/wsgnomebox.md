@@ -1,6 +1,6 @@
 title: ws-plan-wsgnomebox
 section: 1
-date: 2026-10-12
+date: 2026-11-06
 source: Workstation
 volume: User Commands
 
@@ -11,10 +11,20 @@ volume: User Commands
 как на mbp16, только без железа. Из текущего gnomebox ничего не переносится:
 ни файлы, ни домашний каталог, ни пользователь.
 
-Состояние: этап 1 сделан 2026-10-12, клавиатура (3.4) тоже. На tower
-ничего не делалось.
+Состояние на 2026-11-06:
 
-Проверено локально 2026-10-12, в rootless podman на mbp16 без GPU:
+- этап 1 сделан 2026-10-12, клавиатура (3.4) тоже;
+- потом пришли разделение на ядро и конфигурацию (ws help plan-v2, этап 8)
+  и `ws setup` (этап 9): хост переехал в `hosts/wsgnomebox/` конфигурации,
+  сборка образа — из двух репозиториев, `bootstrap.sh` и `setup.sh`
+  удалены;
+- 2026-11-06 `install.sh` и `ws setup` научились контейнеру (3.2),
+  `[container]` — лимиту памяти `memory`;
+- образ после разделения ещё не собирался (этап 1, повторная проверка);
+- на tower ничего не делалось.
+
+Проверено локально 2026-10-12, в rootless podman на mbp16 без GPU (ещё
+по раскладке одного репозитория и с `bootstrap.sh`):
 
 - образ собирается (~12 минут, 3.4 ГБ);
 - в контейнере systemd в состоянии `running`, без упавших юнитов;
@@ -34,7 +44,7 @@ volume: User Commands
 EULA шрифтов Microsoft для образа принята пользователем 2026-10-12:
 `container/image-setup` ставит её ответ в debconf до apt.
 
-Изменение `facts.nix` хоста или apt-списков пересобирает слой apt
+Изменение `host.toml` хоста или apt-списков пересобирает слой apt
 (~10 минут), остальные коммиты — только слой системного дерева.
 
 # 1. Образец: gnomebox-desktop
@@ -107,32 +117,42 @@ projects    /mnt/nvmtwo/projects напрямую, без shfs /mnt/user
 ```text
 данные      внутри /mnt/nvm/wsgnomebox: home, nix, grd, config
 сеть        bridge по умолчанию; своя сеть и guacamole не нужны
-RDP-клиент  какой — неизвестно; от него зависит правило пропуска (3.4)
+память      memory = "16g" в [container] (2026-11-06): у gnomebox-desktop
+            20 ГБ после OOM 2026-11-04, на tower 31 ГБ; вписать в
+            host.toml после ws update core (схема старого ядра его не знает)
 ```
+
+Ответ пользователя 2026-10-12 (RDP-клиент): Remmina, см. 3.4.
 
 # 3. Как это ложится на wsconfig
 
-## 3.1 Хост `nix/hosts/wsgnomebox/`
+## 3.1 Хост `hosts/wsgnomebox/` конфигурации
 
-`facts.nix`:
+Хост лежит в конфигурации (`~/wsconfig`, закрытый kkkingqz/wsbodya), код
+контейнера — в ядре (`~/Projects/wsconfig`).
 
-- `hostname = "wsgnomebox"`, `user = "king"`, `vm`, `nativeSteam`,
-  `gameMode` — `"no"`, `displayScale = "1"`, `timezone = "Europe/Kyiv"`;
-- `boot = "container"` — нет загрузчика, ядра, initramfs, Timeshift;
-  профиль `system/boot/container.nix`;
-- `hardware = "container-nvidia"` — `system/hardware/container-nvidia.nix`;
-- `container` — сервер, образ, порт, каталоги и устройства для
-  `ws container`; `~` в цели каталога — домашний каталог `user`.
+`host.toml`:
 
-`apt.txt` хоста: то, что у настоящей машины ставит установщик, а у
-`ubuntu:26.04` нет (`ubuntu-minimal`, `rec:ubuntu-desktop-minimal`,
+- `[host]`: `hostname = "wsgnomebox"`, `user = "king"`, `wsconfig =
+  "wsconfig"`;
+- `[platform]`: `hardware = "container-nvidia"` (ядро:
+  `system/hardware/container-nvidia.nix`), `boot = "container"` — нет
+  загрузчика, ядра, initramfs, Timeshift (`system/boot/container.nix`),
+  `displayScale = 1`, `timezone = "Europe/Kyiv"`;
+- `[layers]`: `vm`, `nativeSteam`, `gameMode` — `false`, `widgets = true`;
+- `[container]` — сервер, образ, порт, каталоги, устройства и (с
+  2026-11-06) необязательный `memory` для `ws container`; `~` в цели
+  каталога — домашний каталог `user`. Схема — `lib/host.nix` ядра.
+
+`hosts/wsgnomebox/apt.txt`: то, что у настоящей машины ставит установщик,
+а у `ubuntu:26.04` нет (`ubuntu-minimal`, `rec:ubuntu-desktop-minimal`,
 `locales`, `man-db` …), `gnome-remote-desktop`, `openssl`, `mesa-utils`,
 `vulkan-tools`, `pciutils`; инструменты сборки и утилиты, которые были в
 gnomebox (`build-essential`, `cmake`, `fakeroot`, `libalgorithm-*-perl`,
-`python3-pytest`, `mc`, `nano`;
-решение пользователя 2026-10-12). podman, distrobox, fuse-overlayfs, passt —
-уже в общем `nix/hosts/apt.txt`. Btrfs, Timeshift и `steam-devices` — в
-`nix/hosts/machine-apt.txt`, контейнеру его не ставят (`lib/apt.bash`,
+`python3-pytest`, `mc`, `nano`; решение пользователя 2026-10-12).
+podman, distrobox, fuse-overlayfs, passt, git, gh, `xdg-terminal-exec` —
+в `system/apt.txt` ядра. Btrfs, Timeshift и `steam-devices` — в
+`system/apt-machine.txt`, контейнеру его не ставят (`lib/apt.bash`,
 `ws check apt`, `ws baseline`).
 
 ## 3.2 Общий код
@@ -142,19 +162,30 @@ gnomebox (`build-essential`, `cmake`, `fakeroot`, `libalgorithm-*-perl`,
 
 - **`system/common.nix`**: uinput, ntsync, GRUB и Timeshift — только при
   `boot != "container"`; порядок файлов у остальных хостов не меняется.
-- **`lib/apt.bash`**: шаг apt из `bootstrap.sh` (PPA, `source:`, `arch:`,
-  `rec:`, пометки manual, `purge:`). Его вызывают `bootstrap.sh` и сборка
-  образа (`container/image-setup`).
-- **`bootstrap.sh`** при `boot = "container"`:
-  - вместо проверки Btrfs — `/nix` должен быть каталогом сервера;
-  - нет `@nix`, `@wsbackup`, установки apt (пакеты в образе; сравнивает
-    `ws check apt`) и группы `input` (нет xremap);
-  - группы и fish уже даны образом — шаги 6 и 7 только проверяют;
-  - первый `ws switch` — как везде.
+- **`lib/apt.bash`**: шаг apt (PPA, `source:`, `arch:`, `rec:`, пометки
+  manual, `purge:`). Его вызывают `libexec/ws-prepare` и сборка образа
+  (`container/image-setup`).
+- **`install.sh`** в контейнере (`systemd-detect-virt --container`):
+  вместо проверки Btrfs — `/nix` должен быть каталогом сервера, `@nix`
+  не создаётся; пакеты уже в образе, остальное как везде.
+- **`ws setup`** при `boot = "container"` (2026-11-06):
+  - хост — только по hostname, который дал `ws container run`; новый хост
+    и `hostnamectl` в контейнере — отказ; на машине вне контейнера хост
+    `boot = "container"` — отказ с подсказкой `ws container build/run`;
+  - лицензии не спрашивает (ответ в образе), шагов btrfs, timeshift и
+    backup нет;
+  - вместо перезагрузки — выход из сеанса (`gnome-session-quit`): новый
+    вход по RDP, автозапуск продолжает;
+  - prepare → `ws apply` (дважды) → `ws check` → `ws checkpoint create
+    setup`, как везде.
+- **`libexec/ws-prepare`** (бывший `bootstrap.sh`) при `boot =
+  "container"`: `/nix` — монтирование сервера, нет `@nix`, `@wsbackup`,
+  установки apt (пакеты в образе; сравнивает `ws check apt`) и группы
+  `input` (нет xremap); группы и fish уже даны образом — шаги 6 и 7
+  только проверяют; первый `ws apply home` — как везде.
 - **`ws system apply`**: юниты `masked` из манифеста маскирует, udev не
   трогает в контейнере. **`ws system check`**: GRUB в контейнере не
   проверяет.
-- **`setup.sh`** для контейнера не нужен: шаги — этап 6 (раздел 4).
 - **Клавиатура**: xremap в контейнере не ставится, его часть — сочетания
   GNOME (3.4).
 - **Проверки** в контейнере пропускают ядро, ntsync сервера, @nix и xremap
@@ -165,12 +196,13 @@ gnomebox (`build-essential`, `cmake`, `fakeroot`, `libalgorithm-*-perl`,
 
 ```text
 container/Dockerfile       стадия nix: дерево system-HOST (как ws system tree);
-                           стадия ubuntu:26.04: image-setup, system-install
+                           стадия ubuntu:26.04: image-setup, system-install;
+                           аргументы CONFIG и CORE — где они в контексте
 container/image-setup      шаг apt (lib/apt.bash), пользователь UID 1000 с
                            группами sudo, nix-users и fish, LANG, часовой пояс
 container/system-install   файлы и состояния юнитов дерева в образ,
                            graphical.target
-bin/ws-container           ws container build|run|status HOST [--dry-run]
+libexec/ws-container       ws container build|run|status HOST [--dry-run]
 ```
 
 Файлы контейнера — в системном дереве (`system/files/container/`), их
@@ -189,13 +221,19 @@ bin/ws-container           ws container build|run|status HOST [--dry-run]
 - маски: udev, udisks2, colord, tpm-udev, NetworkManager-wait-online,
   bluetooth.
 
-- **Сборка без файлов на tower**: `ws container build wsgnomebox` —
-  `git archive HEAD | ssh … docker build -f container/Dockerfile -`, только
-  из чистого checkout; образ `local/wsgnomebox:<коммит>` и `:latest`, с
-  меткой коммита.
+- **Сборка без файлов на tower**: `ws container build wsgnomebox` из
+  чистого checkout конфигурации. Контекст — `config/` (`git archive HEAD`
+  конфигурации) и `core/` (ядро, закреплённое её `flake.lock`, из
+  локального store, или HEAD чистого `--core PATH`), по ssh в `docker
+  build -f core/container/Dockerfile -`. Сервер в GitHub не ходит: система
+  собирается с `--override-input wsconfig path:/src/core`. Образ
+  `local/wsgnomebox:КОНФИГУРАЦИЯ-ЯДРО` и `:latest`, метки
+  `org.opencontainers.image.revision` и `org.wsconfig.core.revision`
+  (ws help plan-v2, 8.7).
 - **Запуск**: `ws container run wsgnomebox` — `docker rm -f` и `docker
-  run` с правами из 1, каталогами и устройствами из `facts.nix`; проверяет,
-  что каталоги на сервере есть. Шаблона Unraid нет: контейнер виден в
+  run` с правами из 1, каталогами, устройствами и `memory` (`--memory` и
+  такой же `--memory-swap`) из `[container]`; проверяет, что каталоги на
+  сервере есть. Шаблона Unraid нет: контейнер виден в
   разделе Docker, но правится только через `ws container run`.
 - **Системный слой после пересоздания**: дерево ставится в образ при
   сборке (`system-install`), так что новый контейнер стартует с ним. Это
@@ -251,7 +289,11 @@ input-remapper) его не видят. GNOME-сочетания и xkb (`caps:n
 1. **Репозиторий** (без tower): хост `wsgnomebox`, `boot`/`hardware`
    контейнера, условия в общем коде, `container/`, `ws container`.
    Проверка — тесты, `nix flake check`, пути mbp16/legiongo не изменились,
-   сборка образа локально в podman на mbp16 (без GPU).
+   сборка образа локально в podman на mbp16 (без GPU). Сделано 2026-10-12;
+   после разделения (plan-v2, этап 8) — повторить сборку образа из двух
+   репозиториев и `ws setup` внутри (контекст как у `ws container build`).
+   Перед этапом 4: `ws update core` в конфигурации, `memory = "16g"` в
+   `[container]`.
 2. **Шары `wsgnomebox` и `ue5` на nvm** — пользователь создаёт сам.
 3. **tower: каталоги и `/config`** в `/mnt/nvm/wsgnomebox` (подтверждение).
 4. **tower: сборка образа** `ws container build` (подтверждение; место
@@ -262,9 +304,11 @@ input-remapper) его не видят. GNOME-сочетания и xkb (`caps:n
    - `nvidia-smi`, `glxinfo -B` и `vulkaninfo --summary` на NVIDIA;
    - rootless podman;
    - flatpak с bubblewrap.
-6. **Внутри** (терминал в RDP): `gh auth login`, `git clone` wsconfig в
-   `~/wsconfig` → `bootstrap.sh` → выйти и войти → `ws apply` → `ws check`;
-   `ws checkpoint create setup`.
+6. **Внутри** (терминал в RDP): `wget -qO- …/install.sh | bash -s --
+   --repo https://github.com/kkkingqz/wsbodya` (ws help setup). Дальше
+   `ws setup` сам: вход в GitHub, клон в `~/wsconfig`, ядро из `flake.lock`,
+   выбор приложений, prepare → выход и вход по RDP → `ws apply` → выход и
+   вход → `ws apply` → `ws check` → `ws checkpoint create setup`.
 7. **Пересоздание**: удалить и создать контейнер заново → всё, кроме
    корня, на месте, `ws check` без FAIL.
 8. **UE5**: сборка или запуск редактора из `~/UE5`, Vulkan на NVIDIA через
@@ -273,13 +317,17 @@ input-remapper) его не видят. GNOME-сочетания и xkb (`caps:n
 # 5. Риски
 
 - **Память**: на tower 31 ГБ, свободно ~14 ГБ при работающих сервисах и
-  gnomebox. UE5 Editor просит 32 ГБ и больше. Два рабочих стола и
-  UE5 одновременно — вероятная нехватка; лимит `--memory` и swap не заданы.
+  gnomebox (2026-10-12). 2026-11-04 Firefox в gnomebox-desktop занял
+  ~20 ГБ, tower ушёл в OOM; у gnomebox-desktop теперь `--memory=20g`.
+  UE5 Editor просит 32 ГБ и больше. Два рабочих стола и UE5 одновременно
+  — вероятная нехватка; лимит wsgnomebox — `memory` в `[container]`, swap
+  на tower нет (предложен zram, не сделан).
 - **GPU**: одна RTX 3060 (12 ГБ, 3.3 ГБ уже заняты) на два GNOME и
   UE5.
-- **Место Docker** на ssdintel: 83 % занято, образ и слои — туда.
+- **Место Docker** на ssdintel: 83 % занято (2026-10-12), образ и слои —
+  туда; перед этапом 4 проверить заново.
 - **`/mnt/user`** (shfs): если шара не «только кэш», запись может пойти на
   HDD массива и будить диски; прямой путь пула это исключает.
-- **xremap** в RDP не работает (3.2).
+- **xremap** в RDP не работает (3.4).
 - **Права контейнера** (SYS_ADMIN, seccomp off) — как у gnomebox; это не
   изоляция от tower.

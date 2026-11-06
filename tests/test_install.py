@@ -29,6 +29,9 @@ STUBS = {
     "wget": '#!/bin/sh\necho "wget $3" >> "$HOME/log"\ncp "$CORE_TREE/lib/btrfs.bash" "$2"\n',
     # nix build --out-link LINK REF
     "nix": '#!/bin/sh\necho "nix $* NIX_CONFIG=$NIX_CONFIG" >> "$HOME/log"\nln -sfn "$FAKE_CORE" "$3"\n',
+    # A container when $CONTAINER is set; /nix its mount then.
+    "systemd-detect-virt": '#!/bin/sh\n[ -n "$CONTAINER" ]\n',
+    "mountpoint": '#!/bin/sh\n[ -n "$NIX_MOUNTED" ]\n',
     # sg GROUP -c CMD
     "sg": '#!/bin/sh\necho "sg $1" >> "$HOME/log"\nexec sh -c "$3"\n',
 }
@@ -60,7 +63,7 @@ class InstallTests(unittest.TestCase):
                         WS_INSTALL_GIT=str(self.origin), WS_INSTALL_RAW="https://raw.example/core",
                         WS_INSTALL_FLAKE="github:example/core", WS_INSTALL_OS_RELEASE=str(os_release),
                         WS_SETUP_TTY="/dev/null", ROOT_FS="btrfs", NIX_MOUNTED="", INSTALLED="",
-                        NIX_MEMBERS="", ID_GROUPS="t", CORE_TREE=str(ROOT))
+                        NIX_MEMBERS="", ID_GROUPS="t", CORE_TREE=str(ROOT), CONTAINER="")
         self.git("init", "-q", "-b", "main")
         (self.origin / "f").write_text("1\n")
         self.git("add", "f")
@@ -134,6 +137,22 @@ class InstallTests(unittest.TestCase):
         p = self.install("--core", "nothing")
         self.assertEqual(p.returncode, 1)
         self.assertIn("no branch or tag nothing", p.stderr)
+
+    def test_a_container_takes_nix_from_the_server(self):
+        p = self.install("--repo", "https://github.com/u/cfg.git", CONTAINER="1", ROOT_FS="overlay",
+                         NIX_MOUNTED="1", INSTALLED="git gh python3-tomlkit xdg-terminal-exec "
+                         "util-linux-extra nix-bin nix-setup-systemd")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("/nix is a directory of the server", p.stdout)
+        log = self.log()
+        self.assertFalse([line for line in log if "wget" in line or "btrfs" in line or "apt-get" in line], log)
+        self.assertEqual((self.home / "ws-args").read_text().strip(), "setup --repo https://github.com/u/cfg.git")
+        # Without the directory of the server: nothing done.
+        (self.home / "log").unlink()
+        p = self.install("--new", CONTAINER="1", ROOT_FS="overlay")
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("/nix is not a mount", p.stderr)
+        self.assertEqual(self.log(), [])
 
     def test_refused_before_any_change(self):
         p = self.install("--new", ROOT_FS="ext4")
