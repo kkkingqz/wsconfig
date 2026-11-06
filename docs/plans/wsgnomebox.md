@@ -21,7 +21,10 @@ volume: User Commands
 - 2026-11-06 `install.sh` и `ws setup` научились контейнеру (3.2),
   `[container]` — лимиту памяти `memory`;
 - образ после разделения ещё не собирался (этап 1, повторная проверка);
-- на tower ничего не делалось.
+- 2026-11-06 на tower (решение пользователя: nvmtwo, тестировать сразу
+  там): шары и каталоги, образ `local/wsgnomebox:dab0001-3fedc37`
+  (3.6 ГБ), контейнер с `memory = "16g"`; этап 5 пройден, кроме картинки
+  RDP; этап 6 — за пользователем (вход по RDP, install.sh).
 
 Проверено локально 2026-10-12, в rootless podman на mbp16 без GPU (ещё
 по раскладке одного репозитория и с `bootstrap.sh`):
@@ -312,6 +315,14 @@ input-remapper) его не видят. GNOME-сочетания и xkb (`caps:n
    - `nvidia-smi`, `glxinfo -B` и `vulkaninfo --summary` на NVIDIA;
    - rootless podman;
    - flatpak с bubblewrap.
+
+   2026-11-06: systemd `running` без упавших юнитов, все 7 каталогов,
+   3389 внутри и 3390 с mbp16 открыты, gdm, gnome-remote-desktop и
+   ws-rdp-init активны, `nvidia-smi` и `vulkaninfo` — RTX 3060, rootless
+   podman (overlay) и bwrap работают. Найдено и исправлено по дороге:
+   `purge:snapd` тянул deb firefox (`purge:firefox` у хоста), `ws
+   container run` терял каталоги после первого (ssh читал stdin цикла),
+   `ws-container-init` добавлял пользователя в группу root (/dev/fuse).
 6. **Внутри** (терминал в RDP): `wget -qO- …/install.sh | bash -s --
    --repo https://github.com/kkkingqz/wsbodya` (ws help setup). Дальше
    `ws setup` сам: вход в GitHub, клон в `~/wsconfig`, ядро из `flake.lock`,
