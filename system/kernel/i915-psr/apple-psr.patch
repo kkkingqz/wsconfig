@@ -11,7 +11,7 @@ Source: kaiT2en/KaiT2en-Fedora patches/currently-testing/
 2026-08-31; upstream: "[PATCH v3] drm/i915/psr: enable PSR on Apple T2 eDP
 panels", intel-gfx 2026-09-16). Here only i915 changes: the NO_PSR quirk is
 skipped inside i915 for these panels instead of being removed from
-drm_display_helper. Made against 7.2.7 + linux-t2-patches.
+drm_display_helper. Made against 7.2.7 + linux-t2-patches; applies to 7.3.3.
 
 diff --git a/drivers/gpu/drm/i915/display/intel_psr.c b/drivers/gpu/drm/i915/display/intel_psr.c
 index beaa1d626..9dfc18ef3 100644

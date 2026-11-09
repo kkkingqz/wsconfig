@@ -30,6 +30,13 @@ volume: User Commands
 2026-09-28         включение карты на время сна: D3cold → D0 не выходит; удаление
                    HDMI-аудио после OFF виснет в snd_card_free; запись ON в
                    vgaswitcheroo после удаления — Oops (старый hook сна)
+2026-11-06 09:14   «Ubuntu (AMD)»: Oops в ttm_lru_bulk_move_tail (amdgpu_cs_ioctl)
+2026-11-08 13:18   через секунды после resume, в первом случае — после hybrid-sleep
+                   накануне (дампы в EFI pstore). Баг TTM ядер 7.1–7.2.7
+                   (CVE-2026-98166, drm/amd#5387): после гибернационного swapout
+                   буфер остаётся в bulk_move → use-after-free. Исправлен в
+                   7.2.8/7.3 → linux-t2 7.3.3-2; t2bce-патч урезан
+                   (teardown из deqrocks/t2bce#9 вошёл в 7.3), i915 + яркость gmux
 ```
 
 ## ASPM

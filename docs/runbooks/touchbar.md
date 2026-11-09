@@ -14,7 +14,7 @@ volume: User Commands
 MacBookPro16,1
 Ubuntu 26.04.1 LTS
 GNOME 50 / Wayland
-T2 kernel 7.2.7-1-t2-resolute
+T2 kernel 7.3.3-2-t2-resolute
 ```
 
 Текущий режим Touch Bar — **родной**: кнопки рисует сама T2, host только

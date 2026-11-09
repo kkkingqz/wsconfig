@@ -4,13 +4,16 @@ set -euo pipefail
 # i915 with PSR on the Apple panel (system/kernel/i915-psr/apple-psr.patch,
 # ws help plan-t2, section 1): the stock kernel keeps PSR off on every Apple
 # eDP panel; with the vendor handshake a static screen costs ~1 W less.
+# gmux-brightness.patch keeps the brightness across panel power off.
 # Only i915.ko is rebuilt, from the kernel.org release plus the
 # linux-t2-patches commit the T2 kernel was built from (the same pin as
 # t2bce, system/kernel/t2bce/t2bce.nix).
 
 # shellcheck source=../lib/common.bash
 . "$(dirname "$(readlink -f "$0")")/../lib/common.bash"
-patch_file="$WS_CORE/system/kernel/i915-psr/apple-psr.patch"
+# Applied in this order, after the linux-t2-patches.
+patches=(apple-psr.patch gmux-brightness.patch)
+patch_dir="$WS_CORE/system/kernel/i915-psr"
 # Kernel release -> linux-t2-patches commit, from system/kernel/t2bce/t2bce.nix.
 t2_sources="$HOME/.local/share/wsconfig/t2bce/sources.json"
 # Build results per kernel: generated, not edited.
@@ -22,7 +25,7 @@ usage() {
     cat <<'USAGE'
 Usage:
   ws psr status             patched i915 built / installed / loaded
-  ws psr build [KERNEL]     build i915.ko with apple-psr.patch into ~/.local/share/wsconfig/i915-psr/KERNEL
+  ws psr build [KERNEL]     build i915.ko with the i915-psr patches into ~/.local/share/wsconfig/i915-psr/KERNEL
   ws psr install [KERNEL]   install it into /lib/modules/KERNEL/updates/i915-psr + initramfs (sudo)
   ws psr rollback [KERNEL]  remove it again; the stock i915 (no PSR) takes over (sudo)
 
@@ -67,10 +70,10 @@ cmd_build() {
     rm -rf -- "$work"
     mkdir -p "$work"
 
-    echo "== Sources: linux $ver (kernel.org) + linux-t2-patches $commit + apple-psr.patch =="
+    echo "== Sources: linux $ver (kernel.org) + linux-t2-patches $commit + ${patches[*]} =="
     curl -fL# -o "$work/linux.tar.xz" "https://cdn.kernel.org/pub/linux/kernel/v$major.x/linux-$ver.tar.xz"
     curl -fsSL -o "$work/t2.tar.gz" "https://github.com/t2linux/linux-t2-patches/archive/$commit.tar.gz"
-    cp -- "$patch_file" "$work/apple-psr.patch"
+    for p in "${patches[@]}"; do cp -- "$patch_dir/$p" "$work/$p"; done
 
     echo
     echo "== Build ($build_image) =="
@@ -82,13 +85,15 @@ cmd_build() {
         bash -euc "
             export DEBIAN_FRONTEND=noninteractive
             apt-get update -qq
+            # libdw-dev: modules_prepare builds gendwarfksyms (CONFIG_GENDWARFKSYMS,
+            # 7.3); dwarves: pahole for the BTF of i915 (CONFIG_DEBUG_INFO_BTF_MODULES).
             apt-get install -y -qq --no-install-recommends gcc make bc bison flex libelf-dev libssl-dev \
-                xz-utils patch python3 perl kmod >/dev/null
+                xz-utils patch python3 perl kmod libdw-dev dwarves >/dev/null
             mkdir /build /t2 && cd /build
             tar xf /work/linux.tar.xz --strip-components=1
             tar xf /work/t2.tar.gz -C /t2 --strip-components=1
             for p in \$(ls /t2/*.patch | sort); do patch -p1 -s --no-backup-if-mismatch <\"\$p\"; done
-            patch -p1 --no-backup-if-mismatch </work/apple-psr.patch
+            for p in ${patches[*]}; do patch -p1 --no-backup-if-mismatch <\"/work/\$p\"; done
             cp /boot/config-$kver .config
             cp /usr/src/linux-headers-$kver/Module.symvers .
             make -s olddefconfig

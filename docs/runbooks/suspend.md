@@ -10,12 +10,12 @@ volume: User Commands
 
 ```text
 MacBookPro16,1
-T2 kernel 7.2.7-1-t2-resolute
+T2 kernel 7.3.3-2-t2-resolute
 sleep        deep / S3 only
 cmdline      intel_iommu=on iommu=pt pm_async=off
              + «Ubuntu»: ws.dgpu=off modprobe.blacklist=amdgpu
                          pcie_aspm=force pcie_aspm.policy=powersave
-t2bce        0.07-nostatefix1 (локальная сборка, updates/t2bce)
+t2bce        0.09-nostatefix2 (локальная сборка, updates/t2bce)
 Touch Bar    родной режим (см. ws help touchbar)
 AMD dGPU     ws.dgpu=off: выключена, убрана с шины PCI, порт CPU запаркован
 hibernate    /swap/swapfile 32G, resume=UUID=… resume_offset=… (host.toml)
@@ -258,6 +258,9 @@ t2linux/T2-Debian-and-Ubuntu-Kernel#215   отчёт (автор t2bce: fallback
 deqrocks/t2bce#9                          черновик исправления fallback
 ```
 
+С linux-t2 7.3 (`linux-t2-patches` с 2026-10-20, `t2bce_core` 0.09)
+исправление teardown из #9 вошло в ядро дословно; PR при этом открыт.
+
 ### Локальный патч
 
 ```text
@@ -266,14 +269,19 @@ system/kernel/t2bce/t2bce.nix           версия ядра -> коммит li
                                         (ws apply собирает ~/.local/share/wsconfig/t2bce/sources.json)
 ```
 
-Патч:
+Патч (для 7.3, `0.09-nostatefix2`):
 
-1. переносит оставшуюся часть deqrocks/t2bce#9: транспорт и очереди событий
-   VHCI открываются на время no-state teardown, ошибки прерывают suspend;
-2. добавляет проверку NULL в `t2bce_core_reserve_submission()`;
-3. делает `t2bce_core.stateful_sleep` параметром модуля (по умолчанию `Y`),
+1. добавляет проверку NULL в `t2bce_core_reserve_submission()`: если после
+   no-state пробуждения не зарегистрировалась CQ, отправка отклоняется, а не
+   роняет IRQ-поток;
+2. делает `t2bce_core.stateful_sleep` параметром модуля (по умолчанию `Y`),
    чтобы no-state путь можно было проверить по команде;
-4. помечает версии `0.07-nostatefix1` / `0.02-nostatefix1`.
+3. помечает версию `t2bce_core` суффиксом `nostatefix2`
+   (`ws-workstation-verify` узнаёт сборку по `nostatefix`).
+
+Для 7.2.7 (`0.07-nostatefix1`, в истории git) патч ещё переносил
+исправление teardown из deqrocks/t2bce#9: транспорт и очереди событий VHCI
+открываются на время no-state teardown, ошибки прерывают suspend.
 
 Пересобираются все пять модулей `t2bce_*`, чтобы совпадали версии символов.
 Сборка идёт в одноразовом контейнере podman (`ubuntu:` релиза хоста из
@@ -422,11 +430,15 @@ Hibernate проверен только с пунктом rEFInd «Ubuntu» (`ws
 `ws suspend status` показывает `held`, `ws-workstation-verify` предупреждает,
 если hold снят. Обновление — осознанный шаг:
 
-1. Проверить, вошло ли исправление в upstream (#215, deqrocks/t2bce#9,
-   `linux-t2-patches`). Если да — локальный патч больше не нужен.
-2. Если нет — найти коммит `linux-t2-patches`, из которого собрано новое
-   ядро, добавить его в `sources` в `system/kernel/t2bce/t2bce.nix` и
-   выполнить `ws apply`.
+1. Проверить, что из локальных патчей вошло в upstream: t2bce
+   (#215, deqrocks/t2bce#9, `linux-t2-patches`), i915 (`apple-psr.patch`,
+   `gmux-brightness.patch`: mainline и KaiT2en-Fedora). Вошедшее убрать из
+   патчей.
+2. Найти коммит `linux-t2-patches`, из которого собрано новое ядро (время
+   релиза в AdityaGarg8/T2-Ubuntu-Kernel против коммитов
+   `linux-t2-patches`), добавить его в `sources` в
+   `system/kernel/t2bce/t2bce.nix` и выполнить `ws apply`. Запись нужна
+   и `ws psr`.
 3. Снять hold, обновить ядро, собрать и поставить модули, вернуть hold:
 
 ```console
@@ -439,9 +451,11 @@ ws psr install NEW_KERNEL
 sudo apt-mark hold linux-t2
 ```
 
-`ws psr` — i915 с PSR на панели Apple (ws help plan-t2, раздел 1) из того же
-коммита `linux-t2-patches`. Если `apple-psr.patch` не накладывается на новое
-ядро, работает штатный i915 без PSR (экран ~+1 W), остальное не страдает.
+`ws psr` — i915 с PSR на панели Apple (ws help plan-t2, раздел 1) и
+восстановлением яркости gmux (`gmux-brightness.patch`, KaiT2en: после
+блокировки, входа и resume панель на i915 возвращалась на 80 %) из того же
+коммита `linux-t2-patches`. Если патчи не накладываются на новое ядро,
+работает штатный i915 без PSR (экран ~+1 W), остальное не страдает.
 
 `apt autoremove` после обновления не запускать: предыдущее ядро остаётся
 пунктом GRUB для recovery.
@@ -471,7 +485,7 @@ mem_sleep                 s2idle [deep]
 cmdline                   «Ubuntu»: pcie_aspm=force pcie_aspm.policy=powersave
 AMD CPU port              parked (ws-dgpu-park)
 Thunderbolt ACPI          seeded (ws-tb-acpi-seed)
-t2bce_core                0.07-nostatefix1, stateful_sleep=Y
+t2bce_core                0.09-nostatefix2, stateful_sleep=Y
 runtime files             OK
 ```
 
@@ -523,6 +537,7 @@ system/kernel/t2bce/nostate-fix.patch
 system/kernel/t2bce/t2bce.nix
 libexec/ws-psr
 system/kernel/i915-psr/apple-psr.patch
+system/kernel/i915-psr/gmux-brightness.patch
 system/files/sleep.conf.d/80-deep-only.conf
 system/files/udev/70-bcm4364-no-d3cold.rules
 system/files/udev/71-tb-xhci-awake.rules

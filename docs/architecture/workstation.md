@@ -20,7 +20,7 @@ volume: User Commands
 - **Wayland**
 - **GDM3**
 - **rEFInd** как основное boot menu
-- T2 kernel: `7.2.7-1-t2-resolute` (+ локально исправленный `t2bce`, см. `ws help suspend`)
+- T2 kernel: `7.3.3-2-t2-resolute` (+ локально исправленный `t2bce`, см. `ws help suspend`)
 - Generic-ядро Ubuntu удалено (2026-10-02); запасной путь — GRUB и снапшоты Timeshift
 - Secure Boot отключён для T2 Linux
 
@@ -436,7 +436,7 @@ deep / S3, после 24 ч — hibernate (suspend-then-hibernate)
 ```text
 80-deep-only.conf          только S3, без отката на s2idle
 Broadcom ASPM guard        ASPM Wi-Fi off на время сна, без D3cold
-t2bce 0.07-nostatefix1     отказ T2 от stateful suspend не роняет ядро
+t2bce 0.09-nostatefix2     отказ T2 от stateful suspend не роняет ядро
 Touch Bar родной режим     без appletbdrm / tiny-dfr
 ws-t2-detach               стек T2 снят на время hibernate (у t2bce нет колбэков hibernation)
 /swap/swapfile 32G         resume= / resume_offset= в host.toml
@@ -857,7 +857,7 @@ wsconfig/
 │   ├── files/            файлы для / (udev, modprobe, systemd, usr, esp, …)
 │   ├── kernel/t2bce/     nostate-fix.patch, t2bce.nix (ядро -> коммит linux-t2-patches)
 │   ├── kernel/t2gmux/    t2gmux.nix (коммит KaiT2en; ws help plan-dgpu, отложен)
-│   └── kernel/i915-psr/  apple-psr.patch (PSR панели Apple; ws-psr, ws help plan-t2)
+│   └── kernel/i915-psr/  apple-psr.patch, gmux-brightness.patch (PSR и яркость панели Apple; ws-psr)
 ├── gnome/                config.nix, gnome.nix, gnome-extensions.nix, extensions/<uuid>/
 ├── keyboard/             config.nix, presets/ (macos.nix, macos-xremap.yml), keyboard.nix, xremap.nix
 ├── terminal/             fish/ (completions, conf.d ядра), micro-help/, *-colors.nix, config.nix
@@ -989,7 +989,7 @@ Touch Bar работает в родном режиме: `hid-appletb-kbd` + `ws
 ```text
 Ubuntu 26.04.1 LTS
 └── GNOME 50 / Wayland
-    ├── T2 kernel 7.2.7-1-t2-resolute + patched t2bce
+    ├── T2 kernel 7.3.3-2-t2-resolute + patched t2bce
     ├── Intel primary; AMD выключена («Ubuntu») или offload («Ubuntu (AMD)»)
     ├── Wi-Fi / Bluetooth
     ├── PipeWire audio

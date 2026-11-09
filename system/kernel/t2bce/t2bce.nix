@@ -11,7 +11,11 @@
 { lib, ... }:
 let
   sources = {
+    # Previous kernel, kept for its rEFInd entry; its modules are installed.
+    # nostate-fix.patch now targets 7.3: the 7.2.7 one is in git history.
     "7.2.7-1-t2-resolute" = "9e773c8876708924dd5e0e5d3093068a0f806ea1";
+    # 7.3.3-2 was built 2026-11-07 17:58 UTC from this commit ("fix ipv6").
+    "7.3.3-2-t2-resolute" = "7e24fb1eeb0d1c1b11dfc6c88901d343a4db5235";
   };
 in
 {

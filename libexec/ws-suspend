@@ -105,7 +105,9 @@ cmd_t2bce_build() {
         "$build_image" \
         bash -euc "
             apt-get update -qq
-            apt-get install -y -qq --no-install-recommends gcc make libc6-dev libelf-dev >/dev/null
+            # libdw1: gendwarfksyms of the headers (CONFIG_GENDWARFKSYMS, 7.3);
+            # dwarves: pahole for the BTF of modules (CONFIG_DEBUG_INFO_BTF_MODULES).
+            apt-get install -y -qq --no-install-recommends gcc make libc6-dev libelf-dev libdw1 dwarves >/dev/null
             make -C '$headers' M=/src/drivers/staging/t2bce \
                 CONFIG_T2BCE_DMA=m CONFIG_T2BCE_CORE=m CONFIG_T2BCE_VHCI=m \
                 CONFIG_T2BCE_AUDIO=m CONFIG_T2BCE_AVE=m modules
