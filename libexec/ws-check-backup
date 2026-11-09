@@ -21,6 +21,14 @@ esac
 
 section "1. Configuration"
 
+# A container host (ws help plan-wsgnomebox): its data are directories of the
+# server, no Btrfs to copy from; the server backs them up.
+if [[ "$("$WS_CORE/bin/ws" fact boot 2>/dev/null)" == container ]]; then
+    info "container host: its data are directories of the server, no local backup"
+    check_finish
+    exit
+fi
+
 # backup/config.toml and hosts/HOST/backup.toml of the configuration, else
 # the former config.json of the state (lib/backup.py current_config).
 values="$(python3 - "$WS_CORE/lib" <<'PY' 2>&1
