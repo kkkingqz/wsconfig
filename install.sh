@@ -147,12 +147,13 @@ as_nix_user nix build --out-link "$state/ws" "$core_flake/$rev#ws" \
     || die "nix build $core_flake/$rev#ws failed"
 echo "$rev" > "$state/core"
 
-# The terminal of wget | bash; WS_SETUP_TTY replaces it (tests), ws setup
-# reads it then.
-[[ -n "${WS_SETUP_TTY:-}" ]] || exec </dev/tty
+# ws setup reads the terminal of wget | bash; WS_SETUP_TTY replaces it
+# (tests). Only for ws setup: bash -s reads the rest of this script from
+# its stdin, an `exec </dev/tty` alone would wait for the keyboard.
+tty="${WS_SETUP_TTY:-/dev/tty}"
 [[ -z "$btrfs_lib" ]] || rm -f "$btrfs_lib"
 trap - EXIT
 if id -nG | tr ' ' '\n' | grep -qx nix-users; then
-    exec "$state/ws/bin/ws" setup "${args[@]}"
+    exec "$state/ws/bin/ws" setup "${args[@]}" <"$tty"
 fi
-exec sg nix-users -c "exec $(printf '%q ' "$state/ws/bin/ws" setup "${args[@]}")"
+exec sg nix-users -c "exec $(printf '%q ' "$state/ws/bin/ws" setup "${args[@]}")" <"$tty"

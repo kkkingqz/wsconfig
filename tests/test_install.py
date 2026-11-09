@@ -72,7 +72,7 @@ class InstallTests(unittest.TestCase):
         # The core nix build gives: its ws records how it was started.
         self.fake = self.root / "fake-core"
         (self.fake / "bin").mkdir(parents=True)
-        (self.fake / "bin/ws").write_text('#!/bin/sh\necho "$*" > "$HOME/ws-args"\n')
+        (self.fake / "bin/ws").write_text('#!/bin/sh\necho "$*" > "$HOME/ws-args"\ncat > "$HOME/ws-stdin"\n')
         (self.fake / "bin/ws").chmod(0o755)
         self.env["FAKE_CORE"] = str(self.fake)
         self.state = self.home / ".local/state/wsconfig/setup"
@@ -88,6 +88,16 @@ class InstallTests(unittest.TestCase):
     def log(self):
         f = self.home / "log"
         return f.read_text().splitlines() if f.exists() else []
+
+    def test_ws_setup_gets_the_terminal_and_bash_the_script(self):
+        # bash -s reads the script from stdin: only ws setup gets the
+        # terminal, or bash waits for the keyboard (2026-11-09, wsgnomebox).
+        tty = self.root / "tty"
+        tty.write_text("answers\n")
+        p = self.install("--repo", "https://github.com/u/cfg.git", WS_SETUP_TTY=str(tty))
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual((self.home / "ws-stdin").read_text(), "answers\n")
+        self.assertIn("--repo https://github.com/u/cfg.git", (self.home / "ws-args").read_text())
 
     def test_main_is_resolved_built_and_runs_ws_setup(self):
         p = self.install("--repo", "https://github.com/u/cfg.git")
