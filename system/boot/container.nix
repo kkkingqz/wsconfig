@@ -15,6 +15,11 @@
 
     # Podman (distrobox) on fuse-overlayfs, for root and the user.
     (file "/etc/containers/storage.conf" "system/files/container/storage.conf" "0644")
+
+    # Core files of the session (gnome-shell): soft RLIMIT_CORE 0 by default.
+    # kernel.core_pattern of the server writes them into
+    # /var/lib/systemd/coredump of the container.
+    (file "/etc/systemd/user.conf.d/50-ws-core.conf" "system/files/container/50-ws-core.conf" "0644")
   ];
 
   # GDM is the display manager by the package (display-manager.service),
@@ -38,5 +43,9 @@
     "netplan-configure.service" = "masked";
     # No Bluetooth adapter in the container (fails on every boot).
     "bluetooth.service" = "masked";
+    # /proc/sys of the container is that of the server: systemd-sysctl
+    # set the Ubuntu kernel.core_pattern, printk, sysrq, ... on tower
+    # (2026-11-12). The kernel of the server is not ours.
+    "systemd-sysctl.service" = "masked";
   };
 }
