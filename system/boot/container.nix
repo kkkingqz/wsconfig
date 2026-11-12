@@ -17,8 +17,9 @@
     (file "/etc/containers/storage.conf" "system/files/container/storage.conf" "0644")
 
     # Core files of the session (gnome-shell): soft RLIMIT_CORE 0 by default.
-    # kernel.core_pattern of the server writes them into
-    # /var/lib/systemd/coredump of the container.
+    # kernel.core_pattern of the server (/var/crash/core.%e.%p.%t, set on
+    # tower 2026-11-12) writes them into /var/crash of the container (1777;
+    # the server has no /var/crash, its own processes write none).
     (file "/etc/systemd/user.conf.d/50-ws-core.conf" "system/files/container/50-ws-core.conf" "0644")
   ];
 
