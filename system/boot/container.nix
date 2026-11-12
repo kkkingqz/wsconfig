@@ -48,5 +48,12 @@
     # set the Ubuntu kernel.core_pattern, printk, sysrq, ... on tower
     # (2026-11-12). The kernel of the server is not ours.
     "systemd-sysctl.service" = "masked";
+    # No crash reports to the Ubuntu Error Tracker (2026-11-12, user): whoopsie
+    # and the apport autoreport that feeds it. Core files stay in /var/crash.
+    "whoopsie.service" = "masked";
+    "whoopsie.path" = "masked";
+    "apport-autoreport.path" = "masked";
+    "apport-autoreport.timer" = "masked";
+    "apport-autoreport.service" = "masked";
   };
 }
