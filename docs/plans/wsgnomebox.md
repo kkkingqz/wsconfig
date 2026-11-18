@@ -212,21 +212,21 @@ container/image-setup      шаг apt (lib/apt.bash), пользователь U
                            группами sudo, nix-users и fish, LANG, часовой пояс
 container/system-install   файлы и состояния юнитов дерева в образ,
                            graphical.target
-libexec/ws-container       ws container build|run|status HOST [--dry-run]
+libexec/ws-container       ws container build|run|status|password HOST
 ```
 
 Файлы контейнера — в системном дереве (`system/files/container/`), их
 сравнивает `ws system check`:
 
 - `ws-container-init` (entrypoint, на каждом старте): пароль пользователя
-  из `/config/password`, каркас `/nix`, домашний каталог (владелец,
+  из хеша `/config/password.hash`, каркас `/nix`, домашний каталог (владелец,
   `/etc/skel` в первый раз, без `chown -R`), группы `/dev/dri` и
   `/dev/fuse`, хуки `/usr/local/lib/ws-container/init.d/`;
 - `50-nvidia` (хук `container-nvidia`): ссылка GBM, снятие
   `/proc/driver/nvidia/params`;
 - `ws-rdp-init` и его юнит перед `gnome-remote-desktop`: TLS в
-  `/var/lib/gnome-remote-desktop`, учётные данные из `/config/rdp-user` и
-  `/config/rdp-password`, `grdctl --system rdp enable`;
+  `/var/lib/gnome-remote-desktop`, владелец и права `credentials.ini`
+  там же, `grdctl --system rdp enable`;
 - `/etc/containers/storage.conf`: overlay через fuse-overlayfs;
 - маски: udev, udisks2, colord, tpm-udev, NetworkManager-wait-online,
   bluetooth.
@@ -252,8 +252,17 @@ libexec/ws-container       ws container build|run|status HOST [--dry-run]
   внутри до следующего образа.
 - **Постоянные каталоги** (`/mnt/nvmtwo/wsgnomebox`): `home`, `nix`, `grd`,
   `config` (ro) и `~/Projects`, `~/UE5`.
-- **Пароли**: в `/mnt/nvmtwo/wsgnomebox/config` (`password`, `rdp-user`,
-  `rdp-password`), не в репозитории; создаёт пользователь.
+- **Пароли** (с 2026-11-18): `ws container run` спрашивает один раз то,
+  чего на сервере ещё нет, до удаления старого контейнера; `ws container
+  password HOST [--rdp]` меняет пароль и применяет его в запущенном
+  контейнере. Открытым текстом на сервере пароля пользователя нет: в
+  `config/password.hash` — хеш SHA-512 crypt (как в `/etc/shadow`),
+  `ws-container-init` ставит его на каждом старте, поэтому `passwd`
+  внутри действует только до перезапуска. RDP — в хранилище
+  gnome-remote-desktop `grd/.local/share/gnome-remote-desktop/credentials.ini`
+  (0600): без TPM у него другого нет, и пароль RDP там неизбежно открытым
+  текстом. Прежние `config/password`, `rdp-user`, `rdp-password` ещё
+  читаются, пока нет новых файлов; `ws container password` их удаляет.
 
 ## 3.4 Клавиатура через RDP
 

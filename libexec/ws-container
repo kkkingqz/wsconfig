@@ -17,6 +17,7 @@ Usage:
   ws container build HOST [--dry-run]   image from HEAD and the pinned core
   ws container run HOST [--dry-run]     replace the container with the latest image
   ws container status HOST              container and image commit against HEAD
+  ws container password HOST [--rdp]    set the password of the user (--rdp: of RDP)
 
   --dry-run  print the docker command
 
@@ -26,8 +27,20 @@ build     docker build on the server from the HEAD of the configuration
           IMAGE:COMMIT-CORE and IMAGE:latest (host.toml [container])
 run       replace the container HOST on the server with one from
           IMAGE:latest: mounts, devices, port and memory of host.toml [container]; the
-          directories of the mounts must exist (shares of the server)
+          directories of the mounts must exist (shares of the server).
+          Asks once what the server has not yet: the password of the user
+          and the RDP user and password
 status    the container and its image commit against HEAD
+password  asks the password again and applies it to the running
+          container too; removes the plain-text files of before
+
+The server keeps no password in plain text: the password of the user as a
+SHA-512 crypt hash in CONFIG/password.hash (CONFIG: the mount of /config,
+ws-container-init sets it on every start), RDP in the store of
+gnome-remote-desktop, GRD/.local/share/gnome-remote-desktop/credentials.ini
+(GRD: the mount of /var/lib/gnome-remote-desktop; 0600, readable by it
+alone: without a TPM it has no other store). passwd inside the container
+lasts until its next start.
 
 --dry-run prints the docker command instead of running it.
 USAGE
@@ -48,6 +61,96 @@ field() {
 
 remote() {
     ssh -o BatchMode=yes "$server" "$@"
+}
+
+# The source on the server of the mount of TARGET in the container.
+mount_src() {
+    local m
+    while IFS= read -r m; do
+        case "${m#*:}" in
+            "$1" | "$1":*) echo "${m%%:*}"; return ;;
+        esac
+    done < <(field mounts)
+    die "no mount of $1 in [container] mounts of hosts/$host/host.toml"
+}
+
+# A secret into the variable $2: twice from a terminal, without echo; a
+# line (and its repeat) from anything else.
+ask_secret() {
+    local -n out="$2"
+    local again
+    if [[ -t 0 ]]; then
+        read -rsp "$1: " out; echo >&2
+        read -rsp "$1 (again): " again; echo >&2
+    else
+        IFS= read -r out || true
+        IFS= read -r again || true
+    fi
+    [[ -n "$out" ]] || die "empty password"
+    [[ "$out" == "$again" ]] || die "the passwords differ"
+}
+
+# stdin into the file $1 on the server, readable by root alone; its
+# directory 0755 when new (gnome-remote-desktop walks it).
+put_remote() {
+    local dir="${1%/*}" tmp="$1.tmp"
+    remote "umask 022 && mkdir -p ${dir@Q} && umask 077 && cat > ${tmp@Q} && mv -f ${tmp@Q} ${1@Q}"
+}
+
+running() {
+    [[ "$(remote docker inspect -f '{{.State.Running}}' "$host" 2>/dev/null </dev/null || true)" == true ]]
+}
+
+# The password of the user: its hash to the server; with --live into the
+# running container as well. The plain-text file of before goes.
+set_password() {
+    local pw hash inner
+    need openssl
+    ask_secret "password of $user in $host" pw
+    hash="$(printf '%s' "$pw" | openssl passwd -6 -stdin)"
+    unset pw
+    printf '%s\n' "$hash" | put_remote "$hash_file"
+    remote rm -f "$config_dir/password" </dev/null
+    echo "password of $user: $hash_file"
+    if [[ "${1:-}" == --live ]] && running; then
+        # The hash on stdin, not in the arguments of docker exec.
+        # shellcheck disable=SC2016 # $h of the shell in the container
+        inner='IFS= read -r h && usermod --password "$h" '"$user"
+        printf '%s\n' "$hash" | remote "docker exec -i ${host@Q} sh -c ${inner@Q}"
+        echo "applied in the running $host"
+    fi
+}
+
+rdp_keyfile='
+import sys
+user, pw = sys.stdin.read().split("\n")[:2]
+def gstr(text):
+    return chr(39) + text.replace("\\", "\\\\").replace(chr(39), "\\" + chr(39)) + chr(39)
+value = "{%s: <%s>, %s: <%s>}" % (gstr("username"), gstr(user), gstr("password"), gstr(pw))
+print("[RDP]\ncredentials=" + value.replace("\\", "\\\\"))
+'
+
+# RDP user and password: the GKeyFile of gnome-remote-desktop (GVariant
+# text, then the escapes of a GKeyFile value), as ws-rdp-init wrote it from
+# the files of before. With --live the running container takes it now.
+set_rdp() {
+    local rdp_user pw
+    if [[ -t 0 ]]; then
+        read -rp "RDP user of $host [$user]: " rdp_user
+    else
+        IFS= read -r rdp_user || true
+    fi
+    rdp_user="${rdp_user:-$user}"
+    ask_secret "RDP password of $host" pw
+    printf '%s\n%s\n' "$rdp_user" "$pw" | python3 -c "$rdp_keyfile" | put_remote "$cred_file"
+    unset pw
+    remote rm -f "$config_dir/rdp-user" "$config_dir/rdp-password" </dev/null
+    echo "RDP user $rdp_user: $cred_file"
+    if [[ "${1:-}" == --live ]] && running; then
+        # ws-rdp-init gives the file to gnome-remote-desktop; RDP sessions end.
+        remote docker exec "$host" systemctl restart ws-rdp-init.service gnome-remote-desktop.service </dev/null
+        echo "applied in the running $host (RDP restarted)"
+    fi
 }
 
 # The core of the image of a configuration of its own, unpacked as DIR/core;
@@ -146,7 +249,13 @@ cmd_run() {
         echo "would run on $server: ${args[*]}"
         return
     fi
-    remote docker image inspect "$image:latest" >/dev/null || die "no $image:latest on $server (ws container build $host)"
+    remote docker image inspect "$image:latest" >/dev/null </dev/null || die "no $image:latest on $server (ws container build $host)"
+    # What the server has not yet, asked once, before the old container goes.
+    remote test -s "$hash_file" </dev/null || set_password
+    remote test -s "$cred_file" </dev/null || set_rdp
+    if remote test -e "$config_dir/password" -o -e "$config_dir/rdp-password" </dev/null; then
+        echo "plain-text passwords in $config_dir: ws container password $host (and --rdp) replaces them" >&2
+    fi
     remote "docker rm -f ${host@Q} >/dev/null 2>&1 || true; ${args[*]@Q}"
     echo "started $host on $server (RDP port $port)"
 }
@@ -173,9 +282,11 @@ command="$1"
 host="${2:-}"
 [[ -n "$host" ]] || { usage >&2; exit 64; }
 dry_run=false
-case "${3:-}" in
-    --dry-run) dry_run=true ;;
-    "") ;;
+rdp=false
+case "$command:${3:-}" in
+    build:--dry-run | run:--dry-run) dry_run=true ;;
+    password:--rdp) rdp=true ;;
+    *:) ;;
     *) die "unknown argument: $3" ;;
 esac
 
@@ -185,10 +296,17 @@ server="$(field server)"
 image="$(field image)"
 port="$(field port)"
 memory="$(field memory)"
+# Where the passwords go on the server (run, password).
+if [[ "$command" == run || "$command" == password ]]; then
+    config_dir="$(mount_src /config)"
+    hash_file="$config_dir/password.hash"
+    cred_file="$(mount_src /var/lib/gnome-remote-desktop)/.local/share/gnome-remote-desktop/credentials.ini"
+fi
 
 case "$command" in
     build) cmd_build ;;
     run) cmd_run ;;
     status) cmd_status ;;
+    password) if [[ "$rdp" == true ]]; then set_rdp --live; else set_password --live; fi ;;
     *) usage >&2; exit 64 ;;
 esac

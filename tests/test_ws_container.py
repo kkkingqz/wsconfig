@@ -13,7 +13,7 @@ SPEC = {
     'image': 'local/box',
     'port': 3390,
     'mounts': ['/srv/box/home:~', '/srv/box/nix:/nix', '/srv/projects:~/Projects',
-               '/srv/box/config:/config:ro'],
+               '/srv/box/config:/config:ro', '/srv/box/grd:/var/lib/gnome-remote-desktop'],
     'devices': ['/dev/fuse'],
 }
 
@@ -40,20 +40,24 @@ class ContainerTests(unittest.TestCase):
         self.git('commit', '-qm', 'initial')
         self.bin = self.root / 'bin'
         self.bin.mkdir()
-        # ssh: log the remote command and its stdin size; `test -d` of a
-        # mount source fails for the paths in $MISSING and, as ssh does,
-        # reads stdin.
+        # ssh: log the remote command and its stdin size; `test` of a
+        # path fails for the paths in $MISSING and, as ssh does, reads
+        # stdin; a file written (put_remote) goes to $WRITES.
         self.stub('ssh', '''shift 3
 printf '%s\\n' "$*" >> "$CALLS"
 case "$1" in
     test) cat >/dev/null; case " $MISSING " in *" $3 "*) exit 1 ;; esac ;;
     *docker*build*) wc -c >> "$CALLS" ;;
+    umask*) cat >> "$WRITES" ;;
+    *docker\\ exec\\ -i*) cat >> "$WRITES" ;;
+    *) cat >/dev/null ;;
 esac
 exit 0
 ''')
         self.calls = self.root / 'calls'
+        self.writes = self.root / 'writes'
         self.env = dict(os.environ, WSCONFIG=str(self.repo),
-                        CALLS=str(self.calls), MISSING='',
+                        CALLS=str(self.calls), MISSING='', WRITES=str(self.writes),
                         PATH=str(self.bin) + ':' + os.environ['PATH'])
 
     def host(self, name, boot):
@@ -73,9 +77,9 @@ exit 0
     def git(self, *args):
         return subprocess.check_output(['git', '-C', str(self.repo), *args], text=True).strip()
 
-    def ws(self, *args, **env):
+    def ws(self, *args, input='', **env):
         return subprocess.run([str(self.repo / 'libexec/ws-container'), *args], text=True,
-                              capture_output=True, env=dict(self.env, **env))
+                              input=input, capture_output=True, env=dict(self.env, **env))
 
     def test_run_dry_run_expands_home(self):
         p = self.ws('run', 'box', '--dry-run')
@@ -116,6 +120,57 @@ exit 0
         # Every mount, not only the first: ssh of `test -d` reads stdin.
         for m in ("'/srv/box/nix:/nix'", "'/srv/projects:/home/tester/Projects'", "'/srv/box/config:/config:ro'"):
             self.assertIn(m, last)
+
+    HASH = '/srv/box/config/password.hash'
+    CRED = '/srv/box/grd/.local/share/gnome-remote-desktop/credentials.ini'
+
+    def test_run_asks_what_the_server_lacks_once(self):
+        p = self.ws('run', 'box', input='s3cret\ns3cret\n\nrdp pw\nrdp pw\n',
+                    MISSING=f'{self.HASH} {self.CRED}')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        calls = self.calls.read_text()
+        writes = self.writes.read_text()
+        # A crypt hash of the password, never the password, on the server.
+        self.assertNotIn('s3cret', calls + writes)
+        hash_ = writes.splitlines()[0]
+        self.assertTrue(hash_.startswith('$6$'), hash_)
+        self.assertEqual(subprocess.check_output(
+            ['openssl', 'passwd', '-6', '-salt', hash_.split('$')[2], 's3cret'], text=True).strip(), hash_)
+        self.assertIn("credentials={'username': <'tester'>, 'password': <'rdp pw'>}", writes)
+        self.assertNotIn('rdp pw', calls)
+        # Written before the old container goes.
+        lines = calls.splitlines()
+        self.assertLess(max(i for i, l in enumerate(lines) if l.startswith('umask')),
+                        next(i for i, l in enumerate(lines) if l.startswith('docker rm')))
+        self.assertIn(f"mv -f '{self.HASH}.tmp' '{self.HASH}'", calls)
+
+    def test_run_asks_nothing_when_the_server_has_both(self):
+        p = self.ws('run', 'box')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertNotIn('umask', self.calls.read_text())
+        self.assertFalse(self.writes.exists())
+
+    def test_password_mismatch_changes_nothing(self):
+        p = self.ws('password', 'box', input='one\ntwo\n')
+        self.assertEqual(p.returncode, 1)
+        self.assertIn('passwords differ', p.stderr)
+        self.assertNotIn('umask', self.calls.read_text() if self.calls.exists() else '')
+
+    def test_password_removes_the_plain_text_file_and_applies_live(self):
+        self.stub('ssh', self.bin.joinpath('ssh').read_text().replace(
+            'case "$1" in', 'case "$1" in\n    docker) [ "$2" = inspect ] && echo true ;;', 1))
+        p = self.ws('password', 'box', input='pw\npw\n')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        calls = self.calls.read_text()
+        self.assertIn('rm -f /srv/box/config/password\n', calls)
+        self.assertIn('usermod --password "$h" tester', calls)
+        self.assertNotIn('pw\n', calls)
+
+    def test_rdp_password_removes_the_plain_text_files(self):
+        p = self.ws('password', 'box', '--rdp', input='me\nx\nx\n')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn('rm -f /srv/box/config/rdp-user /srv/box/config/rdp-password', self.calls.read_text())
+        self.assertIn("<'me'>", self.writes.read_text())
 
     def test_build_needs_clean_checkout(self):
         (self.repo / 'new').write_text('x')

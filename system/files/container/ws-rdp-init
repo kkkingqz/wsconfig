@@ -2,20 +2,22 @@
 # GNOME Remote Login (system RDP through GDM) of a container host, before
 # gnome-remote-desktop.service on every boot (helpws plan-wsgnomebox):
 # TLS certificate kept in /var/lib/gnome-remote-desktop (a directory of the
-# server), credentials from /config/rdp-user and /config/rdp-password.
+# server), credentials in credentials.ini there: ws container run|password
+# writes it from the server; the plain-text /config/rdp-user and
+# /config/rdp-password of before while it has none.
 set -euo pipefail
 
 grd=gnome-remote-desktop
 grd_home="$(getent passwd "$grd" | cut -d: -f6)"
 [[ -n "$grd_home" ]] || { echo "ws-rdp-init: no user $grd" >&2; exit 1; }
-for f in /config/rdp-user /config/rdp-password; do
-    [[ -s "$f" ]] || { echo "ws-rdp-init: missing $f" >&2; exit 1; }
-done
 
 dir="$grd_home/.local/share/gnome-remote-desktop"
 key="$dir/tls.key"
 crt="$dir/tls.crt"
+cred="$dir/credentials.ini"
 chown "$grd:$grd" "$grd_home"
+# ws container writes credentials.ini as root of the server.
+install -d -m0755 -o "$grd" -g "$grd" "$grd_home/.local" "$grd_home/.local/share"
 install -d -m0700 -o "$grd" -g "$grd" "$dir"
 if [[ ! -s "$key" || ! -s "$crt" ]]; then
     echo "new TLS certificate"
@@ -31,7 +33,12 @@ grdctl --system rdp set-tls-cert "$crt"
 # Credentials straight into the GKeyFile store gnome-remote-desktop falls
 # back to without a TPM (always in a container). grdctl takes them only as
 # arguments, and sudo-rs, through which it switches users, logs those.
-python3 - /config/rdp-user /config/rdp-password "$dir/credentials.ini" <<'PY'
+if [[ ! -s "$cred" ]]; then
+    for f in /config/rdp-user /config/rdp-password; do
+        [[ -s "$f" ]] || { echo "ws-rdp-init: no $cred (ws container password --rdp)" >&2; exit 1; }
+    done
+    echo "ws-rdp-init: plain-text /config/rdp-* (ws container password --rdp)" >&2
+    python3 - /config/rdp-user /config/rdp-password "$cred" <<'PY'
 import os, sys
 from pathlib import Path
 
@@ -48,6 +55,8 @@ with os.fdopen(fd, "w") as f:
     f.write("[RDP]\ncredentials=" + value.replace("\\", "\\\\") + "\n")
 os.replace(tmp, out)
 PY
-chown "$grd:$grd" "$dir/credentials.ini"
+fi
+chown "$grd:$grd" "$cred"
+chmod 600 "$cred"
 grdctl --system rdp enable
 grdctl --system status | grep -vE '^\s*(Username|Password):'

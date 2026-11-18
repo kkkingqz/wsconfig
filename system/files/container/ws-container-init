@@ -3,7 +3,9 @@
 # plan-wsgnomebox): prepares what the image cannot hold, then execs the
 # command (/sbin/init). Runs on every start as root, before systemd.
 #
-# - the password of the user from /config/password (the image has none);
+# - the password of the user from /config/password.hash, a SHA-512 crypt
+#   hash ws container run|password writes (the image has none); the
+#   plain-text /config/password of before while it is there;
 # - the skeleton of /nix: it is a directory of the server, empty at first;
 # - the home: owned by the user, /etc/skel on the first start, never a
 #   recursive chown (rootless podman keeps subordinate IDs there);
@@ -15,12 +17,15 @@ set -eu
 user="$(id -nu 1000)"
 home="$(getent passwd "$user" | cut -d: -f6)"
 
-if [[ -s /config/password ]]; then
+if [[ -s /config/password.hash ]]; then
+    usermod --password "$(head -n1 /config/password.hash)" "$user"
+elif [[ -s /config/password ]]; then
+    echo "ws-container-init: plain-text /config/password (ws container password)" >&2
     hash="$(openssl passwd -6 -stdin < /config/password)"
     usermod --password "$hash" "$user"
     unset hash
 else
-    echo "ws-container-init: no /config/password; $user cannot log in" >&2
+    echo "ws-container-init: no /config/password.hash; $user cannot log in" >&2
 fi
 
 # What nix-setup-systemd creates; nix-daemon.socket needs daemon-socket.

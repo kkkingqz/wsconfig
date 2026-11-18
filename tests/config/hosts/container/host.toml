@@ -41,7 +41,7 @@ mounts = [
   "/srv/container/home:~",
   "/srv/container/nix:/nix",
   "/srv/container/grd:/var/lib/gnome-remote-desktop",
-  # password, rdp-user, rdp-password (ws-container-init, ws-rdp-init)
+  # password.hash of the user (ws container run|password, ws-container-init)
   "/srv/container/config:/config:ro",
   "/srv/projects:~/Projects",
   "/srv/data:~/Data",
