@@ -213,7 +213,9 @@ cmd_run() {
         --cgroupns host -v /sys/fs/cgroup:/sys/fs/cgroup:rw
         --tmpfs /run:rw,nosuid,nodev,mode=755
         --tmpfs /run/lock:rw,nosuid,nodev,noexec,mode=755
-        --tmpfs /tmp:rw,nosuid,nodev,mode=1777
+        # exec: docker adds noexec to a tmpfs without it, and builds and
+        # installers run what they unpack to /tmp.
+        --tmpfs /tmp:rw,exec,nosuid,nodev,mode=1777
         # Rootless podman, bubblewrap (Flatpak) and GDM inside: user
         # namespaces, mounts and a fresh /proc.
         --security-opt seccomp=unconfined --security-opt systempaths=unconfined

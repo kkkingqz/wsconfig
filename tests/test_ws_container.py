@@ -88,6 +88,7 @@ exit 0
         self.assertIn('-v /srv/projects:/home/tester/Projects ', p.stdout)
         self.assertIn('-v /srv/box/config:/config:ro ', p.stdout)
         self.assertIn('-p 3390:3389', p.stdout)
+        self.assertIn('--tmpfs /tmp:rw,exec,', p.stdout)
         self.assertIn('--device /dev/fuse', p.stdout)
         self.assertTrue(p.stdout.rstrip().endswith('local/box:latest'))
         self.assertNotIn('--memory', p.stdout)
